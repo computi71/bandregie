@@ -1,0 +1,14 @@
+<?php require BASE_DIR . '/app/views/_header.php'; ?>
+<h1><?= e(t('nav_fotos')) ?></h1>
+<?php if (!$photos): ?>
+  <div class="card"><p class="muted"><?= e(t('photos_none')) ?></p></div>
+<?php endif; ?>
+<div class="photo-grid large">
+  <?php foreach ($photos as $photo): ?>
+    <figure>
+      <img src="/uploads/<?= e($photo['filename']) ?>" alt="<?= e($photo['caption'] ?: $settings['band_name']) ?>" loading="lazy">
+      <?php if ($photo['caption']): ?><figcaption><?= e($photo['caption']) ?></figcaption><?php endif; ?>
+    </figure>
+  <?php endforeach; ?>
+</div>
+<?php require BASE_DIR . '/app/views/_footer.php'; ?>
