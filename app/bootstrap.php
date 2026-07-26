@@ -310,7 +310,7 @@ const UI_STRINGS = [
   'about_credits' => 'Entwicklung',
   'about_by' => 'Entwickelt von',
   'about_contributors' => 'Mitwirkende',
-  'about_thanks' => 'Entstanden aus dem Bedarf einer Band, die ihre Orga satt hatte — und offen für alle, denen es genauso geht.',
+  'about_thanks' => 'Entstanden aus dem Bedarf einer Band, bei der die Orga immer eine Herausforderung war — und offen für alle, denen es genauso geht. Genügend Ideen sind noch vorhanden.',
   'about_project' => 'Projekt',
   'about_license' => 'Lizenz', 'about_source' => 'Quellcode', 'about_version' => 'Version',
   'about_changelog' => 'Was ist neu?', 'about_stack' => 'Technik',
