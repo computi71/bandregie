@@ -14,6 +14,11 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <form method="post" action="/intern/einstellungen" class="form-grid">
     <label><?= e(t('set_bandname')) ?><input name="band_name" value="<?= e($settings['band_name']) ?>" required></label>
     <label><?= e(t('set_contact_email')) ?><input type="email" name="contact_email" value="<?= e($settings['contact_email']) ?>"></label>
+    <label class="span2"><?= e(t('set_copyright')) ?>
+      <input name="copyright_text" value="<?= e($settings['copyright_text'] ?? '') ?>"
+             placeholder="© <?= date('Y') ?> <?= e($settings['band_name']) ?>">
+      <span class="muted small"><?= e(t('set_copyright_hint')) ?></span>
+    </label>
     <label>Facebook<input name="facebook_url" value="<?= e($settings['facebook_url']) ?>" placeholder="https://facebook.com/..."></label>
     <label>Instagram<input name="instagram_url" value="<?= e($settings['instagram_url']) ?>" placeholder="https://instagram.com/..."></label>
     <label>Spotify<input name="spotify_url" value="<?= e($settings['spotify_url']) ?>" placeholder="https://open.spotify.com/artist/..."></label>
@@ -156,6 +161,12 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p><code id="ical-link"><?= e($ical_url) ?></code>
   <button class="btn btn-small" onclick="navigator.clipboard.writeText(document.getElementById('ical-link').textContent).then(() => this.textContent = '✔ <?= e(t('copied')) ?>')"><?= e(t('copy')) ?></button></p>
   <p class="muted small"><?= e(t('set_ical_hint')) ?> <a href="/intern/kalender"><?= e(t('set_ical_link')) ?> →</a></p>
+</div>
+
+<div class="card">
+  <h2>ℹ️ <?= e(t('about_title')) ?></h2>
+  <p class="muted small"><?= e(t('about_settings_hint')) ?></p>
+  <a class="btn" href="/intern/ueber"><?= e(t('about_open')) ?> →</a>
 </div>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>

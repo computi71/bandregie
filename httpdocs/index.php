@@ -869,6 +869,15 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/uebersetzungen?sprache=' . ($editLang ?? 'en'));
   }
 
+  // ---------- Über Bandroadie ----------
+  if ($path === '/intern/ueber' && $method === 'GET') {
+    // CONTRIBUTORS (eine Zeile pro Person) ist optional — fehlt sie, bleibt der Block leer
+    $file = BASE_DIR . '/CONTRIBUTORS';
+    $names = is_file($file) ? array_filter(array_map('trim', explode("\n", (string) file_get_contents($file))),
+      fn($l) => $l !== '' && !str_starts_with($l, '#')) : [];
+    view('intern/ueber', ['title' => t('about_title'), 'contributors' => implode(', ', $names)]);
+  }
+
   // ---------- Equipment ----------
   if ($path === '/intern/equipment' && $method === 'GET') {
     $filesByEq = [];
@@ -1042,7 +1051,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/einstellungen' && $method === 'POST') {
     require_admin();
-    foreach (['band_name', 'contact_email', 'facebook_url', 'instagram_url', 'spotify_url', 'youtube_url'] as $k) {
+    foreach (['band_name', 'contact_email', 'copyright_text', 'facebook_url', 'instagram_url', 'spotify_url', 'youtube_url'] as $k) {
       if (isset($_POST[$k])) set_setting($k, trim($_POST[$k]));
     }
     if (isset($_POST['_termine_form'])) {
