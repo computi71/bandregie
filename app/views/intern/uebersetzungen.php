@@ -11,7 +11,7 @@
 <p class="muted"><strong><?= LANGS[$editLang] ?></strong> — <?= e(t('tr_intro')) ?></p>
 
 <div class="card">
-  <form method="post" action="/intern/uebersetzungen" class="stack">
+  <form method="post" action="/intern/uebersetzungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="sprache" value="<?= e($editLang) ?>">
     <table class="table">
       <thead><tr><th style="width:40%"><?= e(t('tr_col_de')) ?></th><th><?= LANGS[$editLang] ?></th></tr></thead>

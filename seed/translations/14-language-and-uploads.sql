@@ -26,3 +26,16 @@ ON DUPLICATE KEY UPDATE value = VALUES(value);
 
 -- Correction: the English wording read awkwardly in front of the band name.
 UPDATE translations SET value = 'For members of' WHERE lang = 'en' AND tkey = 'login_only_members';
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','fl_csrf','That action expired — please reload the page and try again.'),
+('en','fl_throttled','Too many failed attempts. Please wait 15 minutes.'),
+('nl','fl_csrf','Deze actie is verlopen — herlaad de pagina en probeer het opnieuw.'),
+('nl','fl_throttled','Te veel mislukte pogingen. Wacht 15 minuten.'),
+('fr','fl_csrf','L''action a expiré — recharge la page et réessaie.'),
+('fr','fl_throttled','Trop de tentatives échouées. Merci d''attendre 15 minutes.'),
+('es','fl_csrf','La acción caducó — recarga la página e inténtalo de nuevo.'),
+('es','fl_throttled','Demasiados intentos fallidos. Espera 15 minutos.'),
+('it','fl_csrf','L''azione è scaduta — ricarica la pagina e riprova.'),
+('it','fl_throttled','Troppi tentativi falliti. Attendi 15 minuti.')
+ON DUPLICATE KEY UPDATE value = VALUES(value);

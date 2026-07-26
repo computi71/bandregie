@@ -3,7 +3,7 @@
 
 <details class="card collapsible" <?= $venues ? '' : 'open' ?>>
   <summary>➕ <?= e(t('venues_new')) ?></summary>
-  <form method="post" action="/intern/orte" class="form-grid">
+  <form method="post" action="/intern/orte" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('name')) ?><input name="name" required placeholder="<?= e(t('venues_name_ph')) ?>"></label>
     <label><?= e(t('city')) ?><input name="city"></label>
     <label class="span2"><?= e(t('address')) ?><textarea name="address" rows="2"></textarea></label>
@@ -48,7 +48,7 @@
     <?php $attachFiles = $filesByVenue[$v['id']] ?? []; $attachType = 'venue'; $attachId = $v['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/orte/<?= $v['id'] ?>/update" class="form-grid">
+      <form method="post" action="/intern/orte/<?= $v['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
         <label><?= e(t('name')) ?><input name="name" value="<?= e($v['name']) ?>" required></label>
         <label><?= e(t('city')) ?><input name="city" value="<?= e($v['city']) ?>"></label>
         <label class="span2"><?= e(t('address')) ?><textarea name="address" rows="2"><?= e($v['address']) ?></textarea></label>
@@ -58,7 +58,7 @@
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($v['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/orte/<?= $v['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline">
+      <form method="post" action="/intern/orte/<?= $v['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
       </form>
     </details>

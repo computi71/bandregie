@@ -7,7 +7,7 @@ require BASE_DIR . '/app/views/_header.php';
 
 <div class="card">
   <h2><?= e(t('dl_release')) ?></h2>
-  <form method="post" action="/intern/downloads/modus" class="form-grid">
+  <form method="post" action="/intern/downloads/modus" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('dl_mode')) ?>
       <select name="mode">
         <option value="token" <?= $mode === 'token' ? 'selected' : '' ?>><?= e(t('dl_mode_token')) ?></option>
@@ -34,12 +34,12 @@ require BASE_DIR . '/app/views/_header.php';
       <li>
         <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
-        <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+        <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
       </li>
     <?php endforeach; ?>
   </ul>
   <?php if (!$files): ?><p class="muted center"><?= e(t('dl_none')) ?></p><?php endif; ?>
-  <form method="post" action="/intern/dateien" enctype="multipart/form-data" class="comment-form">
+  <form method="post" action="/intern/dateien" enctype="multipart/form-data" class="comment-form"><?= csrf_field() ?>
     <input type="hidden" name="entity_type" value="download">
     <input type="hidden" name="entity_id" value="0">
     <input type="file" name="files[]" multiple required>

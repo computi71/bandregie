@@ -258,6 +258,8 @@ const UI_STRINGS = [
   'set_demo_remove' => 'Demodaten entfernen',
   'set_demo_active' => 'Demodaten sind eingespielt. Beim Entfernen wird ausschließlich das gelöscht, was mit den Demodaten angelegt wurde — eure eigenen Einträge bleiben erhalten.',
   'set_demo_confirm' => 'Alle Demodaten entfernen? Eigene Einträge bleiben erhalten.',
+  'fl_csrf' => 'Die Aktion ist abgelaufen — bitte die Seite neu laden und noch einmal versuchen.',
+  'fl_throttled' => 'Zu viele Fehlversuche. Bitte 15 Minuten warten.',
   'fl_upload_server_limit' => 'Die Datei war zu groß für den Server. Höchstens möglich:',
   'fl_upload_failed' => 'Der Upload hat nicht geklappt — bitte nochmal versuchen.',
   'fl_demo_added' => 'Demodaten eingespielt.',
@@ -564,6 +566,13 @@ $tables = [
     PRIMARY KEY (lang, tkey)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  "CREATE TABLE IF NOT EXISTS login_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    k VARCHAR(190) NOT NULL,
+    ts DATETIME NOT NULL,
+    INDEX idx_k (k, ts)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS demo_rows (
     id INT AUTO_INCREMENT PRIMARY KEY,
     table_name VARCHAR(64) NOT NULL,
@@ -732,6 +741,40 @@ function back(string $fallback): never { redirect($_SERVER['HTTP_REFERER'] ?? $f
 function flash(string $msg): void { $_SESSION['flash'] = $msg; }
 
 function e(mixed $s): string { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
+
+// ---------- CSRF ----------
+// Jedes Formular trägt ein Sitzungs-Token; ohne gültiges Token wird kein POST
+// ausgeführt. Damit können fremde Seiten keine Aktionen im Namen eines
+// angemeldeten Mitglieds auslösen.
+function csrf_token(): string {
+  if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
+  return $_SESSION['csrf'];
+}
+function csrf_field(): string {
+  return '<input type="hidden" name="_token" value="' . e(csrf_token()) . '">';
+}
+function csrf_valid(): bool {
+  return is_string($_POST['_token'] ?? null) && hash_equals(csrf_token(), $_POST['_token']);
+}
+
+// ---------- Versuchsbremse ----------
+// Zählt fehlgeschlagene Versuche pro Kennung und IP; nach zu vielen wird für
+// eine Weile abgewiesen, damit Passwörter nicht durchprobiert werden können.
+function throttle_key(string $action, string $id): string {
+  return $action . '|' . mb_strtolower(trim($id)) . '|' . ($_SERVER['REMOTE_ADDR'] ?? '');
+}
+function throttle_blocked(string $action, string $id, int $max = 8, int $minutes = 15): bool {
+  $row = row('SELECT COUNT(*) AS n FROM login_attempts WHERE k = ? AND ts > DATE_SUB(NOW(), INTERVAL ? MINUTE)',
+    [throttle_key($action, $id), $minutes]);
+  return (int) ($row['n'] ?? 0) >= $max;
+}
+function throttle_note(string $action, string $id): void {
+  q('INSERT INTO login_attempts (k, ts) VALUES (?, NOW())', [throttle_key($action, $id)]);
+  q('DELETE FROM login_attempts WHERE ts < DATE_SUB(NOW(), INTERVAL 1 DAY)');
+}
+function throttle_clear(string $action, string $id): void {
+  q('DELETE FROM login_attempts WHERE k = ?', [throttle_key($action, $id)]);
+}
 
 // ---------- Upload-Grenzen ----------
 // PHP verwirft zu große Uploads still: tmp_name ist leer, size 0. Ohne Blick auf

@@ -5,13 +5,13 @@
   <div class="row-buttons" style="margin-bottom:0.8rem">
     <?php if ($profile['avatar_file']): ?>
       <img class="avatar avatar-big" src="/uploads/<?= e($profile['avatar_file']) ?>" alt="<?= e($profile['name']) ?>">
-      <form class="inline" method="post" action="/intern/profil/avatar/delete"><button class="btn btn-tiny btn-danger"><?= e(t('prof_avatar_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/profil/avatar/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('prof_avatar_remove')) ?></button></form>
     <?php else: ?>
       <span class="avatar avatar-big avatar-placeholder"><?= e(mb_substr($profile['name'], 0, 1)) ?></span>
       <span class="muted small"><?= e(t('prof_no_avatar')) ?></span>
     <?php endif; ?>
   </div>
-  <form method="post" action="/intern/profil" enctype="multipart/form-data" class="form-grid">
+  <form method="post" action="/intern/profil" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('name')) ?><input name="name" value="<?= e($profile['name']) ?>" required></label>
     <label><?= e(t('stage_name')) ?><input name="stage_name" value="<?= e($profile['stage_name']) ?>" placeholder="<?= e(t('prof_stage_name_ph')) ?>"></label>
     <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($profile['instrument']) ?>" placeholder="z. B. Drums"></label>

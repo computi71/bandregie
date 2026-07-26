@@ -4,7 +4,7 @@
 <?php if ($user['role'] === 'admin'): ?>
 <details class="card collapsible">
   <summary>➕ <?= e(t('mem_new')) ?></summary>
-  <form method="post" action="/intern/mitglieder" class="form-grid">
+  <form method="post" action="/intern/mitglieder" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('name')) ?><input name="name" required></label>
     <label><?= e(t('email')) ?><input type="email" name="email" required></label>
     <label><?= e(t('instrument')) ?><input name="instrument" placeholder="z. B. Drums"></label>
@@ -36,7 +36,7 @@
         <?php if ((int) $m['id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
           <details class="inline-details">
             <summary class="btn btn-tiny">🔑 <?= e(t('mem_password')) ?></summary>
-            <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/passwort" class="comment-form">
+            <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/passwort" class="comment-form"><?= csrf_field() ?>
               <input type="password" name="password" minlength="8" required placeholder="<?= e(t('mem_new_pw')) ?>"
                      data-strength data-labels="<?= e(t('pw_weak')) ?>|<?= e(t('pw_medium')) ?>|<?= e(t('pw_strong')) ?>|<?= e(t('pw_very_strong')) ?>">
               <button class="btn btn-tiny"><?= e(t('mem_set')) ?></button>
@@ -44,7 +44,7 @@
           </details>
         <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id']): ?>
-          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </span>
     </div>
@@ -52,7 +52,7 @@
       <details class="subsection">
         <summary>✏️ <?= e(t('mem_edit_admin')) ?></summary>
         <?php $mFull = row('SELECT * FROM users WHERE id = ?', [$m['id']]); ?>
-        <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/update" class="form-grid">
+        <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
           <label><?= e(t('name')) ?><input name="name" value="<?= e($mFull['name']) ?>" required></label>
           <label><?= e(t('stage_name')) ?><input name="stage_name" value="<?= e($mFull['stage_name']) ?>"></label>
           <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($mFull['instrument']) ?>"></label>

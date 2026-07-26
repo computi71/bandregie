@@ -11,7 +11,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 
 <div class="card">
   <h2><?= e(t('set_bandprofile')) ?></h2>
-  <form method="post" action="/intern/einstellungen" class="form-grid">
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_bandname')) ?><input name="band_name" value="<?= e($settings['band_name']) ?>" required></label>
     <label><?= e(t('set_contact_email')) ?><input type="email" name="contact_email" value="<?= e($settings['contact_email']) ?>"></label>
     <label class="span2"><?= e(t('set_copyright')) ?>
@@ -30,7 +30,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 <div class="card">
   <h2><?= e(t('set_texts')) ?></h2>
   <p class="muted small"><?= e(t('set_texts_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen" class="stack">
+  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="_texts_form" value="1">
     <?php foreach ($activeLangs as $lang): ?>
       <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
@@ -49,7 +49,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 <div class="card">
   <h2><?= e(t('set_legal')) ?></h2>
   <p class="muted small"><?= e(t('set_legal_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen" class="stack">
+  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="_legal_form" value="1">
     <?php foreach ($activeLangs as $lang): ?>
       <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
@@ -66,7 +66,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 
 <div class="card">
   <h2><?= e(t('set_public')) ?></h2>
-  <form method="post" action="/intern/einstellungen" class="form-grid">
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_termine_form" value="1">
     <label class="span2"><?= e(t('set_pm')) ?>
       <select name="public_mode">
@@ -91,7 +91,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 <div class="card">
   <h2><?= e(t('set_langs')) ?></h2>
   <p class="muted small"><?= e(t('set_langs_hint')) ?> <a href="/intern/uebersetzungen"><?= e(t('set_langs_check')) ?> →</a></p>
-  <form method="post" action="/intern/einstellungen" class="form-grid">
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_langs_form" value="1">
     <label class="span2"><?= e(t('set_default_lang')) ?>
       <select name="default_lang">
@@ -115,7 +115,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 
 <div class="card">
   <h2><?= e(t('set_branding')) ?></h2>
-  <form method="post" action="/intern/einstellungen/branding" enctype="multipart/form-data" class="form-grid">
+  <form method="post" action="/intern/einstellungen/branding" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_logo_lbl')) ?><input type="file" name="logo" accept="image/*"></label>
     <label><?= e(t('set_bg_lbl')) ?><input type="file" name="background" accept="image/*"></label>
     <label><?= e(t('set_favicon_lbl')) ?><input type="file" name="favicon" accept="image/png,image/x-icon,image/svg+xml"></label>
@@ -124,15 +124,15 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <div class="row-buttons">
     <?php if (!empty($settings['logo_file'])): ?>
       <img src="/uploads/<?= e($settings['logo_file']) ?>" alt="Logo" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/logo/delete"><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/logo/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['background_file'])): ?>
       <img src="/uploads/<?= e($settings['background_file']) ?>" alt="Hintergrund" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/background/delete"><button class="btn btn-tiny btn-danger"><?= e(t('set_bg_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/background/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_bg_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['favicon_file'])): ?>
       <img src="/uploads/<?= e($settings['favicon_file']) ?>" alt="Favicon" style="max-height:32px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete"><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
     <?php endif; ?>
   </div>
 </div>
@@ -140,7 +140,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 <div class="card">
   <h2><?= e(t('set_media')) ?></h2>
   <p class="muted small"><?= e(t('set_media_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen/links" class="form-grid">
+  <form method="post" action="/intern/einstellungen/links" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('title_lbl')) ?><input name="title" placeholder="z. B. Live beim Stadtfest"></label>
     <label>URL<input name="url" required placeholder="https://youtu.be/... oder https://open.spotify.com/..."></label>
     <button class="btn btn-primary span2"><?= e(t('add')) ?></button>
@@ -150,7 +150,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       <li>
         <strong><?= e($link['title'] ?: $link['url']) ?></strong>
         <span class="muted small"><?= e($link['url']) ?></span>
-        <form class="inline" method="post" action="/intern/einstellungen/links/<?= $link['id'] ?>/delete"><button class="btn btn-tiny btn-danger">🗑</button></form>
+        <form class="inline" method="post" action="/intern/einstellungen/links/<?= $link['id'] ?>/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
       </li>
     <?php endforeach; ?>
   </ul>
@@ -174,12 +174,12 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <h2>🧪 <?= e(t('set_demo')) ?></h2>
   <?php if (demo_installed()): ?>
     <p class="muted small"><?= e(t('set_demo_active')) ?></p>
-    <form method="post" action="/intern/einstellungen/demo/remove" onsubmit="return confirm('<?= e(t('set_demo_confirm')) ?>')">
+    <form method="post" action="/intern/einstellungen/demo/remove" onsubmit="return confirm('<?= e(t('set_demo_confirm')) ?>')"><?= csrf_field() ?>
       <button class="btn btn-danger"><?= e(t('set_demo_remove')) ?></button>
     </form>
   <?php else: ?>
     <p class="muted small"><?= e(t('set_demo_hint')) ?></p>
-    <form method="post" action="/intern/einstellungen/demo/add">
+    <form method="post" action="/intern/einstellungen/demo/add"><?= csrf_field() ?>
       <button class="btn btn-primary"><?= e(t('set_demo_add')) ?></button>
     </form>
   <?php endif; ?>

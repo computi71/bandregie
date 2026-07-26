@@ -3,7 +3,7 @@
 <?php if ($forced): ?><p class="warn"><?= e(t('pw_forced_hint')) ?></p><?php endif; ?>
 
 <div class="card" style="max-width:480px">
-  <form method="post" action="/intern/passwort" class="form-grid" style="grid-template-columns:1fr">
+  <form method="post" action="/intern/passwort" class="form-grid" style="grid-template-columns:1fr"><?= csrf_field() ?>
     <label><?= e(t('pw_new')) ?>
       <input type="password" name="password" minlength="8" required autofocus autocomplete="new-password"
              data-strength data-labels="<?= e(t('pw_weak')) ?>|<?= e(t('pw_medium')) ?>|<?= e(t('pw_strong')) ?>|<?= e(t('pw_very_strong')) ?>">

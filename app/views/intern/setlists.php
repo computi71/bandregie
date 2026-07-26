@@ -2,7 +2,7 @@
 <h1><?= e(t('inav_setlists')) ?></h1>
 
 <div class="card">
-  <form method="post" action="/intern/setlists" class="comment-form">
+  <form method="post" action="/intern/setlists" class="comment-form"><?= csrf_field() ?>
     <input name="name" placeholder="<?= e(t('sl_new_ph')) ?>" required>
     <button class="btn btn-primary"><?= e(t('create')) ?></button>
   </form>
@@ -19,9 +19,9 @@
       <a class="btn btn-small" href="/intern/setlists/<?= $sl['id'] ?>"><?= e($sl['locked'] ? t('view') : t('edit')) ?></a>
       <a class="btn btn-small btn-ghost" href="/intern/setlists/<?= $sl['id'] ?>/print" target="_blank">🖨 <?= e(t('sl_print')) ?></a>
       <a class="btn btn-small btn-ghost" href="/intern/setlists/<?= $sl['id'] ?>/gema" target="_blank">🏛 GEMA</a>
-      <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/copy"><button class="btn btn-small btn-ghost"><?= e(t('copy')) ?></button></form>
+      <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/copy"><?= csrf_field() ?><button class="btn btn-small btn-ghost"><?= e(t('copy')) ?></button></form>
       <?php if (!$sl['locked']): ?>
-        <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-small btn-danger"><?= e(t('delete')) ?></button></form>
+        <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-small btn-danger"><?= e(t('delete')) ?></button></form>
       <?php endif; ?>
     </div>
   </div>

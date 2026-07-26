@@ -2,7 +2,7 @@
 <div class="login-box card">
   <h1>🔑 <?= e(t('pwreset_title')) ?></h1>
   <p class="muted"><?= e(t('pwreset_intro')) ?></p>
-  <form method="post" action="/passwort-vergessen" class="stack">
+  <form method="post" action="/passwort-vergessen" class="stack"><?= csrf_field() ?>
     <label><?= e(t('login_email')) ?><input type="email" name="email" required autofocus></label>
     <button class="btn btn-primary"><?= e(t('pwreset_send')) ?></button>
   </form>

@@ -23,7 +23,7 @@
           <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) : '' ?></span>
           <strong><?= e($ev['title']) ?></strong>
           <?php if ($ev['location']): ?><span class="muted"><?= e($ev['location']) ?></span><?php endif; ?>
-          <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post">
+          <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post"><?= csrf_field() ?>
             <button name="status" value="yes" class="chip <?= ($mine[$ev['id']] ?? '') === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
             <button name="status" value="no" class="chip <?= ($mine[$ev['id']] ?? '') === 'no' ? 'chip-no' : '' ?>"><?= e(t('att_no')) ?></button>
@@ -39,7 +39,7 @@
     <ul class="task-list">
       <?php foreach ($tasks as $task): ?>
         <li>
-          <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><button class="check" title="OK">☐</button></form>
+          <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
           <strong><?= e($task['title']) ?></strong>
           <?php if ($task['assignee']): ?><span class="muted">→ <?= e($task['assignee']) ?></span><?php endif; ?>
           <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>

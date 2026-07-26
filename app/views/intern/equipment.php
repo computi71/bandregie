@@ -3,7 +3,7 @@
 
 <details class="card collapsible" <?= $items ? '' : 'open' ?>>
   <summary>➕ <?= e(t('eq_new')) ?></summary>
-  <form method="post" action="/intern/equipment" class="form-grid">
+  <form method="post" action="/intern/equipment" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('name')) ?><input name="name" required placeholder="z. B. Bandanhänger, PA-Topteile, Funkstrecke"></label>
     <label><?= e(t('eq_cat')) ?>
       <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
@@ -48,8 +48,8 @@
               <?= $days < 0 ? ' · ⚠ ' . e(t('eq_overdue')) : ($days <= 30 ? ' · ' . e(t('eq_due_soon')) . ' ' . $days . ' ' . e(t('eq_days')) : '') ?>
               <?= $dl['notes'] ? ' · ' . e($dl['notes']) : '' ?>
             </span>
-            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/erledigt"><button class="btn btn-tiny"><?= e(t('eq_done')) ?></button></form>
-            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/erledigt"><?= csrf_field() ?><button class="btn btn-tiny"><?= e(t('eq_done')) ?></button></form>
+            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -58,7 +58,7 @@
     <details class="subsection">
       <summary>⏰ <?= e(t('eq_deadline_new')) ?></summary>
       <p class="muted small"><?= e(t('eq_done_hint')) ?></p>
-      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/frist" class="form-grid">
+      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/frist" class="form-grid"><?= csrf_field() ?>
         <label><?= e(t('title_lbl')) ?><input name="title" required placeholder="<?= e(t('eq_deadline_title_ph')) ?>"></label>
         <label><?= e(t('eq_due')) ?><input type="date" name="due_date" required></label>
         <label><?= e(t('eq_interval')) ?>
@@ -78,7 +78,7 @@
 
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/update" class="form-grid">
+      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
         <label><?= e(t('name')) ?><input name="name" value="<?= e($eq['name']) ?>" required></label>
         <label><?= e(t('eq_cat')) ?>
           <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>" <?= $eq['category'] === $val ? 'selected' : '' ?>><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
@@ -91,7 +91,7 @@
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($eq['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline">
+      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
       </form>
     </details>

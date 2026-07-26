@@ -54,7 +54,7 @@ foreach ($entries as $en) {
         <span class="event-date"><?= fmt_date($ev['date']) ?></span>
         <strong><?= e($ev['title']) ?></strong>
         <span class="muted"><?= e($ev['fee']) ?></span>
-        <form class="inline" method="post" action="/intern/kasse/gage/<?= $ev['id'] ?>">
+        <form class="inline" method="post" action="/intern/kasse/gage/<?= $ev['id'] ?>"><?= csrf_field() ?>
           <button class="btn btn-tiny btn-primary"><?= e(t('fin_import_gage')) ?></button>
         </form>
       </li>
@@ -66,7 +66,7 @@ foreach ($entries as $en) {
 <?php if (can_finance()): ?>
 <details class="card collapsible" <?= $entries ? '' : 'open' ?>>
   <summary>➕ <?= e(t('fin_new')) ?></summary>
-  <form method="post" action="/intern/kasse" class="form-grid">
+  <form method="post" action="/intern/kasse" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('date')) ?><input type="date" name="date" value="<?= date('Y-m-d') ?>" required></label>
     <label><?= e(t('ev_type')) ?>
       <select name="type">
@@ -115,14 +115,14 @@ foreach ($entries as $en) {
             <?php if (can_finance()): ?>
               <details class="inline-details">
                 <summary class="btn btn-tiny">📎</summary>
-                <form method="post" action="/intern/dateien" enctype="multipart/form-data" class="comment-form">
+                <form method="post" action="/intern/dateien" enctype="multipart/form-data" class="comment-form"><?= csrf_field() ?>
                   <input type="hidden" name="entity_type" value="finance">
                   <input type="hidden" name="entity_id" value="<?= $en['id'] ?>">
                   <input type="file" name="files[]" required>
                   <button class="btn btn-tiny"><?= e(t('upload')) ?></button>
                 </form>
               </details>
-              <form class="inline" method="post" action="/intern/kasse/<?= $en['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+              <form class="inline" method="post" action="/intern/kasse/<?= $en['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
             <?php endif; ?>
           </td>
         </tr>

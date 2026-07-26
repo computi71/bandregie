@@ -2,7 +2,7 @@
 <h1><?= e(t('task_title')) ?></h1>
 
 <div class="card">
-  <form method="post" action="/intern/aufgaben" class="form-grid">
+  <form method="post" action="/intern/aufgaben" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('task_lbl')) ?><input name="title" required placeholder="<?= e(t('task_ph')) ?>"></label>
     <label><?= e(t('task_who')) ?>
       <select name="assigned_to"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
@@ -17,14 +17,14 @@
   <ul class="task-list">
     <?php foreach ($tasks as $task): ?>
       <li class="<?= $task['status'] === 'erledigt' ? 'done' : '' ?>">
-        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post">
+        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?>
           <button class="check" title="<?= e(t('task_toggle')) ?>"><?= $task['status'] === 'erledigt' ? '☑' : '☐' ?></button>
         </form>
         <strong><?= e($task['title']) ?></strong>
         <?php if ($task['assignee']): ?><span class="muted">→ <?= e($task['assignee']) ?></span><?php endif; ?>
         <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
         <?php if ($task['notes']): ?><div class="muted small prewrap"><?= e($task['notes']) ?></div><?php endif; ?>
-        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/delete" method="post" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/delete" method="post" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
       </li>
     <?php endforeach; ?>
   </ul>

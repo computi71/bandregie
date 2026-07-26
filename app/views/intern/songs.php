@@ -3,7 +3,7 @@
 
 <details class="card collapsible" <?= $edit || !$songs ? 'open' : '' ?>>
   <summary><?= $edit ? '✏️ „' . e($edit['title']) . '" ' . e(t('song_edit_suffix')) : '➕ ' . e(t('song_new')) ?></summary>
-  <form method="post" action="<?= $edit ? '/intern/songs/' . $edit['id'] . '/update' : '/intern/songs' ?>" class="form-grid">
+  <form method="post" action="<?= $edit ? '/intern/songs/' . $edit['id'] . '/update' : '/intern/songs' ?>" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('title_lbl')) ?><input name="title" value="<?= e($edit['title'] ?? '') ?>" required></label>
     <label><?= e(t('song_original')) ?><input name="artist" value="<?= e($edit['artist'] ?? '') ?>" placeholder="<?= e(t('song_original_ph')) ?>"></label>
     <label><?= e(t('song_composer')) ?><input name="composer" value="<?= e($edit['composer'] ?? '') ?>" placeholder="<?= e(t('song_composer_ph')) ?>"></label>
@@ -46,7 +46,7 @@
           <td class="row-buttons">
             <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/edit">✏️</a>
             <?php if ($song['played_count'] == 0): ?>
-              <form class="inline" method="post" action="/intern/songs/<?= $song['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><button class="btn btn-tiny btn-danger">🗑</button></form>
+              <form class="inline" method="post" action="/intern/songs/<?= $song['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
             <?php endif; ?>
           </td>
         </tr>

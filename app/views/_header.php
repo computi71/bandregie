@@ -77,7 +77,7 @@
     <?php endif; ?>
     <?php if ($user): ?>
       <?php if (!$isIntern): ?><a class="btn btn-small" href="/intern"><?= e(t('inav_intern')) ?></a><?php else: ?><a class="btn btn-small" href="/"><?= e(t('inav_zur_website')) ?></a><?php endif; ?>
-      <form action="/logout" method="post" class="inline"><button class="btn btn-small btn-ghost"><?= e(t('logout')) ?> (<?= e($user['name']) ?>)</button></form>
+      <form action="/logout" method="post" class="inline"><?= csrf_field() ?><button class="btn btn-small btn-ghost"><?= e(t('logout')) ?> (<?= e($user['name']) ?>)</button></form>
     <?php else: ?>
       <a class="btn btn-small btn-ghost" href="/login"><?= e(t('nav_bandbereich')) ?></a>
     <?php endif; ?>

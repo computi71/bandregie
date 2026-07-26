@@ -12,7 +12,7 @@ require BASE_DIR . '/app/views/_header.php';
 
 <details class="card collapsible" <?= $events ? '' : 'open' ?>>
   <summary>➕ <?= e(t('ev_new')) ?></summary>
-  <form method="post" action="/intern/termine" class="form-grid">
+  <form method="post" action="/intern/termine" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('ev_type')) ?>
       <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
     </label>
@@ -74,7 +74,7 @@ require BASE_DIR . '/app/views/_header.php';
     <?php endif; ?>
     <?php if ($ev['notes']): ?><p class="prewrap muted"><?= e($ev['notes']) ?></p><?php endif; ?>
 
-    <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post">
+    <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post"><?= csrf_field() ?>
       <button name="status" value="yes" class="chip <?= ($mine[$ev['id']] ?? '') === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
       <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
       <button name="status" value="no" class="chip <?= ($mine[$ev['id']] ?? '') === 'no' ? 'chip-no' : '' ?>"><?= e(t('att_no')) ?></button>
@@ -98,12 +98,12 @@ require BASE_DIR . '/app/views/_header.php';
             <span class="muted"><?= e($c['created_at']) ?></span>
             <p class="prewrap"><?= e($c['text']) ?></p>
             <?php if ((int) $c['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-              <form class="inline" action="/intern/kommentare/<?= $c['id'] ?>/delete" method="post"><button class="btn btn-tiny btn-danger"><?= e(mb_strtolower(t('delete'))) ?></button></form>
+              <form class="inline" action="/intern/kommentare/<?= $c['id'] ?>/delete" method="post"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(mb_strtolower(t('delete'))) ?></button></form>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>
       </ul>
-      <form action="/intern/termine/<?= $ev['id'] ?>/kommentar" method="post" class="comment-form">
+      <form action="/intern/termine/<?= $ev['id'] ?>/kommentar" method="post" class="comment-form"><?= csrf_field() ?>
         <input name="text" placeholder="<?= e(t('ev_comment_ph')) ?>" required>
         <button class="btn btn-small"><?= e(t('send')) ?></button>
       </form>
@@ -114,7 +114,7 @@ require BASE_DIR . '/app/views/_header.php';
     <?php else: ?>
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid">
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
         <label><?= e(t('ev_type')) ?>
           <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['type'] === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
         </label>
@@ -148,7 +148,7 @@ require BASE_DIR . '/app/views/_header.php';
         </fieldset>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline">
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('ev_delete')) ?></button>
       </form>
     </details>

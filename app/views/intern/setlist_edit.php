@@ -4,7 +4,7 @@
   <div class="row-buttons">
     <a class="btn btn-ghost" href="/intern/setlists/<?= $setlist['id'] ?>/print" target="_blank">🖨 <?= e(t('sl_print_view')) ?></a>
     <a class="btn btn-ghost" href="/intern/setlists/<?= $setlist['id'] ?>/gema" target="_blank">🏛 <?= e(t('sl_gema_list')) ?></a>
-    <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/copy"><button class="btn btn-ghost"><?= e(t('copy')) ?></button></form>
+    <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/copy"><?= csrf_field() ?><button class="btn btn-ghost"><?= e(t('copy')) ?></button></form>
     <a class="btn btn-ghost" href="/intern/setlists">← <?= e(t('sl_all')) ?></a>
   </div>
 </div>
@@ -34,8 +34,8 @@
         <?php endif; ?>
         <?php if (!$locked): ?>
           <span class="row-buttons">
-            <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/move"><input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>"><button name="dir" value="up" class="btn btn-tiny">▲</button><button name="dir" value="down" class="btn btn-tiny">▼</button></form>
-            <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/remove"><input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>"><button class="btn btn-tiny btn-danger">✕</button></form>
+            <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/move"><?= csrf_field() ?><input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>"><button name="dir" value="up" class="btn btn-tiny">▲</button><button name="dir" value="down" class="btn btn-tiny">▼</button></form>
+            <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/remove"><?= csrf_field() ?><input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>"><button class="btn btn-tiny btn-danger">✕</button></form>
           </span>
         <?php endif; ?>
       </li>
@@ -45,7 +45,7 @@
   <?php if (!$locked): ?>
     <div class="row-buttons">
       <?php if ($available): ?>
-        <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/add" class="comment-form grow">
+        <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/add" class="comment-form grow"><?= csrf_field() ?>
           <select name="song_id" required>
             <option value=""><?= e(t('sl_pick')) ?></option>
             <?php foreach ($available as $song): ?><option value="<?= $song['id'] ?>"><?= e($song['title']) ?> (<?= fmt_duration($song['duration_sec']) ?>)</option><?php endforeach; ?>
@@ -55,8 +55,8 @@
       <?php elseif ($entries): ?>
         <p class="muted small"><?= e(t('sl_all_used')) ?></p>
       <?php endif; ?>
-      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addpause" class="inline"><button class="btn btn-ghost">⏸ <?= e(t('sl_pause')) ?></button></form>
-      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addzugabe" class="inline"><button class="btn btn-ghost">🎉 <?= e(t('sl_encore')) ?></button></form>
+      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addpause" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">⏸ <?= e(t('sl_pause')) ?></button></form>
+      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addzugabe" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">🎉 <?= e(t('sl_encore')) ?></button></form>
     </div>
   <?php endif; ?>
 </div>

@@ -3,7 +3,7 @@
 <p class="muted"><?= e(t('abs_intro')) ?></p>
 
 <div class="card">
-  <form method="post" action="/intern/abwesenheiten" class="form-grid">
+  <form method="post" action="/intern/abwesenheiten" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('abs_from')) ?><input type="date" name="date_from" required></label>
     <label><?= e(t('abs_to')) ?><input type="date" name="date_to"></label>
     <label class="span2"><?= e(t('abs_reason')) ?><input name="note" placeholder="<?= e(t('abs_reason_ph')) ?>"></label>
@@ -20,7 +20,7 @@
         <span><?= fmt_date($a['date_from']) ?><?= $a['date_to'] !== $a['date_from'] ? ' – ' . fmt_date($a['date_to']) : '' ?></span>
         <?php if ($a['note']): ?><span class="muted"><?= e($a['note']) ?></span><?php endif; ?>
         <?php if ((int) $a['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-          <form class="inline" method="post" action="/intern/abwesenheiten/<?= $a['id'] ?>/delete"><button class="btn btn-tiny btn-danger">🗑</button></form>
+          <form class="inline" method="post" action="/intern/abwesenheiten/<?= $a['id'] ?>/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </li>
     <?php endforeach; ?>

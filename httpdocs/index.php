@@ -21,6 +21,14 @@ if ($method === 'POST' && $_POST === [] && $_FILES === []
   back('/intern');
 }
 
+// Jede schreibende Anfrage braucht das Token aus dem Formular. Ohne gültiges
+// Token wird nichts ausgeführt — fremde Seiten können so keine Aktionen im
+// Namen eines angemeldeten Mitglieds auslösen.
+if ($method === 'POST' && !csrf_valid()) {
+  flash(t('fl_csrf'));
+  back('/');
+}
+
 // ============================================================
 // Öffentliche Seiten
 // ============================================================
@@ -168,13 +176,20 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
 if ($path === '/login') {
   if (current_user()) redirect('/intern');
   if ($method === 'POST') {
-    $u = row('SELECT * FROM users WHERE email = ?', [strtolower(trim($_POST['email'] ?? ''))]);
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    if (throttle_blocked('login', $email)) {
+      http_response_code(429);
+      view('login', ['title' => 'Login', 'error' => t('fl_throttled')]);
+    }
+    $u = row('SELECT * FROM users WHERE email = ?', [$email]);
     if ($u && password_verify($_POST['password'] ?? '', $u['password_hash'])) {
+      throttle_clear('login', $email);
       session_regenerate_id(true);
       $_SESSION['uid'] = $u['id'];
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
     }
+    throttle_note('login', $email);
     http_response_code(401);
     view('login', ['title' => 'Login', 'error' => t('login_failed')]);
   }
@@ -190,6 +205,11 @@ if ($path === '/logout' && $method === 'POST') {
 if ($path === '/passwort-vergessen') {
   if ($method === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
+    if (throttle_blocked('reset', $email, 5, 60)) {
+      flash(t('fl_throttled'));
+      redirect('/login');
+    }
+    throttle_note('reset', $email);
     $u = $email !== '' ? row('SELECT * FROM users WHERE email = ?', [$email]) : null;
     if ($u) {
       $token = bin2hex(random_bytes(32));
