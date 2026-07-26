@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
+
+// Session-Cookie absichern: nicht per JavaScript lesbar, nicht bei fremden
+// Seitenaufrufen mitgeschickt und über TLS nur verschlüsselt übertragen.
+$overTls = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+  || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+session_set_cookie_params([
+  'httponly' => true,
+  'samesite' => 'Lax',
+  'secure' => $overTls,
+]);
 session_start();
+
+// Schutzheader, die keine Konfiguration brauchen
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+header('X-Frame-Options: SAMEORIGIN');
 
 define('BASE_DIR', dirname(__DIR__));
 define('BANDROADIE_VERSION', trim(@file_get_contents(dirname(__DIR__) . '/VERSION') ?: '') ?: 'dev');
