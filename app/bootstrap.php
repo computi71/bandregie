@@ -221,6 +221,8 @@ const UI_STRINGS = [
   'set_embed_direct' => 'Direkt laden: ohne Einwilligung (rechtlich auf eigene Verantwortung)',
   'set_langs' => 'Sprachen',
   'set_langs_hint' => 'Welche Sprachen im Auswahlmenü der Website erscheinen. Deutsch ist immer aktiv (Fallback).',
+  'set_default_lang' => 'Standardsprache',
+  'set_default_lang_hint' => 'Besucher bekommen automatisch ihre Browsersprache, sofern sie hier aktiviert ist. Passt keine, gilt diese Standardsprache. Eingeloggte Mitglieder sehen ihre Sprache aus dem Profil.',
   'set_langs_check' => 'Übersetzungen prüfen und korrigieren',
   'set_legal' => 'Rechtliches (Pflichtseiten)',
   'set_legal_hint' => 'Impressum ist für Bands mit bezahlten Auftritten Pflicht (§ 5 DDG). Beide Seiten sind im Footer verlinkt. Platzhalter in eckigen Klammern bitte ersetzen. Verbindlich ist die deutsche Fassung.',
@@ -241,6 +243,8 @@ const UI_STRINGS = [
   'set_demo_remove' => 'Demodaten entfernen',
   'set_demo_active' => 'Demodaten sind eingespielt. Beim Entfernen wird ausschließlich das gelöscht, was mit den Demodaten angelegt wurde — eure eigenen Einträge bleiben erhalten.',
   'set_demo_confirm' => 'Alle Demodaten entfernen? Eigene Einträge bleiben erhalten.',
+  'fl_upload_server_limit' => 'Die Datei war zu groß für den Server. Höchstens möglich:',
+  'fl_upload_failed' => 'Der Upload hat nicht geklappt — bitte nochmal versuchen.',
   'fl_demo_added' => 'Demodaten eingespielt.',
   'fl_demo_removed' => 'Demodaten entfernt.',
   'set_meta' => 'Facebook- / Instagram-Sync',
@@ -627,6 +631,11 @@ $defaults = [
   'redirect_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
 ];
+// Neuinstallationen starten auf Englisch; bestehende Installationen behalten
+// Deutsch, damit ein Update ihre Seite nicht plötzlich umstellt.
+$freshInstall = row('SELECT 1 FROM settings LIMIT 1') === null;
+$defaults['default_lang'] = $freshInstall ? 'en' : 'de';
+
 foreach ($defaults as $k => $v) {
   if (row('SELECT 1 FROM settings WHERE `key` = ?', [$k]) === null) set_setting($k, $v);
 }
@@ -693,14 +702,68 @@ function flash(string $msg): void { $_SESSION['flash'] = $msg; }
 
 function e(mixed $s): string { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 
+// ---------- Upload-Grenzen ----------
+// PHP verwirft zu große Uploads still: tmp_name ist leer, size 0. Ohne Blick auf
+// den Fehlercode sieht der Upload für Nutzer erfolgreich aus, obwohl nichts ankam.
+function ini_bytes(string $key): int {
+  $v = trim((string) ini_get($key));
+  if ($v === '') return 0;
+  $n = (int) $v;
+  return match (strtolower(substr($v, -1))) {
+    'g' => $n * 1024 ** 3, 'm' => $n * 1024 ** 2, 'k' => $n * 1024, default => $n,
+  };
+}
+function max_upload_bytes(): int {
+  $limits = array_filter([ini_bytes('upload_max_filesize'), ini_bytes('post_max_size')]);
+  return $limits ? min($limits) : 0;
+}
+function fmt_bytes(int $b): string {
+  if ($b >= 1048576) return round($b / 1048576) . ' MB';
+  return $b >= 1024 ? round($b / 1024) . ' KB' : $b . ' B';
+}
+/** true, wenn der Upload fehlschlug — meldet dem Nutzer auch gleich den Grund. */
+function upload_rejected(int $errorCode): bool {
+  if ($errorCode === UPLOAD_ERR_OK || $errorCode === UPLOAD_ERR_NO_FILE) return false;
+  flash(in_array($errorCode, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+    ? t('fl_upload_server_limit') . ' ' . fmt_bytes(max_upload_bytes())
+    : t('fl_upload_failed'));
+  return true;
+}
+
 function enabled_langs(): array {
   $langs = array_values(array_intersect(array_keys(LANGS), array_map('trim', explode(',', setting('enabled_langs', 'de')))));
   if (!in_array('de', $langs, true)) array_unshift($langs, 'de');
   return $langs;
 }
-function current_lang(): string {
-  $lang = $_SESSION['pub_lang'] ?? 'de';
+function default_lang(): string {
+  $lang = setting('default_lang', 'de');
   return in_array($lang, enabled_langs(), true) ? $lang : 'de';
+}
+/** Wunschsprache aus dem Accept-Language-Header, sofern sie aktiviert ist. */
+function browser_lang(): ?string {
+  $header = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+  if ($header === '') return null;
+  $wanted = [];
+  foreach (explode(',', $header) as $part) {
+    $bits = explode(';q=', trim($part));
+    $code = strtolower(substr(trim($bits[0]), 0, 2));
+    $q = isset($bits[1]) ? (float) $bits[1] : 1.0;
+    if ($code !== '' && $q > ($wanted[$code] ?? -1)) $wanted[$code] = $q;
+  }
+  arsort($wanted);
+  foreach (array_keys($wanted) as $code) {
+    if (in_array($code, enabled_langs(), true)) return $code;
+  }
+  return null;
+}
+// Reihenfolge: eigene Wahl (Umschalter/Profil) -> Browsersprache -> Standardsprache
+function current_lang(): string {
+  static $lang = null;
+  if ($lang !== null) return $lang;
+  foreach ([$_SESSION['pub_lang'] ?? null, browser_lang(), default_lang()] as $candidate) {
+    if ($candidate !== null && in_array($candidate, enabled_langs(), true)) return $lang = $candidate;
+  }
+  return $lang = 'de';
 }
 function t(string $key): string {
   static $cache = null;
@@ -719,11 +782,13 @@ function song_status_label(string $k): string { return t('songstatus_' . $k) !==
 function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'fincat_' . $k ? t('fincat_' . $k) : $k; }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
-// Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte): gewählte Sprache -> Englisch -> Deutsch
+// Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte):
+// gewählte Sprache -> Standardsprache -> Englisch -> Deutsch (Basis in settings)
 function content(string $key): string {
   $lang = current_lang();
   if ($lang !== 'de') {
-    foreach (array_unique([$lang, 'en']) as $tryLang) {
+    foreach (array_unique([$lang, default_lang(), 'en']) as $tryLang) {
+      if ($tryLang === 'de') break;
       $v = row('SELECT value FROM translations WHERE lang = ? AND tkey = ?', [$tryLang, 'content_' . $key]);
       if ($v && trim($v['value']) !== '') return $v['value'];
     }

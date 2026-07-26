@@ -88,6 +88,14 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small"><?= e(t('set_langs_hint')) ?> <a href="/intern/uebersetzungen"><?= e(t('set_langs_check')) ?> →</a></p>
   <form method="post" action="/intern/einstellungen" class="form-grid">
     <input type="hidden" name="_langs_form" value="1">
+    <label class="span2"><?= e(t('set_default_lang')) ?>
+      <select name="default_lang">
+        <?php foreach ($activeLangs as $code): ?>
+          <option value="<?= $code ?>" <?= default_lang() === $code ? 'selected' : '' ?>><?= LANGS[$code] ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <p class="muted small span2"><?= e(t('set_default_lang_hint')) ?></p>
     <div class="span2 row-buttons">
       <?php foreach (LANGS as $code => $name): ?>
         <label class="checkbox">

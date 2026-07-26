@@ -13,6 +13,14 @@ $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '
 $method = $_SERVER['REQUEST_METHOD'];
 $today = date('Y-m-d');
 
+// Überschreitet ein Upload post_max_size, verwirft PHP den gesamten Request-Body:
+// $_POST und $_FILES sind dann leer und das Formular scheint wirkungslos.
+if ($method === 'POST' && $_POST === [] && $_FILES === []
+    && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > ini_bytes('post_max_size')) {
+  flash(t('fl_upload_server_limit') . ' ' . fmt_bytes(max_upload_bytes()));
+  back('/intern');
+}
+
 // ============================================================
 // Öffentliche Seiten
 // ============================================================
@@ -546,6 +554,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/fotos' && $method === 'POST') {
     foreach ($_FILES['photos']['tmp_name'] ?? [] as $i => $tmp) {
+      if (upload_rejected((int) ($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
       if (!is_uploaded_file($tmp)) continue;
       if (($_FILES['photos']['size'][$i] ?? 0) > 10 * 1024 * 1024) continue;
       $mime = mime_content_type($tmp) ?: '';
@@ -653,6 +662,7 @@ if (str_starts_with($path, '/intern')) {
     $entityId = (int) ($_POST['entity_id'] ?? 0);
     if ($type && ($entityId || $type === 'download')) {
       foreach ($_FILES['files']['tmp_name'] ?? [] as $i => $tmp) {
+        if (upload_rejected((int) ($_FILES['files']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
         if (!is_uploaded_file($tmp)) continue;
         if (($_FILES['files']['size'][$i] ?? 0) > 20 * 1024 * 1024) { flash(t('fl_file_too_big')); continue; }
         $orig = $_FILES['files']['name'][$i];
@@ -718,6 +728,7 @@ if (str_starts_with($path, '/intern')) {
     } else {
       flash(t('fl_name_email_required'));
     }
+    upload_rejected((int) ($_FILES['avatar']['error'] ?? UPLOAD_ERR_NO_FILE));
     $tmp = $_FILES['avatar']['tmp_name'] ?? '';
     if (is_uploaded_file($tmp) && ($_FILES['avatar']['size'] ?? 0) <= 5 * 1024 * 1024
         && str_starts_with(mime_content_type($tmp) ?: '', 'image/')) {
@@ -1046,6 +1057,8 @@ if (str_starts_with($path, '/intern')) {
       $chosen = array_values(array_intersect(array_keys(LANGS), (array) ($_POST['langs'] ?? [])));
       if (!in_array('de', $chosen, true)) array_unshift($chosen, 'de');
       set_setting('enabled_langs', implode(',', $chosen));
+      if (in_array($_POST['default_lang'] ?? '', $chosen, true)) set_setting('default_lang', $_POST['default_lang']);
+      unset($_SESSION['pub_lang']);
     }
     // Mehrsprachige Texte: alle Sprachen in einem Formular (txt[lang][feld]).
     // Deutsch landet in settings (Fallback-Basis), andere Sprachen in translations.
@@ -1087,6 +1100,7 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/einstellungen/branding' && $method === 'POST') {
     require_admin();
     foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file'] as $field => $key) {
+      if (upload_rejected((int) ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
       $tmp = $_FILES[$field]['tmp_name'] ?? '';
       if (!is_uploaded_file($tmp)) continue;
       if (($_FILES[$field]['size'] ?? 0) > 5 * 1024 * 1024) { flash(t('fl_img_too_big')); continue; }

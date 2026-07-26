@@ -1,6 +1,6 @@
 <?php $isIntern = str_starts_with($path, '/intern'); ?>
 <!DOCTYPE html>
-<html lang="de">
+<html lang="<?= e(current_lang()) ?>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

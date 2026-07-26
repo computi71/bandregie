@@ -8,44 +8,137 @@ Public band page plus an internal organization area for one band: events with av
 
 **Stack:** PHP 8.1+ with MariaDB/MySQL (PDO), no framework, no build step, no dependencies.
 
-## Quick start (local)
+## Installation
 
-1. Create a database and user:
-   ```sql
-   CREATE DATABASE bandroadie CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'bandroadie'@'localhost' IDENTIFIED BY 'YOUR-PASSWORD';
-   GRANT ALL PRIVILEGES ON bandroadie.* TO 'bandroadie'@'localhost';
-   ```
-2. Copy `app/config.example.php` to `app/config.php` and enter the credentials.
-3. Run the dev server:
-   ```
-   php -S localhost:8090 -t httpdocs httpdocs/index.php
-   ```
+Requirements: PHP 8.1 or newer with `pdo_mysql` and `fileinfo`, MariaDB 10.4+
+or MySQL 8, and a web server. The examples use nginx with PHP-FPM on Debian;
+Apache works too (see below).
 
-Open http://localhost:8090. On the first request all tables are created and the
-translations are imported automatically.
+### 1. Database
 
-**First login:** an administrator account is created with a random password,
-written once to `data/INITIAL-PASSWORD.txt` (outside the webroot). Log in with
+```sql
+CREATE DATABASE bandroadie CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bandroadie'@'localhost' IDENTIFIED BY 'YOUR-PASSWORD';
+GRANT ALL PRIVILEGES ON bandroadie.* TO 'bandroadie'@'localhost';
+```
+
+### 2. Code
+
+Clone the repository somewhere outside the web root, for example
+`/var/www/bandroadie`, then copy `app/config.example.php` to `app/config.php`
+and fill in the credentials above.
+
+Only `httpdocs/` may be served publicly. `app/` holds the code and your
+database password, `data/` holds uploads and file attachments, `seed/` holds
+the translation files — none of them belong in the document root.
+
+### 3. nginx
+
+```nginx
+server {
+    listen 80;
+    server_name band.example.com;
+
+    # The document root points *inside* the project: everything above
+    # httpdocs (app/, data/, seed/, config.php) stays unreachable.
+    root /var/www/bandroadie/httpdocs;
+    index index.php;
+
+    # Must be at least as large as the biggest upload you want to allow
+    # (attachments are capped at 20 MB in the app), plus form overhead.
+    client_max_body_size 30m;
+
+    # Single front controller: serve real files (CSS, JS) directly and hand
+    # every other path to index.php, which does the routing. Uploaded images
+    # are not files here — they are served by index.php from outside the root.
+    location / {
+        try_files $uri /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;   # match your PHP version
+    }
+
+    # Never expose version control or Apache leftovers
+    location ~ /\.(ht|git) { deny all; }
+}
+```
+
+Enable it and reload:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/bandroadie /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 4. PHP upload limits
+
+PHP's defaults (2 MB per file, 8 MB per request) are smaller than what the
+app offers, and PHP discards oversized uploads before any code runs. Raise
+them in your PHP-FPM pool or `php.ini`:
+
+```ini
+upload_max_filesize = 25M
+post_max_size = 30M
+```
+
+Keep `client_max_body_size` in nginx at or above `post_max_size`. Bandroadie
+reports rejected uploads instead of failing silently, but only the server
+settings decide what actually gets through.
+
+### 5. Permissions
+
+The web server user needs write access to `data/` only:
+
+```bash
+sudo chown -R www-data:www-data /var/www/bandroadie/data
+sudo chmod 640 /var/www/bandroadie/app/config.php
+```
+
+### 6. TLS
+
+Logins, the member area and the calendar feed should never run over plain
+HTTP: `sudo certbot --nginx -d band.example.com`.
+
+### 7. First run
+
+Open the site. All tables are created and the translations are imported
+automatically. An administrator account is created with a random password,
+written once to `data/INITIAL-PASSWORD.txt` (outside the web root). Log in with
 it, set your own password when prompted, change the email address under
-*Intern → Profil*, then delete that file.
+*Profil*, then delete that file.
 
-## Deployment (Plesk or plain Debian)
+Under *Settings → Demo data* one button fills the installation with a fictional
+band so you can explore every feature, and a second button removes exactly
+those rows again.
 
-1. Create the domain/vhost and a MariaDB database with a dedicated user.
-2. Deploy the repository so that only `httpdocs/` is the document root —
-   `app/`, `data/` and `seed/` must stay outside the webroot.
-3. Create `app/config.php` from `app/config.example.php`.
-4. PHP 8.1+ with `pdo_mysql` and `fileinfo` (default on Plesk and on Debian's
-   `php-fpm` + `php-mysql`).
-5. Apache: the shipped `.htaccess` routes everything to `index.php`.
-   nginx: `try_files $uri /index.php$is_args$args;`
-6. Enable TLS (Let's Encrypt) — the calendar feed, logins and the member area
-   should never run over plain HTTP.
-7. Sending mail (member invitations, password reset) uses PHP's `mail()`; make
-   sure the host can deliver mail from your domain.
-8. Back up the database and the `data/` folder regularly. Never overwrite
-   `data/` or `app/config.php` during code updates.
+### Apache instead of nginx
+
+Point the `DocumentRoot` at `httpdocs/`, allow `.htaccess` overrides
+(`AllowOverride All`) and enable `mod_rewrite` — the shipped `.htaccess`
+routes everything to `index.php`. Set `upload_max_filesize` and
+`post_max_size` as described above.
+
+### Mail
+
+Member invitations and password resets use PHP's `mail()`. The host must be
+able to deliver mail for your domain; send from an address on that domain
+(the app uses `no-reply@<your-domain>`) so SPF checks pass.
+
+### Backups
+
+Back up the database and the `data/` folder. Updating the code never touches
+either, but never overwrite `data/` or `app/config.php` when deploying.
+
+### Development
+
+For quick local work PHP's built-in server is enough — it needs no web server
+config, but it is single-threaded and not meant for production:
+
+```bash
+php -S localhost:8090 -t httpdocs httpdocs/index.php
+```
 
 ## Legal pages (Germany)
 
