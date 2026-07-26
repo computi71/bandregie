@@ -559,6 +559,13 @@ if (!column_exists('users', 'pref_lang')) {
 if (!column_exists('users', 'must_change_pw')) {
   $db->exec("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
 }
+// events.type war VARCHAR(10) — zu kurz für "besprechung" und "fotoshooting",
+// diese beiden Termin-Arten ließen sich dadurch nicht speichern.
+$typeLen = row("SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.columns
+                WHERE table_schema = ? AND table_name = 'events' AND column_name = 'type'", [$config['db_name']]);
+if ($typeLen && (int) $typeLen['len'] < 20) {
+  $db->exec("ALTER TABLE events MODIFY type VARCHAR(20) NOT NULL DEFAULT 'gig'");
+}
 if (!column_exists('users', 'can_finance')) {
   $db->exec("ALTER TABLE users ADD COLUMN can_finance TINYINT(1) NOT NULL DEFAULT 0");
 }

@@ -26,7 +26,20 @@ function demo_insert(string $table, array $data): int {
 }
 
 function demo_install(): void {
+  global $db;
   if (demo_installed()) return;
+  // Alles oder nichts — bricht etwas ab, bleibt keine halbe Demoband zurück.
+  $db->beginTransaction();
+  try {
+    demo_install_rows();
+    $db->commit();
+  } catch (Throwable $e) {
+    $db->rollBack();
+    throw $e;
+  }
+}
+
+function demo_install_rows(): void {
   $d = fn(string $mod): string => date('Y-m-d', strtotime($mod));
 
   // --- Mitglieder (Zufallspasswörter, Wechsel erzwungen — reine Demokonten)
