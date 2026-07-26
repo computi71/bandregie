@@ -23,3 +23,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fl_upload_server_limit','Il file era troppo grande per il server. Massimo possibile:'),
 ('it','fl_upload_failed','Il caricamento non è riuscito — riprova.')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Correction: the English wording read awkwardly in front of the band name.
+UPDATE translations SET value = 'For members of' WHERE lang = 'en' AND tkey = 'login_only_members';

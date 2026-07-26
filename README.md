@@ -89,12 +89,19 @@ settings decide what actually gets through.
 
 ### 5. Permissions
 
-The web server user needs write access to `data/` only:
+The web server user needs write access to `data/`, and read access to
+`app/config.php` — it holds the database password, so keep it off-limits for
+everyone else:
 
 ```bash
 sudo chown -R www-data:www-data /var/www/bandroadie/data
+sudo chown root:www-data /var/www/bandroadie/app/config.php
 sudo chmod 640 /var/www/bandroadie/app/config.php
 ```
+
+Use the account that deploys the code as the owner if you pull with a
+non-root user. Note that with OPcache enabled a permission mistake here can
+stay hidden until the next PHP-FPM restart.
 
 ### 6. TLS
 
