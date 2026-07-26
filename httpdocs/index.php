@@ -340,6 +340,7 @@ if (str_starts_with($path, '/intern')) {
       'comments' => $comments,
       'attendance' => attendance_map($ids),
       'mine' => my_attendance($ids, $me['id']),
+      'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
       'ical_url' => '/kalender/' . setting('ical_token') . '.ics',
     ]);
   }

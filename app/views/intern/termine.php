@@ -103,7 +103,7 @@ require BASE_DIR . '/app/views/_header.php';
         $suggest = [];
         foreach ($att as $a) {
           if ($a['status'] !== 'no') continue;
-          foreach ($substitutes as $sub) {
+          foreach ($substitutes ?? [] as $sub) {
             if ((int) $sub['substitute_for'] === (int) $a['user_id']) $suggest[] = $sub['name'] . ' (' . $a['name'] . ')';
           }
         }
