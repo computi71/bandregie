@@ -30,9 +30,9 @@
 </details>
 
 <div class="card">
-  <p class="muted small"><?= e(t('songs_usable_hint')) ?></p>
+  <p class="muted small"><?= e(t('songs_usable_hint')) ?> <?= e(t('rate_hint')) ?></p>
   <table class="table">
-    <thead><tr><th><?= e(t('title_lbl')) ?></th><th><?= e(t('songs_col_original')) ?></th><th><?= e(t('song_keylbl')) ?></th><th><?= e(t('song_tempo')) ?></th><th><?= e(t('songs_col_len')) ?></th><th><?= e(t('status')) ?></th><th><?= e(t('songs_col_uses')) ?></th><th></th></tr></thead>
+    <thead><tr><th><?= e(t('title_lbl')) ?></th><th><?= e(t('songs_col_original')) ?></th><th><?= e(t('song_keylbl')) ?></th><th><?= e(t('song_tempo')) ?></th><th><?= e(t('songs_col_len')) ?></th><th><?= e(t('status')) ?></th><th><?= e(t('songs_col_rating')) ?></th><th><?= e(t('songs_col_uses')) ?></th><th></th></tr></thead>
     <tbody>
       <?php foreach ($songs as $song): ?>
         <tr class="<?= in_array($song['status'], ['archiv', 'abgewiesen'], true) ? 'muted' : '' ?>">
@@ -42,6 +42,21 @@
           <td><?= e($song['tempo'] ?: '–') ?></td>
           <td><?= fmt_duration($song['duration_sec']) ?></td>
           <td><span class="badge status-<?= e($song['status']) ?>"><?= e(song_status_label($song['status'])) ?></span></td>
+          <td class="rating">
+            <?php $r = $ratings[$song['id']] ?? null; ?>
+            <form method="post" action="/intern/songs/<?= $song['id'] ?>/bewerten" class="inline stars"><?= csrf_field() ?>
+              <?php for ($i = 1; $i <= 5; $i++): ?>
+                <button name="rating" value="<?= $i ?>" title="<?= $i ?>/5"
+                  class="star <?= (int) ($r['mine'] ?? 0) >= $i ? 'star-on' : '' ?>">★</button>
+              <?php endfor; ?>
+              <?php if (!empty($r['mine'])): ?>
+                <button name="rating" value="0" class="star star-clear" title="<?= e(t('rate_clear')) ?>">✕</button>
+              <?php endif; ?>
+            </form>
+            <div class="muted small">
+              <?= $r && $r['votes'] ? e($r['avg_rating']) . ' · ' . (int) $r['votes'] . ' ' . e(t('rate_votes')) : e(t('rate_none')) ?>
+            </div>
+          </td>
           <td title="<?= e(t('songs_uses_title')) ?>">📋 <?= $song['setlist_count'] ?><?= $song['played_count'] > 0 ? ' · 🎤 ' . $song['played_count'] : '' ?></td>
           <td class="row-buttons">
             <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/edit">✏️</a>

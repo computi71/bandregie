@@ -306,6 +306,14 @@ const UI_STRINGS = [
   'fincat_fahrt' => 'Fahrtkosten', 'fincat_verpflegung' => 'Verpflegung', 'fincat_sonstiges' => 'Sonstiges',
   'fl_fin_saved' => 'Buchung gespeichert.', 'fl_fin_deleted' => 'Buchung gelöscht.',
   'fl_fin_invalid' => 'Bitte Datum, Beschreibung und gültigen Betrag angeben.',
+  // Produktion (PA/Licht) und Bewertungen
+  'prod_pa' => 'PA', 'prod_light' => 'Licht',
+  'prod_eigene' => 'Eigenes Material', 'prod_leih' => 'Geliehen/Gemietet', 'prod_vorhanden' => 'Vor Ort vorhanden',
+  'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
+  'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
+  'rate_votes' => 'Stimmen', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
+  'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
+  'songs_col_rating' => 'Bewertung',
   // Über Bandroadie
   'about_title' => 'Über Bandroadie',
   'about_tagline' => 'Website und Organisation für Bands — Termine, Setlists, Songs, Kasse, Equipment.',
@@ -376,6 +384,9 @@ const FIN_CATEGORIES = [
   'gema' => 'GEMA', 'fahrt' => 'Fahrtkosten', 'verpflegung' => 'Verpflegung',
   'sonstiges' => 'Sonstiges',
 ];
+
+// Woher PA und Licht bei einem Termin kommen
+const PRODUCTION_SOURCES = ['eigene' => 'Eigenes Material', 'leih' => 'Geliehen/Gemietet', 'vorhanden' => 'Vor Ort vorhanden'];
 
 // Equipment-Kategorien
 const EQ_CATEGORIES = [
@@ -566,6 +577,13 @@ $tables = [
     PRIMARY KEY (lang, tkey)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  "CREATE TABLE IF NOT EXISTS song_ratings (
+    song_id INT NOT NULL,
+    user_id INT NOT NULL,
+    rating TINYINT NOT NULL,
+    PRIMARY KEY (song_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS login_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     k VARCHAR(190) NOT NULL,
@@ -609,6 +627,11 @@ $typeLen = row("SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.c
                 WHERE table_schema = ? AND table_name = 'events' AND column_name = 'type'", [$config['db_name']]);
 if ($typeLen && (int) $typeLen['len'] < 20) {
   $db->exec("ALTER TABLE events MODIFY type VARCHAR(20) NOT NULL DEFAULT 'gig'");
+}
+foreach (['pa_source', 'light_source'] as $prodCol) {
+  if (!column_exists('events', $prodCol)) {
+    $db->exec("ALTER TABLE events ADD COLUMN `$prodCol` VARCHAR(20) NOT NULL DEFAULT ''");
+  }
 }
 if (!column_exists('users', 'can_finance')) {
   $db->exec("ALTER TABLE users ADD COLUMN can_finance TINYINT(1) NOT NULL DEFAULT 0");
@@ -854,6 +877,7 @@ function event_type_label(string $k): string { return t('evtype_' . $k) !== 'evt
 function event_status_label(string $k): string { return t('evstatus_' . $k) !== 'evstatus_' . $k ? t('evstatus_' . $k) : $k; }
 function song_status_label(string $k): string { return t('songstatus_' . $k) !== 'songstatus_' . $k ? t('songstatus_' . $k) : $k; }
 function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'fincat_' . $k ? t('fincat_' . $k) : $k; }
+function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 // Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte):

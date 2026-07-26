@@ -267,3 +267,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 .social-link { color: var(--muted); display: inline-flex; }
 .social-link:hover { color: var(--accent); }
 .social-link svg { width: 24px; height: 24px; }
+
+/* Song-Bewertung */
+.stars { display: inline-flex; gap: 1px; }
+.star { background: none; border: 0; cursor: pointer; font-size: 1.05rem; line-height: 1;
+        color: rgba(255,255,255,0.22); padding: 0 1px; }
+.star:hover { color: var(--accent); }
+.star-on { color: var(--accent); }
+.star-clear { font-size: 0.8rem; color: rgba(255,255,255,0.35); margin-left: 3px; }
+td.rating { white-space: nowrap; }

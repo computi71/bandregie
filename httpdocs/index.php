@@ -348,8 +348,9 @@ if (str_starts_with($path, '/intern')) {
     if (($_POST['title'] ?? '') && ($_POST['date'] ?? '')) {
       q('INSERT INTO events (type, title, date, time, location, notes, is_public, setlist_id,
                              time_meet, time_end, status, responsible_id, fee, invoice_no,
-                             public_title, public_link, public_info, venue_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
+                             public_title, public_link, public_info, venue_id,
+                             pa_source, light_source)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
     } else {
       flash(t('fl_title_date_required'));
     }
@@ -365,7 +366,8 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'update') {
       q('UPDATE events SET type=?, title=?, date=?, time=?, location=?, notes=?, is_public=?, setlist_id=?,
                            time_meet=?, time_end=?, status=?, responsible_id=?, fee=?, invoice_no=?,
-                           public_title=?, public_link=?, public_info=?, venue_id=? WHERE id=?',
+                           public_title=?, public_link=?, public_info=?, venue_id=?,
+                           pa_source=?, light_source=? WHERE id=?',
         [...event_values(), $id]);
       redirect('/intern/termine');
     }
@@ -407,13 +409,15 @@ if (str_starts_with($path, '/intern')) {
     [$today]
   );
   if ($path === '/intern/songs' && $method === 'GET') {
-    view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songList(), 'edit' => null]);
+    view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songList(), 'edit' => null,
+      'ratings' => song_ratings($me['id'])]);
   }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit) redirect('/intern/songs');
     view('intern/songs', [
       'title' => t('inav_songs'),
+      'ratings' => song_ratings($me['id']),
       'songs' => $songList(),
       'edit' => $edit,
       'songFiles' => files_map('song', [(int) $m[1]])[(int) $m[1]] ?? [],
@@ -981,6 +985,18 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Song-Bewertungen ----------
+  if (preg_match('~^/intern/songs/(\d+)/bewerten$~', $path, $m) && $method === 'POST') {
+    $stars = (int) ($_POST['rating'] ?? 0);
+    if ($stars >= 1 && $stars <= 5) {
+      q('INSERT INTO song_ratings (song_id, user_id, rating) VALUES (?,?,?) ON DUPLICATE KEY UPDATE rating = VALUES(rating)',
+        [$m[1], $me['id'], $stars]);
+    } else {
+      q('DELETE FROM song_ratings WHERE song_id = ? AND user_id = ?', [$m[1], $me['id']]);
+    }
+    back('/intern/songs');
+  }
+
   // ---------- Bandkasse ----------
   if ($path === '/intern/kasse' && $method === 'GET') {
     $years = array_column(rows('SELECT DISTINCT YEAR(date) AS y FROM finances ORDER BY y DESC'), 'y');
@@ -1166,6 +1182,16 @@ if (str_starts_with($path, '/intern')) {
 }
 
 // ---------- Formularwerte ----------
+/** Bewertungen je Song: Schnitt, Anzahl und die eigene Stimme. */
+function song_ratings(int $userId): array {
+  $out = [];
+  foreach (rows('SELECT song_id, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS votes,
+                        MAX(CASE WHEN user_id = ? THEN rating END) AS mine
+                 FROM song_ratings GROUP BY song_id', [$userId]) as $r) {
+    $out[(int) $r['song_id']] = $r;
+  }
+  return $out;
+}
 function event_values(): array {
   $status = array_key_exists($_POST['status'] ?? '', EVENT_STATUS) ? $_POST['status'] : 'bestaetigt';
   $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
@@ -1180,6 +1206,8 @@ function event_values(): array {
     $_POST['fee'] ?? '', $_POST['invoice_no'] ?? '',
     $_POST['public_title'] ?? '', $_POST['public_link'] ?? '', $_POST['public_info'] ?? '',
     ($_POST['venue_id'] ?? '') !== '' ? $_POST['venue_id'] : null,
+    array_key_exists($_POST['pa_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['pa_source'] : '',
+    array_key_exists($_POST['light_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['light_source'] : '',
   ];
 }
 function song_values(): array {

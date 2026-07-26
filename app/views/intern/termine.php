@@ -34,6 +34,16 @@ require BASE_DIR . '/app/views/_header.php';
     <label><?= e(t('ev_responsible')) ?>
       <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
+    <label><?= e(t('prod_pa')) ?>
+      <select name="pa_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
+        <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" ><?= e(production_label($val)) ?></option><?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('prod_light')) ?>
+      <select name="light_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
+        <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" ><?= e(production_label($val)) ?></option><?php endforeach; ?>
+      </select>
+    </label>
     <label><?= e(t('ev_fee')) ?><input name="fee" placeholder="z. B. 800 €"></label>
     <label><?= e(t('ev_invoice')) ?><input name="invoice_no"></label>
     <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('ev_notes_ph')) ?>"></textarea></label>
@@ -68,6 +78,8 @@ require BASE_DIR . '/app/views/_header.php';
       <?php if ($ev['responsible_id'] && isset($memberNames[$ev['responsible_id']])): ?> · <?= e(t('ev_responsible')) ?>: <?= e($memberNames[$ev['responsible_id']]) ?><?php endif; ?>
       <?php if ($ev['fee']): ?> · <?= e(t('ev_fee')) ?>: <?= e($ev['fee']) ?><?php endif; ?>
       <?php if ($ev['invoice_no']): ?> · <?= e(t('ev_invoice')) ?>: <?= e($ev['invoice_no']) ?><?php endif; ?>
+      <?php if (!empty($ev['pa_source'])): ?> · <?= e(t('prod_pa')) ?>: <?= e(production_label($ev['pa_source'])) ?><?php endif; ?>
+      <?php if (!empty($ev['light_source'])): ?> · <?= e(t('prod_light')) ?>: <?= e(production_label($ev['light_source'])) ?><?php endif; ?>
     </p>
     <?php if (!empty($absentByEvent[$ev['id']])): ?>
       <p class="warn">⚠ <?= e(t('ev_absent_warn')) ?> <?= e(implode(', ', $absentByEvent[$ev['id']])) ?></p>
@@ -136,6 +148,16 @@ require BASE_DIR . '/app/views/_header.php';
         <label><?= e(t('ev_responsible')) ?>
           <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $ev['responsible_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
         </label>
+    <label><?= e(t('prod_pa')) ?>
+      <select name="pa_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
+        <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($ev['pa_source'] ?? '') === $val ? 'selected' : '' ?>><?= e(production_label($val)) ?></option><?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('prod_light')) ?>
+      <select name="light_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
+        <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($ev['light_source'] ?? '') === $val ? 'selected' : '' ?>><?= e(production_label($val)) ?></option><?php endforeach; ?>
+      </select>
+    </label>
         <label><?= e(t('ev_fee')) ?><input name="fee" value="<?= e($ev['fee']) ?>"></label>
         <label><?= e(t('ev_invoice')) ?><input name="invoice_no" value="<?= e($ev['invoice_no']) ?>"></label>
         <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2"><?= e($ev['notes']) ?></textarea></label>
