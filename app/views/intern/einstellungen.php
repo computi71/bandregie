@@ -150,6 +150,22 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small"><?= e(t('set_ical_hint')) ?> <a href="/intern/kalender"><?= e(t('set_ical_link')) ?> →</a></p>
 </div>
 
+<?php require_once BASE_DIR . '/app/demo.php'; ?>
+<div class="card">
+  <h2>🧪 <?= e(t('set_demo')) ?></h2>
+  <?php if (demo_installed()): ?>
+    <p class="muted small"><?= e(t('set_demo_active')) ?></p>
+    <form method="post" action="/intern/einstellungen/demo/remove" onsubmit="return confirm('<?= e(t('set_demo_confirm')) ?>')">
+      <button class="btn btn-danger"><?= e(t('set_demo_remove')) ?></button>
+    </form>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('set_demo_hint')) ?></p>
+    <form method="post" action="/intern/einstellungen/demo/add">
+      <button class="btn btn-primary"><?= e(t('set_demo_add')) ?></button>
+    </form>
+  <?php endif; ?>
+</div>
+
 <div class="card">
   <h2><?= e(t('set_meta')) ?></h2>
   <p class="muted"><?= e(t('set_meta_hint')) ?></p>

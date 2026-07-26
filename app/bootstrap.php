@@ -235,6 +235,14 @@ const UI_STRINGS = [
   'set_ical' => 'Kalender-Abo (iCal)',
   'set_ical_hint' => 'Der Link enthält ein geheimes Token — nur mit der Band teilen. Schritt-für-Schritt-Anleitung für alle Geräte:',
   'set_ical_link' => 'Kalender-Abo einrichten',
+  'set_demo' => 'Demodaten',
+  'set_demo_hint' => 'Füllt die Installation mit einer erfundenen Band: Mitglieder, Songs, Setlists mit Pause und Zugabe, Termine samt Rückmeldungen, Orte, Aufgaben, Kassenbuchungen und Equipment mit Fristen. Zum Ausprobieren, bevor ihr eure eigenen Daten anlegt.',
+  'set_demo_add' => 'Demodaten hinzufügen',
+  'set_demo_remove' => 'Demodaten entfernen',
+  'set_demo_active' => 'Demodaten sind eingespielt. Beim Entfernen wird ausschließlich das gelöscht, was mit den Demodaten angelegt wurde — eure eigenen Einträge bleiben erhalten.',
+  'set_demo_confirm' => 'Alle Demodaten entfernen? Eigene Einträge bleiben erhalten.',
+  'fl_demo_added' => 'Demodaten eingespielt.',
+  'fl_demo_removed' => 'Demodaten entfernt.',
   'set_meta' => 'Facebook- / Instagram-Sync',
   'set_meta_hint' => 'Vorbereitet, aber noch nicht verbunden. Für den automatischen Abgleich von Terminen und Posts braucht es eine Meta-Developer-App (Graph API) mit euren Seiten-Zugriffstokens. Sobald ihr die App bei Meta angelegt habt, bauen wir die Anbindung hier ein.',
   // Flash-Meldungen
@@ -519,6 +527,13 @@ $tables = [
     tkey VARCHAR(64) NOT NULL,
     value TEXT NOT NULL,
     PRIMARY KEY (lang, tkey)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS demo_rows (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(64) NOT NULL,
+    row_id INT NOT NULL,
+    INDEX idx_table (table_name)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS settings (

@@ -1071,6 +1071,19 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
+  // Demodaten ein-/ausschalten
+  if (preg_match('~^/intern/einstellungen/demo/(add|remove)$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    require_once BASE_DIR . '/app/demo.php';
+    if ($m[1] === 'add') {
+      demo_install();
+      flash(t('fl_demo_added'));
+    } else {
+      demo_remove();
+      flash(t('fl_demo_removed'));
+    }
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/branding' && $method === 'POST') {
     require_admin();
     foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file'] as $field => $key) {
