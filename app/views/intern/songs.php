@@ -54,7 +54,7 @@
               <?php endif; ?>
             </form>
             <div class="muted small">
-              <?= $r && $r['votes'] ? e($r['avg_rating']) . ' · ' . (int) $r['votes'] . ' ' . e(t('rate_votes')) : e(t('rate_none')) ?>
+              <?= $r && $r['votes'] ? e($r['avg_rating']) . ' · ' . (int) $r['votes'] . ' ' . e((int) $r['votes'] === 1 ? t('rate_vote') : t('rate_votes')) : e(t('rate_none')) ?>
             </div>
           </td>
           <td title="<?= e(t('songs_uses_title')) ?>">📋 <?= $song['setlist_count'] ?><?= $song['played_count'] > 0 ? ' · 🎤 ' . $song['played_count'] : '' ?></td>

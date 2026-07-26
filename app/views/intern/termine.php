@@ -7,6 +7,7 @@ require BASE_DIR . '/app/views/_header.php';
   <div class="row-buttons">
     <a class="btn btn-ghost" href="/intern/termine<?= $showPast ? '' : '?alle=1' ?>"><?= e($showPast ? t('ev_only_upcoming') : t('ev_also_past')) ?></a>
     <a class="btn btn-ghost" href="/intern/kalender">📅 <?= e(t('ev_cal_abo')) ?></a>
+    <a class="btn btn-ghost" href="/intern/termine/export">⬇ <?= e(t('ev_export')) ?></a>
   </div>
 </div>
 

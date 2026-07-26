@@ -985,6 +985,29 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Termine als Tabelle exportieren ----------
+  if ($path === '/intern/termine/export' && $method === 'GET') {
+    require_once BASE_DIR . '/app/export.php';
+    $rows = [];
+    foreach (rows('SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
+                   LEFT JOIN venues v ON v.id = e.venue_id
+                   LEFT JOIN users u ON u.id = e.responsible_id ORDER BY e.date') as $ev) {
+      $rows[] = [
+        $ev['date'], event_type_label($ev['type']), event_status_label($ev['status']), $ev['title'],
+        $ev['venue_name'] ?: $ev['location'], $ev['time_meet'], $ev['time'], $ev['time_end'],
+        $ev['responsible_name'] ?? '', $ev['fee'], $ev['invoice_no'],
+        production_label($ev['pa_source'] ?? ''), production_label($ev['light_source'] ?? ''),
+        $ev['is_public'] ? t('ev_public_badge') : '',
+        preg_replace('~\s+~u', ' ', (string) $ev['notes']),
+      ];
+    }
+    export_send('termine-' . date('Y-m-d'), [
+      t('date'), t('ev_type'), t('status'), t('name'), t('ev_venue'), t('ev_meet'), t('ev_start'), t('ev_end'),
+      t('ev_responsible'), t('ev_fee'), t('ev_invoice'), t('prod_pa'), t('prod_light'),
+      t('ev_public_display'), t('ev_notes'),
+    ], $rows);
+  }
+
   // ---------- Song-Bewertungen ----------
   if (preg_match('~^/intern/songs/(\d+)/bewerten$~', $path, $m) && $method === 'POST') {
     $stars = (int) ($_POST['rating'] ?? 0);

@@ -311,7 +311,7 @@ const UI_STRINGS = [
   'prod_eigene' => 'Eigenes Material', 'prod_leih' => 'Geliehen/Gemietet', 'prod_vorhanden' => 'Vor Ort vorhanden',
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
   'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
-  'rate_votes' => 'Stimmen', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
+  'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
   'songs_col_rating' => 'Bewertung',
   // Über Bandroadie

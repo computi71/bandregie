@@ -38,3 +38,11 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','rate_hint','Quanto vi piace suonarlo? Solo la media è visibile a tutti.'),
 ('it','songs_col_rating','Valutazione')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','rate_vote','vote'),('en','ev_export','Spreadsheet'),
+('nl','rate_vote','stem'),('nl','ev_export','Spreadsheet'),
+('fr','rate_vote','vote'),('fr','ev_export','Tableur'),
+('es','rate_vote','voto'),('es','ev_export','Hoja de cálculo'),
+('it','rate_vote','voto'),('it','ev_export','Foglio di calcolo')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
