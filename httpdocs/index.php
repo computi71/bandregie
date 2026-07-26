@@ -740,9 +740,12 @@ if (str_starts_with($path, '/intern')) {
     if (($_POST['name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
       try {
         $prefLang = array_key_exists($_POST['pref_lang'] ?? '', LANGS) ? $_POST['pref_lang'] : 'de';
-        q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=? WHERE id=?', [
+        q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=?,
+                            first_name=?, last_name=?, phone=?, mobile=? WHERE id=?', [
           $_POST['name'], $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
-          strtolower(trim($_POST['email'])), $prefLang, $me['id'],
+          strtolower(trim($_POST['email'])), $prefLang,
+          $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
+          $me['id'],
         ]);
         $_SESSION['pub_lang'] = $prefLang;
         flash(t('fl_profile_saved'));
@@ -775,18 +778,27 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Mitglieder ----------
   if ($path === '/intern/mitglieder' && $method === 'GET') {
-    view('intern/mitglieder', ['title' => t('mem_title'), 'members' => rows('SELECT id, name, stage_name, instrument, role, avatar_file, can_finance FROM users ORDER BY name')]);
+    view('intern/mitglieder', [
+      'title' => t('mem_title'),
+      'members' => rows('SELECT u.*, s.name AS substitute_for_name FROM users u
+                         LEFT JOIN users s ON s.id = u.substitute_for ORDER BY u.name'),
+      'instruments' => array_column(rows("SELECT name FROM equipment WHERE category = 'instrument' ORDER BY name"), 'name'),
+    ]);
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/update$~', $path, $m) && $method === 'POST') {
     require_admin();
     if (($_POST['name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
       try {
-        q('UPDATE users SET name=?, stage_name=?, instrument=?, email=? WHERE id=?', [
+        q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
+                            first_name=?, last_name=?, phone=?, mobile=?, substitute_for=? WHERE id=?', [
           $_POST['name'], $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
-          strtolower(trim($_POST['email'])), $m[1],
+          strtolower(trim($_POST['email'])),
+          $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
+          ((int) ($_POST['substitute_for'] ?? 0) ?: null),
+          $m[1],
         ]);
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus)
-        if ((int) $m[1] !== (int) $me['id'] && in_array($_POST['role'] ?? '', ['admin', 'member'], true)) {
+        if ((int) $m[1] !== (int) $me['id'] && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz'], true)) {
           q('UPDATE users SET role = ? WHERE id = ?', [$_POST['role'], $m[1]]);
         }
         q('UPDATE users SET can_finance = ? WHERE id = ?', [isset($_POST['can_finance']) ? 1 : 0, $m[1]]);
@@ -808,7 +820,7 @@ if (str_starts_with($path, '/intern')) {
       try {
         q('INSERT INTO users (name, email, password_hash, role, instrument, must_change_pw) VALUES (?,?,?,?,?,1)', [
           $_POST['name'], $email, password_hash($startPw, PASSWORD_DEFAULT),
-          ($_POST['role'] ?? '') === 'admin' ? 'admin' : 'member', $_POST['instrument'] ?? '',
+          in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
         ]);
         $band = setting('band_name');
         $body = "Hallo {$_POST['name']},\n\n"
@@ -1285,7 +1297,7 @@ function attendance_map(array $eventIds): array {
   if (!$eventIds) return [];
   $in = implode(',', array_map('intval', $eventIds));
   $map = [];
-  foreach (rows("SELECT a.event_id, a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
+  foreach (rows("SELECT a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
     $map[$r['event_id']][] = $r;
   }
   return $map;

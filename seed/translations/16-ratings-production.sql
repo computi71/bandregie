@@ -46,3 +46,26 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','rate_vote','voto'),('es','ev_export','Hoja de cálculo'),
 ('it','rate_vote','voto'),('it','ev_export','Foglio di calcolo')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','role_ersatz','Substitute'),('en','mem_first_name','First name'),('en','mem_last_name','Last name'),
+('en','mem_mobile','Mobile'),('en','mem_substitute_for','Substitute for'),('en','mem_substitute_none','– nobody –'),
+('en','mem_instrument_pick','pick from the equipment inventory'),('en','mem_instrument_free','or type freely'),
+('en','ev_substitute_hint','Ask the substitute:'),
+('nl','role_ersatz','Invaller'),('nl','mem_first_name','Voornaam'),('nl','mem_last_name','Achternaam'),
+('nl','mem_mobile','Mobiel'),('nl','mem_substitute_for','Invaller voor'),('nl','mem_substitute_none','– niemand –'),
+('nl','mem_instrument_pick','kies uit de apparatuurlijst'),('nl','mem_instrument_free','of vrij invullen'),
+('nl','ev_substitute_hint','Vraag de invaller:'),
+('fr','role_ersatz','Remplaçant'),('fr','mem_first_name','Prénom'),('fr','mem_last_name','Nom'),
+('fr','mem_mobile','Portable'),('fr','mem_substitute_for','Remplaçant de'),('fr','mem_substitute_none','– personne –'),
+('fr','mem_instrument_pick','choisir dans l''inventaire'),('fr','mem_instrument_free','ou saisir librement'),
+('fr','ev_substitute_hint','Demander au remplaçant :'),
+('es','role_ersatz','Suplente'),('es','mem_first_name','Nombre'),('es','mem_last_name','Apellido'),
+('es','mem_mobile','Móvil'),('es','mem_substitute_for','Suplente de'),('es','mem_substitute_none','– nadie –'),
+('es','mem_instrument_pick','elegir del inventario'),('es','mem_instrument_free','o escribir libremente'),
+('es','ev_substitute_hint','Preguntar al suplente:'),
+('it','role_ersatz','Sostituto'),('it','mem_first_name','Nome'),('it','mem_last_name','Cognome'),
+('it','mem_mobile','Cellulare'),('it','mem_substitute_for','Sostituto di'),('it','mem_substitute_none','– nessuno –'),
+('it','mem_instrument_pick','scegli dall''inventario'),('it','mem_instrument_free','oppure scrivi liberamente'),
+('it','ev_substitute_hint','Chiedi al sostituto:')
+ON DUPLICATE KEY UPDATE value = VALUES(value);

@@ -98,7 +98,7 @@ const UI_STRINGS = [
   'send' => 'Senden', 'view' => 'Ansehen', 'confirm_delete' => 'Wirklich löschen?',
   'name' => 'Name', 'email' => 'E-Mail', 'phone' => 'Telefon', 'notes' => 'Notizen',
   'status' => 'Status', 'date' => 'Datum', 'title_lbl' => 'Titel', 'unknown' => 'Unbekannt',
-  'instrument' => 'Instrument', 'role' => 'Rolle', 'role_member' => 'Mitglied', 'role_admin' => 'Admin',
+  'instrument' => 'Instrument', 'role' => 'Rolle', 'role_member' => 'Mitglied', 'role_admin' => 'Admin', 'role_ersatz' => 'Ersatz',
   'stage_name' => 'Künstlername', 'copied' => 'Kopiert', 'own_song' => 'eigener', 'optional' => 'optional',
   // Termin-Arten
   'evtype_gig' => 'Gig', 'evtype_probe' => 'Probe', 'evtype_party' => 'Party',
@@ -178,6 +178,12 @@ const UI_STRINGS = [
   'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied', 'mem_start_pw' => 'Start-Passwort',
   'mem_pw_min' => 'min. 8 Zeichen', 'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
   'mem_password' => 'Passwort', 'mem_new_pw' => 'Neues Passwort', 'mem_set' => 'Setzen',
+  'mem_first_name' => 'Vorname', 'mem_last_name' => 'Nachname',
+  'mem_mobile' => 'Mobil', 'mem_substitute_for' => 'Ersatz für',
+  'mem_substitute_none' => '– niemanden –',
+  'mem_instrument_pick' => 'aus dem Equipment wählen',
+  'mem_instrument_free' => 'oder frei eintragen',
+  'ev_substitute_hint' => 'Ersatz fragen:',
   'mem_edit_admin' => 'Bearbeiten (Admin)', 'mem_own_role' => 'Eigene Rolle nicht änderbar',
   'prof_avatar_remove' => 'Avatar entfernen', 'prof_no_avatar' => 'Noch kein Avatar — unten hochladen.',
   'prof_lang' => 'Sprache', 'prof_avatar_lbl' => 'Avatar (Bild, max. 5 MB)',
@@ -632,6 +638,13 @@ foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {
     $db->exec("ALTER TABLE events ADD COLUMN `$prodCol` VARCHAR(20) NOT NULL DEFAULT ''");
   }
+}
+foreach (['first_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
+          'last_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
+          'phone' => "VARCHAR(60) NOT NULL DEFAULT ''",
+          'mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
+          'substitute_for' => 'INT NULL'] as $col => $ddl) {
+  if (!column_exists('users', $col)) $db->exec("ALTER TABLE users ADD COLUMN `$col` $ddl");
 }
 if (!column_exists('users', 'can_finance')) {
   $db->exec("ALTER TABLE users ADD COLUMN can_finance TINYINT(1) NOT NULL DEFAULT 0");

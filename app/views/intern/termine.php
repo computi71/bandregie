@@ -98,6 +98,17 @@ require BASE_DIR . '/app/views/_header.php';
         <?php $label = ['yes' => '✔', 'maybe' => '?', 'no' => '✘']; ?>
         <?php foreach ($att as $a): ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?></span><?php endforeach; ?>
       </p>
+      <?php
+        // Wer abgesagt hat und einen Ersatz hinterlegt hat, wird hier vorgeschlagen
+        $suggest = [];
+        foreach ($att as $a) {
+          if ($a['status'] !== 'no') continue;
+          foreach ($substitutes as $sub) {
+            if ((int) $sub['substitute_for'] === (int) $a['user_id']) $suggest[] = $sub['name'] . ' (' . $a['name'] . ')';
+          }
+        }
+      ?>
+      <?php if ($suggest): ?><p class="warn small">🔁 <?= e(t('ev_substitute_hint')) ?> <?= e(implode(', ', $suggest)) ?></p><?php endif; ?>
     <?php endif; ?>
 
     <?php $attachFiles = $filesByEvent[$ev['id']] ?? []; $attachType = 'event'; $attachId = $ev['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>

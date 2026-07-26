@@ -14,6 +14,10 @@
   <form method="post" action="/intern/profil" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('name')) ?><input name="name" value="<?= e($profile['name']) ?>" required></label>
     <label><?= e(t('stage_name')) ?><input name="stage_name" value="<?= e($profile['stage_name']) ?>" placeholder="<?= e(t('prof_stage_name_ph')) ?>"></label>
+    <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($profile['first_name'] ?? '') ?>"></label>
+    <label><?= e(t('mem_last_name')) ?><input name="last_name" value="<?= e($profile['last_name'] ?? '') ?>"></label>
+    <label><?= e(t('phone')) ?><input name="phone" value="<?= e($profile['phone'] ?? '') ?>"></label>
+    <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($profile['mobile'] ?? '') ?>"></label>
     <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($profile['instrument']) ?>" placeholder="z. B. Drums"></label>
     <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($profile['email']) ?>" required></label>
     <label><?= e(t('prof_lang')) ?>
