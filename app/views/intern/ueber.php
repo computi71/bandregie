@@ -14,7 +14,9 @@
 <div class="card">
   <h2><?= e(t('about_project')) ?></h2>
   <ul class="task-list">
-    <li><strong><?= e(t('about_license')) ?></strong> <span class="muted">MIT</span></li>
+    <li><strong><?= e(t('about_license')) ?></strong>
+      <a href="https://github.com/computi71/bandroadie/blob/main/LICENSE.md" target="_blank" rel="noopener">FSL-1.1-ALv2</a>
+      <div class="muted small"><?= e(t('about_license_note')) ?></div></li>
     <li><strong><?= e(t('about_source')) ?></strong>
       <a href="https://github.com/computi71/bandroadie" target="_blank" rel="noopener">github.com/computi71/bandroadie</a></li>
     <li><strong><?= e(t('about_version')) ?></strong> <span class="muted"><?= e(BANDROADIE_VERSION) ?></span>

@@ -1,5 +1,13 @@
 # Bandroadie – Band Website & Organization Tool
 
+![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)
+
+**Free for your own band.** Install it, run it, change it, use it for a band
+that earns money with its gigs — all covered. The one thing reserved to the
+author is offering Bandroadie itself as a commercial product or hosted service.
+Two years after each release, that restriction lapses and the version becomes
+Apache 2.0. See [LICENSE.md](LICENSE.md).
+
 Public band page plus an internal organization area for one band: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury, equipment with recurring deadlines and an iCal calendar feed.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
@@ -176,6 +184,27 @@ starting point, not legal advice.
 German is the source language for the interface: new strings go into
 `UI_STRINGS` in `app/bootstrap.php` and are then translated in
 `seed/translations/`. Code comments and commit messages are English.
+
+By contributing you agree that your contribution is licensed under the
+project's license and that the author may also use it under other terms,
+including commercially. This keeps it possible to offer Bandroadie as a
+service later without having to track down every contributor. Contributors are
+credited in `CONTRIBUTORS` and shown in the member area.
+
+## License
+
+[Functional Source License 1.1 with Apache 2.0 future license](LICENSE.md)
+(FSL-1.1-ALv2), copyright 2026 Michael Rothe.
+
+In plain words: any use is permitted except a *competing use* — making
+Bandroadie available to others as a commercial product or service that
+substitutes for it. Running it for your own band, modifying it, redistributing
+it and building on it are all fine. Each released version additionally becomes
+available under Apache 2.0 two years after its release.
+
+This is a source-available license, not an OSI-approved open source license,
+because open source by definition may not restrict commercial use. GitHub
+therefore displays it as "Other".
 
 ## Roadmap
 

@@ -315,6 +315,7 @@ const UI_STRINGS = [
   'about_license' => 'Lizenz', 'about_source' => 'Quellcode', 'about_version' => 'Version',
   'about_changelog' => 'Was ist neu?', 'about_stack' => 'Technik',
   'about_data_note' => 'Alle Inhalte dieser Instanz — Termine, Songs, Fotos, Dateien — gehören der Band, nicht dem Projekt.',
+  'about_license_note' => 'Frei nutzbar für die eigene Band — nur das Anbieten als kommerzieller Dienst bleibt dem Urheber vorbehalten.',
   'about_settings_hint' => 'Version, Lizenz, Quellcode und wer dahintersteckt.',
   'about_open' => 'Öffnen',
   'set_copyright' => 'Copyright-Zeile im Footer',

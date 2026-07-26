@@ -61,3 +61,11 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','set_copyright','Riga di copyright nel piè di pagina'),
 ('it','set_copyright_hint','Lascia vuoto per "© anno nome della band" — l''anno viene inserito automaticamente.')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','about_license_note','Free to use for your own band — only offering it as a commercial service is reserved to the author.'),
+('nl','about_license_note','Vrij te gebruiken voor je eigen band — alleen het aanbieden als commerciële dienst is voorbehouden aan de auteur.'),
+('fr','about_license_note','Libre d''utilisation pour votre propre groupe — seule la proposition comme service commercial est réservée à l''auteur.'),
+('es','about_license_note','Libre para usar con tu propia banda — solo ofrecerlo como servicio comercial queda reservado al autor.'),
+('it','about_license_note','Libero per la propria band — solo l''offerta come servizio commerciale è riservata all''autore.')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
