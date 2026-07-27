@@ -410,6 +410,11 @@ Gitarre: vorne rechts",
   'eq_parent' => 'Gehört zu', 'eq_parent_none' => '– eigenständig –',
   'eq_slot' => 'Steckplatz / Kanal', 'eq_slot_ph' => 'z. B. Kanal 1',
   'eq_parts' => 'Bestandteile', 'eq_part_of' => 'Teil von',
+  'eq_inherit_hint' => 'Besitzer und Lagerort übernimmt das Bestandteil vom übergeordneten Gerät.',
+  'eq_purchased' => 'Kaufdatum', 'eq_price' => 'Kaufpreis',
+  'eq_price_each' => 'Kaufpreis (je Stück)',
+  'eq_count' => 'Anzahl', 'eq_count_hint' => 'Mehr als eins legt gleich mehrere durchnummerierte Geräte an — praktisch bei Kabeln.',
+  'eq_value_sum' => 'Anschaffungswert',
   'eq_images' => 'Bilder und Unterlagen',
   'eq_deadlines' => 'Fristen', 'eq_deadline_new' => 'Neue Frist',
   'eq_deadline_title_ph' => 'z. B. TÜV, Steuer, Versicherung',
@@ -420,6 +425,7 @@ Gitarre: vorne rechts",
   'eq_done_hint' => '„Erledigt" schiebt wiederkehrende Fristen automatisch um ihr Intervall weiter.',
   'eq_overdue' => 'überfällig', 'eq_due_soon' => 'fällig in', 'eq_days' => 'Tagen',
   'dash_deadlines' => 'Anstehende Fristen',
+  'fl_eq_saved_n' => '%d Geräte angelegt.',
   'fl_eq_saved' => 'Equipment gespeichert.', 'fl_eq_deleted' => 'Equipment gelöscht.',
   'fl_deadline_saved' => 'Frist gespeichert.',
   'fl_deadline_done' => 'Frist erledigt — nächster Termin gesetzt.',
@@ -724,7 +730,12 @@ $typeLen = row("SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.c
 if ($typeLen && (int) $typeLen['len'] < 20) {
   $db->exec("ALTER TABLE events MODIFY type VARCHAR(20) NOT NULL DEFAULT 'gig'");
 }
-foreach (['parent_id' => 'INT NULL', 'slot' => "VARCHAR(60) NOT NULL DEFAULT ''"] as $eqCol => $eqDdl) {
+foreach ([
+  'parent_id'     => 'INT NULL',
+  'slot'          => "VARCHAR(60) NOT NULL DEFAULT ''",
+  'purchased_on'  => 'DATE NULL',
+  'price_cents'   => 'INT NULL',
+] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
 foreach (['pa_source', 'light_source'] as $prodCol) {
@@ -1007,6 +1018,14 @@ function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'f
 function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
+
+/** Kaufpreis und -datum eines Geräts als eine lesbare Angabe. */
+function eq_purchase_label(array $eq): string {
+  $parts = [];
+  if ($eq['price_cents'] !== null && $eq['price_cents'] !== '') $parts[] = fmt_money((int) $eq['price_cents']);
+  if (!empty($eq['purchased_on'])) $parts[] = fmt_date($eq['purchased_on']);
+  return implode(' · ', $parts);
+}
 // Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte):
 // gewählte Sprache -> Standardsprache -> Englisch -> Deutsch (Basis in settings)
 function content(string $key): string {

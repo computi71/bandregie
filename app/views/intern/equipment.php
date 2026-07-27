@@ -8,21 +8,31 @@
     <label><?= e(t('eq_cat')) ?>
       <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('eq_owner')) ?>
+    <label data-eqinherit><?= e(t('eq_owner')) ?>
       <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('eq_location')) ?><input name="location" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
+    <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
     <label><?= e(t('eq_parent')) ?>
       <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
         <?php foreach ($items as $other): ?><option value="<?= $other['id'] ?>"><?= e($other['name']) ?></option><?php endforeach; ?>
       </select>
     </label>
     <label><?= e(t('eq_slot')) ?><input name="slot" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
-    <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
+    <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
+    <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on"></label>
+    <label><?= e(t('eq_price_each')) ?><input type="number" name="price" step="0.01" min="0" placeholder="0,00"></label>
+    <label><?= e(t('eq_count')) ?><input type="number" name="count" value="1" min="1" max="99"></label>
+    <label class="checkbox"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
+    <p class="muted span2"><?= e(t('eq_count_hint')) ?></p>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"></textarea></label>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
   </form>
 </details>
+
+<?php $eqValue = 0.0; foreach ($items as $it) $eqValue += (int) ($it['price_cents'] ?? 0); ?>
+<?php if ($eqValue > 0): ?>
+  <p class="muted"><?= e(t('eq_value_sum')) ?>: <strong><?= e(fmt_money($eqValue)) ?></strong></p>
+<?php endif; ?>
 
 <?php $lastCat = null; ?>
 <?php
@@ -41,6 +51,9 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
       <?php if ($eq['is_standard']): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
       <span class="muted"><?= e(t('eq_owner')) ?>: <?= e($eq['owner_name'] ?: t('eq_owner_band')) ?></span>
       <?php if ($eq['location']): ?><span class="muted">📍 <?= e($eq['location']) ?></span><?php endif; ?>
+      <?php if ($eq['price_cents'] !== null || !empty($eq['purchased_on'])): ?>
+        <span class="muted">🧾 <?= e(eq_purchase_label($eq)) ?></span>
+      <?php endif; ?>
     </div>
     <?php if ($eq['notes']): ?><p class="prewrap muted"><?= e($eq['notes']) ?></p><?php endif; ?>
 
@@ -52,7 +65,9 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
             <li>
               <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
               <strong><?= e($child['name']) ?></strong>
-              <?php if ($child['owner_name']): ?><span class="muted small"><?= e($child['owner_name']) ?></span><?php endif; ?>
+              <?php if ($child['price_cents'] !== null || !empty($child['purchased_on'])): ?>
+                <span class="muted small">🧾 <?= e(eq_purchase_label($child)) ?></span>
+              <?php endif; ?>
               <?php if ($child['notes']): ?><div class="muted small prewrap"><?= e($child['notes']) ?></div><?php endif; ?>
             </li>
           <?php endforeach; ?>
@@ -111,10 +126,10 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
         <label><?= e(t('eq_cat')) ?>
           <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>" <?= $eq['category'] === $val ? 'selected' : '' ?>><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
         </label>
-        <label><?= e(t('eq_owner')) ?>
+        <label data-eqinherit><?= e(t('eq_owner')) ?>
           <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $eq['owner_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
         </label>
-        <label><?= e(t('eq_location')) ?><input name="location" value="<?= e($eq['location']) ?>"></label>
+        <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" value="<?= e($eq['location']) ?>"></label>
         <label><?= e(t('eq_parent')) ?>
           <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
             <?php foreach ($items as $other): ?>
@@ -124,6 +139,9 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
           </select>
         </label>
         <label><?= e(t('eq_slot')) ?><input name="slot" value="<?= e($eq['slot'] ?? '') ?>" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
+        <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
+        <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on" value="<?= e($eq['purchased_on'] ?? '') ?>"></label>
+        <label><?= e(t('eq_price')) ?><input type="number" name="price" step="0.01" min="0" value="<?= $eq['price_cents'] !== null ? e(number_format((int) $eq['price_cents'] / 100, 2, '.', '')) : '' ?>"></label>
         <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1" <?= $eq['is_standard'] ? 'checked' : '' ?>> 📦 <?= e(t('eq_standard')) ?></label>
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($eq['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
@@ -135,4 +153,5 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
   </section>
 <?php endforeach; ?>
 <?php if (!$items): ?><p class="muted center"><?= e(t('eq_none')) ?></p><?php endif; ?>
+<script src="/assets/equipment.js" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

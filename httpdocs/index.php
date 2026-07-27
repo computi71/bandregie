@@ -947,17 +947,27 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/equipment' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot) VALUES (?,?,?,?,?,?,?,?)', [
-        trim($_POST['name']),
-        array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
-        (int) ($_POST['owner_id'] ?? 0) ?: null,
-        trim($_POST['location'] ?? ''),
-        isset($_POST['is_standard']) ? 1 : 0,
-        trim($_POST['notes'] ?? ''),
-        (int) ($_POST['parent_id'] ?? 0) ?: null,
-        trim($_POST['slot'] ?? ''),
-      ]);
-      flash(t('fl_eq_saved'));
+      $parentId = (int) ($_POST['parent_id'] ?? 0) ?: null;
+      [$ownerId, $location] = equipment_inherit($parentId, (int) ($_POST['owner_id'] ?? 0) ?: null, trim($_POST['location'] ?? ''));
+      // Anzahl > 1 legt durchnummerierte Geräte an — gedacht für Kabel und
+      // anderes Zubehör, das man nicht einzeln benennen mag.
+      $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
+      $name  = trim($_POST['name']);
+      for ($i = 1; $i <= $count; $i++) {
+        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents) VALUES (?,?,?,?,?,?,?,?,?,?)', [
+          $count > 1 ? $name . ' #' . $i : $name,
+          array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+          $ownerId,
+          $location,
+          isset($_POST['is_standard']) ? 1 : 0,
+          trim($_POST['notes'] ?? ''),
+          $parentId,
+          trim($_POST['slot'] ?? ''),
+          trim($_POST['purchased_on'] ?? '') ?: null,
+          price_to_cents((string) ($_POST['price'] ?? '')),
+        ]);
+      }
+      flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
     }
     redirect('/intern/equipment');
   }
@@ -967,18 +977,24 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
       flash(t('fl_eq_deleted'));
     } elseif (($_POST['name'] ?? '') !== '') {
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=? WHERE id=?', [
+      // Sich selbst als übergeordnetes Gerät zu wählen wäre eine Schleife
+      $parentId = ((int) ($_POST['parent_id'] ?? 0) === (int) $m[1]) ? null : ((int) ($_POST['parent_id'] ?? 0) ?: null);
+      [$ownerId, $location] = equipment_inherit($parentId, (int) ($_POST['owner_id'] ?? 0) ?: null, trim($_POST['location'] ?? ''));
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
-        (int) ($_POST['owner_id'] ?? 0) ?: null,
-        trim($_POST['location'] ?? ''),
+        $ownerId,
+        $location,
         isset($_POST['is_standard']) ? 1 : 0,
         trim($_POST['notes'] ?? ''),
-        // Sich selbst als übergeordnetes Gerät zu wählen wäre eine Schleife
-        ((int) ($_POST['parent_id'] ?? 0) === (int) $m[1] ? null : ((int) ($_POST['parent_id'] ?? 0) ?: null)),
+        $parentId,
         trim($_POST['slot'] ?? ''),
+        trim($_POST['purchased_on'] ?? '') ?: null,
+        price_to_cents((string) ($_POST['price'] ?? '')),
         $m[1],
       ]);
+      // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit
+      q('UPDATE equipment SET owner_id = ?, location = '' WHERE parent_id = ?', [$ownerId, $m[1]]);
       flash(t('fl_eq_saved'));
     }
     redirect('/intern/equipment');
@@ -1401,6 +1417,21 @@ if (str_starts_with($path, '/intern')) {
 }
 
 // ---------- Formularwerte ----------
+/** Preiseingabe wie „1.249,90" oder „1249.90" in Cent; leer bleibt leer. */
+function price_to_cents(string $raw): ?int {
+  $raw = trim($raw);
+  if ($raw === '') return null;
+  $raw = str_replace(['.', ' ', '€'], '', $raw);
+  return (int) round((float) str_replace(',', '.', $raw) * 100);
+}
+
+/** Bestandteile erben Besitzer und Standort vom übergeordneten Gerät. */
+function equipment_inherit(?int $parentId, $ownerId, string $location): array {
+  if (!$parentId) return [$ownerId ?: null, $location];
+  $parent = row('SELECT owner_id, location FROM equipment WHERE id = ?', [$parentId]);
+  return [$parent['owner_id'] ?? null, ''];
+}
+
 /** Bewertungen je Song: Schnitt, Anzahl und die eigene Stimme. */
 function song_ratings(int $userId): array {
   $out = [];
