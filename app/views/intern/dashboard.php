@@ -13,6 +13,7 @@
   </div>
 <?php endif; ?>
 <div class="grid-2">
+  <?php if (perm_allows($user, 'termine')): ?>
   <section class="card">
     <h2><?= e(t('dash_next_events')) ?></h2>
     <?php if (!$events): ?><p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p><?php endif; ?>
@@ -33,6 +34,8 @@
     </ul>
     <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
   </section>
+  <?php endif; ?>
+  <?php if (perm_allows($user, 'aufgaben')): ?>
   <section class="card">
     <h2><?= e(t('dash_open_tasks')) ?></h2>
     <?php if (!$tasks): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
@@ -48,5 +51,6 @@
     </ul>
     <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
   </section>
+  <?php endif; ?>
 </div>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

@@ -312,15 +312,20 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Dashboard ----------
   if ($path === '/intern' && $method === 'GET') {
-    $events = rows('SELECT * FROM events WHERE date >= ? ORDER BY date, time LIMIT 5', [$today]);
+    // Die Übersicht zeigt nur, was das Mitglied auch aufrufen dürfte — sonst
+    // steht auf der ersten Seite nach dem Anmelden, was das Menü verbirgt.
+    [$dashWhere, $dashParams] = visible_clause(visible_event_ids($me));
+    $events = perm_allows($me, 'termine')
+      ? rows("SELECT * FROM events WHERE date >= ?$dashWhere ORDER BY date, time LIMIT 5", [$today, ...$dashParams])
+      : [];
     view('intern/dashboard', [
       'title' => t('inav_intern'),
       'events' => $events,
-      'deadlines' => rows('SELECT d.*, e.name AS eq_name FROM equipment_deadlines d
+      'deadlines' => perm_allows($me, 'equipment') ? rows('SELECT d.*, e.name AS eq_name FROM equipment_deadlines d
                            JOIN equipment e ON e.id = d.equipment_id
-                           WHERE d.due_date <= DATE_ADD(?, INTERVAL 60 DAY) ORDER BY d.due_date', [$today]),
-      'tasks' => rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
-                       WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8"),
+                           WHERE d.due_date <= DATE_ADD(?, INTERVAL 60 DAY) ORDER BY d.due_date', [$today]) : [],
+      'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
+                       WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
       'attendance' => attendance_map(array_column($events, 'id')),
       'mine' => my_attendance(array_column($events, 'id'), $me['id']),
     ]);
@@ -329,9 +334,11 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Termine ----------
   if ($path === '/intern/termine' && $method === 'GET') {
     $showPast = ($_GET['alle'] ?? '') === '1';
+    // Ersatzleute sehen nur die Termine, für die sie angefragt sind
+    [$evWhere, $evParams] = visible_clause(visible_event_ids($me));
     $events = $showPast
-      ? rows('SELECT * FROM events ORDER BY date DESC, time')
-      : rows('SELECT * FROM events WHERE date >= ? ORDER BY date, time', [$today]);
+      ? rows("SELECT * FROM events WHERE 1 = 1$evWhere ORDER BY date DESC, time", $evParams)
+      : rows("SELECT * FROM events WHERE date >= ?$evWhere ORDER BY date, time", [$today, ...$evParams]);
     $ids = array_column($events, 'id');
     $comments = [];
     if ($ids) {
@@ -433,15 +440,19 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Songs ----------
-  $songList = fn(): array => rows(
-    "SELECT s.*,
-       (SELECT COUNT(*) FROM setlist_songs ss WHERE ss.song_id = s.id) AS setlist_count,
-       (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
-        WHERE ss2.song_id = s.id AND e.date < ?) AS played_count
-     FROM songs s
-     ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
-    [$today]
-  );
+  // Ersatzleute sehen nur die Songs, die auf den Setlists ihrer Termine stehen
+  $songList = function () use ($today, $me): array {
+    [$songWhere, $songParams] = visible_clause(visible_song_ids($me), 's.id');
+    return rows(
+      "SELECT s.*,
+         (SELECT COUNT(*) FROM setlist_songs ss WHERE ss.song_id = s.id) AS setlist_count,
+         (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
+          WHERE ss2.song_id = s.id AND e.date < ?) AS played_count
+       FROM songs s WHERE 1 = 1$songWhere
+       ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
+      [$today, ...$songParams]
+    );
+  };
   if ($path === '/intern/songs' && $method === 'GET') {
     view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songList(), 'edit' => null,
       'ratings' => song_ratings($me['id'])]);
@@ -482,11 +493,13 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Setlists ----------
   if ($path === '/intern/setlists' && $method === 'GET') {
+    [$slWhere, $slParams] = visible_clause(visible_setlist_ids($me), 's.id');
     view('intern/setlists', ['title' => t('inav_setlists'), 'setlists' => rows(
-      'SELECT s.*, COUNT(ss.song_id) AS song_count, COALESCE(SUM(so.duration_sec),0) AS total_sec,
+      "SELECT s.*, COUNT(ss.song_id) AS song_count, COALESCE(SUM(so.duration_sec),0) AS total_sec,
               EXISTS(SELECT 1 FROM events e WHERE e.setlist_id = s.id AND e.date < ?) AS locked
        FROM setlists s LEFT JOIN setlist_songs ss ON ss.setlist_id = s.id LEFT JOIN songs so ON so.id = ss.song_id
-       GROUP BY s.id ORDER BY s.created_at DESC', [$today])]);
+       WHERE 1 = 1$slWhere
+       GROUP BY s.id ORDER BY s.created_at DESC", [$today, ...$slParams])]);
   }
   if ($path === '/intern/setlists' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$_POST['name'], $_POST['notes'] ?? '']);
@@ -495,6 +508,12 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/setlists/(\d+)$~', $path, $m) && $method === 'GET') {
     $setlist = row('SELECT * FROM setlists WHERE id = ?', [$m[1]]);
     if (!$setlist) redirect('/intern/setlists');
+    // Wer die Setlist in der Liste nicht sieht, sieht sie auch nicht einzeln
+    $slVisible = visible_setlist_ids($me);
+    if ($slVisible !== null && !in_array((int) $m[1], $slVisible, true)) {
+      flash(t('fl_no_permission'));
+      redirect('/intern/setlists');
+    }
     $entries = setlist_entries((int) $m[1]);
     $used = array_filter(array_column($entries, 'id'));
     $notIn = $used ? 'AND id NOT IN (' . implode(',', array_map('intval', $used)) . ')' : '';
@@ -811,6 +830,28 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/profil');
   }
 
+  // ---------- Musik & Videos für die öffentliche Seite ----------
+  if ($path === '/intern/musik' && $method === 'GET') {
+    view('intern/musik', ['title' => t('inav_musik'), 'links' => rows('SELECT * FROM media_links ORDER BY id DESC')]);
+  }
+  if ($path === '/intern/musik' && $method === 'POST') {
+    if (($_POST['url'] ?? '') !== '') {
+      q('INSERT INTO media_links (title, url) VALUES (?,?)', [$_POST['title'] ?? '', trim($_POST['url'])]);
+      flash(t('fl_media_saved'));
+    }
+    redirect('/intern/musik');
+  }
+  if (preg_match('~^/intern/musik/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM media_links WHERE id = ?', [$m[1]]);
+    flash(t('fl_media_deleted'));
+    redirect('/intern/musik');
+  }
+
+  // ---------- Hilfe ----------
+  if ($path === '/intern/hilfe' && $method === 'GET') {
+    view('intern/hilfe', ['title' => t('help_title')]);
+  }
+
   // ---------- Rechte je Bereich ----------
   if ($path === '/intern/rechte' && $method === 'GET') {
     require_admin();
@@ -1081,8 +1122,14 @@ if (str_starts_with($path, '/intern')) {
         $mayOwn ? price_to_cents((string) ($_POST['price'] ?? '')) : $eqBefore['price_cents'],
         $m[1],
       ]);
-      // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit
-      q("UPDATE equipment SET owner_id = ?, location = '' WHERE parent_id = ?", [$ownerId, $m[1]]);
+      // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit —
+      // und zwar alle, nicht nur die erste Ebene. Im Rack steckt ein Empfänger,
+      // darin ein Sender, darin eine Kapsel; die gehören alle zusammen.
+      $eqTree = eq_descendants((int) $m[1], rows('SELECT id, parent_id FROM equipment'));
+      if ($eqTree) {
+        $eqIn = implode(',', array_fill(0, count($eqTree), '?'));
+        q("UPDATE equipment SET owner_id = ?, location = '' WHERE id IN ($eqIn)", [$ownerId, ...$eqTree]);
+      }
       flash(t('fl_eq_saved'));
     }
     redirect('/intern/equipment');
@@ -1406,7 +1453,6 @@ if (str_starts_with($path, '/intern')) {
     }
     view('intern/einstellungen', [
       'title' => t('inav_einstellungen'),
-      'links' => rows('SELECT * FROM media_links ORDER BY id DESC'),
       'ical_url' => absolute_url('/kalender/' . setting('ical_token') . '.ics'),
       'contentAll' => $contentAll,
       'backupRuns' => rows('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 12'),
@@ -1528,16 +1574,6 @@ if (str_starts_with($path, '/intern')) {
     $old = setting($key);
     if ($old) @unlink(UPLOADS_DIR . '/' . $old);
     set_setting($key, '');
-    redirect('/intern/einstellungen');
-  }
-  if ($path === '/intern/einstellungen/links' && $method === 'POST') {
-    require_admin();
-    if (($_POST['url'] ?? '') !== '') q('INSERT INTO media_links (title, url) VALUES (?,?)', [$_POST['title'] ?? '', trim($_POST['url'])]);
-    redirect('/intern/einstellungen');
-  }
-  if (preg_match('~^/intern/einstellungen/links/(\d+)/delete$~', $path, $m) && $method === 'POST') {
-    require_admin();
-    q('DELETE FROM media_links WHERE id = ?', [$m[1]]);
     redirect('/intern/einstellungen');
   }
 }

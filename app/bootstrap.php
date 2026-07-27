@@ -87,6 +87,25 @@ const UI_STRINGS = [
   // Überschriften im Klappmenü — siehe $navGroups in app/views/_header.php
   'inavg_planung' => 'Planung', 'inavg_musik' => 'Musik', 'inavg_technik' => 'Technik',
   'inavg_material' => 'Material', 'inavg_band' => 'Band', 'inavg_konto' => 'Konto',
+  'inav_musik' => 'Musik & Videos', 'inav_hilfe' => 'Hilfe',
+  'fl_media_saved' => 'Link gespeichert.', 'fl_media_deleted' => 'Link gelöscht.',
+  'help_title' => 'Hilfe', 'help_intro' => 'Was steckt hinter den einzelnen Bereichen?',
+  'help_more' => 'Mehr zur Anwendung, zur Lizenz und zu den Mitwirkenden steht unter „Über".',
+  // Kurzbeschreibung je Bereich — die Schlüssel heißen wie die Bereiche
+  'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
+  'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song.',
+  'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern.',
+  'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen.',
+  'help_abwesenheiten' => 'Urlaub und Sperrzeiten. Fällt ein Termin hinein, warnt die Terminliste.',
+  'help_aufgaben' => 'Was ansteht und wer es macht.',
+  'help_themen' => 'Diskussionen in Ruhe, ohne dass etwas im Chat untergeht.',
+  'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
+  'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen.',
+  'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult.',
+  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Archiv.',
+  'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
+  'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
+  'help_mitglieder' => 'Wer zur Band gehört, mit Kontaktdaten und Rollen.',
   'login_only_members' => 'Nur für Mitglieder von', 'login_email' => 'E-Mail', 'login_password' => 'Passwort',
   'login_submit' => 'Einloggen', 'login_failed' => 'E-Mail oder Passwort falsch.',
   'dash_hello' => 'Hallo', 'dash_next_events' => 'Nächste Termine',
@@ -180,8 +199,7 @@ const UI_STRINGS = [
   'photo_bg_title' => 'Als Website-Hintergrund verwenden',
   'photos_none_intern' => 'Noch keine Fotos hochgeladen.',
   // Mitglieder & Profil
-  'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied', 'mem_start_pw' => 'Start-Passwort',
-  'mem_pw_min' => 'min. 8 Zeichen', 'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
+  'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied',   'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
   'mem_password' => 'Passwort', 'mem_new_pw' => 'Neues Passwort', 'mem_set' => 'Setzen',
   'mem_first_name' => 'Vorname', 'mem_last_name' => 'Nachname',
   'mem_name_hint' => 'Angezeigt wird „Vorname Nachname“ — oder der Künstlername, falls gesetzt.',
@@ -291,7 +309,6 @@ const UI_STRINGS = [
   'fl_email_taken' => 'Diese E-Mail ist schon vergeben.',
   'fl_name_email_required' => 'Name und E-Mail sind Pflicht.',
   'fl_member_updated' => 'Mitglied aktualisiert.',
-  'fl_member_required' => 'Name, E-Mail und Passwort (min. 8 Zeichen) sind Pflicht.',
   'fl_no_self_delete' => 'Du kannst dich nicht selbst löschen.',
   'fl_only_admin_pw' => 'Nur Admins können fremde Passwörter zurücksetzen.',
   'fl_pw_min' => 'Passwort braucht mindestens 8 Zeichen.',
@@ -317,10 +334,9 @@ const UI_STRINGS = [
   'fin_type_in' => 'Einnahme', 'fin_type_out' => 'Ausgabe', 'fin_amount' => 'Betrag (€)',
   'fin_category' => 'Kategorie', 'fin_description' => 'Beschreibung',
   'fin_event' => 'Termin (optional)', 'fin_member' => 'Mitglied (optional)',
-  'fin_add' => 'Buchen', 'fin_year' => 'Jahr', 'fin_all_years' => 'Alle Jahre',
+  'fin_add' => 'Buchen', 'fin_all_years' => 'Alle Jahre',
   'fin_none' => 'Noch keine Buchungen.', 'fin_by_category' => 'Nach Kategorie',
   'fin_import_gage' => 'Gage übernehmen', 'fin_open_fees' => 'Noch nicht verbuchte Gagen',
-  'fin_total' => 'Gesamt',
   'fincat_gage' => 'Gage', 'fincat_ausschuettung' => 'Ausschüttung',
   'fincat_einlage' => 'Einlage', 'fincat_merch' => 'Merch/Verkauf',
   'fincat_proberaum' => 'Proberaum', 'fincat_equipment' => 'Equipment', 'fincat_gema' => 'GEMA',
@@ -339,7 +355,7 @@ const UI_STRINGS = [
   'bk_keep' => 'Wie viele Sicherungen aufheben',
   'bk_keep_hint' => 'Ist die Zahl erreicht, wird die älteste gelöscht — aber erst, wenn eine neue vollständig vorliegt.',
   'bk_run_now' => 'Jetzt sichern', 'bk_runs' => 'Letzte Läufe', 'bk_none' => 'Noch nichts gesichert.',
-  'bk_download' => 'Herunterladen', 'bk_gone' => 'nicht mehr vorhanden',
+  'bk_gone' => 'nicht mehr vorhanden',
   'bk_status_ok' => 'erfolgreich', 'bk_status_error' => 'fehlgeschlagen',
   'bk_content' => 'Gesichert werden die Datenbank und alle hochgeladenen Dateien. Das Archiv liegt außerhalb des Webverzeichnisses.',
   'bk_auto_hint' => 'Ausgelöst wird beim Aufruf des Bandbereichs, höchstens einmal je Zeitraum. Wer einen Cronjob hat, ruft besser auf:',
@@ -350,7 +366,6 @@ const UI_STRINGS = [
   'fl_bk_saved' => 'Einstellungen zur Sicherung gespeichert.', 'fl_bk_deleted' => 'Sicherung gelöscht.',
   'eq_owner_locked' => 'Preis, Besitzer und Kaufdatum ändern nur der Besitzer und die Verwaltung. Das Gerät umzuhängen gehört dazu — über das übergeordnete Gerät wechselt sonst der Besitzer mit.',
   'ev_gear' => 'Mitnehmen', 'ev_gear_conflict' => 'am selben Tag doppelt verplant',
-  'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
   'songs_col_rating' => 'Bewertung',
@@ -440,15 +455,14 @@ Gitarre: vorne rechts",
   'eq_none' => 'Noch kein Equipment erfasst.',
   'eq_parent' => 'Gehört zu', 'eq_parent_none' => '– eigenständig –',
   'eq_slot' => 'Steckplatz / Kanal', 'eq_slot_ph' => 'z. B. Kanal 1',
-  'eq_parts' => 'Bestandteile', 'eq_part_of' => 'Teil von',
+  'eq_parts' => 'Bestandteile',
   'close' => 'Schließen',
   'eq_inherit_hint' => 'Besitzer und Lagerort übernimmt das Bestandteil vom übergeordneten Gerät.',
   'eq_purchased' => 'Kaufdatum', 'eq_price' => 'Kaufpreis',
   'eq_price_each' => 'Kaufpreis (je Stück)',
   'eq_count' => 'Anzahl', 'eq_count_hint' => 'Mehr als eins legt gleich mehrere durchnummerierte Geräte an — praktisch bei Kabeln.',
   'eq_value_sum' => 'Anschaffungswert',
-  'eq_images' => 'Bilder und Unterlagen',
-  'eq_deadlines' => 'Fristen', 'eq_deadline_new' => 'Neue Frist',
+  'eq_deadline_new' => 'Neue Frist',
   'eq_deadline_title_ph' => 'z. B. TÜV, Steuer, Versicherung',
   'eq_due' => 'Fällig am', 'eq_interval' => 'Wiederholung',
   'eq_interval_0' => 'einmalig', 'eq_interval_6' => 'halbjährlich',
@@ -463,7 +477,6 @@ Gitarre: vorne rechts",
   'fl_deadline_done' => 'Frist erledigt — nächster Termin gesetzt.',
   'fl_deadline_done_once' => 'Frist erledigt und entfernt.',
   'fl_deadline_deleted' => 'Frist gelöscht.',
-  'mem_finance' => 'Kasse verwalten (Finanz)',
   'fin_badge' => 'Finanz',
   'fin_readonly_hint' => 'Buchungen macht, wer die Kasse verwaltet (Finanz) — du kannst hier alles einsehen.',
   'fl_finance_required' => 'Buchungen darf nur machen, wer die Kasse verwaltet (Finanz).',
@@ -508,11 +521,12 @@ const PERM_MODULES = [
   'orte'          => ['/intern/orte'],
   'abwesenheiten' => ['/intern/abwesenheiten'],
   'aufgaben'      => ['/intern/aufgaben'],
-  'themen'        => ['/intern/themen', '/intern/thema'],
+  'themen'        => ['/intern/themen', '/intern/thema', '/intern/beitrag'],
   'kasse'         => ['/intern/kasse'],
   'equipment'     => ['/intern/equipment'],
   'rider'         => ['/intern/stagerider', '/intern/kanaele'],
   'fotos'         => ['/intern/fotos'],
+  'musik'         => ['/intern/musik'],
   'downloads'     => ['/intern/downloads'],
   'mitglieder'    => ['/intern/mitglieder'],
 ];
@@ -533,7 +547,7 @@ const PERM_TEMPLATES = [
     'termine' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
-    'fotos' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
+    'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna.
@@ -541,7 +555,7 @@ const PERM_TEMPLATES = [
     'termine' => [1, 0], 'songs' => [1, 0], 'setlists' => [1, 0], 'orte' => [0, 0],
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [0, 0],
-    'fotos' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
+    'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
   ],
 ];
 
@@ -967,6 +981,17 @@ if (setting('permissions_migrated') !== '1' && row('SELECT 1 FROM users LIMIT 1'
   set_setting('permissions_migrated', '1');
 }
 
+// „Musik & Videos" ist aus den Einstellungen in einen eigenen Bereich gezogen.
+// Wer die Fotos pflegen darf, pflegt auch die Musikseite — beides ist Inhalt
+// der öffentlichen Seite. Ohne diese Zeile stünde der Bereich nach dem Update
+// für alle auf „kein Recht".
+if (setting('perm_musik_migrated') !== '1' && setting('permissions_migrated') === '1') {
+  q("INSERT INTO permissions (user_id, module, can_read, can_write)
+     SELECT user_id, 'musik', can_read, can_write FROM permissions WHERE module = 'fotos'
+     ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)");
+  set_setting('perm_musik_migrated', '1');
+}
+
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
 // sondern auch dann, wenn eine neue Version weitere Seed-Dateien mitbringt.
 // Die Seeds ergänzen ausschließlich fehlende Schlüssel; im Bandbereich von Hand
@@ -1006,7 +1031,10 @@ function current_user(): ?array {
   static $user = false;
   if ($user === false) {
     $user = empty($_SESSION['uid']) ? null
-      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, can_finance, substitute_for FROM users WHERE id = ?', [$_SESSION['uid']]);
+      // can_finance steht bewusst nicht mehr dabei: seit es Rechte je Bereich
+      // gibt, sagt die Spalte nichts mehr aus. Sie bleibt nur für die einmalige
+      // Übernahme beim Update stehen.
+      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, substitute_for FROM users WHERE id = ?', [$_SESSION['uid']]);
   }
   return $user;
 }
@@ -1043,6 +1071,54 @@ function perm_allows(?array $user, string $module, string $need = 'read'): bool 
   if (!$p) return false;
   // Wer ändern darf, darf auch sehen — alles andere wäre eine Falle
   return $need === 'write' ? $p['write'] : ($p['read'] || $p['write']);
+}
+
+/**
+ * Termine, die jemand sehen darf — null heißt „alle". Nur Ersatzleute werden
+ * eingeschränkt: Sie sehen die Termine, für die sie angefragt sind. Angefragt
+ * heißt, dass sie selbst schon geantwortet haben oder dass die Person, die sie
+ * vertreten, abgesagt hat. Genau dann geht es sie etwas an.
+ */
+function visible_event_ids(?array $user): ?array {
+  if (!$user || ($user['role'] ?? '') === 'admin' || !is_substitute($user)) return null;
+  $ids = array_column(rows(
+    'SELECT DISTINCT a.event_id FROM attendance a WHERE a.user_id = ?
+     UNION
+     SELECT DISTINCT a.event_id FROM attendance a
+       JOIN users u ON u.id = ? AND u.substitute_for = a.user_id
+      WHERE a.status = ?',
+    [$user['id'], $user['id'], 'no']
+  ), 'event_id');
+  return array_map('intval', $ids);
+}
+
+/** Setlists zu den sichtbaren Terminen; null heißt „alle". */
+function visible_setlist_ids(?array $user): ?array {
+  $events = visible_event_ids($user);
+  if ($events === null) return null;
+  if (!$events) return [];
+  $in = implode(',', array_fill(0, count($events), '?'));
+  return array_map('intval', array_column(
+    rows("SELECT DISTINCT setlist_id FROM events WHERE id IN ($in) AND setlist_id IS NOT NULL", $events),
+    'setlist_id'));
+}
+
+/** Songs auf den sichtbaren Setlists; null heißt „alle". */
+function visible_song_ids(?array $user): ?array {
+  $setlists = visible_setlist_ids($user);
+  if ($setlists === null) return null;
+  if (!$setlists) return [];
+  $in = implode(',', array_fill(0, count($setlists), '?'));
+  return array_map('intval', array_column(
+    rows("SELECT DISTINCT song_id FROM setlist_songs WHERE setlist_id IN ($in) AND song_id IS NOT NULL", $setlists),
+    'song_id'));
+}
+
+/** Baut „AND id IN (...)“ für eine Sichtbarkeitsliste; null lässt alles durch. */
+function visible_clause(?array $ids, string $column = 'id'): array {
+  if ($ids === null) return ['', []];
+  if (!$ids) return [" AND 1 = 0", []];
+  return [" AND $column IN (" . implode(',', array_fill(0, count($ids), '?')) . ')', $ids];
 }
 
 /** Zu welchem Bereich gehört ein Pfad? null heißt: für alle Angemeldeten offen. */
@@ -1226,8 +1302,17 @@ function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
   if (($user['role'] ?? '') === 'admin') return true;
   // Bandeigenes Material pflegen die Mitglieder gemeinsam — wer nur einspringt,
   // verwaltet nicht das Eigentum der Band.
-  if (empty($eq['owner_id'])) return empty($user['substitute_for']);
+  if (empty($eq['owner_id'])) return !is_substitute($user);
   return (int) $eq['owner_id'] === (int) ($user['id'] ?? 0);
+}
+
+/**
+ * Springt jemand nur ein? Die Rolle sagt es, und das Feld „vertritt" sagt es
+ * auch — beides zählt, sonst hinge das Ergebnis davon ab, welche der beiden
+ * Angaben gerade gepflegt wurde.
+ */
+function is_substitute(?array $user): bool {
+  return ($user['role'] ?? '') === 'ersatz' || !empty($user['substitute_for']);
 }
 
 /** Geräte nach übergeordnetem Gerät sortiert; ohne Übergeordnetes zählt 0. */

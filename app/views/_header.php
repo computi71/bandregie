@@ -83,6 +83,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           ],
           t('inavg_material') => [
             '/intern/fotos' => t('inav_fotos'),
+            '/intern/musik' => t('inav_musik'),
             '/intern/downloads' => t('inav_downloads'),
           ],
           t('inavg_band')     => array_filter([
@@ -92,6 +93,8 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           ]),
           t('inavg_konto')    => array_filter([
             '/intern/profil' => t('inav_profil'),
+            '/intern/hilfe' => t('inav_hilfe'),
+            '/intern/ueber' => t('about_open'),
             '/intern/einstellungen' => $user['role'] === 'admin' ? t('inav_einstellungen') : null,
           ]),
         ];
