@@ -308,6 +308,9 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   }
   .site-header nav a:last-child { border-bottom: 0; }
   .header-user { order: 3; margin-left: 0; }
+  /* Auf schmalen Schirmen sitzt der Sprachwähler links — das Menü muss dann
+     nach rechts aufklappen, sonst steht es außerhalb des Bildschirms. */
+  .lang-menu { left: 0; right: auto; }
 
   /* Inhalt: mehr Platz, kleinere Überschriften */
   .container { padding: 0.6rem 0.8rem 2.5rem; }
