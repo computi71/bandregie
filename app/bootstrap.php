@@ -322,6 +322,16 @@ const UI_STRINGS = [
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
   'songs_col_rating' => 'Bewertung',
+  // Diskussionen
+  'inav_themen' => 'Themen', 'topic_new' => 'Neues Thema', 'topic_title_ph' => 'Worum geht es?',
+  'topic_first_post' => 'Dein erster Beitrag', 'topic_open' => 'Öffnen',
+  'topic_posts' => 'Beiträge', 'topic_last' => 'zuletzt', 'topic_none' => 'Noch keine Themen — fang eins an.',
+  'topic_reply' => 'Antworten', 'topic_reply_ph' => 'Antwort schreiben ...',
+  'topic_close' => 'Thema schließen', 'topic_reopen' => 'Wieder öffnen',
+  'topic_closed' => 'geschlossen', 'topic_closed_hint' => 'Dieses Thema ist geschlossen — zum Antworten wieder öffnen.',
+  'topic_back' => 'Alle Themen', 'topic_by' => 'von',
+  'fl_topic_created' => 'Thema angelegt.', 'fl_topic_deleted' => 'Thema gelöscht.',
+  'fl_post_deleted' => 'Beitrag gelöscht.',
   // Über Bandroadie
   'about_title' => 'Über Bandroadie',
   'about_tagline' => 'Website und Organisation für Bands — Termine, Setlists, Songs, Kasse, Equipment.',
@@ -583,6 +593,23 @@ $tables = [
     tkey VARCHAR(64) NOT NULL,
     value TEXT NOT NULL,
     PRIMARY KEY (lang, tkey)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS topics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    created_by INT NULL,
+    closed TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS topic_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    topic_id INT NOT NULL,
+    user_id INT NULL,
+    text TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_topic (topic_id, created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS song_ratings (

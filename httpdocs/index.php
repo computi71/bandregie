@@ -998,6 +998,68 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Diskussionsthemen ----------
+  if ($path === '/intern/themen' && $method === 'GET') {
+    view('intern/themen', [
+      'title' => t('inav_themen'),
+      'topics' => rows('SELECT t.*, u.name AS author,
+                               (SELECT COUNT(*) FROM topic_posts p WHERE p.topic_id = t.id) AS posts,
+                               (SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id) AS last_post
+                        FROM topics t LEFT JOIN users u ON u.id = t.created_by
+                        ORDER BY t.closed, COALESCE((SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id), t.created_at) DESC'),
+    ]);
+  }
+  if ($path === '/intern/themen' && $method === 'POST') {
+    $title = trim($_POST['title'] ?? '');
+    if ($title !== '') {
+      q('INSERT INTO topics (title, created_by) VALUES (?,?)', [$title, $me['id']]);
+      $topicId = (int) $db->lastInsertId();
+      if (trim($_POST['text'] ?? '') !== '') {
+        q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)', [$topicId, $me['id'], trim($_POST['text'])]);
+      }
+      flash(t('fl_topic_created'));
+      redirect('/intern/themen/' . $topicId);
+    }
+    redirect('/intern/themen');
+  }
+  if (preg_match('~^/intern/themen/(\d+)$~', $path, $m) && $method === 'GET') {
+    $topic = row('SELECT t.*, u.name AS author FROM topics t LEFT JOIN users u ON u.id = t.created_by WHERE t.id = ?', [$m[1]]);
+    if (!$topic) { http_response_code(404); view('404', ['title' => t('inav_themen')]); }
+    view('intern/thema', [
+      'title' => $topic['title'],
+      'topic' => $topic,
+      'posts' => rows('SELECT p.*, u.name AS author FROM topic_posts p LEFT JOIN users u ON u.id = p.user_id
+                       WHERE p.topic_id = ? ORDER BY p.created_at', [$m[1]]),
+    ]);
+  }
+  if (preg_match('~^/intern/themen/(\d+)/(antwort|schliessen|delete)$~', $path, $m) && $method === 'POST') {
+    [$_, $topicId, $action] = $m;
+    $topic = row('SELECT * FROM topics WHERE id = ?', [$topicId]);
+    if (!$topic) redirect('/intern/themen');
+    if ($action === 'antwort' && !$topic['closed'] && trim($_POST['text'] ?? '') !== '') {
+      q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)', [$topicId, $me['id'], trim($_POST['text'])]);
+    }
+    if ($action === 'schliessen') {
+      q('UPDATE topics SET closed = 1 - closed WHERE id = ?', [$topicId]);
+    }
+    if ($action === 'delete' && ((int) $topic['created_by'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      q('DELETE FROM topic_posts WHERE topic_id = ?', [$topicId]);
+      q('DELETE FROM topics WHERE id = ?', [$topicId]);
+      flash(t('fl_topic_deleted'));
+      redirect('/intern/themen');
+    }
+    redirect('/intern/themen/' . $topicId);
+  }
+  if (preg_match('~^/intern/beitrag/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    $post = row('SELECT * FROM topic_posts WHERE id = ?', [$m[1]]);
+    if ($post && ((int) $post['user_id'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      q('DELETE FROM topic_posts WHERE id = ?', [$post['id']]);
+      flash(t('fl_post_deleted'));
+      back('/intern/themen/' . ($post['topic_id'] ?? ''));
+    }
+    back('/intern/themen');
+  }
+
   // ---------- Setlist per Ziehen umsortieren ----------
   if (preg_match('~^/intern/setlists/(\d+)/reorder$~', $path, $m) && $method === 'POST') {
     $setlistId = (int) $m[1];
