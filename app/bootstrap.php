@@ -791,7 +791,13 @@ foreach ($defaults as $k => $v) {
 // Früher gab es nur ein Namensfeld. Der bisherige Inhalt wandert einmalig in den
 // Vornamen, damit niemand seinen Namen neu eintippen muss.
 if (setting('names_split') !== '1') {
-  q("UPDATE users SET first_name = name WHERE first_name = '' AND name != ''");
+  // Am letzten Leerzeichen trennen: "Lisa Berg" -> Lisa + Berg, "Sebastian" -> Sebastian
+  foreach (rows("SELECT id, name FROM users WHERE first_name = '' AND name != ''") as $u) {
+    $pos = mb_strrpos(trim($u['name']), ' ');
+    $first = $pos === false ? trim($u['name']) : mb_substr(trim($u['name']), 0, $pos);
+    $last = $pos === false ? '' : mb_substr(trim($u['name']), $pos + 1);
+    q('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?', [$first, $last, $u['id']]);
+  }
   set_setting('names_split', '1');
 }
 if (setting('ical_token') === '') set_setting('ical_token', bin2hex(random_bytes(16)));
