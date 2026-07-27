@@ -223,7 +223,10 @@ if ($path === '/passwort-vergessen') {
         . "Viele Grüße\n$band";
       $from = 'no-reply@' . preg_replace('~^www\.~', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
       $replyTo = setting('contact_email') ? "\r\nReply-To: " . setting('contact_email') : '';
-      @mail($email, "Passwort zurücksetzen - $band", $body, "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8");
+      // Der fünfte Parameter setzt den Umschlagabsender. Ohne ihn nimmt PHP den
+      // Systembenutzer, und die SPF-Prüfung passt dann nicht zur Absenderdomain.
+      @mail($email, "Passwort zurücksetzen - $band", $body,
+        "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
     }
     flash(t('pwreset_sent'));
     redirect('/login');
@@ -841,7 +844,7 @@ if (str_starts_with($path, '/intern')) {
         $from = 'no-reply@' . preg_replace('~^www\.~', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
         $replyTo = setting('contact_email') ? "\r\nReply-To: " . setting('contact_email') : '';
         $sent = @mail($email, "Dein Zugang zum Bandbereich von $band", $body,
-          "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8");
+          "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
         flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
       } catch (PDOException) {
         flash(t('fl_email_taken'));
