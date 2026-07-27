@@ -115,6 +115,14 @@ function backup_collect(string $dir, string $base): array {
  */
 function backup_run(string $trigger = 'auto'): array {
   $dir = backup_dir();
+  if (!is_dir($dir) || !is_writable($dir)) {
+    // Kein stiller Fehlschlag: ein nicht beschreibbares Verzeichnis ist der
+    // häufigste Grund, warum eine Sicherung nie entsteht.
+    $msg = 'Verzeichnis nicht beschreibbar: ' . $dir;
+    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
+      ['', 0, 'error', $msg, $trigger]);
+    return ['status' => 'error', 'message' => $msg];
+  }
   $lock = fopen($dir . '/.lock', 'c');
   if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
     return ['status' => 'skipped', 'message' => 'Ein Lauf ist bereits unterwegs'];
