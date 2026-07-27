@@ -34,6 +34,20 @@
       <span class="brand-mark">♨</span> <?= e($settings['band_name']) ?>
     <?php endif; ?>
   </a>
+  <div class="header-user">
+    <?php $activeLangs = enabled_langs(); ?>
+    <?php if (count($activeLangs) > 1): ?>
+      <?php require_once BASE_DIR . '/app/views/_flags.php'; ?>
+      <details class="lang-dd">
+        <summary><?= flag_svg(current_lang()) ?> <span><?= strtoupper(current_lang()) ?></span></summary>
+        <div class="lang-menu">
+          <?php foreach ($activeLangs as $code): ?>
+            <a href="<?= e($path) ?>?lang=<?= $code ?>" class="<?= current_lang() === $code ? 'active' : '' ?>"><?= flag_svg($code) ?> <?= LANGS[$code] ?></a>
+          <?php endforeach; ?>
+        </div>
+      </details>
+    <?php endif; ?>
+  </div>
   <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
   <label class="nav-burger" for="nav-toggle" aria-label="Menü"><span>☰</span></label>
   <nav>
@@ -67,27 +81,21 @@
         <a href="/downloads" class="<?= $path === '/downloads' ? 'active' : '' ?>"><?= e(t('nav_downloads')) ?></a>
       <?php endif; ?>
     <?php endif; ?>
+    <div class="nav-user">
+      <?php if ($user): ?>
+        <?php if (!$isIntern): ?>
+          <a href="/intern"><?= e(t('inav_intern')) ?></a>
+        <?php else: ?>
+          <a href="/"><?= e(t('inav_zur_website')) ?></a>
+        <?php endif; ?>
+        <form action="/logout" method="post"><?= csrf_field() ?>
+          <button class="nav-link-button"><?= e(t('logout')) ?> (<?= e($user['name']) ?>)</button>
+        </form>
+      <?php else: ?>
+        <a href="/login"><?= e(t('nav_bandbereich')) ?></a>
+      <?php endif; ?>
+    </div>
   </nav>
-  <div class="header-user">
-    <?php $activeLangs = enabled_langs(); ?>
-    <?php if (count($activeLangs) > 1): ?>
-      <?php require_once BASE_DIR . '/app/views/_flags.php'; ?>
-      <details class="lang-dd">
-        <summary><?= flag_svg(current_lang()) ?> <span><?= strtoupper(current_lang()) ?></span></summary>
-        <div class="lang-menu">
-          <?php foreach ($activeLangs as $code): ?>
-            <a href="<?= e($path) ?>?lang=<?= $code ?>" class="<?= current_lang() === $code ? 'active' : '' ?>"><?= flag_svg($code) ?> <?= LANGS[$code] ?></a>
-          <?php endforeach; ?>
-        </div>
-      </details>
-    <?php endif; ?>
-    <?php if ($user): ?>
-      <?php if (!$isIntern): ?><a class="btn btn-small" href="/intern"><?= e(t('inav_intern')) ?></a><?php else: ?><a class="btn btn-small" href="/"><?= e(t('inav_zur_website')) ?></a><?php endif; ?>
-      <form action="/logout" method="post" class="inline"><?= csrf_field() ?><button class="btn btn-small btn-ghost"><?= e(t('logout')) ?> (<?= e($user['name']) ?>)</button></form>
-    <?php else: ?>
-      <a class="btn btn-small btn-ghost" href="/login"><?= e(t('nav_bandbereich')) ?></a>
-    <?php endif; ?>
-  </div>
 </header>
 <?php if ($flashMsg): ?><div class="flash"><?= e($flashMsg) ?></div><?php endif; ?>
 <main class="container <?= $isIntern ? 'wide' : '' ?>">
