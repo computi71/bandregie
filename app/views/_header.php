@@ -85,10 +85,11 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/fotos' => t('inav_fotos'),
             '/intern/downloads' => t('inav_downloads'),
           ],
-          t('inavg_band')     => [
+          t('inavg_band')     => array_filter([
             '/intern/kasse' => t('inav_kasse'),
             '/intern/mitglieder' => t('inav_mitglieder'),
-          ],
+            '/intern/rechte' => $user['role'] === 'admin' ? t('perm_title') : null,
+          ]),
           t('inavg_konto')    => array_filter([
             '/intern/profil' => t('inav_profil'),
             '/intern/einstellungen' => $user['role'] === 'admin' ? t('inav_einstellungen') : null,
@@ -98,6 +99,13 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
       <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><?= e(t('inav_uebersicht')) ?></a>
       <?php foreach ($navGroups as $groupLabel => $groupItems): ?>
         <?php
+          // Was jemand nicht sehen darf, steht auch nicht im Menü — sonst
+          // führt jeder zweite Eintrag nur auf eine Absage.
+          $groupItems = array_filter($groupItems, function ($itemPath) use ($user) {
+            $mod = perm_module_for($itemPath);
+            return $mod === null || perm_allows($user, $mod, 'read');
+          }, ARRAY_FILTER_USE_KEY);
+          if (!$groupItems) continue;
           // Die Gruppe der aktuellen Seite steht offen, die übrigen bleiben zu
           $groupActive = false;
           foreach (array_keys($groupItems) as $groupPath) {

@@ -34,7 +34,7 @@
       <?php if (!empty($m['phone'])): ?><span class="muted">📞 <?= e($m['phone']) ?></span><?php endif; ?>
       <?php if (!empty($m['substitute_for_name'])): ?><span class="badge">🔁 <?= e(t('mem_substitute_for')) ?> <?= e($m['substitute_for_name']) ?></span><?php endif; ?>
       <span class="badge <?= $m['role'] === 'admin' ? 'public' : '' ?>"><?= e(t('role_' . ($m['role'] === 'ersatz' ? 'ersatz' : ($m['role'] === 'admin' ? 'admin' : 'member')))) ?></span>
-      <?php if (!empty($m['can_finance'])): ?><span class="badge">💰 <?= e(t('fin_badge')) ?></span><?php endif; ?>
+      <?php if (perm_allows($m, 'kasse', 'write')): ?><span class="badge">💰 <?= e(t('fin_badge')) ?></span><?php endif; ?>
       <span class="row-buttons">
         <?php if ((int) $m['id'] === (int) $user['id']): ?><a class="btn btn-tiny" href="/intern/profil">✏️ <?= e(t('mem_my_profile')) ?></a><?php endif; ?>
         <?php if ((int) $m['id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
@@ -84,7 +84,7 @@
               <option value="ersatz" <?= $mFull['role'] === 'ersatz' ? 'selected' : '' ?>><?= e(t('role_ersatz')) ?></option>
             </select>
           </label>
-          <label class="checkbox"><input type="checkbox" name="can_finance" value="1" <?= $mFull['can_finance'] ? 'checked' : '' ?>> 💰 <?= e(t('mem_finance')) ?></label>
+          <p class="muted small span2">🔑 <a href="/intern/rechte"><?= e(t('perm_open')) ?></a> — <?= e(t('perm_intro')) ?></p>
           <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
         </form>
       </details>

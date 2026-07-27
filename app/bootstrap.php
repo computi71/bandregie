@@ -302,6 +302,15 @@ const UI_STRINGS = [
   'fl_img_too_big' => 'Bild zu groß (max. 5 MB).',
   'fl_branding_saved' => 'Branding aktualisiert.',
   'fl_admin_required' => 'Dafür brauchst du Admin-Rechte.',
+  // Rechte je Bereich
+  'perm_title' => 'Rechte', 'perm_read' => 'sehen', 'perm_write' => 'ändern',
+  'perm_intro' => 'Wer darf welchen Bereich sehen und ändern? Wer ändern darf, darf auch sehen.',
+  'perm_admin_all' => 'Admins dürfen alles — Einstellungen, Übersetzungen und Sicherungen bleiben ihnen vorbehalten.',
+  'perm_template' => 'Vorlage einsetzen', 'perm_tpl_member' => 'Mitglied', 'perm_tpl_ersatz' => 'Ersatz',
+  'perm_tpl_hint' => 'Setzt alle Häkchen auf die Voreinstellung der Rolle zurück.',
+  'perm_open' => 'Rechte vergeben',
+  'fl_no_permission' => 'Dafür fehlt dir das Recht.',
+  'fl_perm_saved' => 'Rechte gespeichert.',
   // Bandkasse
   'inav_kasse' => 'Kasse', 'fin_title' => 'Bandkasse', 'fin_balance' => 'Kontostand',
   'fin_income' => 'Einnahmen', 'fin_expense' => 'Ausgaben', 'fin_new' => 'Neue Buchung',
@@ -484,6 +493,58 @@ const EVENT_TYPE_FIELDS = [
   'sonstiges'    => ['times', 'venue', 'setlist', 'fee', 'production'],
 ];
 
+/**
+ * Rechte je Bereich. Der Schlüssel ist der Bereich, dahinter stehen die Pfade,
+ * die dazugehören — daran hängt die Prüfung im Front-Controller.
+ *
+ * Nicht in der Liste und deshalb weiterhin allein den Admins vorbehalten:
+ * Einstellungen, Übersetzungen, Sicherungen und die Demodaten. Wer sie
+ * bekommt, ist ohnehin Admin; ein Häkchen dafür wäre nur Schein.
+ */
+const PERM_MODULES = [
+  'termine'       => ['/intern/termine', '/intern/kalender', '/intern/kommentare'],
+  'songs'         => ['/intern/songs'],
+  'setlists'      => ['/intern/setlists'],
+  'orte'          => ['/intern/orte'],
+  'abwesenheiten' => ['/intern/abwesenheiten'],
+  'aufgaben'      => ['/intern/aufgaben'],
+  'themen'        => ['/intern/themen', '/intern/thema'],
+  'kasse'         => ['/intern/kasse'],
+  'equipment'     => ['/intern/equipment'],
+  'rider'         => ['/intern/stagerider', '/intern/kanaele'],
+  'fotos'         => ['/intern/fotos'],
+  'downloads'     => ['/intern/downloads'],
+  'mitglieder'    => ['/intern/mitglieder'],
+];
+
+/** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
+const PERM_ENTITY_MODULES = [
+  'event' => 'termine', 'song' => 'songs', 'venue' => 'orte',
+  'equipment' => 'equipment', 'setlist' => 'setlists',
+];
+
+/**
+ * Voreinstellung je Rolle: [lesen, schreiben]. Wer neu angelegt wird, bekommt
+ * diese Rechte; danach lassen sie sich einzeln ändern. Admins stehen nicht in
+ * der Liste — sie dürfen alles, sonst könnte sich niemand mehr helfen.
+ */
+const PERM_TEMPLATES = [
+  'member' => [
+    'termine' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
+    'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
+    'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
+    'fotos' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
+  ],
+  // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
+  // das Material dazu — nicht die Kasse und nicht die Bandinterna.
+  'ersatz' => [
+    'termine' => [1, 0], 'songs' => [1, 0], 'setlists' => [1, 0], 'orte' => [0, 0],
+    'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
+    'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [0, 0],
+    'fotos' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
+  ],
+];
+
 // Woher PA und Licht bei einem Termin kommen
 const PRODUCTION_SOURCES = ['eigene' => 'Eigenes Material', 'leih' => 'Geliehen/Gemietet', 'vorhanden' => 'Vor Ort vorhanden'];
 
@@ -643,6 +704,15 @@ $tables = [
     is_standard TINYINT(1) NOT NULL DEFAULT 0,
     notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Rechte je Mitglied und Bereich; fehlt die Zeile, gibt es kein Recht
+  "CREATE TABLE IF NOT EXISTS permissions (
+    user_id INT NOT NULL,
+    module VARCHAR(30) NOT NULL,
+    can_read TINYINT(1) NOT NULL DEFAULT 0,
+    can_write TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, module)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   // Jeder Sicherungslauf, auch der fehlgeschlagene
@@ -883,6 +953,20 @@ if (setting('ical_token') === '') set_setting('ical_token', bin2hex(random_bytes
 if (setting('downloads_token') === '') set_setting('downloads_token', bin2hex(random_bytes(16)));
 if (setting('downloads_mode') === '') set_setting('downloads_mode', 'token');
 
+// Rechte einmalig aus den bisherigen Rollen übernehmen: alle behalten genau
+// das, was sie vorher durften, und das Finanz-Häkchen wird zum Schreibrecht
+// in der Kasse. Ein Update darf niemandem etwas wegnehmen, ohne zu fragen.
+if (setting('permissions_migrated') !== '1' && row('SELECT 1 FROM users LIMIT 1')) {
+  foreach (rows('SELECT id, role, can_finance FROM users') as $permUser) {
+    if ($permUser['role'] === 'admin') continue;
+    perm_apply_template((int) $permUser['id'], $permUser['role'] === 'ersatz' ? 'ersatz' : 'member');
+    if ($permUser['role'] !== 'ersatz' && (int) $permUser['can_finance'] === 1) {
+      q("UPDATE permissions SET can_write = 1 WHERE user_id = ? AND module = 'kasse'", [$permUser['id']]);
+    }
+  }
+  set_setting('permissions_migrated', '1');
+}
+
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
 // sondern auch dann, wenn eine neue Version weitere Seed-Dateien mitbringt.
 // Die Seeds ergänzen ausschließlich fehlende Schlüssel; im Bandbereich von Hand
@@ -937,10 +1021,64 @@ function require_admin(): array {
   return $u;
 }
 
+// ---------- Rechte je Bereich ----------
+
+/** Gespeicherte Rechte eines Mitglieds: Bereich => ['read' => bool, 'write' => bool]. */
+function perm_of(int $userId): array {
+  static $cache = [];
+  if (!isset($cache[$userId])) {
+    $cache[$userId] = [];
+    foreach (rows('SELECT module, can_read, can_write FROM permissions WHERE user_id = ?', [$userId]) as $r) {
+      $cache[$userId][$r['module']] = ['read' => (bool) $r['can_read'], 'write' => (bool) $r['can_write']];
+    }
+  }
+  return $cache[$userId];
+}
+
+/** Darf jemand in einem Bereich lesen ($need = 'read') oder ändern ('write')? */
+function perm_allows(?array $user, string $module, string $need = 'read'): bool {
+  if (!$user) return false;
+  if (($user['role'] ?? '') === 'admin') return true;
+  $p = perm_of((int) $user['id'])[$module] ?? null;
+  if (!$p) return false;
+  // Wer ändern darf, darf auch sehen — alles andere wäre eine Falle
+  return $need === 'write' ? $p['write'] : ($p['read'] || $p['write']);
+}
+
+/** Zu welchem Bereich gehört ein Pfad? null heißt: für alle Angemeldeten offen. */
+function perm_module_for(string $path): ?string {
+  // Dateianhänge folgen dem Bereich der Sache, an der sie hängen — sonst
+  // könnte man an einen Termin nichts anhängen, ohne Rechte an allen Dateien.
+  if ($path === '/intern/dateien') {
+    return PERM_ENTITY_MODULES[$_POST['entity_type'] ?? ''] ?? null;
+  }
+  if (preg_match('~^/intern/datei/(\d+)~', $path, $m)) {
+    $f = row('SELECT entity_type FROM files WHERE id = ?', [$m[1]]);
+    return PERM_ENTITY_MODULES[$f['entity_type'] ?? ''] ?? null;
+  }
+  foreach (PERM_MODULES as $module => $prefixes) {
+    foreach ($prefixes as $prefix) {
+      if ($path === $prefix || str_starts_with($path, $prefix . '/')) return $module;
+    }
+  }
+  return null;
+}
+
+/** Rechte einer Rolle setzen; Admins brauchen keine Zeilen, sie dürfen alles. */
+function perm_apply_template(int $userId, string $role): void {
+  $tpl = PERM_TEMPLATES[$role] ?? PERM_TEMPLATES['member'];
+  foreach ($tpl as $module => [$read, $write]) {
+    q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?,?,?,?)
+       ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)',
+      [$userId, $module, $read, $write]);
+  }
+}
+
 // Kassen-Schreibrecht: nur Mitglieder mit Finanz-Häkchen (vergeben Admins unter Mitglieder)
 function can_finance(): bool {
-  $u = current_user();
-  return $u !== null && !empty($u['can_finance']);
+  // Seit es Rechte je Bereich gibt, ist das Finanz-Häkchen das Schreibrecht
+  // an der Kasse. Zwei Schalter für dieselbe Sache wären nur verwirrend.
+  return perm_allows(current_user(), 'kasse', 'write');
 }
 
 function redirect(string $to): never { header("Location: $to"); exit; }

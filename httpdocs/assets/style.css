@@ -388,6 +388,16 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Rechtevergabe: je Bereich eine Zeile mit zwei Häkchen. Auf schmalen
+   Schirmen rutschen die Häkchen unter den Namen, statt zu quetschen. */
+.perm-list { list-style: none; padding: 0; margin: 0.4rem 0; }
+.perm-list li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.2rem;
+  padding: 0.45rem 0; border-bottom: 1px solid var(--border);
+}
+.perm-list .perm-name { flex: 1 1 10rem; font-weight: 500; }
+.perm-list .checkbox { display: flex; align-items: center; gap: 0.35rem; margin: 0; white-space: nowrap; }
+
 /* Bestandteile können tief verschachtelt sein — Rack, Empfänger, Mikrofon,
    Kapsel. Statt immer weiter einzurücken (auf dem Handy wäre nach drei Ebenen
    Schluss) markiert eine Linie am Rand, dass etwas dazugehört. */

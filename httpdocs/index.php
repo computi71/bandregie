@@ -271,6 +271,19 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/passwort');
   }
 
+  // Rechte je Bereich, an einer Stelle für alle Routen. Ein GET braucht das
+  // Leserecht, alles Schreibende das Änderungsrecht. Pfade ohne Bereich —
+  // Übersicht, eigenes Profil, Passwort — stehen jedem Angemeldeten offen,
+  // und die Zu- oder Absage zu einem Termin gehört zum Sehen: wer eingeladen
+  // ist, darf antworten, auch ohne den Termin ändern zu dürfen.
+  if ($permModule = perm_module_for($path)) {
+    $permNeed = $method === 'GET' || preg_match('~^/intern/termine/\d+/zusage$~', $path) ? 'read' : 'write';
+    if (!perm_allows($me, $permModule, $permNeed)) {
+      flash(t('fl_no_permission'));
+      redirect('/intern');
+    }
+  }
+
   // Fällige Sicherung nebenbei anstoßen. Ohne Cronjob gibt es keinen anderen
   // Zeitpunkt; die Sperre in backup_run() verhindert doppelte Läufe. Wo der
   // Server es kann, ist die Seite vorher ausgeliefert und niemand wartet.
@@ -798,6 +811,40 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/profil');
   }
 
+  // ---------- Rechte je Bereich ----------
+  if ($path === '/intern/rechte' && $method === 'GET') {
+    require_admin();
+    $permByUser = [];
+    foreach (rows('SELECT * FROM permissions') as $permRow) {
+      $permByUser[(int) $permRow['user_id']][$permRow['module']] = $permRow;
+    }
+    view('intern/rechte', [
+      'title' => t('perm_title'),
+      'members' => rows('SELECT id, name, role FROM users ORDER BY role, name'),
+      'perms' => $permByUser,
+    ]);
+  }
+  if (preg_match('~^/intern/rechte/(\d+)$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    $permTarget = row('SELECT id, role FROM users WHERE id = ?', [$m[1]]);
+    if ($permTarget && $permTarget['role'] !== 'admin') {
+      if (($_POST['template'] ?? '') !== '') {
+        perm_apply_template((int) $m[1], $_POST['template'] === 'ersatz' ? 'ersatz' : 'member');
+      } else {
+        foreach (array_keys(PERM_MODULES) as $permModuleKey) {
+          $permWrite = isset($_POST['perm'][$permModuleKey]['write']) ? 1 : 0;
+          // Ändern ohne Sehen gibt es nicht — das Häkchen zieht das andere mit
+          $permRead = $permWrite || isset($_POST['perm'][$permModuleKey]['read']) ? 1 : 0;
+          q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?,?,?,?)
+             ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)',
+            [$m[1], $permModuleKey, $permRead, $permWrite]);
+        }
+      }
+      flash(t('fl_perm_saved'));
+    }
+    redirect('/intern/rechte');
+  }
+
   // ---------- Mitglieder ----------
   if ($path === '/intern/mitglieder' && $method === 'GET') {
     view('intern/mitglieder', [
@@ -823,9 +870,14 @@ if (str_starts_with($path, '/intern')) {
         ]);
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus)
         if ((int) $m[1] !== (int) $me['id'] && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz'], true)) {
+          $roleBefore = row('SELECT role FROM users WHERE id = ?', [$m[1]])['role'] ?? '';
           q('UPDATE users SET role = ? WHERE id = ?', [$_POST['role'], $m[1]]);
+          // Eine neue Rolle bringt ihre Rechte mit; einzeln nachbessern geht
+          // danach weiterhin unter „Rechte".
+          if ($roleBefore !== $_POST['role'] && $_POST['role'] !== 'admin') {
+            perm_apply_template((int) $m[1], $_POST['role']);
+          }
         }
-        q('UPDATE users SET can_finance = ? WHERE id = ?', [isset($_POST['can_finance']) ? 1 : 0, $m[1]]);
         flash(t('fl_member_updated'));
       } catch (PDOException) {
         flash(t('fl_email_taken'));
@@ -849,6 +901,9 @@ if (str_starts_with($path, '/intern')) {
           $email, password_hash($startPw, PASSWORD_DEFAULT),
           in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
         ]);
+        // Rechte nach der Vorlage der Rolle; Admins brauchen keine Zeilen
+        $newRole = in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member';
+        if ($newRole !== 'admin') perm_apply_template((int) $db->lastInsertId(), $newRole);
         $band = setting('band_name');
         $body = "Hallo " . trim($_POST['first_name'] ?? '') . ",\n\n"
           . "für dich wurde ein Zugang zum Bandbereich von $band angelegt.\n\n"
