@@ -372,7 +372,20 @@ const UI_STRINGS = [
   'bk_auto_hint' => 'Ausgelöst wird beim Aufruf des Bandbereichs, höchstens einmal je Zeitraum. Wer einen Cronjob hat, ruft besser auf:',
   'bk_warn_old' => 'Die letzte erfolgreiche Sicherung ist älter als der eingestellte Zeitraum.',
   'bk_warn_failed' => 'Der letzte Lauf ist fehlgeschlagen.',
-  'bk_only_local' => 'Ziel ist zurzeit nur der eigene Server. FTP und OneDrive kommen noch.',
+  // Ziele der Sicherung
+  'bk_targets' => 'Wohin gesichert wird', 'bk_target_local' => 'Eigener Server',
+  'bk_target_local_hint' => 'Immer aktiv. Das Archiv liegt außerhalb des Webverzeichnisses und lässt sich hier herunterladen.',
+  'bk_target_ftp' => 'FTP-Server', 'bk_ftp_enabled' => 'Zusätzlich auf einen FTP-Server legen',
+  'bk_ftp_host' => 'Server', 'bk_ftp_port' => 'Port', 'bk_ftp_user' => 'Benutzer',
+  'bk_ftp_pass' => 'Passwort', 'bk_ftp_pass_set' => 'gespeichert — zum Ändern neu eingeben',
+  'bk_ftp_dir' => 'Verzeichnis', 'bk_ftp_tls' => 'Verschlüsselt (FTPS)',
+  'bk_ftp_passive' => 'Passiver Modus', 'bk_ftp_keep' => 'Wie viele dort aufheben',
+  'bk_ftp_test' => 'Verbindung prüfen',
+  'bk_ftp_note' => 'Das Passwort muss im Klartext gespeichert werden, sonst kann sich die Sicherung nicht anmelden. Es verlässt den Server nur in Richtung des eingetragenen Servers.',
+  'bk_ftp_pending' => 'Die Zugangsdaten werden schon gespeichert und lassen sich prüfen — das Hochladen selbst kommt im nächsten Schritt.',
+  'bk_target_onedrive' => 'OneDrive',
+  'bk_onedrive_pending' => 'Braucht eine Anmeldung bei Microsoft. Sobald die Verbindung für Dateien und Fotos steht, kann die Sicherung sie mitbenutzen.',
+  'fl_bk_targets_saved' => 'Ziele gespeichert.',
   'fl_bk_done' => 'Sicherung erstellt.', 'fl_bk_failed' => 'Sicherung fehlgeschlagen:',
   'fl_bk_saved' => 'Einstellungen zur Sicherung gespeichert.', 'fl_bk_deleted' => 'Sicherung gelöscht.',
   'eq_owner_locked' => 'Preis, Besitzer und Kaufdatum ändern nur der Besitzer und die Verwaltung. Das Gerät umzuhängen gehört dazu — über das übergeordnete Gerät wechselt sonst der Besitzer mit.',
@@ -561,11 +574,13 @@ const PERM_TEMPLATES = [
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
-  // das Material dazu — nicht die Kasse und nicht die Bandinterna.
+  // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
+  // Stagerider und die Kanalbelegung gehören dazu: „auf welchem Kanal liegt
+  // mein Mikrofon" ist die erste Frage am Aufbautag.
   'ersatz' => [
     'termine' => [1, 0], 'songs' => [1, 0], 'setlists' => [1, 0], 'orte' => [0, 0],
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
-    'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [0, 0],
+    'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
   ],
 ];
@@ -968,6 +983,10 @@ $defaults = [
   // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
   // Installation ungefragt die Platte des Servers, auf dem sie liegt.
   'backup_enabled' => '0', 'backup_interval' => 'daily', 'backup_keep' => '7',
+  // Ziele: der eigene Server ist immer dabei, FTP und OneDrive kommen dazu
+  'backup_ftp_enabled' => '0', 'backup_ftp_host' => '', 'backup_ftp_port' => '21',
+  'backup_ftp_user' => '', 'backup_ftp_pass' => '', 'backup_ftp_dir' => '',
+  'backup_ftp_tls' => '1', 'backup_ftp_passive' => '1', 'backup_ftp_keep' => '14',
   // Ersatz wird von Hand angefragt, bis die Band etwas anderes einstellt
   'substitute_auto' => 'off',
 ];
@@ -1007,6 +1026,15 @@ if (setting('permissions_migrated') !== '1' && row('SELECT 1 FROM users LIMIT 1'
     }
   }
   set_setting('permissions_migrated', '1');
+}
+
+// Ersatzleute dürfen den Stagerider und die Kanalbelegung sehen; wer schon
+// angelegt ist, bekommt das Recht nachgereicht. Wer es einem Ersatz von Hand
+// wieder wegnimmt, behält das — die Zeile wird nur einmal angefasst.
+if (setting('perm_ersatz_rider') !== '1' && setting('permissions_migrated') === '1') {
+  q("UPDATE permissions p JOIN users u ON u.id = p.user_id
+     SET p.can_read = 1 WHERE u.role = 'ersatz' AND p.module = 'rider'");
+  set_setting('perm_ersatz_rider', '1');
 }
 
 // „Musik & Videos" ist aus den Einstellungen in einen eigenen Bereich gezogen.

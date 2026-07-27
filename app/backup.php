@@ -15,6 +15,57 @@ declare(strict_types=1);
 
 const BACKUP_INTERVALS = ['daily' => 86400, 'weekly' => 604800];
 
+/**
+ * Zugangsdaten des FTP-Ziels. Das Passwort steht im Klartext in der
+ * Datenbank — anders kann sich ein Programm bei FTP nicht anmelden. Es
+ * verlässt den Server nur in Richtung des eingetragenen Hosts und wird nie
+ * ins Formular zurückgeschrieben.
+ */
+function backup_ftp_config(): array {
+  return [
+    'enabled' => setting('backup_ftp_enabled') === '1',
+    'host'    => setting('backup_ftp_host'),
+    'port'    => (int) (setting('backup_ftp_port') ?: 21),
+    'user'    => setting('backup_ftp_user'),
+    'pass'    => setting('backup_ftp_pass'),
+    'dir'     => setting('backup_ftp_dir'),
+    'tls'     => setting('backup_ftp_tls') === '1',
+    'passive' => setting('backup_ftp_passive') === '1',
+    'keep'    => max(1, (int) (setting('backup_ftp_keep') ?: 14)),
+  ];
+}
+
+/**
+ * Verbindung zum FTP-Ziel prüfen: anmelden, ins Zielverzeichnis wechseln,
+ * auflisten, fertig. Es wird nichts geschrieben und nichts gelöscht.
+ *
+ * @return array{ok:bool,message:string}
+ */
+function backup_ftp_test(): array {
+  $cfg = backup_ftp_config();
+  if (!function_exists('ftp_connect')) {
+    return ['ok' => false, 'message' => 'Dieser Server kann kein FTP (Erweiterung fehlt).'];
+  }
+  if ($cfg['host'] === '' || $cfg['user'] === '') {
+    return ['ok' => false, 'message' => 'Server und Benutzer fehlen.'];
+  }
+  $conn = $cfg['tls'] ? @ftp_ssl_connect($cfg['host'], $cfg['port'], 10)
+                      : @ftp_connect($cfg['host'], $cfg['port'], 10);
+  if (!$conn) return ['ok' => false, 'message' => 'Keine Verbindung zu ' . $cfg['host'] . ':' . $cfg['port']];
+  if (!@ftp_login($conn, $cfg['user'], $cfg['pass'])) {
+    @ftp_close($conn);
+    return ['ok' => false, 'message' => 'Anmeldung abgelehnt.'];
+  }
+  @ftp_pasv($conn, $cfg['passive']);
+  if ($cfg['dir'] !== '' && !@ftp_chdir($conn, $cfg['dir'])) {
+    @ftp_close($conn);
+    return ['ok' => false, 'message' => 'Verzeichnis nicht gefunden: ' . $cfg['dir']];
+  }
+  $list = @ftp_nlist($conn, '.');
+  @ftp_close($conn);
+  return ['ok' => true, 'message' => 'Verbunden. Im Zielverzeichnis liegen ' . count($list ?: []) . ' Einträge.'];
+}
+
 function backup_dir(): string {
   $dir = DATA_DIR . '/backups';
   if (!is_dir($dir)) @mkdir($dir, 0700, true);

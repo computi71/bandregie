@@ -167,7 +167,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 
 <details class="card acc" name="setacc">
   <summary>💾 <?= e(t('bk_title')) ?></summary>
-  <p class="muted small"><?= e(t('bk_content')) ?> <?= e(t('bk_only_local')) ?></p>
+  <p class="muted small"><?= e(t('bk_content')) ?></p>
   <?php
     $bkLast = null;
     foreach ($backupRuns as $bkRun) { if ($bkRun['status'] === 'ok') { $bkLast = $bkRun; break; } }
@@ -194,6 +194,33 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   </form>
 
   <p class="muted small"><?= e(t('bk_auto_hint')) ?> <code>php <?= e(BASE_DIR) ?>/app/backup.php</code></p>
+
+  <h3><?= e(t('bk_targets')) ?></h3>
+  <?php $ftp = backup_ftp_config(); ?>
+  <p class="muted small">📁 <strong><?= e(t('bk_target_local')) ?></strong> — <?= e(t('bk_target_local_hint')) ?></p>
+
+  <form method="post" action="/intern/einstellungen/backup-ziele" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2"><input type="checkbox" name="backup_ftp_enabled" value="1" <?= $ftp['enabled'] ? 'checked' : '' ?>> 🖧 <?= e(t('bk_ftp_enabled')) ?></label>
+    <label><?= e(t('bk_ftp_host')) ?><input name="backup_ftp_host" value="<?= e($ftp['host']) ?>" placeholder="ftp.example.com"></label>
+    <label><?= e(t('bk_ftp_port')) ?><input type="number" name="backup_ftp_port" min="1" max="65535" value="<?= (int) $ftp['port'] ?>"></label>
+    <label><?= e(t('bk_ftp_user')) ?><input name="backup_ftp_user" value="<?= e($ftp['user']) ?>" autocomplete="off"></label>
+    <label><?= e(t('bk_ftp_pass')) ?>
+      <input type="password" name="backup_ftp_pass" autocomplete="new-password"
+             placeholder="<?= $ftp['pass'] !== '' ? e(t('bk_ftp_pass_set')) : '' ?>">
+    </label>
+    <label><?= e(t('bk_ftp_dir')) ?><input name="backup_ftp_dir" value="<?= e($ftp['dir']) ?>" placeholder="/backups/bandroadie"></label>
+    <label><?= e(t('bk_ftp_keep')) ?><input type="number" name="backup_ftp_keep" min="1" max="365" value="<?= (int) $ftp['keep'] ?>"></label>
+    <label class="checkbox"><input type="checkbox" name="backup_ftp_tls" value="1" <?= $ftp['tls'] ? 'checked' : '' ?>> 🔒 <?= e(t('bk_ftp_tls')) ?></label>
+    <label class="checkbox"><input type="checkbox" name="backup_ftp_passive" value="1" <?= $ftp['passive'] ? 'checked' : '' ?>> <?= e(t('bk_ftp_passive')) ?></label>
+    <p class="muted small span2">🔑 <?= e(t('bk_ftp_note')) ?></p>
+    <p class="warn small span2">⚠ <?= e(t('bk_ftp_pending')) ?></p>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+  <form method="post" action="/intern/backup/ftp-test" class="inline"><?= csrf_field() ?>
+    <button class="btn"><?= e(t('bk_ftp_test')) ?></button>
+  </form>
+
+  <p class="muted small">☁ <strong><?= e(t('bk_target_onedrive')) ?></strong> — <?= e(t('bk_onedrive_pending')) ?></p>
 
   <form method="post" action="/intern/backup/run" class="inline"><?= csrf_field() ?>
     <button class="btn"><?= e(t('bk_run_now')) ?></button>

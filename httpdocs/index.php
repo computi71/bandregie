@@ -1545,6 +1545,28 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_bk_saved'));
     redirect('/intern/einstellungen');
   }
+  if ($path === '/intern/einstellungen/backup-ziele' && $method === 'POST') {
+    require_admin();
+    set_setting('backup_ftp_enabled', isset($_POST['backup_ftp_enabled']) ? '1' : '0');
+    foreach (['backup_ftp_host', 'backup_ftp_user', 'backup_ftp_dir'] as $k) {
+      set_setting($k, trim($_POST[$k] ?? ''));
+    }
+    set_setting('backup_ftp_port', (string) max(1, min(65535, (int) ($_POST['backup_ftp_port'] ?? 21))));
+    set_setting('backup_ftp_keep', (string) max(1, min(365, (int) ($_POST['backup_ftp_keep'] ?? 14))));
+    set_setting('backup_ftp_tls', isset($_POST['backup_ftp_tls']) ? '1' : '0');
+    set_setting('backup_ftp_passive', isset($_POST['backup_ftp_passive']) ? '1' : '0');
+    // Ein leeres Passwortfeld heißt „nicht ändern" — das gespeicherte wird
+    // nie ins Formular zurückgeschrieben, es gäbe also nichts abzuschicken.
+    if (($_POST['backup_ftp_pass'] ?? '') !== '') set_setting('backup_ftp_pass', $_POST['backup_ftp_pass']);
+    flash(t('fl_bk_targets_saved'));
+    redirect('/intern/einstellungen');
+  }
+  if ($path === '/intern/backup/ftp-test' && $method === 'POST') {
+    require_admin();
+    $test = backup_ftp_test();
+    flash(($test['ok'] ? '✔ ' : '⚠ ') . $test['message']);
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/backup/run' && $method === 'POST') {
     require_admin();
     $run = backup_run('manuell');
