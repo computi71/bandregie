@@ -234,12 +234,26 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
           <span class="muted small"><?= e(t('bk_gone')) ?></span>
         <?php endif; ?>
         <?php if ($bkRun['message'] !== ''): ?><span class="muted small"><?= e($bkRun['message']) ?></span><?php endif; ?>
+        <?php if ($bkRun['filename'] !== ''): ?>
+          <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/restore" class="inline" onsubmit="return confirm('<?= e(t('bk_restore_confirm')) ?>')"><?= csrf_field() ?>
+            <button class="btn btn-tiny">⏪ <?= e(t('bk_restore')) ?></button>
+          </form>
+        <?php endif; ?>
         <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/delete" class="inline" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
           <button class="btn btn-tiny btn-danger">🗑</button>
         </form>
       </li>
     <?php endforeach; ?>
   </ul>
+
+  <h3><?= e(t('bk_restore')) ?></h3>
+  <p class="muted small">⏪ <?= e(t('bk_restore_hint')) ?></p>
+  <p class="muted small"><?= e(t('bk_restore_cli')) ?> <code>php <?= e(BASE_DIR) ?>/app/backup.php restore &lt;archiv.tar.gz&gt;</code></p>
+  <form method="post" action="/intern/backup/upload" enctype="multipart/form-data" class="comment-form"><?= csrf_field() ?>
+    <input type="file" name="archive" accept=".gz,application/gzip" required>
+    <button class="btn btn-small"><?= e(t('bk_upload')) ?></button>
+  </form>
+  <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
 </details>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>

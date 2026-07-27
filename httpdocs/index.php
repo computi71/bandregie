@@ -1573,6 +1573,37 @@ if (str_starts_with($path, '/intern')) {
     flash(($run['status'] ?? '') === 'ok' ? t('fl_bk_done') : t('fl_bk_failed') . ' ' . ($run['message'] ?? ''));
     redirect('/intern/einstellungen');
   }
+  // Ein Archiv von außen einspielen — für den Fall, dass der Server neu
+  // aufgesetzt wurde und hier noch nichts liegt.
+  if ($path === '/intern/backup/upload' && $method === 'POST') {
+    require_admin();
+    $up = $_FILES['archive'] ?? null;
+    $name = basename((string) ($up['name'] ?? ''));
+    if (!$up || ($up['error'] ?? 1) !== UPLOAD_ERR_OK || !str_ends_with($name, '.tar.gz')) {
+      flash(t('fl_bk_upload_invalid'));
+      redirect('/intern/einstellungen');
+    }
+    $target = backup_dir() . '/' . preg_replace('~[^A-Za-z0-9._-]~', '_', $name);
+    move_uploaded_file($up['tmp_name'], $target);
+    @chmod($target, 0600);
+    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
+      [basename($target), (int) filesize($target), 'ok', t('bk_uploaded'), 'upload']);
+    flash(t('fl_bk_uploaded'));
+    redirect('/intern/einstellungen');
+  }
+  if (preg_match('~^/intern/backup/(\d+)/restore$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    $run = row('SELECT * FROM backup_runs WHERE id = ?', [$m[1]]);
+    $file = $run && $run['filename'] !== '' ? backup_dir() . '/' . basename($run['filename']) : '';
+    if (!$file || !is_file($file)) {
+      flash(t('fl_bk_missing'));
+      redirect('/intern/einstellungen');
+    }
+    $res = backup_restore($file);
+    flash(($res['ok'] ? '✔ ' : '⚠ ') . $res['message']
+      . ($res['safety'] !== '' ? ' · ' . t('bk_safety_made') . ' ' . $res['safety'] : ''));
+    redirect('/intern/einstellungen');
+  }
   if (preg_match('~^/intern/backup/(\d+)/(download|delete)$~', $path, $m)) {
     require_admin();
     $run = row('SELECT * FROM backup_runs WHERE id = ?', [$m[1]]);

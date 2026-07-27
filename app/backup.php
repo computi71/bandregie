@@ -285,9 +285,150 @@ function backup_prune(): void {
   }
 }
 
-// Direkter Aufruf aus einem Cronjob
+/**
+ * Ein tar aus dem Archiv auspacken. Gegenstück zu backup_tar_add(): 512-Byte-
+ * Köpfe, Inhalt auf 512 aufgerundet. Pfade, die aus dem Zielverzeichnis
+ * herausführen, werden übersprungen — ein Archiv ist eine fremde Datei.
+ *
+ * @return array<string> die ausgepackten Dateien, relativ zu $into
+ */
+function backup_tar_extract(string $archive, string $into): array {
+  $gz = gzopen($archive, 'rb');
+  if (!$gz) throw new RuntimeException('Archiv nicht lesbar');
+  $out = [];
+  while (!gzeof($gz)) {
+    $header = gzread($gz, 512);
+    if ($header === false || strlen($header) < 512 || trim($header) === '') break;
+    $name   = trim(substr($header, 0, 100), "\0");
+    $size   = (int) octdec(trim(substr($header, 124, 12), "\0 ") ?: '0');
+    $prefix = trim(substr($header, 345, 155), "\0");
+    if ($prefix !== '') $name = $prefix . '/' . $name;
+    $padded = $size % 512 ? $size + (512 - $size % 512) : $size;
+    // Nichts außerhalb des Zielverzeichnisses anlegen
+    if ($name === '' || str_contains($name, '..') || str_starts_with($name, '/')) {
+      if ($padded) gzread($gz, $padded);
+      continue;
+    }
+    $target = $into . '/' . $name;
+    if (!is_dir(dirname($target))) @mkdir(dirname($target), 0700, true);
+    $fh = fopen($target, 'wb');
+    $left = $size;
+    while ($left > 0) {
+      $chunk = gzread($gz, min(262144, $left));
+      if ($chunk === false || $chunk === '') break;
+      fwrite($fh, $chunk);
+      $left -= strlen($chunk);
+    }
+    fclose($fh);
+    if ($padded > $size) gzread($gz, $padded - $size);
+    $out[] = $name;
+  }
+  gzclose($gz);
+  return $out;
+}
+
+/**
+ * SQL-Text in einzelne Anweisungen zerlegen. Ein Semikolon in einem Songtitel
+ * oder einer Notiz darf nicht als Ende zählen, deshalb wird durch den Text
+ * gelaufen statt an ";" zu zerschneiden.
+ *
+ * @return array<string>
+ */
+function backup_split_sql(string $sql): array {
+  $out = [];
+  $cur = '';
+  $quote = '';
+  $len = strlen($sql);
+  for ($i = 0; $i < $len; $i++) {
+    $c = $sql[$i];
+    if ($quote !== '') {
+      $cur .= $c;
+      if ($c === '\\' && $i + 1 < $len) { $cur .= $sql[++$i]; continue; }
+      if ($c === $quote) $quote = '';
+      continue;
+    }
+    if ($c === "'" || $c === '"' || $c === '`') { $quote = $c; $cur .= $c; continue; }
+    if ($c === '-' && substr($sql, $i, 3) === '-- ') {         // Kommentarzeile
+      $nl = strpos($sql, "\n", $i);
+      $i = $nl === false ? $len : $nl;
+      continue;
+    }
+    if ($c === ';') {
+      if (trim($cur) !== '') $out[] = trim($cur);
+      $cur = '';
+      continue;
+    }
+    $cur .= $c;
+  }
+  if (trim($cur) !== '') $out[] = trim($cur);
+  return $out;
+}
+
+/**
+ * Eine Sicherung zurückspielen: erst eine Sicherheitskopie des jetzigen
+ * Standes, dann Datenbank und Dateien ersetzen. Der bisherige Datenbestand
+ * wird zur Seite gelegt statt gelöscht — wer die falsche Datei erwischt,
+ * soll nicht alles verloren haben.
+ *
+ * @return array{ok:bool,message:string,safety:string}
+ */
+function backup_restore(string $archive): array {
+  global $db;
+  if (!is_file($archive)) return ['ok' => false, 'message' => 'Archiv nicht gefunden', 'safety' => ''];
+
+  $safety = backup_run('vor-restore');
+  $safetyName = $safety['filename'] ?? '';
+  if (($safety['status'] ?? '') !== 'ok') {
+    return ['ok' => false, 'message' => 'Sicherheitskopie fehlgeschlagen, es wurde nichts verändert', 'safety' => ''];
+  }
+
+  $tmp = backup_dir() . '/.restore-' . bin2hex(random_bytes(4));
+  @mkdir($tmp, 0700, true);
+  try {
+    $files = backup_tar_extract($archive, $tmp);
+    if (!is_file($tmp . '/database.sql')) throw new RuntimeException('Im Archiv fehlt database.sql');
+
+    $statements = backup_split_sql((string) file_get_contents($tmp . '/database.sql'));
+    if (count($statements) < 5) throw new RuntimeException('Die Datenbankdatei wirkt unvollständig');
+    $db->exec('SET FOREIGN_KEY_CHECKS = 0');
+    foreach ($statements as $stmt) $db->exec($stmt);
+    $db->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+    // Dateien: den bisherigen Stand danebenlegen, dann den aus dem Archiv
+    $stamp = date('Ymd-His');
+    foreach ([UPLOADS_DIR => 'uploads', FILES_DIR => 'files'] as $dir => $base) {
+      if (!is_dir($tmp . '/' . $base)) continue;
+      if (is_dir($dir)) @rename($dir, $dir . '.vor-' . $stamp);
+      @rename($tmp . '/' . $base, $dir);
+    }
+    $count = count($files);
+    return ['ok' => true, 'safety' => $safetyName,
+            'message' => "Zurückgespielt: $count Dateien aus dem Archiv, " . count($statements) . ' SQL-Anweisungen'];
+  } catch (Throwable $e) {
+    return ['ok' => false, 'safety' => $safetyName, 'message' => $e->getMessage()];
+  } finally {
+    // Reste des Auspackens wegräumen
+    foreach (array_reverse((array) @scandir($tmp) ?: []) as $leftover) {
+      if ($leftover !== '.' && $leftover !== '..') @unlink($tmp . '/' . $leftover);
+    }
+    @rmdir($tmp);
+  }
+}
+
+// Direkter Aufruf: ohne Argument sichern, mit „restore <Datei>" zurückspielen.
+// Der Weg über die Kommandozeile bleibt der, der auch dann noch funktioniert,
+// wenn die Seite selbst nicht mehr startet.
 if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
   require __DIR__ . '/bootstrap.php';
+  if (($argv[1] ?? '') === 'restore') {
+    $file = $argv[2] ?? '';
+    if ($file === '') { fwrite(STDERR, "Aufruf: php app/backup.php restore <archiv.tar.gz>\n"); exit(2); }
+    if (!str_contains($file, '/')) $file = backup_dir() . '/' . $file;
+    $res = backup_restore($file);
+    echo ($res['ok'] ? 'ok' : 'fehler') . ' ' . $res['message']
+       . ($res['safety'] !== '' ? ' (Sicherheitskopie: ' . $res['safety'] . ')' : '') . PHP_EOL;
+    exit($res['ok'] ? 0 : 1);
+  }
   $run = backup_run('cron');
   echo ($run['status'] ?? '?') . ' ' . ($run['filename'] ?? '') . ' ' . ($run['message'] ?? '') . PHP_EOL;
   exit(($run['status'] ?? '') === 'ok' ? 0 : 1);
