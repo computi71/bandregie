@@ -13,7 +13,7 @@ require BASE_DIR . '/app/views/_header.php';
 
 <details class="card collapsible" <?= $events ? '' : 'open' ?>>
   <summary>➕ <?= e(t('ev_new')) ?></summary>
-  <form method="post" action="/intern/termine" class="form-grid"><?= csrf_field() ?>
+  <form method="post" action="/intern/termine" class="form-grid" data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'><?= csrf_field() ?>
     <label><?= e(t('ev_type')) ?>
       <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
     </label>
@@ -22,33 +22,33 @@ require BASE_DIR . '/app/views/_header.php';
     <label><?= e(t('status')) ?>
       <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('ev_meet')) ?><input type="time" name="time_meet"></label>
-    <label><?= e(t('ev_start')) ?><input type="time" name="time"></label>
-    <label><?= e(t('ev_end')) ?><input type="time" name="time_end"></label>
-    <label><?= e(t('ev_venue')) ?>
+    <label data-eventfield="times"><?= e(t('ev_meet')) ?><input type="time" name="time_meet"></label>
+    <label data-eventfield="times"><?= e(t('ev_start')) ?><input type="time" name="time"></label>
+    <label data-eventfield="times"><?= e(t('ev_end')) ?><input type="time" name="time_end"></label>
+    <label data-eventfield="venue"><?= e(t('ev_venue')) ?>
       <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>"><?= e($v['name']) ?><?= $v['city'] ? ' (' . e($v['city']) . ')' : '' ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('ev_location_free')) ?><input name="location" placeholder="<?= e(t('ev_location_free_ph')) ?>"></label>
-    <label><?= e(t('ev_setlist')) ?>
+    <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" placeholder="<?= e(t('ev_location_free_ph')) ?>"></label>
+    <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
       <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>"><?= e($sl['name']) ?></option><?php endforeach; ?></select>
     </label>
     <label><?= e(t('ev_responsible')) ?>
       <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('prod_pa')) ?>
+    <label data-eventfield="production"><?= e(t('prod_pa')) ?>
       <select name="pa_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
         <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" ><?= e(production_label($val)) ?></option><?php endforeach; ?>
       </select>
     </label>
-    <label><?= e(t('prod_light')) ?>
+    <label data-eventfield="production"><?= e(t('prod_light')) ?>
       <select name="light_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
         <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" ><?= e(production_label($val)) ?></option><?php endforeach; ?>
       </select>
     </label>
-    <label><?= e(t('ev_fee')) ?><input name="fee" placeholder="z. B. 800 €"></label>
-    <label><?= e(t('ev_invoice')) ?><input name="invoice_no"></label>
+    <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" placeholder="z. B. 800 €"></label>
+    <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no"></label>
     <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('ev_notes_ph')) ?>"></textarea></label>
-    <fieldset class="span2 pubfields">
+    <fieldset class="span2 pubfields" data-eventfield="public">
       <legend><?= e(t('ev_public_display')) ?></legend>
       <label class="checkbox"><input type="checkbox" name="is_public" value="1"> <?= e(t('ev_show_on_site')) ?></label>
       <label><?= e(t('ev_public_title')) ?><input name="public_title" placeholder="<?= e(t('ev_public_title_ph')) ?>"></label>
@@ -138,7 +138,7 @@ require BASE_DIR . '/app/views/_header.php';
     <?php else: ?>
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid" data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'><?= csrf_field() ?>
         <label><?= e(t('ev_type')) ?>
           <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['type'] === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
         </label>
@@ -147,33 +147,33 @@ require BASE_DIR . '/app/views/_header.php';
         <label><?= e(t('status')) ?>
           <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['status'] === $val ? 'selected' : '' ?>><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
         </label>
-        <label><?= e(t('ev_meet')) ?><input type="time" name="time_meet" value="<?= e($ev['time_meet']) ?>"></label>
-        <label><?= e(t('ev_start')) ?><input type="time" name="time" value="<?= e($ev['time']) ?>"></label>
-        <label><?= e(t('ev_end')) ?><input type="time" name="time_end" value="<?= e($ev['time_end']) ?>"></label>
-        <label><?= e(t('ev_venue')) ?>
+        <label data-eventfield="times"><?= e(t('ev_meet')) ?><input type="time" name="time_meet" value="<?= e($ev['time_meet']) ?>"></label>
+        <label data-eventfield="times"><?= e(t('ev_start')) ?><input type="time" name="time" value="<?= e($ev['time']) ?>"></label>
+        <label data-eventfield="times"><?= e(t('ev_end')) ?><input type="time" name="time_end" value="<?= e($ev['time_end']) ?>"></label>
+        <label data-eventfield="venue"><?= e(t('ev_venue')) ?>
           <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>" <?= (int) $ev['venue_id'] === (int) $v['id'] ? 'selected' : '' ?>><?= e($v['name']) ?></option><?php endforeach; ?></select>
         </label>
-        <label><?= e(t('ev_location_free')) ?><input name="location" value="<?= e($ev['location']) ?>"></label>
-        <label><?= e(t('ev_setlist')) ?>
+        <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" value="<?= e($ev['location']) ?>"></label>
+        <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
           <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>" <?= (int) $ev['setlist_id'] === (int) $sl['id'] ? 'selected' : '' ?>><?= e($sl['name']) ?></option><?php endforeach; ?></select>
         </label>
         <label><?= e(t('ev_responsible')) ?>
           <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $ev['responsible_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
         </label>
-    <label><?= e(t('prod_pa')) ?>
+    <label data-eventfield="production"><?= e(t('prod_pa')) ?>
       <select name="pa_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
         <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($ev['pa_source'] ?? '') === $val ? 'selected' : '' ?>><?= e(production_label($val)) ?></option><?php endforeach; ?>
       </select>
     </label>
-    <label><?= e(t('prod_light')) ?>
+    <label data-eventfield="production"><?= e(t('prod_light')) ?>
       <select name="light_source"><option value="">– <?= e(t('prod_none')) ?> –</option>
         <?php foreach (PRODUCTION_SOURCES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($ev['light_source'] ?? '') === $val ? 'selected' : '' ?>><?= e(production_label($val)) ?></option><?php endforeach; ?>
       </select>
     </label>
-        <label><?= e(t('ev_fee')) ?><input name="fee" value="<?= e($ev['fee']) ?>"></label>
-        <label><?= e(t('ev_invoice')) ?><input name="invoice_no" value="<?= e($ev['invoice_no']) ?>"></label>
+        <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" value="<?= e($ev['fee']) ?>"></label>
+        <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no" value="<?= e($ev['invoice_no']) ?>"></label>
         <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2"><?= e($ev['notes']) ?></textarea></label>
-        <fieldset class="span2 pubfields">
+        <fieldset class="span2 pubfields" data-eventfield="public">
           <legend><?= e(t('ev_public_display')) ?></legend>
           <label class="checkbox"><input type="checkbox" name="is_public" value="1" <?= $ev['is_public'] ? 'checked' : '' ?>> <?= e(t('ev_show_on_site_short')) ?></label>
           <label><?= e(t('ev_public_title')) ?><input name="public_title" value="<?= e($ev['public_title']) ?>" placeholder="<?= e(t('ev_public_title_ph')) ?>"></label>
@@ -190,4 +190,5 @@ require BASE_DIR . '/app/views/_header.php';
   </section>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>
+<script src="/assets/eventfields.js" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

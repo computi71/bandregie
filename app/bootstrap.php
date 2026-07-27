@@ -439,6 +439,22 @@ const FIN_CATEGORIES = [
   'sonstiges' => 'Sonstiges',
 ];
 
+// Welche Felder bei welcher Termin-Art sinnvoll sind — der Rest wird im
+// Formular ausgeblendet. Die öffentliche Seite zeigt ausschließlich Gigs,
+// deshalb hat der öffentliche Block bei allen anderen Arten keine Wirkung.
+const EVENT_TYPE_FIELDS = [
+  'gig'          => ['times', 'venue', 'setlist', 'fee', 'production', 'public'],
+  'party'        => ['times', 'venue', 'setlist', 'fee', 'production'],
+  'probe'        => ['times', 'venue', 'setlist'],
+  'aufnahme'     => ['times', 'venue', 'setlist'],
+  'fotoshooting' => ['times', 'venue'],
+  'besprechung'  => ['times', 'venue'],
+  'aufbau'       => ['times', 'venue', 'production'],
+  'reise'        => ['times'],
+  'dayoff'       => [],
+  'sonstiges'    => ['times', 'venue', 'setlist', 'fee', 'production'],
+];
+
 // Woher PA und Licht bei einem Termin kommen
 const PRODUCTION_SOURCES = ['eigene' => 'Eigenes Material', 'leih' => 'Geliehen/Gemietet', 'vorhanden' => 'Vor Ort vorhanden'];
 

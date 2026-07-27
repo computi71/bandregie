@@ -360,3 +360,6 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 /* Bildvorschau bei Dateianhängen */
 .file-thumb { max-height: 3.2rem; max-width: 5rem; border-radius: 6px; vertical-align: middle;
               margin-right: 0.5rem; border: 1px solid var(--border); }
+
+/* Ausgeblendete Formularfelder sollen auch im Raster verschwinden */
+[hidden] { display: none !important; }
