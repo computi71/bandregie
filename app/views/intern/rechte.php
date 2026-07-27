@@ -3,12 +3,12 @@
 <p class="muted"><?= e(t('perm_intro')) ?></p>
 <p class="muted small"><?= e(t('perm_admin_all')) ?></p>
 
-<?php foreach ($members as $pm): ?>
-  <section class="card">
-    <div class="event-head">
-      <strong><?= e($pm['name']) ?></strong>
+<?php foreach ($members as $permIdx => $pm): ?>
+  <details class="card acc" name="permacc" <?= $permIdx === 0 ? 'open' : '' ?>>
+    <summary>
+      <?= e($pm['name']) ?>
       <span class="badge <?= $pm['role'] === 'admin' ? 'public' : '' ?>"><?= e(t('role_' . ($pm['role'] === 'ersatz' ? 'ersatz' : ($pm['role'] === 'admin' ? 'admin' : 'member')))) ?></span>
-    </div>
+    </summary>
     <?php if ($pm['role'] === 'admin'): ?>
       <p class="muted small"><?= e(t('perm_admin_all')) ?></p>
     <?php else: ?>
@@ -32,6 +32,6 @@
         <p class="muted small"><?= e(t('perm_tpl_hint')) ?></p>
       </form>
     <?php endif; ?>
-  </section>
+  </details>
 <?php endforeach; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

@@ -9,8 +9,8 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 ?>
 <h1><?= e(t('inav_einstellungen')) ?></h1>
 
-<div class="card">
-  <h2><?= e(t('set_bandprofile')) ?></h2>
+<details class="card acc" name="setacc" open>
+  <summary><?= e(t('set_bandprofile')) ?></summary>
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_bandname')) ?><input name="band_name" value="<?= e($settings['band_name']) ?>" required></label>
     <label><?= e(t('set_contact_email')) ?><input type="email" name="contact_email" value="<?= e($settings['contact_email']) ?>"></label>
@@ -25,10 +25,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <label>YouTube<input name="youtube_url" value="<?= e($settings['youtube_url']) ?>" placeholder="https://youtube.com/@..."></label>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_texts')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_texts')) ?></summary>
   <p class="muted small"><?= e(t('set_texts_hint')) ?></p>
   <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="_texts_form" value="1">
@@ -44,10 +44,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <?php endforeach; ?>
     <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_legal')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_legal')) ?></summary>
   <p class="muted small"><?= e(t('set_legal_hint')) ?></p>
   <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="_legal_form" value="1">
@@ -62,10 +62,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <?php endforeach; ?>
     <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_public')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_public')) ?></summary>
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_termine_form" value="1">
     <label class="span2"><?= e(t('set_pm')) ?>
@@ -86,10 +86,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     </label>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_langs')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_langs')) ?></summary>
   <p class="muted small"><?= e(t('set_langs_hint')) ?> <a href="/intern/uebersetzungen"><?= e(t('set_langs_check')) ?> →</a></p>
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_langs_form" value="1">
@@ -111,10 +111,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     </div>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_branding')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_branding')) ?></summary>
   <form method="post" action="/intern/einstellungen/branding" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_logo_lbl')) ?><input type="file" name="logo" accept="image/*"></label>
     <label><?= e(t('set_bg_lbl')) ?><input type="file" name="background" accept="image/*"></label>
@@ -135,23 +135,23 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
     <?php endif; ?>
   </div>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_ical')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_ical')) ?></summary>
   <p><code id="ical-link"><?= e($ical_url) ?></code>
   <button class="btn btn-small" onclick="navigator.clipboard.writeText(document.getElementById('ical-link').textContent).then(() => this.textContent = '✔ <?= e(t('copied')) ?>')"><?= e(t('copy')) ?></button></p>
   <p class="muted small"><?= e(t('set_ical_hint')) ?> <a href="/intern/kalender"><?= e(t('set_ical_link')) ?> →</a></p>
-</div>
+</details>
 
-<div class="card">
-  <h2>ℹ️ <?= e(t('about_title')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary>ℹ️ <?= e(t('about_title')) ?></summary>
   <p class="muted small"><?= e(t('about_settings_hint')) ?></p>
   <a class="btn" href="/intern/ueber"><?= e(t('about_open')) ?> →</a>
-</div>
+</details>
 
-<div class="card">
-  <h2>🔁 <?= e(t('set_sub_auto')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary>🔁 <?= e(t('set_sub_auto')) ?></summary>
   <p class="muted small"><?= e(t('set_sub_auto_hint')) ?></p>
   <form method="post" action="/intern/einstellungen/ersatz" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_sub_auto')) ?>
@@ -163,10 +163,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     </label>
     <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
   </form>
-</div>
+</details>
 
-<div class="card">
-  <h2>💾 <?= e(t('bk_title')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary>💾 <?= e(t('bk_title')) ?></summary>
   <p class="muted small"><?= e(t('bk_content')) ?> <?= e(t('bk_only_local')) ?></p>
   <?php
     $bkLast = null;
@@ -219,11 +219,11 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       </li>
     <?php endforeach; ?>
   </ul>
-</div>
+</details>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>
-<div class="card">
-  <h2>🧪 <?= e(t('set_demo')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary>🧪 <?= e(t('set_demo')) ?></summary>
   <?php if (demo_installed()): ?>
     <p class="muted small"><?= e(t('set_demo_active')) ?></p>
     <form method="post" action="/intern/einstellungen/demo/remove" onsubmit="return confirm('<?= e(t('set_demo_confirm')) ?>')"><?= csrf_field() ?>
@@ -235,10 +235,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       <button class="btn btn-primary"><?= e(t('set_demo_add')) ?></button>
     </form>
   <?php endif; ?>
-</div>
+</details>
 
-<div class="card">
-  <h2><?= e(t('set_meta')) ?></h2>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_meta')) ?></summary>
   <p class="muted"><?= e(t('set_meta_hint')) ?></p>
-</div>
+</details>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

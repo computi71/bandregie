@@ -388,6 +388,27 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Aufklappbare Karten: immer nur eine offen. Das übernimmt das name-Attribut
+   von <details>; wo der Browser das noch nicht kennt, hilft accordion.js nach.
+   Der Pfeil zeigt nach rechts, wenn zu, und nach unten, wenn offen. */
+.acc { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.acc > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 0.55rem;
+  font-size: 1.15rem; font-weight: 600; color: var(--text);
+  padding: 0.25rem 0;
+}
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before {
+  content: '›';
+  display: inline-block; width: 0.8rem;
+  font-size: 1.3rem; line-height: 1; color: var(--accent);
+  transition: transform 0.15s ease;
+}
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc[open] > summary { margin-bottom: 0.7rem; }
+.acc > summary:hover { color: var(--accent); }
+
 /* Ersatzleute am Termin: Name, Erfahrung und Knopf bleiben zusammen, auch
    wenn die Zeile umbricht. */
 .sub-option {
