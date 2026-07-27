@@ -994,7 +994,7 @@ if (str_starts_with($path, '/intern')) {
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit
-      q('UPDATE equipment SET owner_id = ?, location = '' WHERE parent_id = ?', [$ownerId, $m[1]]);
+      q("UPDATE equipment SET owner_id = ?, location = '' WHERE parent_id = ?", [$ownerId, $m[1]]);
       flash(t('fl_eq_saved'));
     }
     redirect('/intern/equipment');
