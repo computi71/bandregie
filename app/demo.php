@@ -183,6 +183,24 @@ function demo_install_rows(): void {
       'created_by' => $adminId]);
   }
 
+  // --- Kanalbelegung (zeigt die Inputliste im Stagerider)
+  foreach ([
+    [1, 'Bassdrum', 'Großmembran, dynamisch', ''],
+    [2, 'Snare', 'Dynamisch, Clip-On', ''],
+    [3, 'HiHat', 'Kleinmembran-Kondensator', 'Phantomspeisung +48 V'],
+    [4, 'Tom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
+    [5, 'Standtom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
+    [6, 'Overhead links', 'Kondensator', 'Phantomspeisung +48 V'],
+    [7, 'Overhead rechts', 'Kondensator', 'Phantomspeisung +48 V'],
+    [8, 'Bass', 'DI-Box', ''],
+    [9, 'Gitarre', 'Dynamisch am Verstärker', ''],
+    [10, 'Gesang Lisa', 'Gesangsmikrofon', ''],
+    [11, 'Gesang Tom', 'Gesangsmikrofon', ''],
+    [12, 'Playback', 'Stereo-DI vom Laptop', 'nur bei zwei Songs'],
+  ] as [$number, $name, $source, $chNotes]) {
+    demo_insert('channels', ['number' => $number, 'name' => $name, 'source' => $source, 'notes' => $chNotes]);
+  }
+
   // --- Equipment mit Fristen
   $eqTrailer = demo_insert('equipment', ['name' => 'Bandanhänger', 'category' => 'transport',
     'owner_id' => null, 'location' => 'Hof am Proberaum', 'is_standard' => 1,
