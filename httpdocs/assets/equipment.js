@@ -13,3 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     apply();
   });
 });
+
+// Bestandteile sind anklickbar und öffnen ihr Bearbeiten-Formular als Dialog.
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-eqopen]').forEach(btn => {
+    const dlg = document.getElementById(btn.dataset.eqopen);
+    if (!dlg) return;
+    btn.addEventListener('click', () => dlg.showModal());
+    dlg.querySelectorAll('[data-eqclose]').forEach(c => c.addEventListener('click', () => dlg.close()));
+    // Klick auf die Fläche neben dem Dialog schließt ihn ebenfalls
+    dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
+  });
+});

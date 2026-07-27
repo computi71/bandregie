@@ -64,11 +64,19 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
           <?php foreach ($children[$eq['id']] as $child): ?>
             <li>
               <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
-              <strong><?= e($child['name']) ?></strong>
+              <button type="button" class="linklike" data-eqopen="eq-dlg-<?= $child['id'] ?>"><strong><?= e($child['name']) ?></strong></button>
               <?php if ($child['price_cents'] !== null || !empty($child['purchased_on'])): ?>
                 <span class="muted small">🧾 <?= e(eq_purchase_label($child)) ?></span>
               <?php endif; ?>
               <?php if ($child['notes']): ?><div class="muted small prewrap"><?= e($child['notes']) ?></div><?php endif; ?>
+              <dialog id="eq-dlg-<?= $child['id'] ?>" class="eq-dialog">
+                <div class="eq-dialog-head">
+                  <strong><?= e($child['name']) ?></strong>
+                  <button type="button" class="btn btn-tiny" data-eqclose aria-label="<?= e(t('close')) ?>">✕</button>
+                </div>
+                <?php $formEq = $child; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>
+                <?php $attachFiles = $filesByEq[$child['id']] ?? []; $attachType = 'equipment'; $attachId = $child['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
+              </dialog>
             </li>
           <?php endforeach; ?>
         </ul>
@@ -121,34 +129,7 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
 
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
-        <label><?= e(t('name')) ?><input name="name" value="<?= e($eq['name']) ?>" required></label>
-        <label><?= e(t('eq_cat')) ?>
-          <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>" <?= $eq['category'] === $val ? 'selected' : '' ?>><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
-        </label>
-        <label data-eqinherit><?= e(t('eq_owner')) ?>
-          <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $eq['owner_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
-        </label>
-        <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" value="<?= e($eq['location']) ?>"></label>
-        <label><?= e(t('eq_parent')) ?>
-          <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
-            <?php foreach ($items as $other): ?>
-              <?php if ((int) $other['id'] === (int) $eq['id']) continue; ?>
-              <option value="<?= $other['id'] ?>" <?= (int) ($eq['parent_id'] ?? 0) === (int) $other['id'] ? 'selected' : '' ?>><?= e($other['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label><?= e(t('eq_slot')) ?><input name="slot" value="<?= e($eq['slot'] ?? '') ?>" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
-        <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
-        <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on" value="<?= e($eq['purchased_on'] ?? '') ?>"></label>
-        <label><?= e(t('eq_price')) ?><input type="number" name="price" step="0.01" min="0" value="<?= $eq['price_cents'] !== null ? e(number_format((int) $eq['price_cents'] / 100, 2, '.', '')) : '' ?>"></label>
-        <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1" <?= $eq['is_standard'] ? 'checked' : '' ?>> 📦 <?= e(t('eq_standard')) ?></label>
-        <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($eq['notes']) ?></textarea></label>
-        <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
-      </form>
-      <form method="post" action="/intern/equipment/<?= $eq['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline"><?= csrf_field() ?>
-        <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
-      </form>
+      <?php $formEq = $eq; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>
     </details>
   </section>
 <?php endforeach; ?>
