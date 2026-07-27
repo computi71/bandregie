@@ -42,4 +42,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','set_demo_confirm','Rimuovere tutti i dati dimostrativi? Le vostre voci verranno mantenute.'),
 ('it','fl_demo_added','Dati dimostrativi aggiunti.'),
 ('it','fl_demo_removed','Dati dimostrativi rimossi.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

@@ -42,4 +42,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','topic_closed_hint','Questa discussione è chiusa — riaprila per rispondere.'),
 ('it','topic_back','Tutte le discussioni'),('it','topic_by','di'),
 ('it','fl_topic_created','Discussione creata.'),('it','fl_topic_deleted','Discussione eliminata.'),('it','fl_post_deleted','Messaggio eliminato.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

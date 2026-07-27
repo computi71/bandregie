@@ -72,4 +72,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fincat_fahrt','Spese di viaggio'),('it','fincat_verpflegung','Vitto'),('it','fincat_sonstiges','Altro'),
 ('it','fl_fin_saved','Registrazione salvata.'),('it','fl_fin_deleted','Registrazione eliminata.'),
 ('it','fl_fin_invalid','Indica una data, una descrizione e un importo valido.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

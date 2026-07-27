@@ -7,4 +7,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','fincat_ausschuettung','Répartition'),
 ('es','fincat_ausschuettung','Reparto'),
 ('it','fincat_ausschuettung','Ripartizione')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

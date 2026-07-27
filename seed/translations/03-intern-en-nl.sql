@@ -333,4 +333,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','fl_img_too_big','Afbeelding te groot (max. 5 MB).'),
 ('nl','fl_branding_saved','Branding bijgewerkt.'),
 ('nl','fl_admin_required','Hiervoor heb je beheerdersrechten nodig.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

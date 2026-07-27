@@ -17,4 +17,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','eq_parent','Appartiene a'),('it','eq_parent_none','– autonomo –'),
 ('it','eq_slot','Slot / canale'),('it','eq_slot_ph','es. canale 1'),
 ('it','eq_parts','Componenti'),('it','eq_part_of','Componente di'),('it','eq_images','Immagini e documenti')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

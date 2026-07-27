@@ -12,4 +12,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','set_favicon_remove','Quitar favicon'),
 ('it','set_favicon_lbl','Icona del sito / favicon (PNG quadrato, max 5 MB)'),
 ('it','set_favicon_remove','Rimuovi favicon')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

@@ -67,4 +67,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','rider_inputs_empty','Ancora nessun canale — la lista ingressi resta vuota.'),
 ('it','rider_print','Vista di stampa'),('it','rider_empty_hint','I campi vuoti non compaiono nella stampa.'),
 ('it','rider_for','Requisiti tecnici'),('it','fl_rider_saved','Stage rider salvato.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

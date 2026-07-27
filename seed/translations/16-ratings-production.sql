@@ -37,7 +37,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','rate_votes','voti'),('it','rate_none','non ancora valutato'),('it','rate_clear','Ritira la valutazione'),
 ('it','rate_hint','Quanto vi piace suonarlo? Solo la media è visibile a tutti.'),
 ('it','songs_col_rating','Valutazione')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','rate_vote','vote'),('en','ev_export','Spreadsheet'),
@@ -45,7 +45,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','rate_vote','vote'),('fr','ev_export','Tableur'),
 ('es','rate_vote','voto'),('es','ev_export','Hoja de cálculo'),
 ('it','rate_vote','voto'),('it','ev_export','Foglio di calcolo')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','role_ersatz','Substitute'),('en','mem_first_name','First name'),('en','mem_last_name','Last name'),
@@ -68,4 +68,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','mem_mobile','Cellulare'),('it','mem_substitute_for','Sostituto di'),('it','mem_substitute_none','– nessuno –'),
 ('it','mem_instrument_pick','scegli dall''inventario'),('it','mem_instrument_free','oppure scrivi liberamente'),
 ('it','ev_substitute_hint','Chiedi al sostituto:')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

@@ -105,4 +105,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','downloads_intro','Documentazione tecnica e materiale stampa di'),
 ('it','downloads_questions','Domande?'),
 ('it','downloads_soon','Presto materiale da scaricare.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

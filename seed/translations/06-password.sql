@@ -42,4 +42,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fl_pw_mismatch','Le password non coincidono.'),
 ('it','fl_member_created_mail','Membro creato — le credenziali sono state inviate via e-mail.'),
 ('it','fl_member_created_nomail','Membro creato. Invio e-mail non riuscito — comunica questa password iniziale:')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

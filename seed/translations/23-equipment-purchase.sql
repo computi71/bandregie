@@ -46,4 +46,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','eq_count_hint','Più di uno crea subito più apparecchi numerati — comodo per i cavi.'),
 ('it','eq_value_sum','Valore di acquisto'),
 ('it','fl_eq_saved_n','%d apparecchi creati.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

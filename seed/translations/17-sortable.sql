@@ -7,4 +7,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','sl_drag_hint','Fais glisser les lignes pour réordonner — sur mobile, utilise les flèches.'),('fr','sl_saved','Ordre enregistré'),
 ('es','sl_drag_hint','Arrastra las filas para reordenar — en el móvil usa las flechas.'),('es','sl_saved','Orden guardado'),
 ('it','sl_drag_hint','Trascina le righe per riordinare — su telefono usa le frecce.'),('it','sl_saved','Ordine salvato')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

@@ -42,7 +42,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','about_license','Licenza'),('it','about_source','Codice sorgente'),('it','about_version','Versione'),
 ('it','about_changelog','Novità'),('it','about_stack','Realizzato con'),
 ('it','about_data_note','Tutto ciò che si trova in questa installazione — eventi, brani, foto, file — appartiene alla band, non al progetto.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','about_settings_hint','Version, license, source code and who is behind it.'),('en','about_open','Open'),
@@ -60,7 +60,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','about_settings_hint','Versione, licenza, codice sorgente e chi c''è dietro.'),('it','about_open','Apri'),
 ('it','set_copyright','Riga di copyright nel piè di pagina'),
 ('it','set_copyright_hint','Lascia vuoto per "© anno nome della band" — l''anno viene inserito automaticamente.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','about_license_note','Free to use for your own band — only offering it as a commercial service is reserved to the author.'),
@@ -68,4 +68,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','about_license_note','Libre d''utilisation pour votre propre groupe — seule la proposition comme service commercial est réservée à l''auteur.'),
 ('es','about_license_note','Libre para usar con tu propia banda — solo ofrecerlo como servicio comercial queda reservado al autor.'),
 ('it','about_license_note','Libero per la propria band — solo l''offerta come servizio commerciale è riservata all''autore.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

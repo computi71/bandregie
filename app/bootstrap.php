@@ -839,12 +839,19 @@ if (setting('ical_token') === '') set_setting('ical_token', bin2hex(random_bytes
 if (setting('downloads_token') === '') set_setting('downloads_token', bin2hex(random_bytes(16)));
 if (setting('downloads_mode') === '') set_setting('downloads_mode', 'token');
 
-// Erstinstallation: mitgelieferte Übersetzungen einspielen, damit alle Sprachen
-// sofort verfügbar sind (danach werden sie im Bandbereich gepflegt).
-if ((int) row('SELECT COUNT(*) AS n FROM translations')['n'] === 0) {
-  foreach (glob(BASE_DIR . '/seed/translations/*.sql') ?: [] as $file) {
-    try { $db->exec((string) file_get_contents($file)); } catch (PDOException) { /* Seed ist optional */ }
+// Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
+// sondern auch dann, wenn eine neue Version weitere Seed-Dateien mitbringt.
+// Die Seeds ergänzen ausschließlich fehlende Schlüssel; im Bandbereich von Hand
+// gepflegte Texte bleiben unverändert.
+$seedFiles = glob(BASE_DIR . '/seed/translations/*.sql') ?: [];
+$seedStamp = '';
+foreach ($seedFiles as $seedFile) $seedStamp .= basename($seedFile) . ':' . filesize($seedFile) . '|';
+$seedStamp = sha1($seedStamp);
+if (setting('translations_seed') !== $seedStamp) {
+  foreach ($seedFiles as $seedFile) {
+    try { $db->exec((string) file_get_contents($seedFile)); } catch (PDOException) { /* Seed ist optional */ }
   }
+  set_setting('translations_seed', $seedStamp);
 }
 
 // Erster Start: Admin-Konto mit zufälligem Passwort anlegen. Das Passwort steht

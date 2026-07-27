@@ -7,4 +7,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','mem_name_hint','Affiché sous la forme « prénom nom » — ou le nom de scène s''il est renseigné.'),
 ('es','mem_name_hint','Se muestra como «nombre apellido» — o el nombre artístico si está definido.'),
 ('it','mem_name_hint','Mostrato come «nome cognome» — oppure il nome d''arte, se impostato.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

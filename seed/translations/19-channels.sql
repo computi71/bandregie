@@ -52,4 +52,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','ch_count','canali'),('it','ch_export','Foglio di calcolo'),
 ('it','fl_ch_imported','Canali importati:'),('it','fl_ch_none_found','Nessun nome di canale trovato nel file.'),
 ('it','fl_ch_saved','Canale salvato.'),('it','fl_ch_deleted','Canale eliminato.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

@@ -497,4 +497,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fl_img_too_big','Immagine troppo grande (max 5 MB).'),
 ('it','fl_branding_saved','Immagine coordinata aggiornata.'),
 ('it','fl_admin_required','Per questo servono i permessi di admin.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

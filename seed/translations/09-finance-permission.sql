@@ -22,4 +22,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fin_badge','Finanze'),
 ('it','fin_readonly_hint','Le registrazioni le fa chi gestisce la cassa (finanze) — qui puoi consultare tutto.'),
 ('it','fl_finance_required','Solo chi gestisce la cassa (finanze) può registrare movimenti.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

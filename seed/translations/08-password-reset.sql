@@ -37,4 +37,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','pwreset_sent','Se l''indirizzo esiste, un link di ripristino è in arrivo (valido 1 ora).'),
 ('it','pwreset_invalid','Il link non è valido o è scaduto — richiedine uno nuovo.'),
 ('it','pwreset_new_title','Imposta una nuova password')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

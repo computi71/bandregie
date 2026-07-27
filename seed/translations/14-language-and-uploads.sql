@@ -22,7 +22,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','set_default_lang_hint','I visitatori ricevono automaticamente la lingua del browser, se abilitata qui. Se nessuna corrisponde, vale questa lingua predefinita. I membri connessi vedono la lingua del loro profilo.'),
 ('it','fl_upload_server_limit','Il file era troppo grande per il server. Massimo possibile:'),
 ('it','fl_upload_failed','Il caricamento non è riuscito — riprova.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
 
 -- Correction: the English wording read awkwardly in front of the band name.
 UPDATE translations SET value = 'For members of' WHERE lang = 'en' AND tkey = 'login_only_members';
@@ -38,4 +38,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','fl_throttled','Demasiados intentos fallidos. Espera 15 minutos.'),
 ('it','fl_csrf','L''azione è scaduta — ricarica la pagina e riprova.'),
 ('it','fl_throttled','Troppi tentativi falliti. Attendi 15 minuti.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

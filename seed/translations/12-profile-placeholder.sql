@@ -7,4 +7,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','prof_stage_name_ph','Nom de scène'),
 ('es','prof_stage_name_ph','Nombre en el escenario'),
 ('it','prof_stage_name_ph','Nome sul palco')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

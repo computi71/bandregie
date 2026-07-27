@@ -70,4 +70,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','dash_nothing_open','Niente in sospeso. 🎉'),('it','dash_all_tasks','Tutti i compiti'),
 ('it','att_yes','✔ Ci sono'),('it','att_maybe','? Forse'),('it','att_no','✘ Non posso'),
 ('it','due_until','entro il')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;

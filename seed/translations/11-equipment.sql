@@ -102,4 +102,4 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','fl_deadline_done','Scadenza completata — prossima data impostata.'),
 ('it','fl_deadline_done_once','Scadenza completata e rimossa.'),
 ('it','fl_deadline_deleted','Scadenza eliminata.')
-ON DUPLICATE KEY UPDATE value = VALUES(value);
+ON DUPLICATE KEY UPDATE value = value;
