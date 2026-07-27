@@ -880,17 +880,10 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Rechte je Bereich ----------
+  // Die Rechte stehen jetzt beim jeweiligen Mitglied; alte Lesezeichen und
+  // Verweise sollen trotzdem irgendwo landen.
   if ($path === '/intern/rechte' && $method === 'GET') {
-    require_admin();
-    $permByUser = [];
-    foreach (rows('SELECT * FROM permissions') as $permRow) {
-      $permByUser[(int) $permRow['user_id']][$permRow['module']] = $permRow;
-    }
-    view('intern/rechte', [
-      'title' => t('perm_title'),
-      'members' => rows('SELECT id, name, role FROM users ORDER BY role, name'),
-      'perms' => $permByUser,
-    ]);
+    redirect('/intern/mitglieder');
   }
   if (preg_match('~^/intern/rechte/(\d+)$~', $path, $m) && $method === 'POST') {
     require_admin();
@@ -910,13 +903,18 @@ if (str_starts_with($path, '/intern')) {
       }
       flash(t('fl_perm_saved'));
     }
-    redirect('/intern/rechte');
+    redirect('/intern/mitglieder');
   }
 
   // ---------- Mitglieder ----------
   if ($path === '/intern/mitglieder' && $method === 'GET') {
+    $permByUser = [];
+    foreach (rows('SELECT * FROM permissions') as $permRow) {
+      $permByUser[(int) $permRow['user_id']][$permRow['module']] = $permRow;
+    }
     view('intern/mitglieder', [
       'title' => t('mem_title'),
+      'perms' => $permByUser,
       'members' => rows('SELECT u.*, s.name AS substitute_for_name FROM users u
                          LEFT JOIN users s ON s.id = u.substitute_for ORDER BY u.name'),
       'instruments' => array_column(rows("SELECT name FROM equipment WHERE category = 'instrument' ORDER BY name"), 'name'),

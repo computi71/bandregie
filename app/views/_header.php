@@ -87,11 +87,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/musik' => t('inav_musik'),
             '/intern/downloads' => t('inav_downloads'),
           ],
-          t('inavg_band')     => array_filter([
+          t('inavg_band')     => [
             '/intern/kasse' => t('inav_kasse'),
             '/intern/mitglieder' => t('inav_mitglieder'),
-            '/intern/rechte' => $user['role'] === 'admin' ? t('perm_title') : null,
-          ]),
+          ],
           t('inavg_konto')    => array_filter([
             '/intern/profil' => t('inav_profil'),
             '/intern/hilfe' => t('inav_hilfe'),

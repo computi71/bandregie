@@ -409,6 +409,15 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .acc[open] > summary { margin-bottom: 0.7rem; }
 .acc > summary:hover { color: var(--accent); }
 
+/* Im Inventar trägt die Kopfzeile mehr als nur den Namen: Besitzer, Lagerort
+   und Wert sollen lesbar bleiben, ohne dass alles fett wird. */
+.acc > summary.eq-summary {
+  flex-wrap: wrap; gap: 0.3rem 0.8rem;
+  font-size: 1rem; font-weight: 400; align-items: baseline;
+}
+.acc > summary.eq-summary::before { align-self: center; }
+.acc > summary.eq-summary strong { font-size: 1.1rem; font-weight: 600; }
+
 /* Ersatzleute am Termin: Name, Erfahrung und Knopf bleiben zusammen, auch
    wenn die Zeile umbricht. */
 .sub-option {

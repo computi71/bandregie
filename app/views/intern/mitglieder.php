@@ -88,10 +88,36 @@
               <option value="ersatz" <?= $mFull['role'] === 'ersatz' ? 'selected' : '' ?>><?= e(t('role_ersatz')) ?></option>
             </select>
           </label>
-          <p class="muted small span2">🔑 <a href="/intern/rechte"><?= e(t('perm_open')) ?></a> — <?= e(t('perm_intro')) ?></p>
           <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
         </form>
       </details>
+      <?php if ($mFull['role'] !== 'admin'): ?>
+        <details class="subsection">
+          <summary>🔑 <?= e(t('perm_title')) ?></summary>
+          <p class="muted small"><?= e(t('perm_intro')) ?></p>
+          <?php $mine = $perms[(int) $m['id']] ?? []; ?>
+          <form method="post" action="/intern/rechte/<?= $m['id'] ?>"><?= csrf_field() ?>
+            <ul class="perm-list">
+              <?php foreach (array_keys(PERM_MODULES) as $mod): ?>
+                <?php $canRead = (int) ($mine[$mod]['can_read'] ?? 0); $canWrite = (int) ($mine[$mod]['can_write'] ?? 0); ?>
+                <li>
+                  <span class="perm-name"><?= e(t('inav_' . $mod)) ?></span>
+                  <label class="checkbox"><input type="checkbox" name="perm[<?= $mod ?>][read]" value="1" <?= $canRead ? 'checked' : '' ?>> <?= e(t('perm_read')) ?></label>
+                  <label class="checkbox"><input type="checkbox" name="perm[<?= $mod ?>][write]" value="1" <?= $canWrite ? 'checked' : '' ?>> <?= e(t('perm_write')) ?></label>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+            <div class="row-buttons">
+              <button class="btn btn-primary"><?= e(t('save')) ?></button>
+              <button class="btn btn-ghost" name="template" value="member"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_member')) ?></button>
+              <button class="btn btn-ghost" name="template" value="ersatz"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_ersatz')) ?></button>
+            </div>
+            <p class="muted small"><?= e(t('perm_tpl_hint')) ?></p>
+          </form>
+        </details>
+      <?php else: ?>
+        <p class="muted small">🔑 <?= e(t('perm_admin_all')) ?></p>
+      <?php endif; ?>
     <?php endif; ?>
   </section>
 <?php endforeach; ?>

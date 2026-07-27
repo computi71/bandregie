@@ -42,13 +42,15 @@ $childrenOf = eq_by_parent($items);
 $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
           'filesByEq' => $filesByEq, 'user' => $user];
 ?>
+<?php $eqFirst = true; ?>
 <?php foreach ($items as $eq): ?>
   <?php if ($eq['parent_id']) continue; ?>
   <?php if ($eq['category'] !== $lastCat): $lastCat = $eq['category']; ?>
     <h2 style="margin:1rem 0 0.4rem"><?= e(eq_category_label($lastCat)) ?></h2>
   <?php endif; ?>
-  <section class="card">
-    <div class="event-head">
+  <details class="card acc" name="eqacc" <?= $eqFirst ? 'open' : '' ?>>
+    <?php $eqFirst = false; ?>
+    <summary class="eq-summary">
       <strong><?= e($eq['name']) ?></strong>
       <?php if ($eq['is_standard']): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
       <span class="muted"><?= e(t('eq_owner')) ?>: <?= e($eq['owner_name'] ?: t('eq_owner_band')) ?></span>
@@ -62,7 +64,7 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
           <span class="muted">Σ <?= e(t('eq_total')) ?>: <strong><?= e(fmt_money($eqSum)) ?></strong><?= $eqMissing ? ' <span class="small">(' . e(t('eq_total_partial')) . ')</span>' : '' ?></span>
         <?php endif; ?>
       <?php endif; ?>
-    </div>
+    </summary>
     <?php if ($eq['notes']): ?><p class="prewrap muted"><?= e($eq['notes']) ?></p><?php endif; ?>
 
     <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
@@ -120,7 +122,7 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
       <summary>✏️ <?= e(t('edit')) ?></summary>
       <?php $formEq = $eq; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>
     </details>
-  </section>
+  </details>
 <?php endforeach; ?>
 <?php if (!$items): ?><p class="muted center"><?= e(t('eq_none')) ?></p><?php endif; ?>
 <script src="/assets/equipment.js" defer></script>
