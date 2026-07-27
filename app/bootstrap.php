@@ -324,6 +324,21 @@ const UI_STRINGS = [
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
   'prod_gear' => 'Was nehmt ihr mit?', 'prod_gear_none' => 'Im Inventar steht noch nichts.',
   'eq_total' => 'Gesamtwert', 'eq_total_partial' => 'ohne die Geräte ohne Preis',
+  // Sicherungen
+  'bk_title' => 'Sicherung', 'bk_enabled' => 'Regelmäßig sichern',
+  'bk_interval' => 'Wie oft', 'bk_daily' => 'täglich', 'bk_weekly' => 'wöchentlich',
+  'bk_keep' => 'Wie viele Sicherungen aufheben',
+  'bk_keep_hint' => 'Ist die Zahl erreicht, wird die älteste gelöscht — aber erst, wenn eine neue vollständig vorliegt.',
+  'bk_run_now' => 'Jetzt sichern', 'bk_runs' => 'Letzte Läufe', 'bk_none' => 'Noch nichts gesichert.',
+  'bk_download' => 'Herunterladen', 'bk_gone' => 'nicht mehr vorhanden',
+  'bk_status_ok' => 'erfolgreich', 'bk_status_error' => 'fehlgeschlagen',
+  'bk_content' => 'Gesichert werden die Datenbank und alle hochgeladenen Dateien. Das Archiv liegt außerhalb des Webverzeichnisses.',
+  'bk_auto_hint' => 'Ausgelöst wird beim Aufruf des Bandbereichs, höchstens einmal je Zeitraum. Wer einen Cronjob hat, ruft besser auf:',
+  'bk_warn_old' => 'Die letzte erfolgreiche Sicherung ist älter als der eingestellte Zeitraum.',
+  'bk_warn_failed' => 'Der letzte Lauf ist fehlgeschlagen.',
+  'bk_only_local' => 'Ziel ist zurzeit nur der eigene Server. FTP und OneDrive kommen noch.',
+  'fl_bk_done' => 'Sicherung erstellt.', 'fl_bk_failed' => 'Sicherung fehlgeschlagen:',
+  'fl_bk_saved' => 'Einstellungen zur Sicherung gespeichert.', 'fl_bk_deleted' => 'Sicherung gelöscht.',
   'eq_owner_locked' => 'Preis, Besitzer und Kaufdatum ändern nur der Besitzer und die Verwaltung. Das Gerät umzuhängen gehört dazu — über das übergeordnete Gerät wechselt sonst der Besitzer mit.',
   'ev_gear' => 'Mitnehmen', 'ev_gear_conflict' => 'am selben Tag doppelt verplant',
   'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
@@ -630,6 +645,17 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Jeder Sicherungslauf, auch der fehlgeschlagene
+  "CREATE TABLE IF NOT EXISTS backup_runs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    filename VARCHAR(190) NOT NULL DEFAULT '',
+    size_bytes BIGINT NOT NULL DEFAULT 0,
+    status VARCHAR(10) NOT NULL DEFAULT 'ok',
+    message VARCHAR(400) NOT NULL DEFAULT '',
+    trigger_kind VARCHAR(10) NOT NULL DEFAULT 'auto'
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Welche Geräte bei einem Termin mitkommen — die Packliste zum Gig
   "CREATE TABLE IF NOT EXISTS event_equipment (
     event_id INT NOT NULL,
@@ -829,6 +855,9 @@ $defaults = [
   'public_mode' => 'website',
   'redirect_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
+  // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
+  // Installation ungefragt die Platte des Servers, auf dem sie liegt.
+  'backup_enabled' => '0', 'backup_interval' => 'daily', 'backup_keep' => '7',
 ];
 // Neuinstallationen starten auf Englisch; bestehende Installationen behalten
 // Deutsch, damit ein Update ihre Seite nicht plötzlich umstellt.
@@ -893,7 +922,7 @@ function current_user(): ?array {
   static $user = false;
   if ($user === false) {
     $user = empty($_SESSION['uid']) ? null
-      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, can_finance FROM users WHERE id = ?', [$_SESSION['uid']]);
+      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, can_finance, substitute_for FROM users WHERE id = ?', [$_SESSION['uid']]);
   }
   return $user;
 }
@@ -1057,7 +1086,9 @@ function eq_purchase_label(array $eq): string {
  */
 function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
   if (($user['role'] ?? '') === 'admin') return true;
-  if (empty($eq['owner_id'])) return true;
+  // Bandeigenes Material pflegen die Mitglieder gemeinsam — wer nur einspringt,
+  // verwaltet nicht das Eigentum der Band.
+  if (empty($eq['owner_id'])) return empty($user['substitute_for']);
   return (int) $eq['owner_id'] === (int) ($user['id'] ?? 0);
 }
 

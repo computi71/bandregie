@@ -8,6 +8,7 @@ if (php_sapi_name() === 'cli-server') {
 }
 
 require dirname(__DIR__) . '/app/bootstrap.php';
+require dirname(__DIR__) . '/app/backup.php';
 
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -268,6 +269,16 @@ if (str_starts_with($path, '/intern')) {
   // Erzwungener Passwortwechsel: erst eigenes Passwort setzen, dann alles andere
   if (!empty($me['must_change_pw']) && $path !== '/intern/passwort') {
     redirect('/intern/passwort');
+  }
+
+  // Fällige Sicherung nebenbei anstoßen. Ohne Cronjob gibt es keinen anderen
+  // Zeitpunkt; die Sperre in backup_run() verhindert doppelte Läufe. Wo der
+  // Server es kann, ist die Seite vorher ausgeliefert und niemand wartet.
+  if ($method === 'GET' && backup_due()) {
+    register_shutdown_function(function () {
+      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+      backup_run('auto');
+    });
   }
   if ($path === '/intern/passwort') {
     if ($method === 'POST') {
@@ -1343,6 +1354,7 @@ if (str_starts_with($path, '/intern')) {
       'links' => rows('SELECT * FROM media_links ORDER BY id DESC'),
       'ical_url' => absolute_url('/kalender/' . setting('ical_token') . '.ics'),
       'contentAll' => $contentAll,
+      'backupRuns' => rows('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 12'),
     ]);
   }
   if ($path === '/intern/einstellungen' && $method === 'POST') {
@@ -1389,6 +1401,40 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
+  // ---------- Sicherungen ----------
+  if ($path === '/intern/einstellungen/backup' && $method === 'POST') {
+    require_admin();
+    set_setting('backup_enabled', isset($_POST['backup_enabled']) ? '1' : '0');
+    set_setting('backup_interval', array_key_exists($_POST['backup_interval'] ?? '', BACKUP_INTERVALS) ? $_POST['backup_interval'] : 'daily');
+    set_setting('backup_keep', (string) max(1, min(365, (int) ($_POST['backup_keep'] ?? 7))));
+    flash(t('fl_bk_saved'));
+    redirect('/intern/einstellungen');
+  }
+  if ($path === '/intern/backup/run' && $method === 'POST') {
+    require_admin();
+    $run = backup_run('manuell');
+    flash(($run['status'] ?? '') === 'ok' ? t('fl_bk_done') : t('fl_bk_failed') . ' ' . ($run['message'] ?? ''));
+    redirect('/intern/einstellungen');
+  }
+  if (preg_match('~^/intern/backup/(\d+)/(download|delete)$~', $path, $m)) {
+    require_admin();
+    $run = row('SELECT * FROM backup_runs WHERE id = ?', [$m[1]]);
+    $file = $run && $run['filename'] !== '' ? backup_dir() . '/' . basename($run['filename']) : '';
+    if ($m[2] === 'download' && $method === 'GET' && $file && is_file($file)) {
+      header('Content-Type: application/gzip');
+      header('Content-Length: ' . filesize($file));
+      header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+      readfile($file);
+      exit;
+    }
+    if ($m[2] === 'delete' && $method === 'POST') {
+      if ($file && is_file($file)) @unlink($file);
+      q('DELETE FROM backup_runs WHERE id = ?', [$m[1]]);
+      flash(t('fl_bk_deleted'));
+    }
+    redirect('/intern/einstellungen');
+  }
+
   // Demodaten ein-/ausschalten
   if (preg_match('~^/intern/einstellungen/demo/(add|remove)$~', $path, $m) && $method === 'POST') {
     require_admin();

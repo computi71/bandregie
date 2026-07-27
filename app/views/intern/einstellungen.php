@@ -169,6 +169,62 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <a class="btn" href="/intern/ueber"><?= e(t('about_open')) ?> →</a>
 </div>
 
+<div class="card">
+  <h2>💾 <?= e(t('bk_title')) ?></h2>
+  <p class="muted small"><?= e(t('bk_content')) ?> <?= e(t('bk_only_local')) ?></p>
+  <?php
+    $bkLast = null;
+    foreach ($backupRuns as $bkRun) { if ($bkRun['status'] === 'ok') { $bkLast = $bkRun; break; } }
+    $bkEvery = BACKUP_INTERVALS[setting('backup_interval') ?: 'daily'] ?? 86400;
+  ?>
+  <?php if (setting('backup_enabled') === '1' && ($backupRuns[0]['status'] ?? '') === 'error'): ?>
+    <p class="warn">⚠ <?= e(t('bk_warn_failed')) ?> <?= e($backupRuns[0]['message']) ?></p>
+  <?php elseif (setting('backup_enabled') === '1' && $bkLast && (time() - strtotime($bkLast['created_at'])) > $bkEvery * 2): ?>
+    <p class="warn">⚠ <?= e(t('bk_warn_old')) ?></p>
+  <?php endif; ?>
+
+  <form method="post" action="/intern/einstellungen/backup" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2"><input type="checkbox" name="backup_enabled" value="1" <?= setting('backup_enabled') === '1' ? 'checked' : '' ?>> <?= e(t('bk_enabled')) ?></label>
+    <label><?= e(t('bk_interval')) ?>
+      <select name="backup_interval">
+        <?php foreach (['daily' => t('bk_daily'), 'weekly' => t('bk_weekly')] as $bkVal => $bkLbl): ?>
+          <option value="<?= $bkVal ?>" <?= (setting('backup_interval') ?: 'daily') === $bkVal ? 'selected' : '' ?>><?= e($bkLbl) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('bk_keep')) ?><input type="number" name="backup_keep" min="1" max="365" value="<?= e((string) backup_keep()) ?>"></label>
+    <p class="muted small span2"><?= e(t('bk_keep_hint')) ?></p>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+
+  <p class="muted small"><?= e(t('bk_auto_hint')) ?> <code>php <?= e(BASE_DIR) ?>/app/backup.php</code></p>
+
+  <form method="post" action="/intern/backup/run" class="inline"><?= csrf_field() ?>
+    <button class="btn"><?= e(t('bk_run_now')) ?></button>
+  </form>
+
+  <h3><?= e(t('bk_runs')) ?></h3>
+  <?php if (!$backupRuns): ?><p class="muted small"><?= e(t('bk_none')) ?></p><?php endif; ?>
+  <ul class="task-list">
+    <?php foreach ($backupRuns as $bkRun): ?>
+      <li>
+        <span class="badge <?= $bkRun['status'] === 'ok' ? '' : 'ev-abgesagt' ?>"><?= e($bkRun['status'] === 'ok' ? t('bk_status_ok') : t('bk_status_error')) ?></span>
+        <span class="muted"><?= e($bkRun['created_at']) ?></span>
+        <?php if ($bkRun['filename'] !== ''): ?>
+          <a href="/intern/backup/<?= $bkRun['id'] ?>/download"><?= e($bkRun['filename']) ?></a>
+          <span class="muted small"><?= e(fmt_bytes((int) $bkRun['size_bytes'])) ?> · <?= e($bkRun['trigger_kind']) ?></span>
+        <?php elseif ($bkRun['status'] === 'ok'): ?>
+          <span class="muted small"><?= e(t('bk_gone')) ?></span>
+        <?php endif; ?>
+        <?php if ($bkRun['message'] !== ''): ?><span class="muted small"><?= e($bkRun['message']) ?></span><?php endif; ?>
+        <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/delete" class="inline" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
+          <button class="btn btn-tiny btn-danger">🗑</button>
+        </form>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+</div>
+
 <?php require_once BASE_DIR . '/app/demo.php'; ?>
 <div class="card">
   <h2>🧪 <?= e(t('set_demo')) ?></h2>
