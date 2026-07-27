@@ -981,6 +981,7 @@ if (str_starts_with($path, '/intern')) {
     if ($m[2] === 'delete') {
       q('DELETE FROM equipment WHERE id = ?', [$m[1]]);
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
+      q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
       flash(t('fl_eq_deleted'));
     } elseif (($_POST['name'] ?? '') !== '') {
       // Sich selbst als übergeordnetes Gerät zu wählen wäre eine Schleife
@@ -1462,7 +1463,9 @@ function save_event_gear(int $eventId): void {
   if (!in_array('eigene', [$_POST['pa_source'] ?? '', $_POST['light_source'] ?? ''], true)) return;
   foreach ((array) ($_POST['equipment'] ?? []) as $eqId) {
     if ((int) $eqId > 0) {
-      q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$eventId, (int) $eqId]);
+      // Nur, was es auch wirklich gibt — sonst zeigt die Packliste ins Leere
+      q('INSERT IGNORE INTO event_equipment (event_id, equipment_id)
+         SELECT ?, id FROM equipment WHERE id = ?', [$eventId, (int) $eqId]);
     }
   }
 }
