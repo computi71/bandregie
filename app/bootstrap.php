@@ -322,6 +322,17 @@ const UI_STRINGS = [
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
   'songs_col_rating' => 'Bewertung',
+  // Kanalbelegung
+  'inav_kanaele' => 'Kanäle', 'ch_title' => 'Kanalbelegung',
+  'ch_intro' => 'Die Belegung eures Mischpults — entweder aus einer Szenendatei eingelesen oder von Hand gepflegt. Sie ist die Grundlage für die Inputliste im Stagerider.',
+  'ch_import' => 'Aus Mischpult-Backup einlesen',
+  'ch_import_hint' => 'Szenendatei von Behringer X32/M32 oder WING (.scn). Vorhandene Kanäle mit gleicher Nummer werden aktualisiert, eigene Notizen bleiben erhalten.',
+  'ch_file' => 'Szenendatei', 'ch_replace' => 'Vorhandene Belegung vorher leeren',
+  'ch_number' => 'Kanal', 'ch_name' => 'Bezeichnung', 'ch_source' => 'Quelle / Mikrofon',
+  'ch_add' => 'Kanal hinzufügen', 'ch_none' => 'Noch keine Kanäle — Szenendatei hochladen oder von Hand anlegen.',
+  'ch_count' => 'Kanäle', 'ch_export' => 'Tabelle',
+  'fl_ch_imported' => 'Kanäle eingelesen:', 'fl_ch_none_found' => 'In der Datei wurden keine Kanalnamen gefunden.',
+  'fl_ch_saved' => 'Kanal gespeichert.', 'fl_ch_deleted' => 'Kanal gelöscht.',
   // Diskussionen
   'inav_themen' => 'Themen', 'topic_new' => 'Neues Thema', 'topic_title_ph' => 'Worum geht es?',
   'topic_first_post' => 'Dein erster Beitrag', 'topic_open' => 'Öffnen',
@@ -593,6 +604,15 @@ $tables = [
     tkey VARCHAR(64) NOT NULL,
     value TEXT NOT NULL,
     PRIMARY KEY (lang, tkey)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS channels (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    number INT NOT NULL,
+    name VARCHAR(190) NOT NULL DEFAULT '',
+    source VARCHAR(190) NOT NULL DEFAULT '',
+    notes VARCHAR(255) NOT NULL DEFAULT '',
+    UNIQUE KEY uniq_number (number)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS topics (

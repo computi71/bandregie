@@ -998,6 +998,69 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Kanalbelegung ----------
+  if ($path === '/intern/kanaele' && $method === 'GET') {
+    view('intern/kanaele', [
+      'title' => t('ch_title'),
+      'channels' => rows('SELECT * FROM channels ORDER BY number'),
+    ]);
+  }
+  if ($path === '/intern/kanaele/import' && $method === 'POST') {
+    $tmp = $_FILES['scene']['tmp_name'] ?? '';
+    if (upload_rejected((int) ($_FILES['scene']['error'] ?? UPLOAD_ERR_NO_FILE)) || !is_uploaded_file($tmp)) {
+      redirect('/intern/kanaele');
+    }
+    // Szenendateien von X32/M32/WING enthalten Zeilen wie: /ch/01/config "Kick" 1 RD 1
+    $found = [];
+    foreach (explode("
+", (string) file_get_contents($tmp)) as $line) {
+      if (preg_match('~^/ch/(\d+)/config\s+"([^"]*)"~', trim($line), $m)) {
+        $name = trim($m[2]);
+        if ($name !== '') $found[(int) $m[1]] = $name;
+      }
+    }
+    if (!$found) {
+      flash(t('fl_ch_none_found'));
+      redirect('/intern/kanaele');
+    }
+    if (isset($_POST['replace'])) q('DELETE FROM channels');
+    foreach ($found as $number => $name) {
+      q('INSERT INTO channels (number, name) VALUES (?,?) ON DUPLICATE KEY UPDATE name = VALUES(name)', [$number, $name]);
+    }
+    flash(t('fl_ch_imported') . ' ' . count($found));
+    redirect('/intern/kanaele');
+  }
+  if ($path === '/intern/kanaele/neu' && $method === 'POST') {
+    $number = (int) ($_POST['number'] ?? 0);
+    if ($number > 0) {
+      q('INSERT INTO channels (number, name, source, notes) VALUES (?,?,?,?)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), source = VALUES(source), notes = VALUES(notes)',
+        [$number, trim($_POST['name'] ?? ''), trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? '')]);
+      flash(t('fl_ch_saved'));
+    }
+    redirect('/intern/kanaele');
+  }
+  if (preg_match('~^/intern/kanaele/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
+    if ($m[2] === 'delete') {
+      q('DELETE FROM channels WHERE id = ?', [$m[1]]);
+      flash(t('fl_ch_deleted'));
+    } else {
+      q('UPDATE channels SET name = ?, source = ?, notes = ? WHERE id = ?',
+        [trim($_POST['name'] ?? ''), trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? ''), $m[1]]);
+      flash(t('fl_ch_saved'));
+    }
+    redirect('/intern/kanaele');
+  }
+  if ($path === '/intern/kanaele/export' && $method === 'GET') {
+    require_once BASE_DIR . '/app/export.php';
+    $rows = [];
+    foreach (rows('SELECT * FROM channels ORDER BY number') as $c) {
+      $rows[] = [$c['number'], $c['name'], $c['source'], $c['notes']];
+    }
+    export_send('kanalbelegung-' . date('Y-m-d'),
+      [t('ch_number'), t('ch_name'), t('ch_source'), t('notes')], $rows);
+  }
+
   // ---------- Diskussionsthemen ----------
   if ($path === '/intern/themen' && $method === 'GET') {
     view('intern/themen', [
