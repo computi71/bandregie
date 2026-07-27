@@ -276,3 +276,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 .star-on { color: var(--accent); }
 .star-clear { font-size: 0.8rem; color: rgba(255,255,255,0.35); margin-left: 3px; }
 td.rating { white-space: nowrap; }
+
+/* Setlist per Ziehen umsortieren */
+ol.sortable li { cursor: grab; }
+ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
+.drag-handle { color: rgba(255,255,255,0.3); margin-right: 0.4rem; cursor: grab; user-select: none; }
+.sort-note { font-size: 0.82rem; color: var(--accent); opacity: 0; transition: opacity 0.3s; height: 1.1em; }
+.sort-note-error { color: #e05656; }

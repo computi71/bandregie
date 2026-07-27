@@ -998,6 +998,24 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Setlist per Ziehen umsortieren ----------
+  if (preg_match('~^/intern/setlists/(\d+)/reorder$~', $path, $m) && $method === 'POST') {
+    $setlistId = (int) $m[1];
+    if (setlist_locked($setlistId)) {
+      http_response_code(409);
+      exit(t('fl_setlist_locked'));
+    }
+    // Nur Einträge dieser Setlist annehmen, Reihenfolge kommt aus dem Browser
+    $valid = array_column(rows('SELECT id FROM setlist_songs WHERE setlist_id = ?', [$setlistId]), 'id');
+    $pos = 0;
+    foreach ((array) ($_POST['order'] ?? []) as $itemId) {
+      if (!in_array((int) $itemId, array_map('intval', $valid), true)) continue;
+      q('UPDATE setlist_songs SET position = ? WHERE id = ? AND setlist_id = ?', [++$pos, (int) $itemId, $setlistId]);
+    }
+    header('Content-Type: application/json');
+    exit(json_encode(['ok' => true, 'count' => $pos]));
+  }
+
   // ---------- Termine als Tabelle exportieren ----------
   if ($path === '/intern/termine/export' && $method === 'GET') {
     require_once BASE_DIR . '/app/export.php';

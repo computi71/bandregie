@@ -149,6 +149,8 @@ const UI_STRINGS = [
   'sl_locked_note' => 'Diese Setlist wurde bereits live gespielt und ist als Historie fixiert. Zum Weiterarbeiten einfach kopieren.',
   'sl_empty' => 'Noch leer — füge unten Songs hinzu.', 'sl_pick' => 'Song auswählen ...',
   'sl_all_used' => 'Alle nutzbaren Songs sind schon drin.',
+  'sl_drag_hint' => 'Zum Umsortieren die Zeilen mit der Maus ziehen — auf dem Handy die Pfeile nutzen.',
+  'sl_saved' => 'Reihenfolge gespeichert',
   'sl_pause' => 'Pause einfügen', 'sl_encore' => 'Zugabe-Marker',
   'sl_pause_word' => 'PAUSE', 'sl_encore_word' => 'ZUGABE',
   // Orte

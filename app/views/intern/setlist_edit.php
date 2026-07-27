@@ -22,9 +22,12 @@
 <?php endif; ?>
 
 <div class="card">
-  <ol class="setlist-songs">
+  <ol class="setlist-songs<?= $locked ? '' : ' sortable' ?>"
+      data-reorder="/intern/setlists/<?= $setlist['id'] ?>/reorder" data-token="<?= e(csrf_token()) ?>"
+      data-saved-text="<?= e(t('sl_saved')) ?>">
     <?php foreach ($entries as $entry): ?>
-      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>">
+      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>" <?= $locked ? '' : 'draggable="true"' ?>>
+        <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <span class="pos"><?= $entry['position'] ?></span>
         <?php if ($entry['is_break']): ?>
           <strong class="muted"><?= (int) $entry['is_break'] === 2 ? '🎉 — ' . e(t('sl_encore_word')) . ' —' : '⏸ — ' . e(t('sl_pause_word')) . ' —' ?></strong>
@@ -60,4 +63,5 @@
     </div>
   <?php endif; ?>
 </div>
+<?php if (!$locked): ?><p class="muted small">↕ <?= e(t('sl_drag_hint')) ?></p><script src="/assets/sortable.js" defer></script><?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
