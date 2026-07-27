@@ -998,6 +998,30 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
 
+  // ---------- Stagerider ----------
+  if ($path === '/intern/stagerider' && $method === 'GET') {
+    view('intern/stagerider', [
+      'title' => t('rider_title'),
+      'channels' => rows('SELECT * FROM channels ORDER BY number'),
+    ]);
+  }
+  if ($path === '/intern/stagerider' && $method === 'POST') {
+    require_admin();
+    foreach (['rider_stage', 'rider_power', 'rider_pa', 'rider_monitor', 'rider_light',
+              'rider_getin', 'rider_extras', 'rider_positions',
+              'rider_contact_tech', 'rider_contact_booking'] as $key) {
+      if (isset($_POST[$key])) set_setting($key, trim($_POST[$key]));
+    }
+    flash(t('fl_rider_saved'));
+    redirect('/intern/stagerider');
+  }
+  if ($path === '/intern/stagerider/print' && $method === 'GET') {
+    view('intern/stagerider_print', [
+      'title' => t('rider_title'),
+      'channels' => rows('SELECT * FROM channels ORDER BY number'),
+    ]);
+  }
+
   // ---------- Kanalbelegung ----------
   if ($path === '/intern/kanaele' && $method === 'GET') {
     view('intern/kanaele', [

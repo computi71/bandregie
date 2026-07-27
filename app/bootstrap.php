@@ -322,6 +322,26 @@ const UI_STRINGS = [
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
   'songs_col_rating' => 'Bewertung',
+  // Stagerider
+  'inav_rider' => 'Stagerider', 'rider_title' => 'Stagerider',
+  'rider_intro' => 'Alles, was ein Veranstalter über eure Technik wissen muss — die Inputliste kommt automatisch aus der Kanalbelegung.',
+  'rider_requirements' => 'Anforderungen',
+  'rider_stage_lbl' => 'Bühne (Größe, Podeste, Dach)',
+  'rider_power_lbl' => 'Strom', 'rider_pa_lbl' => 'PA / Beschallung', 'rider_monitor_lbl' => 'Monitoring',
+  'rider_light_lbl' => 'Licht', 'rider_getin_lbl' => 'Anlieferung, Aufbau, Soundcheck',
+  'rider_extras_lbl' => 'Sonstiges (Parken, Catering, Backstage)',
+  'rider_positions_lbl' => 'Bühnenaufstellung',
+  'rider_positions_ph' => "z. B.
+Schlagzeug: hinten Mitte, Podest 2 × 2 m
+Bass: hinten links
+Gitarre: vorne rechts",
+  'rider_contacts' => 'Ansprechpartner',
+  'rider_contact_tech_lbl' => 'Technik', 'rider_contact_booking_lbl' => 'Booking',
+  'rider_inputs' => 'Inputliste', 'rider_inputs_from' => 'Kanalbelegung bearbeiten',
+  'rider_inputs_empty' => 'Noch keine Kanäle hinterlegt — die Inputliste bleibt leer.',
+  'rider_print' => 'Druckansicht', 'rider_empty_hint' => 'Leere Felder werden im Ausdruck weggelassen.',
+  'rider_for' => 'Technische Anforderungen',
+  'fl_rider_saved' => 'Stagerider gespeichert.',
   // Kanalbelegung
   'inav_kanaele' => 'Kanäle', 'ch_title' => 'Kanalbelegung',
   'ch_intro' => 'Die Belegung eures Mischpults — entweder aus einer Szenendatei eingelesen oder von Hand gepflegt. Sie ist die Grundlage für die Inputliste im Stagerider.',
@@ -749,6 +769,9 @@ $defaults = [
   'facebook_url' => '', 'instagram_url' => '', 'spotify_url' => '', 'youtube_url' => '',
   'logo_file' => '', 'background_file' => '', 'favicon_file' => '',
   'print_logo_file' => '', 'print_watermark_file' => '',
+  'rider_stage' => '', 'rider_power' => '', 'rider_pa' => '', 'rider_monitor' => '',
+  'rider_light' => '', 'rider_getin' => '', 'rider_extras' => '', 'rider_positions' => '',
+  'rider_contact_tech' => '', 'rider_contact_booking' => '',
   'impressum_text' => '', 'privacy_text' => '', 'copyright_text' => '',
   'public_show_past' => '0', 'public_limit_upcoming' => '10', 'public_limit_past' => '5',
   'public_embed_mode' => 'consent',

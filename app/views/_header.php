@@ -44,6 +44,7 @@
       <a href="/intern/aufgaben" class="<?= str_starts_with($path, '/intern/aufgaben') ? 'active' : '' ?>"><?= e(t('inav_aufgaben')) ?></a>
       <a href="/intern/themen" class="<?= str_starts_with($path, '/intern/themen') ? 'active' : '' ?>"><?= e(t('inav_themen')) ?></a>
       <a href="/intern/kasse" class="<?= str_starts_with($path, '/intern/kasse') ? 'active' : '' ?>"><?= e(t('inav_kasse')) ?></a>
+      <a href="/intern/stagerider" class="<?= str_starts_with($path, '/intern/stagerider') ? 'active' : '' ?>"><?= e(t('inav_rider')) ?></a>
       <a href="/intern/kanaele" class="<?= str_starts_with($path, '/intern/kanaele') ? 'active' : '' ?>"><?= e(t('inav_kanaele')) ?></a>
       <a href="/intern/equipment" class="<?= str_starts_with($path, '/intern/equipment') ? 'active' : '' ?>"><?= e(t('inav_equipment')) ?></a>
       <a href="/intern/fotos" class="<?= str_starts_with($path, '/intern/fotos') ? 'active' : '' ?>"><?= e(t('inav_fotos')) ?></a>
