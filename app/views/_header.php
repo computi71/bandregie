@@ -33,6 +33,8 @@
       <span class="brand-mark">♨</span> <?= e($settings['band_name']) ?>
     <?php endif; ?>
   </a>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
+  <label class="nav-burger" for="nav-toggle" aria-label="Menü"><span>☰</span></label>
   <nav>
     <?php if ($isIntern && $user): ?>
       <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><?= e(t('inav_uebersicht')) ?></a>

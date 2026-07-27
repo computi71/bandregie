@@ -283,3 +283,59 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .drag-handle { color: rgba(255,255,255,0.3); margin-right: 0.4rem; cursor: grab; user-select: none; }
 .sort-note { font-size: 0.82rem; color: var(--accent); opacity: 0; transition: opacity 0.3s; height: 1.1em; }
 .sort-note-error { color: #e05656; }
+
+/* ---------- Handy und Tablet ---------- */
+.nav-burger { display: none; }
+
+@media (max-width: 760px) {
+  /* Kopfbereich kompakt: das Menü klappt hinter dem Burger auf, damit
+     die 17 Einträge nicht den halben Bildschirm belegen. */
+  .site-header { padding: 0.6rem 0.9rem; gap: 0.5rem 0.8rem; position: static; }
+  .brand { font-size: 1.05rem; }
+  .brand-logo { height: 1.8rem; }
+  .nav-burger {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: auto; order: 2;
+    width: 2.6rem; height: 2.6rem; border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 1.3rem; cursor: pointer; user-select: none;
+  }
+  .nav-toggle:checked ~ .nav-burger { border-color: var(--accent); color: var(--accent); }
+  .site-header nav { display: none; order: 4; width: 100%; flex-direction: column; gap: 0; }
+  .nav-toggle:checked ~ nav { display: flex; }
+  .site-header nav a {
+    padding: 0.7rem 0.6rem; border-radius: 0;
+    border-bottom: 1px solid var(--border); font-size: 1rem;
+  }
+  .site-header nav a:last-child { border-bottom: 0; }
+  .header-user { order: 3; margin-left: 0; }
+
+  /* Inhalt: mehr Platz, kleinere Überschriften */
+  .container { padding: 0.6rem 0.8rem 2.5rem; }
+  h1 { font-size: 1.5rem; margin: 0.8rem 0 0.6rem; }
+  h2 { font-size: 1.1rem; }
+  .card { padding: 0.9rem; }
+
+  /* Breite Tabellen scrollen innerhalb ihrer Karte statt die Seite zu sprengen */
+  .card { overflow-x: auto; }
+  .table { min-width: 34rem; }
+  .table th, .table td { padding: 0.45rem 0.4rem; }
+
+  /* Bedienelemente fingerfreundlich */
+  .btn { padding: 0.55rem 0.9rem; }
+  .btn-tiny { padding: 0.4rem 0.6rem; }
+  .chip { padding: 0.5rem 0.8rem; }
+  .star { font-size: 1.35rem; padding: 0 3px; }
+  input, select, textarea { font-size: 16px; }   /* verhindert das Zoomen in iOS */
+
+  /* Kopfzeilen und Knopfreihen umbrechen lassen */
+  .page-head { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .event-head { gap: 0.35rem 0.6rem; }
+  .row-buttons { gap: 0.35rem; }
+  .setlist-row { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .site-footer { flex-direction: column; gap: 0.8rem; text-align: center; }
+}
+
+@media (max-width: 420px) {
+  .photo-grid { grid-template-columns: repeat(2, 1fr); }
+  .table { min-width: 28rem; }
+}
