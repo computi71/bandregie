@@ -198,9 +198,17 @@ function backup_run(string $trigger = 'auto'): array {
     rename($target . '.part', $target);
     @unlink($sqlFile);
     @chmod($target, 0600);
-    $msg = $skipped ? count($skipped) . ' Datei(en) mit zu langem Pfad ausgelassen' : '';
-    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
-      [$name, (int) filesize($target), 'ok', $msg, $trigger]);
+    $notes = [];
+    if ($skipped) $notes[] = count($skipped) . ' Datei(en) mit zu langem Pfad ausgelassen';
+    // Das Zweitziel wird getrennt vermerkt. Scheitert es, ist die Sicherung
+    // hier trotzdem gültig und zählt für die Aufbewahrung — sichtbar bleibt
+    // der Fehlschlag über ftp_ok, sonst würde stündlich neu versucht.
+    $ftpEnabled = backup_ftp_config()['enabled'];
+    $ftp = backup_ftp_upload($target);
+    if ($ftp['message'] !== '') $notes[] = $ftp['message'];
+    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind, ftp_ok) VALUES (?,?,?,?,?,?)',
+      [$name, (int) filesize($target), 'ok', implode(' · ', $notes), $trigger,
+       $ftpEnabled ? ($ftp['ok'] ? 1 : 0) : null]);
     backup_prune();
   } catch (Throwable $e) {
     @unlink($target . '.part');
@@ -211,6 +219,56 @@ function backup_run(string $trigger = 'auto'): array {
   flock($lock, LOCK_UN);
   fclose($lock);
   return row('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 1') ?? [];
+}
+
+/**
+ * Ein fertiges Archiv auf den FTP-Server legen und dort aufräumen. Übertragen
+ * wird erst, wenn die Datei vollständig ist — niemals aus einem laufenden
+ * Dump heraus. Geht etwas schief, bleibt die Sicherung auf dem eigenen Server
+ * trotzdem gültig; der Fehlschlag wird nur vermerkt.
+ *
+ * @return array{ok:bool,message:string}
+ */
+function backup_ftp_upload(string $file): array {
+  $cfg = backup_ftp_config();
+  if (!$cfg['enabled']) return ['ok' => true, 'message' => ''];
+  if (!function_exists('ftp_connect')) return ['ok' => false, 'message' => 'FTP fehlt auf diesem Server'];
+
+  $conn = $cfg['tls'] ? @ftp_ssl_connect($cfg['host'], $cfg['port'], 20)
+                      : @ftp_connect($cfg['host'], $cfg['port'], 20);
+  if (!$conn) return ['ok' => false, 'message' => 'FTP: keine Verbindung'];
+  if (!@ftp_login($conn, $cfg['user'], $cfg['pass'])) {
+    @ftp_close($conn);
+    return ['ok' => false, 'message' => 'FTP: Anmeldung abgelehnt'];
+  }
+  @ftp_pasv($conn, $cfg['passive']);
+  if ($cfg['dir'] !== '' && !@ftp_chdir($conn, $cfg['dir'])) {
+    @ftp_close($conn);
+    return ['ok' => false, 'message' => 'FTP: Verzeichnis nicht gefunden'];
+  }
+  $name = basename($file);
+  // Erst unter einem Zwischennamen hochladen und dann umbenennen: bricht die
+  // Übertragung ab, liegt dort kein halbes Archiv mit gültigem Namen.
+  if (!@ftp_put($conn, $name . '.part', $file, FTP_BINARY) || !@ftp_rename($conn, $name . '.part', $name)) {
+    @ftp_delete($conn, $name . '.part');
+    @ftp_close($conn);
+    return ['ok' => false, 'message' => 'FTP: Übertragung fehlgeschlagen'];
+  }
+
+  // Aufräumen nach der eigenen Zahl dieses Ziels, neueste zuerst behalten
+  $remote = @ftp_nlist($conn, '.') ?: [];
+  $mine = [];
+  foreach ($remote as $entry) {
+    $base = basename($entry);
+    if (preg_match('~^bandroadie-\d{4}-\d{2}-\d{2}-\d{6}\.tar\.gz$~', $base)) $mine[] = $base;
+  }
+  rsort($mine);
+  $dropped = 0;
+  foreach (array_slice($mine, $cfg['keep']) as $old) {
+    if (@ftp_delete($conn, $old)) $dropped++;
+  }
+  @ftp_close($conn);
+  return ['ok' => true, 'message' => 'FTP: übertragen' . ($dropped ? ", $dropped alte entfernt" : '')];
 }
 
 /**

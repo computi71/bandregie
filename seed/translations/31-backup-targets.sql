@@ -72,3 +72,16 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','bk_onedrive_pending','Richiede l''accesso a Microsoft. Appena esiste il collegamento per file e foto, il backup potrà usarlo.'),
 ('it','fl_bk_targets_saved','Destinazioni salvate.')
 ON DUPLICATE KEY UPDATE value = value;
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','inav_ueber','About'),
+('en','bk_warn_ftp','The backup is stored here but could not be transferred to the FTP server.'),
+('fr','inav_ueber','À propos'),
+('fr','bk_warn_ftp','La sauvegarde est ici mais n''a pas pu être transférée vers le serveur FTP.'),
+('es','inav_ueber','Acerca de'),
+('es','bk_warn_ftp','La copia está aquí pero no se pudo transferir al servidor FTP.'),
+('nl','inav_ueber','Over'),
+('nl','bk_warn_ftp','De back-up staat hier, maar kon niet naar de FTP-server worden overgezet.'),
+('it','inav_ueber','Informazioni'),
+('it','bk_warn_ftp','Il backup è qui ma non è stato possibile trasferirlo al server FTP.')
+ON DUPLICATE KEY UPDATE value = value;

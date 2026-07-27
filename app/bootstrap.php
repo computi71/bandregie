@@ -87,7 +87,7 @@ const UI_STRINGS = [
   // Überschriften im Klappmenü — siehe $navGroups in app/views/_header.php
   'inavg_planung' => 'Planung', 'inavg_musik' => 'Musik', 'inavg_technik' => 'Technik',
   'inavg_material' => 'Material', 'inavg_band' => 'Band', 'inavg_konto' => 'Konto',
-  'inav_musik' => 'Musik & Videos', 'inav_hilfe' => 'Hilfe',
+  'inav_musik' => 'Musik & Videos', 'inav_hilfe' => 'Hilfe', 'inav_ueber' => 'Über',
   'fl_media_saved' => 'Link gespeichert.', 'fl_media_deleted' => 'Link gelöscht.',
   'help_title' => 'Hilfe', 'help_intro' => 'Was steckt hinter den einzelnen Bereichen?',
   'help_more' => 'Mehr zur Anwendung, zur Lizenz und zu den Mitwirkenden steht unter „Über".',
@@ -382,7 +382,7 @@ const UI_STRINGS = [
   'bk_ftp_passive' => 'Passiver Modus', 'bk_ftp_keep' => 'Wie viele dort aufheben',
   'bk_ftp_test' => 'Verbindung prüfen',
   'bk_ftp_note' => 'Das Passwort muss im Klartext gespeichert werden, sonst kann sich die Sicherung nicht anmelden. Es verlässt den Server nur in Richtung des eingetragenen Servers.',
-  'bk_ftp_pending' => 'Die Zugangsdaten werden schon gespeichert und lassen sich prüfen — das Hochladen selbst kommt im nächsten Schritt.',
+  'bk_warn_ftp' => 'Die Sicherung liegt hier, konnte aber nicht auf den FTP-Server übertragen werden.',
   'bk_target_onedrive' => 'OneDrive',
   'bk_onedrive_pending' => 'Braucht eine Anmeldung bei Microsoft. Sobald die Verbindung für Dateien und Fotos steht, kann die Sicherung sie mitbenutzen.',
   'fl_bk_targets_saved' => 'Ziele gespeichert.',
@@ -902,6 +902,10 @@ foreach ([
   'price_cents'   => 'INT NULL',
 ] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
+}
+// Ergebnis des Zweitziels je Lauf: NULL = nicht eingerichtet, 0 = fehlgeschlagen
+if (!column_exists('backup_runs', 'ftp_ok')) {
+  $db->exec('ALTER TABLE backup_runs ADD COLUMN ftp_ok TINYINT(1) NULL');
 }
 foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {

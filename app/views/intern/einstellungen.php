@@ -47,24 +47,6 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 </details>
 
 <details class="card acc" name="setacc">
-  <summary><?= e(t('set_legal')) ?></summary>
-  <p class="muted small"><?= e(t('set_legal_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
-    <input type="hidden" name="_legal_form" value="1">
-    <?php foreach ($activeLangs as $lang): ?>
-      <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
-        <summary><?= flag_svg($lang) ?> <strong><?= LANGS[$lang] ?></strong><?= $lang === 'de' ? ' <span class="muted small">(Standard / Fallback)</span>' : '' ?></summary>
-        <div class="form-grid">
-          <label class="span2"><?= e(t('nav_impressum')) ?><textarea name="txt[<?= $lang ?>][impressum_text]" rows="10"><?= e($lang === 'de' ? ($settings['impressum_text'] ?: $impressumDefault) : $txtVal($lang, 'impressum_text')) ?></textarea></label>
-          <label class="span2"><?= e(t('privacy_title')) ?><textarea name="txt[<?= $lang ?>][privacy_text]" rows="14"><?= e($lang === 'de' ? ($settings['privacy_text'] ?: $privacyDefault) : $txtVal($lang, 'privacy_text')) ?></textarea></label>
-        </div>
-      </details>
-    <?php endforeach; ?>
-    <button class="btn btn-primary"><?= e(t('save')) ?></button>
-  </form>
-</details>
-
-<details class="card acc" name="setacc">
   <summary><?= e(t('set_public')) ?></summary>
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_termine_form" value="1">
@@ -84,31 +66,6 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
         <option value="direct" <?= ($settings['public_embed_mode'] ?? '') === 'direct' ? 'selected' : '' ?>><?= e(t('set_embed_direct')) ?></option>
       </select>
     </label>
-    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
-  </form>
-</details>
-
-<details class="card acc" name="setacc">
-  <summary><?= e(t('set_langs')) ?></summary>
-  <p class="muted small"><?= e(t('set_langs_hint')) ?> <a href="/intern/uebersetzungen"><?= e(t('set_langs_check')) ?> →</a></p>
-  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
-    <input type="hidden" name="_langs_form" value="1">
-    <label class="span2"><?= e(t('set_default_lang')) ?>
-      <select name="default_lang">
-        <?php foreach ($activeLangs as $code): ?>
-          <option value="<?= $code ?>" <?= default_lang() === $code ? 'selected' : '' ?>><?= LANGS[$code] ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
-    <p class="muted small span2"><?= e(t('set_default_lang_hint')) ?></p>
-    <div class="span2 row-buttons">
-      <?php foreach (LANGS as $code => $name): ?>
-        <label class="checkbox">
-          <input type="checkbox" name="langs[]" value="<?= $code ?>" <?= in_array($code, $activeLangs, true) ? 'checked' : '' ?> <?= $code === 'de' ? 'disabled' : '' ?>>
-          <?= flag_svg($code) ?> <?= $name ?>
-        </label>
-      <?php endforeach; ?>
-    </div>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
 </details>
@@ -138,16 +95,51 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 </details>
 
 <details class="card acc" name="setacc">
-  <summary><?= e(t('set_ical')) ?></summary>
-  <p><code id="ical-link"><?= e($ical_url) ?></code>
-  <button class="btn btn-small" onclick="navigator.clipboard.writeText(document.getElementById('ical-link').textContent).then(() => this.textContent = '✔ <?= e(t('copied')) ?>')"><?= e(t('copy')) ?></button></p>
-  <p class="muted small"><?= e(t('set_ical_hint')) ?> <a href="/intern/kalender"><?= e(t('set_ical_link')) ?> →</a></p>
+  <summary><?= e(t('set_meta')) ?></summary>
+  <p class="muted"><?= e(t('set_meta_hint')) ?></p>
 </details>
 
 <details class="card acc" name="setacc">
-  <summary>ℹ️ <?= e(t('about_title')) ?></summary>
-  <p class="muted small"><?= e(t('about_settings_hint')) ?></p>
-  <a class="btn" href="/intern/ueber"><?= e(t('about_open')) ?> →</a>
+  <summary><?= e(t('set_legal')) ?></summary>
+  <p class="muted small"><?= e(t('set_legal_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
+    <input type="hidden" name="_legal_form" value="1">
+    <?php foreach ($activeLangs as $lang): ?>
+      <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
+        <summary><?= flag_svg($lang) ?> <strong><?= LANGS[$lang] ?></strong><?= $lang === 'de' ? ' <span class="muted small">(Standard / Fallback)</span>' : '' ?></summary>
+        <div class="form-grid">
+          <label class="span2"><?= e(t('nav_impressum')) ?><textarea name="txt[<?= $lang ?>][impressum_text]" rows="10"><?= e($lang === 'de' ? ($settings['impressum_text'] ?: $impressumDefault) : $txtVal($lang, 'impressum_text')) ?></textarea></label>
+          <label class="span2"><?= e(t('privacy_title')) ?><textarea name="txt[<?= $lang ?>][privacy_text]" rows="14"><?= e($lang === 'de' ? ($settings['privacy_text'] ?: $privacyDefault) : $txtVal($lang, 'privacy_text')) ?></textarea></label>
+        </div>
+      </details>
+    <?php endforeach; ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_langs')) ?></summary>
+  <p class="muted small"><?= e(t('set_langs_hint')) ?> <a href="/intern/uebersetzungen"><?= e(t('set_langs_check')) ?> →</a></p>
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
+    <input type="hidden" name="_langs_form" value="1">
+    <label class="span2"><?= e(t('set_default_lang')) ?>
+      <select name="default_lang">
+        <?php foreach ($activeLangs as $code): ?>
+          <option value="<?= $code ?>" <?= default_lang() === $code ? 'selected' : '' ?>><?= LANGS[$code] ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <p class="muted small span2"><?= e(t('set_default_lang_hint')) ?></p>
+    <div class="span2 row-buttons">
+      <?php foreach (LANGS as $code => $name): ?>
+        <label class="checkbox">
+          <input type="checkbox" name="langs[]" value="<?= $code ?>" <?= in_array($code, $activeLangs, true) ? 'checked' : '' ?> <?= $code === 'de' ? 'disabled' : '' ?>>
+          <?= flag_svg($code) ?> <?= $name ?>
+        </label>
+      <?php endforeach; ?>
+    </div>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
 </details>
 
 <details class="card acc" name="setacc">
@@ -177,6 +169,9 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <p class="warn">⚠ <?= e(t('bk_warn_failed')) ?> <?= e($backupRuns[0]['message']) ?></p>
   <?php elseif (setting('backup_enabled') === '1' && $bkLast && (time() - strtotime($bkLast['created_at'])) > $bkEvery * 2): ?>
     <p class="warn">⚠ <?= e(t('bk_warn_old')) ?></p>
+  <?php endif; ?>
+  <?php if (isset($backupRuns[0]) && $backupRuns[0]['ftp_ok'] !== null && !(int) $backupRuns[0]['ftp_ok']): ?>
+    <p class="warn">⚠ <?= e(t('bk_warn_ftp')) ?> <?= e($backupRuns[0]['message']) ?></p>
   <?php endif; ?>
 
   <form method="post" action="/intern/einstellungen/backup" class="form-grid"><?= csrf_field() ?>
@@ -213,7 +208,6 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <label class="checkbox"><input type="checkbox" name="backup_ftp_tls" value="1" <?= $ftp['tls'] ? 'checked' : '' ?>> 🔒 <?= e(t('bk_ftp_tls')) ?></label>
     <label class="checkbox"><input type="checkbox" name="backup_ftp_passive" value="1" <?= $ftp['passive'] ? 'checked' : '' ?>> <?= e(t('bk_ftp_passive')) ?></label>
     <p class="muted small span2">🔑 <?= e(t('bk_ftp_note')) ?></p>
-    <p class="warn small span2">⚠ <?= e(t('bk_ftp_pending')) ?></p>
     <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
   </form>
   <form method="post" action="/intern/backup/ftp-test" class="inline"><?= csrf_field() ?>
@@ -249,6 +243,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 </details>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>
+
 <details class="card acc" name="setacc">
   <summary>🧪 <?= e(t('set_demo')) ?></summary>
   <?php if (demo_installed()): ?>
@@ -264,8 +259,4 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <?php endif; ?>
 </details>
 
-<details class="card acc" name="setacc">
-  <summary><?= e(t('set_meta')) ?></summary>
-  <p class="muted"><?= e(t('set_meta_hint')) ?></p>
-</details>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
