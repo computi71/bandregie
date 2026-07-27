@@ -388,6 +388,14 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Ersatzleute am Termin: Name, Erfahrung und Knopf bleiben zusammen, auch
+   wenn die Zeile umbricht. */
+.sub-option {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  margin: 0.15rem 0.6rem 0.15rem 0; white-space: nowrap;
+}
+.sub-option form { margin: 0; }
+
 /* Rechtevergabe: je Bereich eine Zeile mit zwei Häkchen. Auf schmalen
    Schirmen rutschen die Häkchen unter den Namen, statt zu quetschen. */
 .perm-list { list-style: none; padding: 0; margin: 0.4rem 0; }

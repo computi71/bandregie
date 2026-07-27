@@ -151,6 +151,21 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 </div>
 
 <div class="card">
+  <h2>🔁 <?= e(t('set_sub_auto')) ?></h2>
+  <p class="muted small"><?= e(t('set_sub_auto_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/ersatz" class="form-grid"><?= csrf_field() ?>
+    <label><?= e(t('set_sub_auto')) ?>
+      <select name="substitute_auto">
+        <?php foreach (SUB_AUTO_MODES as $mode): ?>
+          <option value="<?= $mode ?>" <?= (setting('substitute_auto') ?: 'off') === $mode ? 'selected' : '' ?>><?= e(t('sub_auto_' . $mode)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+</div>
+
+<div class="card">
   <h2>💾 <?= e(t('bk_title')) ?></h2>
   <p class="muted small"><?= e(t('bk_content')) ?> <?= e(t('bk_only_local')) ?></p>
   <?php

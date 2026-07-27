@@ -207,7 +207,18 @@ const UI_STRINGS = [
   'mem_substitute_none' => '– niemanden –',
   'mem_instrument_pick' => 'aus dem Equipment wählen',
   'mem_instrument_free' => 'oder frei eintragen',
-  'ev_substitute_hint' => 'Ersatz fragen:',
+  'ev_sub_for' => 'Ersatz für',
+  'ev_sub_ask' => 'anfragen', 'ev_sub_asked' => 'angefragt', 'ev_sub_open' => 'keine Antwort',
+  'ev_sub_requested' => 'Angefragt:', 'ev_sub_withdraw' => 'Anfrage zurückziehen',
+  'ev_sub_rehearsals' => 'Proben', 'ev_sub_gigs' => 'Auftritte',
+  'mem_substitute_rank' => 'Reihenfolge als Ersatz',
+  'mem_substitute_rank_hint' => 'Kleinere Zahl wird zuerst gefragt; 0 heißt „ohne Reihenfolge".',
+  'fl_sub_requested' => 'Ersatz angefragt.', 'fl_sub_withdrawn' => 'Anfrage zurückgezogen.',
+  'set_sub_auto' => 'Ersatz automatisch anfragen',
+  'set_sub_auto_hint' => 'Sagt jemand ab, geht die Anfrage von selbst an einen seiner Ersatzleute. Sagt der auch ab, rückt der nächste nach.',
+  'sub_auto_off' => 'aus — nur von Hand anfragen',
+  'sub_auto_rank' => 'nach Reihenfolge', 'sub_auto_shuffle' => 'zufällig',
+  'sub_auto_rotate' => 'reihum — wer am längsten nicht dran war',
   'mem_edit_admin' => 'Bearbeiten (Admin)', 'mem_own_role' => 'Eigene Rolle nicht änderbar',
   'prof_avatar_remove' => 'Avatar entfernen', 'prof_no_avatar' => 'Noch kein Avatar — unten hochladen.',
   'prof_lang' => 'Sprache', 'prof_avatar_lbl' => 'Avatar (Bild, max. 5 MB)',
@@ -720,6 +731,19 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Wer für einen Termin als Ersatz angefragt wurde. Ohne Eintrag hier sieht
+  // der Ersatz den Termin nicht — angefragt wird ausdrücklich, nicht daraus
+  // abgeleitet, dass jemand abgesagt hat.
+  "CREATE TABLE IF NOT EXISTS substitute_requests (
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    for_user_id INT NULL,
+    requested_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, user_id),
+    INDEX idx_user (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Rechte je Mitglied und Bereich; fehlt die Zeile, gibt es kein Recht
   "CREATE TABLE IF NOT EXISTS permissions (
     user_id INT NOT NULL,
@@ -873,7 +897,9 @@ foreach (['first_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'last_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'phone' => "VARCHAR(60) NOT NULL DEFAULT ''",
           'mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
-          'substitute_for' => 'INT NULL'] as $col => $ddl) {
+          'substitute_for' => 'INT NULL',
+          // Reihenfolge unter mehreren Ersatzleuten desselben Mitglieds
+          'substitute_rank' => 'INT NOT NULL DEFAULT 0'] as $col => $ddl) {
   if (!column_exists('users', $col)) $db->exec("ALTER TABLE users ADD COLUMN `$col` $ddl");
 }
 if (!column_exists('users', 'can_finance')) {
@@ -942,6 +968,8 @@ $defaults = [
   // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
   // Installation ungefragt die Platte des Servers, auf dem sie liegt.
   'backup_enabled' => '0', 'backup_interval' => 'daily', 'backup_keep' => '7',
+  // Ersatz wird von Hand angefragt, bis die Band etwas anderes einstellt
+  'substitute_auto' => 'off',
 ];
 // Neuinstallationen starten auf Englisch; bestehende Installationen behalten
 // Deutsch, damit ein Update ihre Seite nicht plötzlich umstellt.
@@ -1075,21 +1103,91 @@ function perm_allows(?array $user, string $module, string $need = 'read'): bool 
 
 /**
  * Termine, die jemand sehen darf — null heißt „alle". Nur Ersatzleute werden
- * eingeschränkt: Sie sehen die Termine, für die sie angefragt sind. Angefragt
- * heißt, dass sie selbst schon geantwortet haben oder dass die Person, die sie
- * vertreten, abgesagt hat. Genau dann geht es sie etwas an.
+ * eingeschränkt: Sie sehen die Termine, für die sie ausdrücklich angefragt
+ * wurden. Dass jemand abgesagt hat, ist noch keine Anfrage — gefragt wird in
+ * der Band, und erst der Knopf macht daraus einen Termin, der sie angeht.
  */
 function visible_event_ids(?array $user): ?array {
   if (!$user || ($user['role'] ?? '') === 'admin' || !is_substitute($user)) return null;
-  $ids = array_column(rows(
-    'SELECT DISTINCT a.event_id FROM attendance a WHERE a.user_id = ?
-     UNION
-     SELECT DISTINCT a.event_id FROM attendance a
-       JOIN users u ON u.id = ? AND u.substitute_for = a.user_id
-      WHERE a.status = ?',
-    [$user['id'], $user['id'], 'no']
-  ), 'event_id');
-  return array_map('intval', $ids);
+  return array_map('intval', array_column(
+    rows('SELECT event_id FROM substitute_requests WHERE user_id = ?', [$user['id']]), 'event_id'));
+}
+
+/**
+ * Ersatzleute eines Mitglieds, in ihrer Reihenfolge — dazu, wie oft sie schon
+ * dabei waren. Die Zahlen kommen aus den Zusagen, es pflegt sie niemand.
+ */
+function substitutes_for(int $memberId): array {
+  return rows(
+    "SELECT u.id, u.name, u.substitute_rank,
+            (SELECT COUNT(*) FROM attendance a JOIN events e ON e.id = a.event_id
+              WHERE a.user_id = u.id AND a.status = 'yes' AND e.type = 'probe') AS proben,
+            (SELECT COUNT(*) FROM attendance a JOIN events e ON e.id = a.event_id
+              WHERE a.user_id = u.id AND a.status = 'yes' AND e.type = 'gig') AS gigs
+     FROM users u WHERE u.substitute_for = ?
+     ORDER BY u.substitute_rank = 0, u.substitute_rank, u.name", [$memberId]);
+}
+
+// Wie der nächste Ersatz gewählt wird, wenn die Band das automatisch möchte
+const SUB_AUTO_MODES = ['off', 'rank', 'shuffle', 'rotate'];
+
+/**
+ * Sucht den nächsten Ersatz für ein Mitglied bei einem Termin. Schon
+ * angefragte fallen heraus, sonst würde dieselbe Person zweimal gefragt.
+ *
+ * rank    — die hinterlegte Reihenfolge
+ * shuffle — zufällig, damit nicht immer dieselbe Person zuerst gefragt wird
+ * rotate  — wer am längsten nicht dran war; wer noch nie gefragt wurde, zuerst
+ */
+function pick_substitute(int $memberId, int $eventId, string $mode): ?array {
+  $asked = array_map('intval', array_column(
+    rows('SELECT user_id FROM substitute_requests WHERE event_id = ?', [$eventId]), 'user_id'));
+  $subs = array_values(array_filter(substitutes_for($memberId),
+    fn($s) => !in_array((int) $s['id'], $asked, true)));
+  if (!$subs) return null;
+
+  if ($mode === 'shuffle') return $subs[random_int(0, count($subs) - 1)];
+  if ($mode === 'rotate') {
+    $last = [];
+    foreach (rows('SELECT r.user_id, MAX(e.date) AS d FROM substitute_requests r
+                   JOIN events e ON e.id = r.event_id GROUP BY r.user_id') as $r) {
+      $last[(int) $r['user_id']] = (string) $r['d'];
+    }
+    usort($subs, fn($a, $b) => ($last[(int) $a['id']] ?? '') <=> ($last[(int) $b['id']] ?? ''));
+  }
+  return $subs[0]; // bei 'rank' steht die Reihenfolge schon in substitutes_for()
+}
+
+/**
+ * Fragt automatisch den nächsten Ersatz an, wenn die Band das eingestellt hat.
+ * Aufgerufen, sobald jemand absagt — auch dann, wenn ein Ersatz absagt, denn
+ * dann rückt der nächste nach.
+ */
+function substitute_auto_request(int $eventId, int $memberId, int $byUserId): void {
+  $mode = setting('substitute_auto') ?: 'off';
+  if ($mode === 'off' || !in_array($mode, SUB_AUTO_MODES, true)) return;
+  // Vergangene Termine brauchen keinen Ersatz mehr
+  if (!row('SELECT 1 FROM events WHERE id = ? AND date >= ?', [$eventId, date('Y-m-d')])) return;
+  $pick = pick_substitute($memberId, $eventId, $mode);
+  if (!$pick) return;
+  q('INSERT IGNORE INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,?)',
+    [$eventId, $pick['id'], $memberId, $byUserId]);
+}
+
+/** Angefragte Ersatzleute je Termin: [event_id][] => Zeile mit Name und Antwort. */
+function substitute_requests_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT r.*, u.name, f.name AS for_name,
+                        (SELECT status FROM attendance a WHERE a.event_id = r.event_id AND a.user_id = r.user_id) AS answer
+                 FROM substitute_requests r
+                 JOIN users u ON u.id = r.user_id
+                 LEFT JOIN users f ON f.id = r.for_user_id
+                 WHERE r.event_id IN ($in) ORDER BY r.created_at", $eventIds) as $r) {
+    $out[(int) $r['event_id']][] = $r;
+  }
+  return $out;
 }
 
 /** Setlists zu den sichtbaren Terminen; null heißt „alle". */

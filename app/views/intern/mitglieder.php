@@ -76,6 +76,10 @@
               <?php endforeach; ?>
             </select>
           </label>
+          <label><?= e(t('mem_substitute_rank')) ?>
+            <input type="number" name="substitute_rank" min="0" max="99" value="<?= (int) ($mFull['substitute_rank'] ?? 0) ?>">
+            <span class="muted small"><?= e(t('mem_substitute_rank_hint')) ?></span>
+          </label>
           <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($mFull['email']) ?>" required></label>
           <label><?= e(t('role')) ?>
             <select name="role" <?= (int) $m['id'] === (int) $user['id'] ? 'disabled title="' . e(t('mem_own_role')) . '"' : '' ?>>

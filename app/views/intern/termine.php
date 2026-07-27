@@ -97,16 +97,51 @@ require BASE_DIR . '/app/views/_header.php';
         <?php foreach ($att as $a): ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?></span><?php endforeach; ?>
       </p>
       <?php
-        // Wer abgesagt hat und einen Ersatz hinterlegt hat, wird hier vorgeschlagen
-        $suggest = [];
-        foreach ($att as $a) {
-          if ($a['status'] !== 'no') continue;
-          foreach ($substitutes ?? [] as $sub) {
-            if ((int) $sub['substitute_for'] === (int) $a['user_id']) $suggest[] = $sub['name'] . ' (' . $a['name'] . ')';
-          }
-        }
+        // Wer abgesagt hat, für den lassen sich seine Ersatzleute anfragen —
+        // in ihrer Reihenfolge und mit dem, was sie schon mitgespielt haben.
+        $asked = array_column($subRequests[$ev['id']] ?? [], 'user_id');
+        $mayAsk = perm_allows($user, 'termine', 'write') && $ev['date'] >= date('Y-m-d');
       ?>
-      <?php if ($suggest): ?><p class="warn small">🔁 <?= e(t('ev_substitute_hint')) ?> <?= e(implode(', ', $suggest)) ?></p><?php endif; ?>
+      <?php foreach ($att as $a): ?>
+        <?php if ($a['status'] !== 'no') continue; ?>
+        <?php $subs = substitutes_for((int) $a['user_id']); ?>
+        <?php if (!$subs) continue; ?>
+        <p class="warn small">
+          🔁 <?= e(t('ev_sub_for')) ?> <strong><?= e($a['name']) ?></strong>
+          <?php foreach ($subs as $sub): ?>
+            <span class="sub-option">
+              <?= e($sub['name']) ?>
+              <span class="muted"><?= (int) $sub['proben'] ?>&nbsp;<?= e(t('ev_sub_rehearsals')) ?> · <?= (int) $sub['gigs'] ?>&nbsp;<?= e(t('ev_sub_gigs')) ?></span>
+              <?php if (in_array($sub['id'], $asked)): ?>
+                <span class="badge"><?= e(t('ev_sub_asked')) ?></span>
+              <?php elseif ($mayAsk): ?>
+                <form class="inline" method="post" action="/intern/termine/<?= $ev['id'] ?>/ersatz"><?= csrf_field() ?>
+                  <input type="hidden" name="user_id" value="<?= $sub['id'] ?>">
+                  <button class="btn btn-tiny"><?= e(t('ev_sub_ask')) ?></button>
+                </form>
+              <?php endif; ?>
+            </span>
+          <?php endforeach; ?>
+        </p>
+      <?php endforeach; ?>
+      <?php if (!empty($subRequests[$ev['id']])): ?>
+        <p class="muted small">
+          🔁 <?= e(t('ev_sub_requested')) ?>
+          <?php foreach ($subRequests[$ev['id']] as $req): ?>
+            <span class="sub-option">
+              <strong><?= e($req['name']) ?></strong>
+              <?php if ($req['for_name']): ?><span class="muted"><?= e(t('mem_substitute_for')) ?> <?= e($req['for_name']) ?></span><?php endif; ?>
+              <?php $lbl = ['yes' => t('att_yes'), 'no' => t('att_no'), 'maybe' => t('att_maybe')][$req['answer'] ?? ''] ?? t('ev_sub_open'); ?>
+              <span class="badge <?= ($req['answer'] ?? '') === 'yes' ? 'public' : '' ?>"><?= e($lbl) ?></span>
+              <?php if ($mayAsk): ?>
+                <form class="inline" method="post" action="/intern/termine/<?= $ev['id'] ?>/ersatz/<?= $req['user_id'] ?>/delete"><?= csrf_field() ?>
+                  <button class="btn btn-tiny btn-danger" title="<?= e(t('ev_sub_withdraw')) ?>">✕</button>
+                </form>
+              <?php endif; ?>
+            </span>
+          <?php endforeach; ?>
+        </p>
+      <?php endif; ?>
     <?php endif; ?>
 
     <?php $attachFiles = $filesByEvent[$ev['id']] ?? []; $attachType = 'event'; $attachId = $ev['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>

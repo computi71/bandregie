@@ -378,6 +378,7 @@ if (str_starts_with($path, '/intern')) {
       'attendance' => attendance_map($ids),
       'mine' => my_attendance($ids, $me['id']),
       'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
+      'subRequests' => substitute_requests_map($ids),
       'ical_url' => '/kalender/' . setting('ical_token') . '.ics',
     ]);
   }
@@ -416,12 +417,20 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
       q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
+      q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
       redirect('/intern/termine');
     }
     if ($action === 'zusage') {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
       q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)
          ON DUPLICATE KEY UPDATE status = VALUES(status)', [$id, $me['id'], $status]);
+      // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
+      // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
+      // für dieselbe Lücke weiter.
+      if ($status === 'no') {
+        $gap = row('SELECT for_user_id FROM substitute_requests WHERE event_id = ? AND user_id = ?', [$id, $me['id']]);
+        substitute_auto_request((int) $id, (int) ($gap['for_user_id'] ?? $me['id']), (int) $me['id']);
+      }
       back('/intern/termine');
     }
     if ($action === 'kommentar') {
@@ -429,6 +438,24 @@ if (str_starts_with($path, '/intern')) {
       if ($text !== '') q('INSERT INTO comments (event_id, user_id, text) VALUES (?,?,?)', [$id, $me['id'], $text]);
       back('/intern/termine');
     }
+  }
+
+  // Ersatz für einen Termin anfragen oder die Anfrage zurückziehen
+  if (preg_match('~^/intern/termine/(\d+)/ersatz$~', $path, $m) && $method === 'POST') {
+    $subId = (int) ($_POST['user_id'] ?? 0);
+    $subUser = $subId ? row('SELECT id, substitute_for FROM users WHERE id = ?', [$subId]) : null;
+    if ($subUser) {
+      q('INSERT INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,?)
+         ON DUPLICATE KEY UPDATE for_user_id = VALUES(for_user_id)',
+        [$m[1], $subId, $subUser['substitute_for'], $me['id']]);
+      flash(t('fl_sub_requested'));
+    }
+    back('/intern/termine');
+  }
+  if (preg_match('~^/intern/termine/(\d+)/ersatz/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM substitute_requests WHERE event_id = ? AND user_id = ?', [$m[1], $m[2]]);
+    flash(t('fl_sub_withdrawn'));
+    back('/intern/termine');
   }
 
   if (preg_match('~^/intern/kommentare/(\d+)/delete$~', $path, $m) && $method === 'POST') {
@@ -900,13 +927,15 @@ if (str_starts_with($path, '/intern')) {
     if (($_POST['first_name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
       try {
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
-                            first_name=?, last_name=?, phone=?, mobile=?, substitute_for=? WHERE id=?', [
+                            first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
+                            substitute_rank=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
                        row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           strtolower(trim($_POST['email'])),
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
+          max(0, min(99, (int) ($_POST['substitute_rank'] ?? 0))),
           $m[1],
         ]);
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus)
@@ -1502,6 +1531,13 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
+  if ($path === '/intern/einstellungen/ersatz' && $method === 'POST') {
+    require_admin();
+    set_setting('substitute_auto', in_array($_POST['substitute_auto'] ?? '', SUB_AUTO_MODES, true) ? $_POST['substitute_auto'] : 'off');
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+
   // ---------- Sicherungen ----------
   if ($path === '/intern/einstellungen/backup' && $method === 'POST') {
     require_admin();
