@@ -213,7 +213,36 @@ function demo_install_rows(): void {
     'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
     'notes' => 'Reicht bis etwa 300 Gäste.']);
   demo_insert('equipment', ['name' => 'Lichtset mit Stativen', 'category' => 'licht',
-    'owner_id' => $members[3], 'location' => 'bei Ben', 'is_standard' => 0, 'notes' => '']);
+    'owner_id' => $members[3], 'location' => 'bei Ben', 'is_standard' => 0, 'notes' => '',
+    'purchased_on' => $d('-3 years'), 'price_cents' => 89000]);
+
+  // Ein Koffer mit Inhalt zeigt, wie Bestandteile funktionieren: Besitzer und
+  // Lagerort erben sie vom Koffer, eigene Angaben brauchen sie nicht.
+  $eqCase = demo_insert('equipment', ['name' => 'Mikrofonkoffer', 'category' => 'pa',
+    'owner_id' => $members[1], 'location' => 'Proberaum, Regal links', 'is_standard' => 1,
+    'notes' => 'Bitte nach dem Gig vollzählig zurücklegen.',
+    'purchased_on' => $d('-2 years'), 'price_cents' => 12900]);
+  $mics = [
+    ['Gesangsmikrofon', 'Kanal 1', 11900],
+    ['Gesangsmikrofon', 'Kanal 2', 11900],
+    ['Bassdrum-Mikrofon', 'Kanal 3', 21900],
+    ['Snare-Mikrofon', 'Kanal 4', 9900],
+    ['Overhead links', 'Kanal 5', 14900],
+    ['Overhead rechts', 'Kanal 6', 14900],
+  ];
+  foreach ($mics as [$micName, $micSlot, $micPrice]) {
+    demo_insert('equipment', ['name' => $micName, 'category' => 'pa',
+      'owner_id' => $members[1], 'location' => '', 'is_standard' => 0, 'notes' => '',
+      'parent_id' => $eqCase, 'slot' => $micSlot,
+      'purchased_on' => $d('-2 years'), 'price_cents' => $micPrice]);
+  }
+
+  // Zubehör, das man üblicherweise in Mengen anlegt
+  for ($i = 1; $i <= 6; $i++) {
+    demo_insert('equipment', ['name' => 'XLR-Kabel 10 m #' . $i, 'category' => 'sonstiges',
+      'owner_id' => null, 'location' => 'Kabelkiste', 'is_standard' => 1, 'notes' => '',
+      'purchased_on' => $d('-14 months'), 'price_cents' => 1490]);
+  }
 }
 
 function demo_remove(): void {
