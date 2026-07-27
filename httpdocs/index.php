@@ -738,12 +738,13 @@ if (str_starts_with($path, '/intern')) {
     view('intern/profil', ['title' => t('mem_my_profile'), 'profile' => row('SELECT * FROM users WHERE id = ?', [$me['id']])]);
   }
   if ($path === '/intern/profil' && $method === 'POST') {
-    if (($_POST['name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
+    if (display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']) !== '' && ($_POST['email'] ?? '') !== '') {
       try {
         $prefLang = array_key_exists($_POST['pref_lang'] ?? '', LANGS) ? $_POST['pref_lang'] : 'de';
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=?,
                             first_name=?, last_name=?, phone=?, mobile=? WHERE id=?', [
-          $_POST['name'], $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
+          display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']),
+          $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           strtolower(trim($_POST['email'])), $prefLang,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           $me['id'],
@@ -788,11 +789,13 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/update$~', $path, $m) && $method === 'POST') {
     require_admin();
-    if (($_POST['name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
+    if (($_POST['first_name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
       try {
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, substitute_for=? WHERE id=?', [
-          $_POST['name'], $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
+          display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
+                       row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
+          $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           strtolower(trim($_POST['email'])),
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
@@ -812,19 +815,22 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/mitglieder' && $method === 'POST') {
     require_admin();
-    if (($_POST['name'] ?? '') && ($_POST['email'] ?? '')) {
+    if (($_POST['first_name'] ?? '') && ($_POST['email'] ?? '')) {
       // Start-Passwort erzeugen (ohne verwechselbare Zeichen), Wechsel beim ersten Login erzwingen
       $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
       $startPw = '';
       for ($i = 0; $i < 12; $i++) $startPw .= $alphabet[random_int(0, strlen($alphabet) - 1)];
       $email = strtolower(trim($_POST['email']));
       try {
-        q('INSERT INTO users (name, email, password_hash, role, instrument, must_change_pw) VALUES (?,?,?,?,?,1)', [
-          $_POST['name'], $email, password_hash($startPw, PASSWORD_DEFAULT),
+        q('INSERT INTO users (name, first_name, last_name, email, password_hash, role, instrument, must_change_pw)
+         VALUES (?,?,?,?,?,?,?,1)', [
+          display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? ''),
+          trim($_POST['first_name'] ?? ''), trim($_POST['last_name'] ?? ''),
+          $email, password_hash($startPw, PASSWORD_DEFAULT),
           in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
         ]);
         $band = setting('band_name');
-        $body = "Hallo {$_POST['name']},\n\n"
+        $body = "Hallo " . trim($_POST['first_name'] ?? '') . ",\n\n"
           . "für dich wurde ein Zugang zum Bandbereich von $band angelegt.\n\n"
           . 'Login: ' . absolute_url('/login') . "\n"
           . "E-Mail: $email\n"

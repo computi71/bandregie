@@ -181,6 +181,7 @@ const UI_STRINGS = [
   'mem_pw_min' => 'min. 8 Zeichen', 'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
   'mem_password' => 'Passwort', 'mem_new_pw' => 'Neues Passwort', 'mem_set' => 'Setzen',
   'mem_first_name' => 'Vorname', 'mem_last_name' => 'Nachname',
+  'mem_name_hint' => 'Angezeigt wird „Vorname Nachname“ — oder der Künstlername, falls gesetzt.',
   'mem_mobile' => 'Mobil', 'mem_substitute_for' => 'Ersatz für',
   'mem_substitute_none' => '– niemanden –',
   'mem_instrument_pick' => 'aus dem Equipment wählen',
@@ -787,6 +788,12 @@ $defaults['default_lang'] = $freshInstall ? 'en' : 'de';
 foreach ($defaults as $k => $v) {
   if (row('SELECT 1 FROM settings WHERE `key` = ?', [$k]) === null) set_setting($k, $v);
 }
+// Früher gab es nur ein Namensfeld. Der bisherige Inhalt wandert einmalig in den
+// Vornamen, damit niemand seinen Namen neu eintippen muss.
+if (setting('names_split') !== '1') {
+  q("UPDATE users SET first_name = name WHERE first_name = '' AND name != ''");
+  set_setting('names_split', '1');
+}
 if (setting('ical_token') === '') set_setting('ical_token', bin2hex(random_bytes(16)));
 if (setting('downloads_token') === '') set_setting('downloads_token', bin2hex(random_bytes(16)));
 if (setting('downloads_mode') === '') set_setting('downloads_mode', 'token');
@@ -849,6 +856,12 @@ function back(string $fallback): never { redirect($_SERVER['HTTP_REFERER'] ?? $f
 function flash(string $msg): void { $_SESSION['flash'] = $msg; }
 
 function e(mixed $s): string { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
+
+/** Anzeigename aus Vor- und Nachname; bleibt der alte, wenn beide leer sind. */
+function display_name(string $first, string $last, string $fallback = ''): string {
+  $name = trim(trim($first) . ' ' . trim($last));
+  return $name !== '' ? $name : $fallback;
+}
 
 // ---------- CSRF ----------
 // Jedes Formular trägt ein Sitzungs-Token; ohne gültiges Token wird kein POST

@@ -46,13 +46,14 @@ function demo_install_rows(): void {
   $pw = fn(): string => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
   $members = [];
   foreach ([
-    ['Lisa Berg', 'Lisa', 'lisa@example.com', 'Gesang'],
-    ['Tom Krause', 'Tommy', 'tom@example.com', 'Gitarre'],
-    ['Ines Adler', '', 'ines@example.com', 'Bass'],
-    ['Ben Rauch', 'Benny', 'ben@example.com', 'Schlagzeug'],
-  ] as [$name, $stage, $mail, $instr]) {
+    ['Lisa', 'Berg', 'Lisa', 'lisa@example.com', 'Gesang'],
+    ['Tom', 'Krause', 'Tommy', 'tom@example.com', 'Gitarre'],
+    ['Ines', 'Adler', '', 'ines@example.com', 'Bass'],
+    ['Ben', 'Rauch', 'Benny', 'ben@example.com', 'Schlagzeug'],
+  ] as [$first, $last, $stage, $mail, $instr]) {
     $members[] = demo_insert('users', [
-      'name' => $name, 'stage_name' => $stage, 'email' => $mail,
+      'name' => "$first $last", 'first_name' => $first, 'last_name' => $last,
+      'stage_name' => $stage, 'email' => $mail,
       'password_hash' => $pw(), 'role' => 'member', 'instrument' => $instr,
       'must_change_pw' => 1,
     ]);

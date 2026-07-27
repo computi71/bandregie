@@ -5,7 +5,8 @@
 <details class="card collapsible">
   <summary>➕ <?= e(t('mem_new')) ?></summary>
   <form method="post" action="/intern/mitglieder" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('name')) ?><input name="name" required></label>
+    <label><?= e(t('mem_first_name')) ?><input name="first_name" required></label>
+    <label><?= e(t('mem_last_name')) ?><input name="last_name"></label>
     <label><?= e(t('email')) ?><input type="email" name="email" required></label>
     <label><?= e(t('instrument')) ?><input name="instrument" placeholder="z. B. Drums"></label>
     <label><?= e(t('role')) ?>
@@ -56,9 +57,9 @@
         <summary>✏️ <?= e(t('mem_edit_admin')) ?></summary>
         <?php $mFull = row('SELECT * FROM users WHERE id = ?', [$m['id']]); ?>
         <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
-          <label><?= e(t('name')) ?><input name="name" value="<?= e($mFull['name']) ?>" required></label>
           <label><?= e(t('stage_name')) ?><input name="stage_name" value="<?= e($mFull['stage_name']) ?>"></label>
-          <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($mFull['first_name'] ?? '') ?>"></label>
+          <p class="muted small span2"><?= e(t('mem_name_hint')) ?></p>
+          <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($mFull['first_name'] ?? '') ?>" required></label>
           <label><?= e(t('mem_last_name')) ?><input name="last_name" value="<?= e($mFull['last_name'] ?? '') ?>"></label>
           <label><?= e(t('phone')) ?><input name="phone" value="<?= e($mFull['phone'] ?? '') ?>"></label>
           <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($mFull['mobile'] ?? '') ?>"></label>

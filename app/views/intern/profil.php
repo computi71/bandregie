@@ -12,9 +12,9 @@
     <?php endif; ?>
   </div>
   <form method="post" action="/intern/profil" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('name')) ?><input name="name" value="<?= e($profile['name']) ?>" required></label>
     <label><?= e(t('stage_name')) ?><input name="stage_name" value="<?= e($profile['stage_name']) ?>" placeholder="<?= e(t('prof_stage_name_ph')) ?>"></label>
-    <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($profile['first_name'] ?? '') ?>"></label>
+    <p class="muted small span2"><?= e(t('mem_name_hint')) ?></p>
+    <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($profile['first_name'] ?? '') ?>" required></label>
     <label><?= e(t('mem_last_name')) ?><input name="last_name" value="<?= e($profile['last_name'] ?? '') ?>"></label>
     <label><?= e(t('phone')) ?><input name="phone" value="<?= e($profile['phone'] ?? '') ?>"></label>
     <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($profile['mobile'] ?? '') ?>"></label>
