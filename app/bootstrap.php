@@ -323,6 +323,7 @@ const UI_STRINGS = [
   'prod_eigene' => 'Eigenes Material', 'prod_leih' => 'Geliehen/Gemietet', 'prod_vorhanden' => 'Vor Ort vorhanden',
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
   'prod_gear' => 'Was nehmt ihr mit?', 'prod_gear_none' => 'Im Inventar steht noch nichts.',
+  'eq_total' => 'Gesamtwert', 'eq_total_partial' => 'ohne die Geräte ohne Preis',
   'ev_gear' => 'Mitnehmen', 'ev_gear_conflict' => 'am selben Tag doppelt verplant',
   'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
@@ -1046,6 +1047,64 @@ function eq_purchase_label(array $eq): string {
   if ($eq['price_cents'] !== null && $eq['price_cents'] !== '') $parts[] = fmt_money((int) $eq['price_cents']);
   if (!empty($eq['purchased_on'])) $parts[] = fmt_date($eq['purchased_on']);
   return implode(' · ', $parts);
+}
+
+/** Geräte nach übergeordnetem Gerät sortiert; ohne Übergeordnetes zählt 0. */
+function eq_by_parent(array $items): array {
+  $out = [];
+  foreach ($items as $it) $out[(int) $it['parent_id']][] = $it;
+  return $out;
+}
+
+/**
+ * Alles, was unter einem Gerät hängt — über beliebig viele Ebenen. Ein Rack
+ * enthält einen Empfänger, der zu einem Mikrofon gehört, das eine Kapsel hat.
+ * Der Zähler bremst eine Schleife in den Daten aus, statt sich aufzuhängen.
+ */
+function eq_descendants(int $id, array $items): array {
+  $byParent = eq_by_parent($items);
+  $out = [];
+  $stack = [$id];
+  while ($stack && count($out) < 500) {
+    foreach ($byParent[array_pop($stack)] ?? [] as $child) {
+      $childId = (int) $child['id'];
+      if (isset($out[$childId])) continue;
+      $out[$childId] = true;
+      $stack[] = $childId;
+    }
+  }
+  return array_keys($out);
+}
+
+/**
+ * Anschaffungswert eines Geräts samt allem, was darin steckt. Gibt Summe und
+ * die Zahl der Geräte ohne Preis zurück — ohne Preis wird nicht als 0 gezählt,
+ * sondern als „noch unvollständig" ausgewiesen.
+ *
+ * @return array{0:int,1:int} Summe in Cent, Anzahl ohne Preis
+ */
+function eq_tree_value(array $eq, array $items): array {
+  $byId = array_column($items, null, 'id');
+  $sum = 0;
+  $missing = 0;
+  foreach ([(int) $eq['id'], ...eq_descendants((int) $eq['id'], $items)] as $id) {
+    $item = $byId[$id] ?? null;
+    if (!$item) continue;
+    if ($item['price_cents'] === null || $item['price_cents'] === '') $missing++;
+    else $sum += (int) $item['price_cents'];
+  }
+  return [$sum, $missing];
+}
+
+/**
+ * Bestandteile eines Geräts ausgeben — ruft sich für tiefere Ebenen selbst
+ * auf. Als Funktion, damit jede Ebene ihre eigenen Variablen hat; ein
+ * require mitten in der Schleife würde sich gegenseitig überschreiben.
+ */
+function eq_render_parts(array $childItems, array $ctx, int $depth = 1): void {
+  ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
+   'filesByEq' => $filesByEq, 'user' => $user] = $ctx;
+  include BASE_DIR . '/app/views/intern/_equipment_children.php';
 }
 // Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte):
 // gewählte Sprache -> Standardsprache -> Englisch -> Deutsch (Basis in settings)

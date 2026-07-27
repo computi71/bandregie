@@ -388,6 +388,15 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Bestandteile können tief verschachtelt sein — Rack, Empfänger, Mikrofon,
+   Kapsel. Statt immer weiter einzurücken (auf dem Handy wäre nach drei Ebenen
+   Schluss) markiert eine Linie am Rand, dass etwas dazugehört. */
+.eq-parts { margin: 0.2rem 0 0; }
+.eq-parts .eq-parts {
+  margin-left: 0.7rem; padding-left: 0.7rem;
+  border-left: 2px solid var(--border);
+}
+
 /* Packliste im Terminformular: eine schmale Spalte je Gerät, Bestandteile
    eingerückt darunter. Bei viel Inventar scrollt die Liste, statt das
    Formular auseinanderzuziehen. */

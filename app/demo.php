@@ -237,6 +237,26 @@ function demo_install_rows(): void {
       'purchased_on' => $d('-2 years'), 'price_cents' => $micPrice]);
   }
 
+  // Vier Ebenen zeigen, dass die Verschachtelung nicht bei den Bestandteilen
+  // aufhört: im Rack steckt ein Empfänger, dazu gehört ein Handsender, und in
+  // dem sitzt eine Kapsel.
+  $eqRack = demo_insert('equipment', ['name' => 'Funkrack', 'category' => 'pa',
+    'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
+    'notes' => 'Antennen vor dem Aufbau ausklappen.',
+    'purchased_on' => $d('-18 months'), 'price_cents' => 24900]);
+  $eqRx = demo_insert('equipment', ['name' => 'Funkempfänger', 'category' => 'pa',
+    'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
+    'parent_id' => $eqRack, 'slot' => 'HE 1',
+    'purchased_on' => $d('-18 months'), 'price_cents' => 39900]);
+  $eqTx = demo_insert('equipment', ['name' => 'Handsender', 'category' => 'pa',
+    'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
+    'parent_id' => $eqRx, 'slot' => 'Kanal A',
+    'purchased_on' => $d('-18 months'), 'price_cents' => 21900]);
+  demo_insert('equipment', ['name' => 'Mikrofonkapsel', 'category' => 'pa',
+    'owner_id' => null, 'location' => '', 'is_standard' => 0,
+    'notes' => 'Nierencharakteristik.', 'parent_id' => $eqTx, 'slot' => '',
+    'purchased_on' => $d('-18 months'), 'price_cents' => 9900]);
+
   // Zubehör, das man üblicherweise in Mengen anlegt
   for ($i = 1; $i <= 6; $i++) {
     demo_insert('equipment', ['name' => 'XLR-Kabel 10 m #' . $i, 'category' => 'sonstiges',

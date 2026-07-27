@@ -15,9 +15,14 @@
   </label>
   <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" value="<?= e($formEq['location']) ?>"></label>
   <label><?= e(t('eq_parent')) ?>
+    <?php
+      // Sich selbst oder einen eigenen Bestandteil als übergeordnetes Gerät zu
+      // wählen ergäbe eine Schleife — die Liste lässt beides gar nicht erst zu.
+      $eqBlocked = [(int) $formEq['id'], ...eq_descendants((int) $formEq['id'], $items)];
+    ?>
     <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
       <?php foreach ($items as $other): ?>
-        <?php if ((int) $other['id'] === (int) $formEq['id']) continue; ?>
+        <?php if (in_array((int) $other['id'], $eqBlocked, true)) continue; ?>
         <option value="<?= $other['id'] ?>" <?= (int) ($formEq['parent_id'] ?? 0) === (int) $other['id'] ? 'selected' : '' ?>><?= e($other['name']) ?></option>
       <?php endforeach; ?>
     </select>

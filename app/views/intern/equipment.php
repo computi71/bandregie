@@ -37,8 +37,10 @@
 <?php $lastCat = null; ?>
 <?php
 // Zuerst die eigenständigen Geräte; Bestandteile erscheinen unter ihrem Gerät
-$children = [];
-foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']][] = $it; }
+// — über beliebig viele Ebenen, vom Rack bis zur Kapsel im Mikrofon.
+$childrenOf = eq_by_parent($items);
+$eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
+          'filesByEq' => $filesByEq, 'user' => $user];
 ?>
 <?php foreach ($items as $eq): ?>
   <?php if ($eq['parent_id']) continue; ?>
@@ -54,32 +56,19 @@ foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']
       <?php if ($eq['price_cents'] !== null || !empty($eq['purchased_on'])): ?>
         <span class="muted">🧾 <?= e(eq_purchase_label($eq)) ?></span>
       <?php endif; ?>
+      <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
+        <?php [$eqSum, $eqMissing] = eq_tree_value($eq, $items); ?>
+        <?php if ($eqSum > 0): ?>
+          <span class="muted">Σ <?= e(t('eq_total')) ?>: <strong><?= e(fmt_money($eqSum)) ?></strong><?= $eqMissing ? ' <span class="small">(' . e(t('eq_total_partial')) . ')</span>' : '' ?></span>
+        <?php endif; ?>
+      <?php endif; ?>
     </div>
     <?php if ($eq['notes']): ?><p class="prewrap muted"><?= e($eq['notes']) ?></p><?php endif; ?>
 
-    <?php if (!empty($children[$eq['id']])): ?>
+    <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
       <div class="subsection">
         <strong class="muted small"><?= e(t('eq_parts')) ?></strong>
-        <ul class="task-list">
-          <?php foreach ($children[$eq['id']] as $child): ?>
-            <li>
-              <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
-              <button type="button" class="linklike" data-eqopen="eq-dlg-<?= $child['id'] ?>"><strong><?= e($child['name']) ?></strong></button>
-              <?php if ($child['price_cents'] !== null || !empty($child['purchased_on'])): ?>
-                <span class="muted small">🧾 <?= e(eq_purchase_label($child)) ?></span>
-              <?php endif; ?>
-              <?php if ($child['notes']): ?><div class="muted small prewrap"><?= e($child['notes']) ?></div><?php endif; ?>
-              <dialog id="eq-dlg-<?= $child['id'] ?>" class="eq-dialog">
-                <div class="eq-dialog-head">
-                  <strong><?= e($child['name']) ?></strong>
-                  <button type="button" class="btn btn-tiny" data-eqclose aria-label="<?= e(t('close')) ?>">✕</button>
-                </div>
-                <?php $formEq = $child; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>
-                <?php $attachFiles = $filesByEq[$child['id']] ?? []; $attachType = 'equipment'; $attachId = $child['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
-              </dialog>
-            </li>
-          <?php endforeach; ?>
-        </ul>
+        <?php eq_render_parts($childrenOf[(int) $eq['id']], $eqCtx); ?>
       </div>
     <?php endif; ?>
 
