@@ -60,25 +60,57 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <label class="nav-burger" for="nav-toggle" aria-label="Menü"><span>☰</span></label>
   <nav>
     <?php if ($isIntern && $user): ?>
+      <?php
+        // Der Bandbereich hat inzwischen 17 Seiten. Als flache Liste war das
+        // eine Wand aus gleichwertigen Zeilen; nach Themen gruppiert findet
+        // man wieder etwas. Die Übersicht bleibt als Einstieg oben stehen.
+        $navGroups = [
+          t('inavg_planung')  => [
+            '/intern/termine' => t('inav_termine'),
+            '/intern/abwesenheiten' => t('inav_abwesenheiten'),
+            '/intern/aufgaben' => t('inav_aufgaben'),
+            '/intern/themen' => t('inav_themen'),
+            '/intern/orte' => t('inav_orte'),
+          ],
+          t('inavg_musik')    => [
+            '/intern/songs' => t('inav_songs'),
+            '/intern/setlists' => t('inav_setlists'),
+          ],
+          t('inavg_technik')  => [
+            '/intern/equipment' => t('inav_equipment'),
+            '/intern/stagerider' => t('inav_rider'),
+            '/intern/kanaele' => t('inav_kanaele'),
+          ],
+          t('inavg_material') => [
+            '/intern/fotos' => t('inav_fotos'),
+            '/intern/downloads' => t('inav_downloads'),
+          ],
+          t('inavg_band')     => [
+            '/intern/kasse' => t('inav_kasse'),
+            '/intern/mitglieder' => t('inav_mitglieder'),
+          ],
+          t('inavg_konto')    => array_filter([
+            '/intern/profil' => t('inav_profil'),
+            '/intern/einstellungen' => $user['role'] === 'admin' ? t('inav_einstellungen') : null,
+          ]),
+        ];
+      ?>
       <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><?= e(t('inav_uebersicht')) ?></a>
-      <a href="/intern/termine" class="<?= str_starts_with($path, '/intern/termine') ? 'active' : '' ?>"><?= e(t('inav_termine')) ?></a>
-      <a href="/intern/songs" class="<?= str_starts_with($path, '/intern/songs') ? 'active' : '' ?>"><?= e(t('inav_songs')) ?></a>
-      <a href="/intern/setlists" class="<?= str_starts_with($path, '/intern/setlists') ? 'active' : '' ?>"><?= e(t('inav_setlists')) ?></a>
-      <a href="/intern/orte" class="<?= str_starts_with($path, '/intern/orte') ? 'active' : '' ?>"><?= e(t('inav_orte')) ?></a>
-      <a href="/intern/abwesenheiten" class="<?= str_starts_with($path, '/intern/abwesenheiten') ? 'active' : '' ?>"><?= e(t('inav_abwesenheiten')) ?></a>
-      <a href="/intern/aufgaben" class="<?= str_starts_with($path, '/intern/aufgaben') ? 'active' : '' ?>"><?= e(t('inav_aufgaben')) ?></a>
-      <a href="/intern/themen" class="<?= str_starts_with($path, '/intern/themen') ? 'active' : '' ?>"><?= e(t('inav_themen')) ?></a>
-      <a href="/intern/kasse" class="<?= str_starts_with($path, '/intern/kasse') ? 'active' : '' ?>"><?= e(t('inav_kasse')) ?></a>
-      <a href="/intern/stagerider" class="<?= str_starts_with($path, '/intern/stagerider') ? 'active' : '' ?>"><?= e(t('inav_rider')) ?></a>
-      <a href="/intern/kanaele" class="<?= str_starts_with($path, '/intern/kanaele') ? 'active' : '' ?>"><?= e(t('inav_kanaele')) ?></a>
-      <a href="/intern/equipment" class="<?= str_starts_with($path, '/intern/equipment') ? 'active' : '' ?>"><?= e(t('inav_equipment')) ?></a>
-      <a href="/intern/fotos" class="<?= str_starts_with($path, '/intern/fotos') ? 'active' : '' ?>"><?= e(t('inav_fotos')) ?></a>
-      <a href="/intern/downloads" class="<?= str_starts_with($path, '/intern/downloads') ? 'active' : '' ?>"><?= e(t('inav_downloads')) ?></a>
-      <a href="/intern/mitglieder" class="<?= str_starts_with($path, '/intern/mitglieder') ? 'active' : '' ?>"><?= e(t('inav_mitglieder')) ?></a>
-      <a href="/intern/profil" class="<?= str_starts_with($path, '/intern/profil') ? 'active' : '' ?>"><?= e(t('inav_profil')) ?></a>
-      <?php if ($user['role'] === 'admin'): ?>
-        <a href="/intern/einstellungen" class="<?= str_starts_with($path, '/intern/einstellungen') ? 'active' : '' ?>"><?= e(t('inav_einstellungen')) ?></a>
-      <?php endif; ?>
+      <?php foreach ($navGroups as $groupLabel => $groupItems): ?>
+        <?php
+          // Die Gruppe der aktuellen Seite steht offen, die übrigen bleiben zu
+          $groupActive = false;
+          foreach (array_keys($groupItems) as $groupPath) {
+            if (str_starts_with($path, $groupPath)) $groupActive = true;
+          }
+        ?>
+        <details class="nav-group <?= $groupActive ? 'has-active' : '' ?>" <?= $groupActive ? 'open' : '' ?>>
+          <summary><?= e($groupLabel) ?></summary>
+          <?php foreach ($groupItems as $itemPath => $itemLabel): ?>
+            <a href="<?= e($itemPath) ?>" class="<?= str_starts_with($path, $itemPath) ? 'active' : '' ?>"><?= e($itemLabel) ?></a>
+          <?php endforeach; ?>
+        </details>
+      <?php endforeach; ?>
     <?php else: ?>
       <a href="/" class="<?= $path === '/' ? 'active' : '' ?>"><?= e(t('nav_start')) ?></a>
       <a href="/termine" class="<?= $path === '/termine' ? 'active' : '' ?>"><?= e(t('nav_termine')) ?></a>

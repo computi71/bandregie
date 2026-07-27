@@ -209,7 +209,7 @@ function demo_install_rows(): void {
     'due_date' => $d('+5 weeks'), 'interval_months' => 24, 'notes' => '']);
   demo_insert('equipment_deadlines', ['equipment_id' => $eqTrailer, 'title' => 'Versicherung',
     'due_date' => $d('+4 months'), 'interval_months' => 12, 'notes' => '']);
-  demo_insert('equipment', ['name' => 'PA-Anlage (2 Tops, 2 Subs)', 'category' => 'pa',
+  $eqPa = demo_insert('equipment', ['name' => 'PA-Anlage (2 Tops, 2 Subs)', 'category' => 'pa',
     'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
     'notes' => 'Reicht bis etwa 300 Gäste.']);
   demo_insert('equipment', ['name' => 'Lichtset mit Stativen', 'category' => 'licht',
@@ -243,6 +243,14 @@ function demo_install_rows(): void {
       'owner_id' => null, 'location' => 'Kabelkiste', 'is_standard' => 1, 'notes' => '',
       'purchased_on' => $d('-14 months'), 'price_cents' => 1490]);
   }
+
+  // Packliste für den kommenden Gig: eigene PA, Licht steht vor Ort. Die
+  // Verknüpfung hat keine eigene ID, sie hängt an Termin und Gerät und
+  // verschwindet mit beiden wieder.
+  q("UPDATE events SET pa_source = 'eigene', light_source = 'vorhanden' WHERE id = ?", [$evNext]);
+  foreach ([$eqPa, $eqCase, $eqTrailer] as $gearId) {
+    q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$evNext, $gearId]);
+  }
 }
 
 function demo_remove(): void {
@@ -257,6 +265,7 @@ function demo_remove(): void {
   foreach ($byTable['events'] ?? [] as $eventId) {
     q('DELETE FROM attendance WHERE event_id = ?', [$eventId]);
     q('DELETE FROM comments WHERE event_id = ?', [$eventId]);
+    q('DELETE FROM event_equipment WHERE event_id = ?', [$eventId]);
     q('UPDATE finances SET event_id = NULL WHERE event_id = ?', [$eventId]);
   }
   foreach ($byTable['users'] ?? [] as $userId) {
@@ -275,6 +284,7 @@ function demo_remove(): void {
   }
   foreach ($byTable['equipment'] ?? [] as $eqId) {
     q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$eqId]);
+    q('DELETE FROM event_equipment WHERE equipment_id = ?', [$eqId]);
   }
 
   // Kindzeilen zuerst, dann die Haupttabellen

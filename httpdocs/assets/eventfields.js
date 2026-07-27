@@ -18,3 +18,32 @@ document.addEventListener('DOMContentLoaded', () => {
     apply();
   });
 });
+
+// Zur Bühnentechnik gehören zwei Zusätze, die nur zur jeweiligen Herkunft
+// passen: der Hinweis, wohin Angebote und Rechnungen gehören (bei Leihmaterial),
+// und die Packliste aus dem Inventar (bei eigenem Material).
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('form[data-eventfields]').forEach(form => {
+    const sources = ['pa_source', 'light_source']
+      .map(n => form.querySelector(`select[name="${n}"]`))
+      .filter(Boolean);
+    if (!sources.length) return;
+
+    const apply = () => {
+      const values = sources.map(s => s.value);
+      form.querySelectorAll('[data-prodhint]').forEach(el => { el.hidden = !values.includes('leih'); });
+      form.querySelectorAll('[data-prodgear]').forEach(el => { el.hidden = !values.includes('eigene'); });
+    };
+    sources.forEach(s => s.addEventListener('change', apply));
+    apply();
+
+    // Wer den Koffer mitnimmt, nimmt die Mikrofone darin mit — der Haken am
+    // Gerät setzt die Bestandteile gleich mit. Einzeln abwählen geht weiterhin.
+    form.querySelectorAll('[data-gearparent]').forEach(parent => {
+      parent.addEventListener('change', () => {
+        form.querySelectorAll(`[data-gearchild="${parent.dataset.gearparent}"]`)
+          .forEach(child => { child.checked = parent.checked; });
+      });
+    });
+  });
+});

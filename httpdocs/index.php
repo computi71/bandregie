@@ -339,6 +339,9 @@ if (str_starts_with($path, '/intern')) {
       'venues' => $venues,
       'venueMap' => array_column($venues, null, 'id'),
       'absentByEvent' => $absentByEvent,
+      'equipment' => rows('SELECT id, name, category, parent_id FROM equipment ORDER BY category, name'),
+      'gearByEvent' => event_gear_map($ids),
+      'gearConflicts' => event_gear_conflicts($ids),
       'filesByEvent' => files_map('event', $ids),
       'comments' => $comments,
       'attendance' => attendance_map($ids),
@@ -355,6 +358,7 @@ if (str_starts_with($path, '/intern')) {
                              public_title, public_link, public_info, venue_id,
                              pa_source, light_source)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
+      save_event_gear((int) $db->lastInsertId());
     } else {
       flash(t('fl_title_date_required'));
     }
@@ -373,12 +377,14 @@ if (str_starts_with($path, '/intern')) {
                            public_title=?, public_link=?, public_info=?, venue_id=?,
                            pa_source=?, light_source=? WHERE id=?',
         [...event_values(), $id]);
+      save_event_gear((int) $id);
       redirect('/intern/termine');
     }
     if ($action === 'delete') {
       q('DELETE FROM events WHERE id = ?', [$id]);
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
+      q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
       redirect('/intern/termine');
     }
     if ($action === 'zusage') {
@@ -1201,21 +1207,24 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/termine/export' && $method === 'GET') {
     require_once BASE_DIR . '/app/export.php';
     $rows = [];
-    foreach (rows('SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
-                   LEFT JOIN venues v ON v.id = e.venue_id
-                   LEFT JOIN users u ON u.id = e.responsible_id ORDER BY e.date') as $ev) {
+    $allEvents = rows('SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
+                       LEFT JOIN venues v ON v.id = e.venue_id
+                       LEFT JOIN users u ON u.id = e.responsible_id ORDER BY e.date');
+    $exportGear = event_gear_map(array_column($allEvents, 'id'));
+    foreach ($allEvents as $ev) {
       $rows[] = [
         $ev['date'], event_type_label($ev['type']), event_status_label($ev['status']), $ev['title'],
         $ev['venue_name'] ?: $ev['location'], $ev['time_meet'], $ev['time'], $ev['time_end'],
         $ev['responsible_name'] ?? '', $ev['fee'], $ev['invoice_no'],
         production_label($ev['pa_source'] ?? ''), production_label($ev['light_source'] ?? ''),
+        implode(', ', array_column($exportGear[(int) $ev['id']] ?? [], 'name')),
         $ev['is_public'] ? t('ev_public_badge') : '',
         preg_replace('~\s+~u', ' ', (string) $ev['notes']),
       ];
     }
     export_send('termine-' . date('Y-m-d'), [
       t('date'), t('ev_type'), t('status'), t('name'), t('ev_venue'), t('ev_meet'), t('ev_start'), t('ev_end'),
-      t('ev_responsible'), t('ev_fee'), t('ev_invoice'), t('prod_pa'), t('prod_light'),
+      t('ev_responsible'), t('ev_fee'), t('ev_invoice'), t('prod_pa'), t('prod_light'), t('ev_gear'),
       t('ev_public_display'), t('ev_notes'),
     ], $rows);
   }
@@ -1442,6 +1451,57 @@ function song_ratings(int $userId): array {
   }
   return $out;
 }
+/**
+ * Packliste eines Termins speichern. Steht weder PA noch Licht auf „eigenes
+ * Material", bleibt sie leer — auch dann, wenn im ausgeblendeten Formularteil
+ * noch Haken gesetzt sind. Ausgeblendete Felder werden nämlich trotzdem
+ * mitgeschickt, und eine Packliste ohne eigenes Material wäre nur verwirrend.
+ */
+function save_event_gear(int $eventId): void {
+  q('DELETE FROM event_equipment WHERE event_id = ?', [$eventId]);
+  if (!in_array('eigene', [$_POST['pa_source'] ?? '', $_POST['light_source'] ?? ''], true)) return;
+  foreach ((array) ($_POST['equipment'] ?? []) as $eqId) {
+    if ((int) $eqId > 0) {
+      q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$eventId, (int) $eqId]);
+    }
+  }
+}
+
+/** Packlisten mehrerer Termine: je Termin-ID die Geräte mit Name und Bestandteil-Kennung. */
+function event_gear_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT ee.event_id, e.id, e.name, e.parent_id
+                 FROM event_equipment ee JOIN equipment e ON e.id = ee.equipment_id
+                 WHERE ee.event_id IN ($in) ORDER BY e.category, e.name", $eventIds) as $r) {
+    $out[(int) $r['event_id']][] = $r;
+  }
+  return $out;
+}
+
+/**
+ * Geräte, die an einem Tag bei mehreren Terminen eingeplant sind. Zwei Gigs am
+ * selben Samstag teilen sich keine PA — darauf weist die Terminliste hin.
+ */
+function event_gear_conflicts(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT ee.event_id, e.name FROM event_equipment ee
+                 JOIN equipment e ON e.id = ee.equipment_id
+                 JOIN events ev ON ev.id = ee.event_id
+                 WHERE ee.event_id IN ($in) AND EXISTS (
+                   SELECT 1 FROM event_equipment o JOIN events oe ON oe.id = o.event_id
+                   WHERE o.equipment_id = ee.equipment_id AND o.event_id <> ee.event_id
+                     AND oe.date = ev.date AND oe.status <> 'abgesagt'
+                 ) AND ev.status <> 'abgesagt'
+                 ORDER BY e.name", $eventIds) as $r) {
+    $out[(int) $r['event_id']][] = $r['name'];
+  }
+  return $out;
+}
+
 function event_values(): array {
   $status = array_key_exists($_POST['status'] ?? '', EVENT_STATUS) ? $_POST['status'] : 'bestaetigt';
   $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';

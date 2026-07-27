@@ -84,6 +84,9 @@ const UI_STRINGS = [
   'inav_aufgaben' => 'Aufgaben', 'inav_fotos' => 'Fotos', 'inav_downloads' => 'Downloads',
   'inav_mitglieder' => 'Mitglieder', 'inav_profil' => 'Profil', 'inav_einstellungen' => 'Einstellungen',
   'inav_intern' => 'Intern', 'inav_zur_website' => 'Zur Website', 'logout' => 'Logout',
+  // Überschriften im Klappmenü — siehe $navGroups in app/views/_header.php
+  'inavg_planung' => 'Planung', 'inavg_musik' => 'Musik', 'inavg_technik' => 'Technik',
+  'inavg_material' => 'Material', 'inavg_band' => 'Band', 'inavg_konto' => 'Konto',
   'login_only_members' => 'Nur für Mitglieder von', 'login_email' => 'E-Mail', 'login_password' => 'Passwort',
   'login_submit' => 'Einloggen', 'login_failed' => 'E-Mail oder Passwort falsch.',
   'dash_hello' => 'Hallo', 'dash_next_events' => 'Nächste Termine',
@@ -319,6 +322,8 @@ const UI_STRINGS = [
   'prod_pa' => 'PA', 'prod_light' => 'Licht',
   'prod_eigene' => 'Eigenes Material', 'prod_leih' => 'Geliehen/Gemietet', 'prod_vorhanden' => 'Vor Ort vorhanden',
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
+  'prod_gear' => 'Was nehmt ihr mit?', 'prod_gear_none' => 'Im Inventar steht noch nichts.',
+  'ev_gear' => 'Mitnehmen', 'ev_gear_conflict' => 'am selben Tag doppelt verplant',
   'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
   'rate_hint' => 'Wie gern spielt ihr den Song? Nur der Schnitt ist für alle sichtbar.',
@@ -621,6 +626,14 @@ $tables = [
     is_standard TINYINT(1) NOT NULL DEFAULT 0,
     notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Welche Geräte bei einem Termin mitkommen — die Packliste zum Gig
+  "CREATE TABLE IF NOT EXISTS event_equipment (
+    event_id INT NOT NULL,
+    equipment_id INT NOT NULL,
+    PRIMARY KEY (event_id, equipment_id),
+    INDEX idx_equipment (equipment_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS equipment_deadlines (

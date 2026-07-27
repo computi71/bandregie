@@ -387,3 +387,35 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   gap: 1rem; margin-bottom: 0.9rem;
   padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Packliste im Terminformular: eine schmale Spalte je Gerät, Bestandteile
+   eingerückt darunter. Bei viel Inventar scrollt die Liste, statt das
+   Formular auseinanderzuziehen. */
+.gear-picker {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.6rem 0.8rem 0.8rem; margin: 0.2rem 0 0;
+  max-height: 18rem; overflow-y: auto;
+}
+.gear-picker legend { padding: 0 0.35rem; font-size: 0.9rem; color: var(--muted); }
+.gear-picker .checkbox { display: flex; align-items: center; gap: 0.45rem; margin: 0.15rem 0; }
+.gear-cat { display: block; margin: 0.6rem 0 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.gear-cat:first-of-type { margin-top: 0; }
+.gear-part { margin-left: 1.4rem !important; font-size: 0.92rem; opacity: 0.85; }
+
+/* Klappmenü: die Einträge stehen in thematischen Gruppen, damit die Liste
+   nicht als 17 gleichwertige Zeilen erschlägt. Ohne JavaScript bedienbar —
+   <details> kann das von Haus aus. */
+.nav-group summary {
+  list-style: none; cursor: pointer;
+  padding: 0.5rem 0.8rem; border-radius: 8px;
+  color: var(--muted); font-size: 0.82rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.nav-group summary::-webkit-details-marker { display: none; }
+.nav-group summary:hover { color: var(--text); background: var(--bg-elevated); }
+.nav-group summary::after { content: '▸'; font-size: 0.75rem; transition: transform 0.15s; }
+.nav-group[open] summary::after { transform: rotate(90deg); }
+.nav-group.has-active summary { color: var(--accent); }
+/* Die Links stehen im <details> und sind damit keine Flex-Kinder mehr */
+.site-header nav .nav-group a { display: block; padding-left: 1.5rem; }
