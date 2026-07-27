@@ -376,7 +376,7 @@ function backup_restore(string $archive): array {
   global $db;
   if (!is_file($archive)) return ['ok' => false, 'message' => 'Archiv nicht gefunden', 'safety' => ''];
 
-  $safety = backup_run('vor-restore');
+  $safety = backup_run('restore');
   $safetyName = $safety['filename'] ?? '';
   if (($safety['status'] ?? '') !== 'ok') {
     return ['ok' => false, 'message' => 'Sicherheitskopie fehlgeschlagen, es wurde nichts verändert', 'safety' => ''];
