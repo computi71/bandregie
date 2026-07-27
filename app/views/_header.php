@@ -13,6 +13,7 @@
   <?php endif; ?>
   <link rel="stylesheet" href="/assets/style.css">
   <script src="/assets/lightbox.js" defer></script>
+  <script src="/assets/nav.js" defer></script>
   <?php if (!empty($settings['background_file'])): ?>
     <style>
       body {
