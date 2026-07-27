@@ -1095,7 +1095,16 @@ function perm_of(int $userId): array {
 function perm_allows(?array $user, string $module, string $need = 'read'): bool {
   if (!$user) return false;
   if (($user['role'] ?? '') === 'admin') return true;
-  $p = perm_of((int) $user['id'])[$module] ?? null;
+  $all = perm_of((int) $user['id']);
+  if (!$all) {
+    // Kein einziger Eintrag heißt „noch nicht entschieden", nicht „verboten" —
+    // sonst wäre ein Konto, das außerhalb der Mitgliederverwaltung entstanden
+    // ist, für immer ausgesperrt. Sobald eine Zeile da ist, gilt sie genau.
+    $tpl = PERM_TEMPLATES[$user['role'] ?? 'member'] ?? PERM_TEMPLATES['member'];
+    [$read, $write] = $tpl[$module] ?? [0, 0];
+    return $need === 'write' ? (bool) $write : (bool) ($read || $write);
+  }
+  $p = $all[$module] ?? null;
   if (!$p) return false;
   // Wer ändern darf, darf auch sehen — alles andere wäre eine Falle
   return $need === 'write' ? $p['write'] : ($p['read'] || $p['write']);

@@ -57,6 +57,8 @@ function demo_install_rows(): void {
       'password_hash' => $pw(), 'role' => 'member', 'instrument' => $instr,
       'must_change_pw' => 1,
     ]);
+    // Ohne Rechte könnte die Demoband nichts öffnen
+    perm_apply_template(end($members), 'member');
   }
 
   // --- Veranstaltungsorte
@@ -290,6 +292,8 @@ function demo_remove(): void {
   }
   foreach ($byTable['users'] ?? [] as $userId) {
     q('DELETE FROM attendance WHERE user_id = ?', [$userId]);
+    q('DELETE FROM permissions WHERE user_id = ?', [$userId]);
+    q('DELETE FROM substitute_requests WHERE user_id = ?', [$userId]);
     q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
     q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
     q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);
