@@ -179,7 +179,14 @@ function backup_run(string $trigger = 'auto'): array {
     return ['status' => 'skipped', 'message' => 'Ein Lauf ist bereits unterwegs'];
   }
   @set_time_limit(0);
-  $name = 'bandroadie-' . date('Y-m-d-His') . '.tar.gz';
+  // Zwei Läufe in derselben Sekunde dürfen sich nicht denselben Namen teilen.
+  // Genau das passiert beim Zurückspielen, wo die Sicherheitskopie sonst das
+  // Archiv überschreibt, das gerade eingespielt werden soll.
+  $stamp = date('Y-m-d-His');
+  $name = 'bandroadie-' . $stamp . '.tar.gz';
+  for ($n = 2; file_exists($dir . '/' . $name); $n++) {
+    $name = 'bandroadie-' . $stamp . '-' . $n . '.tar.gz';
+  }
   $target = $dir . '/' . $name;
   $sqlFile = $dir . '/.dump.sql';
   $skipped = [];
@@ -376,16 +383,26 @@ function backup_restore(string $archive): array {
   global $db;
   if (!is_file($archive)) return ['ok' => false, 'message' => 'Archiv nicht gefunden', 'safety' => ''];
 
+  // Das Archiv zuerst beiseitelegen: die Sicherheitskopie schreibt gleich ins
+  // selbe Verzeichnis, und was zurückgespielt wird, soll davon unberührt sein.
+  $tmp = backup_dir() . '/.restore-' . bin2hex(random_bytes(4));
+  @mkdir($tmp, 0700, true);
+  $source = $tmp . '/quelle.tar.gz';
+  if (!@copy($archive, $source)) {
+    @rmdir($tmp);
+    return ['ok' => false, 'message' => 'Archiv nicht lesbar', 'safety' => ''];
+  }
+
   $safety = backup_run('restore');
   $safetyName = $safety['filename'] ?? '';
   if (($safety['status'] ?? '') !== 'ok') {
+    @unlink($source);
+    @rmdir($tmp);
     return ['ok' => false, 'message' => 'Sicherheitskopie fehlgeschlagen, es wurde nichts verändert', 'safety' => ''];
   }
 
-  $tmp = backup_dir() . '/.restore-' . bin2hex(random_bytes(4));
-  @mkdir($tmp, 0700, true);
   try {
-    $files = backup_tar_extract($archive, $tmp);
+    $files = backup_tar_extract($source, $tmp);
     if (!is_file($tmp . '/database.sql')) throw new RuntimeException('Im Archiv fehlt database.sql');
 
     $statements = backup_split_sql((string) file_get_contents($tmp . '/database.sql'));
@@ -407,11 +424,16 @@ function backup_restore(string $archive): array {
   } catch (Throwable $e) {
     return ['ok' => false, 'safety' => $safetyName, 'message' => $e->getMessage()];
   } finally {
-    // Reste des Auspackens wegräumen
-    foreach (array_reverse((array) @scandir($tmp) ?: []) as $leftover) {
-      if ($leftover !== '.' && $leftover !== '..') @unlink($tmp . '/' . $leftover);
+    // Reste des Auspackens wegräumen, auch die verschachtelten
+    if (is_dir($tmp)) {
+      $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($tmp, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST);
+      foreach ($it as $leftover) {
+        $leftover->isDir() ? @rmdir($leftover->getPathname()) : @unlink($leftover->getPathname());
+      }
+      @rmdir($tmp);
     }
-    @rmdir($tmp);
   }
 }
 
