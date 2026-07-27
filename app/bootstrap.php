@@ -407,6 +407,10 @@ Gitarre: vorne rechts",
   'eq_standard' => 'Standard-Packliste für Konzerte',
   'eq_standard_badge' => 'Packliste',
   'eq_none' => 'Noch kein Equipment erfasst.',
+  'eq_parent' => 'Gehört zu', 'eq_parent_none' => '– eigenständig –',
+  'eq_slot' => 'Steckplatz / Kanal', 'eq_slot_ph' => 'z. B. Kanal 1',
+  'eq_parts' => 'Bestandteile', 'eq_part_of' => 'Teil von',
+  'eq_images' => 'Bilder und Unterlagen',
   'eq_deadlines' => 'Fristen', 'eq_deadline_new' => 'Neue Frist',
   'eq_deadline_title_ph' => 'z. B. TÜV, Steuer, Versicherung',
   'eq_due' => 'Fällig am', 'eq_interval' => 'Wiederholung',
@@ -703,6 +707,9 @@ $typeLen = row("SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.c
                 WHERE table_schema = ? AND table_name = 'events' AND column_name = 'type'", [$config['db_name']]);
 if ($typeLen && (int) $typeLen['len'] < 20) {
   $db->exec("ALTER TABLE events MODIFY type VARCHAR(20) NOT NULL DEFAULT 'gig'");
+}
+foreach (['parent_id' => 'INT NULL', 'slot' => "VARCHAR(60) NOT NULL DEFAULT ''"] as $eqCol => $eqDdl) {
+  if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
 foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {

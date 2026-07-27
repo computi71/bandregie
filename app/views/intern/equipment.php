@@ -12,6 +12,12 @@
       <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
     <label><?= e(t('eq_location')) ?><input name="location" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
+    <label><?= e(t('eq_parent')) ?>
+      <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
+        <?php foreach ($items as $other): ?><option value="<?= $other['id'] ?>"><?= e($other['name']) ?></option><?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('eq_slot')) ?><input name="slot" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
     <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"></textarea></label>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
@@ -19,7 +25,13 @@
 </details>
 
 <?php $lastCat = null; ?>
+<?php
+// Zuerst die eigenständigen Geräte; Bestandteile erscheinen unter ihrem Gerät
+$children = [];
+foreach ($items as $it) { if ($it['parent_id']) $children[(int) $it['parent_id']][] = $it; }
+?>
 <?php foreach ($items as $eq): ?>
+  <?php if ($eq['parent_id']) continue; ?>
   <?php if ($eq['category'] !== $lastCat): $lastCat = $eq['category']; ?>
     <h2 style="margin:1rem 0 0.4rem"><?= e(eq_category_label($lastCat)) ?></h2>
   <?php endif; ?>
@@ -31,6 +43,22 @@
       <?php if ($eq['location']): ?><span class="muted">📍 <?= e($eq['location']) ?></span><?php endif; ?>
     </div>
     <?php if ($eq['notes']): ?><p class="prewrap muted"><?= e($eq['notes']) ?></p><?php endif; ?>
+
+    <?php if (!empty($children[$eq['id']])): ?>
+      <div class="subsection">
+        <strong class="muted small"><?= e(t('eq_parts')) ?></strong>
+        <ul class="task-list">
+          <?php foreach ($children[$eq['id']] as $child): ?>
+            <li>
+              <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
+              <strong><?= e($child['name']) ?></strong>
+              <?php if ($child['owner_name']): ?><span class="muted small"><?= e($child['owner_name']) ?></span><?php endif; ?>
+              <?php if ($child['notes']): ?><div class="muted small prewrap"><?= e($child['notes']) ?></div><?php endif; ?>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
 
     <?php $dls = $deadlinesByEq[$eq['id']] ?? []; ?>
     <?php if ($dls): ?>
@@ -87,6 +115,15 @@
           <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $eq['owner_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
         </label>
         <label><?= e(t('eq_location')) ?><input name="location" value="<?= e($eq['location']) ?>"></label>
+        <label><?= e(t('eq_parent')) ?>
+          <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
+            <?php foreach ($items as $other): ?>
+              <?php if ((int) $other['id'] === (int) $eq['id']) continue; ?>
+              <option value="<?= $other['id'] ?>" <?= (int) ($eq['parent_id'] ?? 0) === (int) $other['id'] ? 'selected' : '' ?>><?= e($other['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label><?= e(t('eq_slot')) ?><input name="slot" value="<?= e($eq['slot'] ?? '') ?>" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
         <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1" <?= $eq['is_standard'] ? 'checked' : '' ?>> 📦 <?= e(t('eq_standard')) ?></label>
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($eq['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>

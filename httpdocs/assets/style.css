@@ -356,3 +356,7 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   .photo-grid { grid-template-columns: repeat(2, 1fr); }
   .table { min-width: 28rem; }
 }
+
+/* Bildvorschau bei Dateianhängen */
+.file-thumb { max-height: 3.2rem; max-width: 5rem; border-radius: 6px; vertical-align: middle;
+              margin-right: 0.5rem; border: 1px solid var(--border); }

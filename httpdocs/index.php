@@ -936,7 +936,9 @@ if (str_starts_with($path, '/intern')) {
     }
     view('intern/equipment', [
       'title' => t('inav_equipment'),
-      'items' => rows('SELECT e.*, u.name AS owner_name FROM equipment e LEFT JOIN users u ON u.id = e.owner_id
+      'items' => rows('SELECT e.*, u.name AS owner_name, p.name AS parent_name FROM equipment e
+                       LEFT JOIN users u ON u.id = e.owner_id
+                       LEFT JOIN equipment p ON p.id = e.parent_id
                        ORDER BY FIELD(e.category, "instrument","pa","licht","transport","sonstiges"), e.name'),
       'filesByEq' => $filesByEq,
       'deadlinesByEq' => $deadlinesByEq,
@@ -945,13 +947,15 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/equipment' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes) VALUES (?,?,?,?,?,?)', [
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot) VALUES (?,?,?,?,?,?,?,?)', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         (int) ($_POST['owner_id'] ?? 0) ?: null,
         trim($_POST['location'] ?? ''),
         isset($_POST['is_standard']) ? 1 : 0,
         trim($_POST['notes'] ?? ''),
+        (int) ($_POST['parent_id'] ?? 0) ?: null,
+        trim($_POST['slot'] ?? ''),
       ]);
       flash(t('fl_eq_saved'));
     }
@@ -963,13 +967,16 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
       flash(t('fl_eq_deleted'));
     } elseif (($_POST['name'] ?? '') !== '') {
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=? WHERE id=?', [
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         (int) ($_POST['owner_id'] ?? 0) ?: null,
         trim($_POST['location'] ?? ''),
         isset($_POST['is_standard']) ? 1 : 0,
         trim($_POST['notes'] ?? ''),
+        // Sich selbst als übergeordnetes Gerät zu wählen wäre eine Schleife
+        ((int) ($_POST['parent_id'] ?? 0) === (int) $m[1] ? null : ((int) ($_POST['parent_id'] ?? 0) ?: null)),
+        trim($_POST['slot'] ?? ''),
         $m[1],
       ]);
       flash(t('fl_eq_saved'));

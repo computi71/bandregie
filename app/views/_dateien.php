@@ -11,7 +11,13 @@ $fmtSize = function (int $b): string {
   <summary>📎 <?= e(t('files_word')) ?> (<?= count($attachFiles) ?>)</summary>
   <ul class="task-list">
     <?php foreach ($attachFiles as $f): ?>
+      <?php $isImage = in_array(strtolower(pathinfo($f['original_name'], PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp'], true); ?>
       <li>
+        <?php if ($isImage): ?>
+          <a href="/intern/datei/<?= $f['id'] ?>" target="_blank">
+            <img class="file-thumb" src="/intern/datei/<?= $f['id'] ?>" alt="<?= e($f['original_name']) ?>" loading="lazy">
+          </a>
+        <?php endif; ?>
         <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
         <?php if ((int) $f['uploaded_by'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
