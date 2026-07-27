@@ -1,4 +1,11 @@
-<?php $isIntern = str_starts_with($path, '/intern'); ?>
+<?php
+$isIntern = str_starts_with($path, '/intern');
+// Auf den Anmeldeseiten (und beim erzwungenen Passwortwechsel) gibt es nichts
+// zu navigieren — dort bleibt oben nur Logo und Sprachwahl stehen.
+$hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
+  || str_starts_with($path, '/passwort-reset')
+  || ($path === '/intern/passwort' && !empty($user['must_change_pw']));
+?>
 <!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
 <head>
@@ -48,6 +55,7 @@
       </details>
     <?php endif; ?>
   </div>
+  <?php if (!$hideNav): ?>
   <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
   <label class="nav-burger" for="nav-toggle" aria-label="Menü"><span>☰</span></label>
   <nav>
@@ -96,6 +104,7 @@
       <?php endif; ?>
     </div>
   </nav>
+  <?php endif; ?>
 </header>
 <?php if ($flashMsg): ?><div class="flash"><?= e($flashMsg) ?></div><?php endif; ?>
 <main class="container <?= $isIntern ? 'wide' : '' ?>">
