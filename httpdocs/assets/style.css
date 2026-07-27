@@ -418,6 +418,17 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .acc > summary.eq-summary::before { align-self: center; }
 .acc > summary.eq-summary strong { font-size: 1.1rem; font-weight: 600; }
 
+/* Bühnenplan: die Zeichnung passt sich der Breite an, im Ausdruck wird sie
+   schwarzweiß. Die Zahlenfelder darunter bleiben schmal. */
+.stage-plot { width: 100%; height: auto; max-height: 70vh; color: var(--text); }
+.stage-plot .stage-item { cursor: default; }
+.stage-plot[data-stageedit] .stage-item { cursor: grab; }
+.stage-plot[data-stageedit] .stage-item:hover circle { stroke: var(--accent); stroke-width: 3; }
+.stage-print { color: #222; }
+.stage-list li { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.stage-list input, .stage-list select { margin: 0; }
+.stage-num { width: 5rem; }
+
 /* Ersatzleute am Termin: Name, Erfahrung und Knopf bleiben zusammen, auch
    wenn die Zeile umbricht. */
 .sub-option {

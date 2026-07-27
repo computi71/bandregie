@@ -857,6 +857,45 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/profil');
   }
 
+  // ---------- Bühnenplan ----------
+  if (preg_match('~^/intern/stagerider/plan/(add|update|delete|vorlage)$~', $path, $m) && $method === 'POST') {
+    if (!perm_allows($me, 'rider', 'write')) { flash(t('fl_no_permission')); redirect('/intern/stagerider'); }
+    if ($m[1] === 'vorlage') {
+      q('DELETE FROM stage_items');
+      $pos = 0;
+      foreach (stage_default_items(rows('SELECT name, stage_name, instrument FROM users ORDER BY name')) as $it) {
+        q('INSERT INTO stage_items (kind, label, x, y, note, position) VALUES (?,?,?,?,?,?)',
+          [$it['kind'], $it['label'], $it['x'], $it['y'], $it['note'], $pos++]);
+      }
+    } elseif ($m[1] === 'add') {
+      q('INSERT INTO stage_items (kind, label, x, y, note, position) VALUES (?,?,?,?,?,?)', [
+        array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges',
+        trim($_POST['label'] ?? ''),
+        max(0, min(100, (int) ($_POST['x'] ?? 50))), max(0, min(100, (int) ($_POST['y'] ?? 50))),
+        trim($_POST['note'] ?? ''),
+        (int) (row('SELECT COALESCE(MAX(position), 0) + 1 AS p FROM stage_items')['p'] ?? 1),
+      ]);
+    } elseif ($m[1] === 'update') {
+      // Alle Einträge auf einmal — beim Ziehen im Plan ändern sich mehrere
+      foreach ((array) ($_POST['item'] ?? []) as $id => $vals) {
+        q('UPDATE stage_items SET kind = ?, label = ?, x = ?, y = ?, note = ? WHERE id = ?', [
+          array_key_exists($vals['kind'] ?? '', STAGE_KINDS) ? $vals['kind'] : 'sonstiges',
+          trim($vals['label'] ?? ''),
+          max(0, min(100, (int) ($vals['x'] ?? 50))), max(0, min(100, (int) ($vals['y'] ?? 50))),
+          trim($vals['note'] ?? ''), (int) $id,
+        ]);
+      }
+    }
+    flash(t('fl_stage_saved'));
+    redirect('/intern/stagerider');
+  }
+  if (preg_match('~^/intern/stagerider/plan/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    if (!perm_allows($me, 'rider', 'write')) { flash(t('fl_no_permission')); redirect('/intern/stagerider'); }
+    q('DELETE FROM stage_items WHERE id = ?', [$m[1]]);
+    flash(t('fl_stage_deleted'));
+    redirect('/intern/stagerider');
+  }
+
   // ---------- Musik & Videos für die öffentliche Seite ----------
   if ($path === '/intern/musik' && $method === 'GET') {
     view('intern/musik', ['title' => t('inav_musik'), 'links' => rows('SELECT * FROM media_links ORDER BY id DESC')]);
@@ -1197,6 +1236,7 @@ if (str_starts_with($path, '/intern')) {
     view('intern/stagerider', [
       'title' => t('rider_title'),
       'channels' => rows('SELECT * FROM channels ORDER BY number'),
+      'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
     ]);
   }
   if ($path === '/intern/stagerider' && $method === 'POST') {
@@ -1213,6 +1253,7 @@ if (str_starts_with($path, '/intern')) {
     view('intern/stagerider_print', [
       'title' => t('rider_title'),
       'channels' => rows('SELECT * FROM channels ORDER BY number'),
+      'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
     ]);
   }
 

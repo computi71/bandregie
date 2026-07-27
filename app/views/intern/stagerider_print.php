@@ -65,6 +65,11 @@ $blocks = [
     </dl>
   <?php endif; ?>
 
+  <?php if ($stageItems): ?>
+    <h2><?= e(t('stage_plot')) ?></h2>
+    <div class="block"><?php $stagePrint = true; require BASE_DIR . '/app/views/_buehnenplan.php'; ?></div>
+  <?php endif; ?>
+
   <?php if (trim((string) ($settings['rider_positions'] ?? '')) !== ''): ?>
     <h2><?= e(t('rider_positions_lbl')) ?></h2>
     <div class="block"><dd><?= e($settings['rider_positions']) ?></dd></div>

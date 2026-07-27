@@ -412,7 +412,21 @@ const UI_STRINGS = [
   'rider_power_lbl' => 'Strom', 'rider_pa_lbl' => 'PA / Beschallung', 'rider_monitor_lbl' => 'Monitoring',
   'rider_light_lbl' => 'Licht', 'rider_getin_lbl' => 'Anlieferung, Aufbau, Soundcheck',
   'rider_extras_lbl' => 'Sonstiges (Parken, Catering, Backstage)',
-  'rider_positions_lbl' => 'Bühnenaufstellung',
+  // Bühnenplan
+  'stage_plot' => 'Bühnenplan', 'stage_back' => 'hinten', 'stage_front' => 'vorne (Publikum)',
+  'stage_empty' => 'Noch nichts aufgestellt.',
+  'stage_add' => 'Aufstellen', 'stage_kind' => 'Was', 'stage_label' => 'Beschriftung',
+  'stage_x' => 'Links–rechts (%)', 'stage_y' => 'Hinten–vorne (%)', 'stage_note' => 'Zusatz',
+  'stage_from_members' => 'Aus der Mitgliederliste erzeugen',
+  'stage_from_members_hint' => 'Setzt eine Vorlage nach Instrument — Schlagzeug hinten Mitte, Bass hinten links, Gesang vorne. Danach lässt sich alles verschieben.',
+  'stage_hint' => 'Der Plan geht in den Stagerider und in den Ausdruck. Vorne ist unten, so wie das Publikum schaut.',
+  'stage_replace_warn' => 'Der bisherige Plan wird dabei ersetzt. Fortfahren?',
+  'stage_drag_hint' => 'Zum Verschieben die Zahlen ändern — oder das Symbol im Plan ziehen.',
+  'stagekind_musiker' => 'Musiker', 'stagekind_amp' => 'Verstärker', 'stagekind_podest' => 'Podest',
+  'stagekind_keyboard' => 'Keyboard', 'stagekind_monitor' => 'Monitor', 'stagekind_di' => 'DI-Box',
+  'stagekind_strom' => 'Strom', 'stagekind_sonstiges' => 'Sonstiges',
+  'fl_stage_saved' => 'Bühnenplan gespeichert.', 'fl_stage_deleted' => 'Vom Plan genommen.',
+  'rider_positions_lbl' => 'Bühnenaufstellung (Text)',
   'rider_positions_ph' => "z. B.
 Schlagzeug: hinten Mitte, Podest 2 × 2 m
 Bass: hinten links
@@ -596,6 +610,42 @@ const PERM_TEMPLATES = [
   ],
 ];
 
+/**
+ * Was auf einem Bühnenplan stehen kann. Der Schlüssel landet in der
+ * Datenbank, das Zeichen im Plan.
+ */
+const STAGE_KINDS = [
+  'musiker'  => '🧍', 'amp' => '🔊', 'podest' => '⬛', 'keyboard' => '🎹',
+  'monitor'  => '📢', 'di' => '🔌', 'strom' => '⚡', 'sonstiges' => '▫',
+];
+
+/**
+ * Standardaufstellung aus der Mitgliederliste. Schlagzeug hinten Mitte, Bass
+ * hinten links, der Rest verteilt sich nach vorn — eine Vorlage zum
+ * Verschieben, kein Anspruch auf Richtigkeit.
+ */
+function stage_default_items(array $members): array {
+  // Grobe Zuordnung vom Instrument auf einen Platz [x, y]; y = 0 ist hinten
+  $spots = [
+    'schlagzeug' => [50, 12], 'drums' => [50, 12], 'percussion' => [70, 18],
+    'bass'       => [22, 25], 'keyboard' => [78, 30], 'keys' => [78, 30],
+    'gitarre'    => [25, 60], 'e-gitarre' => [25, 60], 'guitar' => [25, 60],
+    'gesang'     => [50, 78], 'vocals' => [50, 78], 'saxophon' => [75, 62],
+  ];
+  $items = [];
+  $fallback = [[38, 70], [62, 70], [15, 45], [85, 45], [50, 55]];
+  foreach (array_values($members) as $i => $m) {
+    $key = mb_strtolower(trim((string) ($m['instrument'] ?? '')));
+    [$x, $y] = $spots[$key] ?? ($fallback[$i % count($fallback)]);
+    $items[] = ['kind' => 'musiker', 'label' => $m['stage_name'] ?: $m['name'],
+                'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? '')];
+  }
+  // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach
+  $items[] = ['kind' => 'strom', 'label' => 'Strom', 'x' => 8, 'y' => 8, 'note' => '230 V'];
+  $items[] = ['kind' => 'strom', 'label' => 'Strom', 'x' => 92, 'y' => 8, 'note' => '230 V'];
+  return $items;
+}
+
 // Woher PA und Licht bei einem Termin kommen
 const PRODUCTION_SOURCES = ['eigene' => 'Eigenes Material', 'leih' => 'Geliehen/Gemietet', 'vorhanden' => 'Vor Ort vorhanden'];
 
@@ -755,6 +805,18 @@ $tables = [
     is_standard TINYINT(1) NOT NULL DEFAULT 0,
     notes TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Bühnenplan: was wo steht. x und y sind Prozent der Bühnenfläche, damit
+  // der Plan bei jeder Bühnengröße stimmt.
+  "CREATE TABLE IF NOT EXISTS stage_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kind VARCHAR(20) NOT NULL DEFAULT 'musiker',
+    label VARCHAR(120) NOT NULL DEFAULT '',
+    x TINYINT UNSIGNED NOT NULL DEFAULT 50,
+    y TINYINT UNSIGNED NOT NULL DEFAULT 50,
+    note VARCHAR(190) NOT NULL DEFAULT '',
+    position INT NOT NULL DEFAULT 0
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   // Wer für einen Termin als Ersatz angefragt wurde. Ohne Eintrag hier sieht

@@ -46,8 +46,8 @@ foreach ($entries as $en) {
 <?php if (!can_finance()): ?><p class="muted small"><?= e(t('fin_readonly_hint')) ?></p><?php endif; ?>
 
 <?php if ($openFees && can_finance()): ?>
-<div class="card">
-  <h2><?= e(t('fin_open_fees')) ?></h2>
+<details class="card acc" name="kasseacc">
+  <summary><?= e(t('fin_open_fees')) ?> (<?= count($openFees) ?>)</summary>
   <ul class="task-list">
     <?php foreach ($openFees as $ev): ?>
       <li>
@@ -60,7 +60,7 @@ foreach ($entries as $en) {
       </li>
     <?php endforeach; ?>
   </ul>
-</div>
+</details>
 <?php endif; ?>
 
 <?php if (can_finance()): ?>
