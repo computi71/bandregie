@@ -324,6 +324,7 @@ const UI_STRINGS = [
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
   'prod_gear' => 'Was nehmt ihr mit?', 'prod_gear_none' => 'Im Inventar steht noch nichts.',
   'eq_total' => 'Gesamtwert', 'eq_total_partial' => 'ohne die Geräte ohne Preis',
+  'eq_owner_locked' => 'Preis, Besitzer und Kaufdatum ändern nur der Besitzer und die Verwaltung. Das Gerät umzuhängen gehört dazu — über das übergeordnete Gerät wechselt sonst der Besitzer mit.',
   'ev_gear' => 'Mitnehmen', 'ev_gear_conflict' => 'am selben Tag doppelt verplant',
   'rate_title' => 'Bewertung', 'rate_your' => 'Deine Bewertung', 'rate_avg' => 'Schnitt',
   'rate_votes' => 'Stimmen', 'rate_vote' => 'Stimme', 'ev_export' => 'Tabelle', 'rate_none' => 'noch nicht bewertet', 'rate_clear' => 'Bewertung zurücknehmen',
@@ -1047,6 +1048,17 @@ function eq_purchase_label(array $eq): string {
   if ($eq['price_cents'] !== null && $eq['price_cents'] !== '') $parts[] = fmt_money((int) $eq['price_cents']);
   if (!empty($eq['purchased_on'])) $parts[] = fmt_date($eq['purchased_on']);
   return implode(' · ', $parts);
+}
+
+/**
+ * Preis, Besitzer und Kaufdatum sagen, wem ein Gerät gehört und was es wert
+ * ist — das ändert nur, wem es gehört, und die Verwaltung. Bandeigenes
+ * Material hat keinen Besitzer, gehört also allen und bleibt für alle offen.
+ */
+function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
+  if (($user['role'] ?? '') === 'admin') return true;
+  if (empty($eq['owner_id'])) return true;
+  return (int) $eq['owner_id'] === (int) ($user['id'] ?? 0);
 }
 
 /** Geräte nach übergeordnetem Gerät sortiert; ohne Übergeordnetes zählt 0. */

@@ -984,15 +984,24 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
       flash(t('fl_eq_deleted'));
     } elseif (($_POST['name'] ?? '') !== '') {
+      $eqBefore = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
+      if (!$eqBefore) redirect('/intern/equipment');
+      // Angaben zum Eigentum ändert nur, wem das Gerät gehört, und die
+      // Verwaltung. Das Umhängen zählt dazu: über ein anderes übergeordnetes
+      // Gerät würde sonst der Besitzer mitwechseln.
+      $mayOwn = eq_may_edit_owner_fields($eqBefore, $me);
       // Sich selbst oder einen eigenen Bestandteil als übergeordnetes Gerät zu
       // wählen wäre eine Schleife — die Anzeige käme aus dem Baum nicht mehr
       // heraus. Das Formular bietet beides nicht an, hier steht die Prüfung.
-      $parentId = (int) ($_POST['parent_id'] ?? 0) ?: null;
+      $parentId = $mayOwn ? ((int) ($_POST['parent_id'] ?? 0) ?: null) : ($eqBefore['parent_id'] !== null ? (int) $eqBefore['parent_id'] : null);
       if ($parentId) {
         $blocked = [(int) $m[1], ...eq_descendants((int) $m[1], rows('SELECT id, parent_id FROM equipment'))];
         if (in_array($parentId, $blocked, true)) $parentId = null;
       }
-      [$ownerId, $location] = equipment_inherit($parentId, (int) ($_POST['owner_id'] ?? 0) ?: null, trim($_POST['location'] ?? ''));
+      $postedOwner = $mayOwn
+        ? ((int) ($_POST['owner_id'] ?? 0) ?: null)
+        : ($eqBefore['owner_id'] !== null ? (int) $eqBefore['owner_id'] : null);
+      [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
       q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
@@ -1002,8 +1011,8 @@ if (str_starts_with($path, '/intern')) {
         trim($_POST['notes'] ?? ''),
         $parentId,
         trim($_POST['slot'] ?? ''),
-        trim($_POST['purchased_on'] ?? '') ?: null,
-        price_to_cents((string) ($_POST['price'] ?? '')),
+        $mayOwn ? (trim($_POST['purchased_on'] ?? '') ?: null) : $eqBefore['purchased_on'],
+        $mayOwn ? price_to_cents((string) ($_POST['price'] ?? '')) : $eqBefore['price_cents'],
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit
