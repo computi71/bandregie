@@ -14,6 +14,7 @@
 // stehen zwar in der Liste, gehören aber nicht in die Bandzahlen — sie
 // bekommen ihre eigene Zeile.
 $sumIn = 0; $sumOut = 0; $byCat = []; $ownPrivate = 0;
+$rentCost = 0; $deposits = 0;
 foreach ($entries as $en) {
   if ($en['private_for'] !== null) {
     $ownPrivate += $en['type'] === 'einnahme' ? $en['amount_cents'] : -$en['amount_cents'];
@@ -21,6 +22,9 @@ foreach ($entries as $en) {
   }
   if ($en['type'] === 'einnahme') $sumIn += $en['amount_cents']; else $sumOut += $en['amount_cents'];
   $byCat[$en['category']][$en['type']] = ($byCat[$en['category']][$en['type']] ?? 0) + $en['amount_cents'];
+  // Wofür die Einzahlungen gedacht sind, und was tatsächlich hereinkam
+  if ($en['type'] === 'ausgabe' && in_array($en['category'], FIN_DEPOSIT_COVERS, true)) $rentCost += $en['amount_cents'];
+  if ($en['type'] === 'einnahme' && $en['category'] === 'einlage') $deposits += $en['amount_cents'];
 }
 ?>
 <div class="grid-2">
@@ -53,6 +57,21 @@ foreach ($entries as $en) {
   </div>
 </div>
 
+<?php if ($rentCost || $deposits): $gap = $rentCost - $deposits; ?>
+<div class="card">
+  <h2>🏠 <?= e(t('fin_rent_cover')) ?></h2>
+  <p class="muted small"><?= e(t('fin_rent_cover_hint')) ?></p>
+  <ul class="task-list">
+    <li><strong><?= e(t('fin_rent_cost')) ?></strong> <span class="muted"><?= fmt_money($rentCost) ?></span></li>
+    <li><strong><?= e(t('fin_rent_deposits')) ?></strong> <span class="muted">+<?= fmt_money($deposits) ?></span></li>
+    <li>
+      <strong><?= e($gap > 0 ? t('fin_rent_gap') : t('fin_rent_surplus')) ?></strong>
+      <span class="<?= $gap > 0 ? 'warn' : 'chip-yes' ?>"><?= fmt_money(abs($gap)) ?></span>
+    </li>
+  </ul>
+</div>
+<?php endif; ?>
+
 <?php if (!can_finance()): ?><p class="muted small"><?= e(t('fin_readonly_hint')) ?></p><?php endif; ?>
 
 <details class="card acc" name="kasseacc" <?= $orders ? '' : '' ?>>
@@ -68,7 +87,10 @@ foreach ($entries as $en) {
         <span class="muted small">
           <?= e(t('ord_' . ['monthly' => 'monthly', 'quarterly' => 'quarterly', 'yearly' => 'yearly'][$ord['interval_kind']] ?? 'monthly')) ?>
           · <?= e(fin_category_label($ord['category'])) ?>
-          · <?= e($ord['owner_id'] === null ? t('ord_scope_band') : t('ord_scope_own')) ?>
+          <?php // Bandkasse, Einzahlung eines Mitglieds oder privat ?>
+          · <?= e($ord['owner_id'] === null ? t('ord_scope_band')
+                : ((int) $ord['private'] ? t('ord_scope_own')
+                : t('ord_scope_deposit') . ' · ' . $ord['owner_name'])) ?>
           <?php if ($ord['paused']): ?> · <?= e(t('ord_paused')) ?>
           <?php else: ?> · <?= e(t('ord_next')) ?> <?= fmt_date($ord['next_date']) ?><?php endif; ?>
           <?php if ($ord['end_date']): ?> · <?= e(t('ord_end')) ?>: <?= fmt_date($ord['end_date']) ?><?php endif; ?>
@@ -88,19 +110,20 @@ foreach ($entries as $en) {
     <form method="post" action="/intern/kasse/dauerauftrag" class="form-grid"><?= csrf_field() ?>
       <label><?= e(t('ord_scope')) ?>
         <select name="scope">
+          <option value="einzahlung"><?= e(t('ord_scope_deposit')) ?></option>
           <option value="own"><?= e(t('ord_scope_own')) ?></option>
           <?php if (can_finance()): ?><option value="band"><?= e(t('ord_scope_band')) ?></option><?php endif; ?>
         </select>
         <span class="muted small"><?= e(t('ord_scope_hint')) ?></span>
       </label>
-      <label><?= e(t('fin_type_out')) ?> / <?= e(t('fin_type_in')) ?>
+      <label data-orderfield><?= e(t('fin_type_out')) ?> / <?= e(t('fin_type_in')) ?>
         <select name="type">
           <option value="ausgabe"><?= e(t('fin_type_out')) ?></option>
           <option value="einnahme"><?= e(t('fin_type_in')) ?></option>
         </select>
       </label>
       <label><?= e(t('fin_amount')) ?><input name="amount" required placeholder="0,00"></label>
-      <label><?= e(t('fin_category')) ?>
+      <label data-orderfield><?= e(t('fin_category')) ?>
         <select name="category">
           <?php foreach (array_keys(FIN_CATEGORIES) as $cat): ?>
             <option value="<?= $cat ?>"><?= e(fin_category_label($cat)) ?></option>
@@ -214,4 +237,5 @@ foreach ($entries as $en) {
   </table>
   <?php if (!$entries): ?><p class="muted center"><?= e(t('fin_none')) ?></p><?php endif; ?>
 </div>
+<script src="<?= e(asset('/assets/kasse.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

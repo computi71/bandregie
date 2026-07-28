@@ -378,7 +378,8 @@ const UI_STRINGS = [
   'ord_title' => 'Daueraufträge', 'ord_new' => 'Neuer Dauerauftrag',
   'ord_intro' => 'Wiederkehrende Buchungen tragen sich selbst ein — Proberaum, GEMA, Versicherung.',
   'ord_scope' => 'Gilt für', 'ord_scope_band' => 'die Bandkasse', 'ord_scope_own' => 'mich selbst',
-  'ord_scope_hint' => 'Eigene Daueraufträge sieht nur, wer sie angelegt hat.',
+  'ord_scope_deposit' => 'meine Einzahlung in die Bandkasse',
+  'ord_scope_hint' => 'Eine Einzahlung sehen alle, sie zählt als Einnahme der Band. Was für dich selbst läuft, sieht nur du.',
   'ord_interval' => 'Wie oft', 'ord_monthly' => 'monatlich', 'ord_quarterly' => 'vierteljährlich',
   'ord_yearly' => 'jährlich',
   'ord_start' => 'Erste Buchung', 'ord_end' => 'Letzte Buchung (frei lassen für „unbefristet")',
@@ -386,6 +387,12 @@ const UI_STRINGS = [
   'ord_pause' => 'Pausieren', 'ord_resume' => 'Fortsetzen',
   'ord_none' => 'Noch keine Daueraufträge.',
   'ord_from_order' => 'aus einem Dauerauftrag',
+  'fin_rent_cover' => 'Proberaum aus Einzahlungen',
+  'fin_rent_cover_hint' => 'Die Einzahlungen der Mitglieder sind in erster Linie für Miete und Nebenkosten da.',
+  'fin_rent_cost' => 'Miete und Nebenkosten',
+  'fin_rent_deposits' => 'Einzahlungen der Mitglieder',
+  'fin_rent_gap' => 'Die Band zahlt drauf',
+  'fin_rent_surplus' => 'Übrig für die Bandkasse',
   'fin_private' => 'privat — siehst nur du',
   'fin_private_sum' => 'Eigene private Buchungen:',
   'fl_order_saved' => 'Dauerauftrag angelegt.', 'fl_order_deleted' => 'Dauerauftrag gelöscht — die gebuchten Beträge bleiben stehen.',
@@ -394,8 +401,9 @@ const UI_STRINGS = [
   'set_fin_open_fees' => 'Noch nicht verbuchte Gagen anzeigen',
   'set_fin_open_fees_hint' => 'Listet auf der Kassenseite alle Auftritte mit Gage, zu denen noch keine Einnahme gebucht ist — samt Knopf zum Übernehmen. Aus, solange ihr das nicht braucht.',
   'fincat_gage' => 'Gage', 'fincat_ausschuettung' => 'Ausschüttung',
-  'fincat_einlage' => 'Einlage', 'fincat_merch' => 'Merch/Verkauf',
-  'fincat_proberaum' => 'Proberaum', 'fincat_equipment' => 'Equipment', 'fincat_gema' => 'GEMA',
+  'fincat_einlage' => 'Einzahlung Mitglieder', 'fincat_merch' => 'Merch/Verkauf',
+  'fincat_proberaum' => 'Proberaum', 'fincat_nebenkosten' => 'Nebenkosten',
+  'fincat_equipment' => 'Equipment', 'fincat_gema' => 'GEMA',
   'fincat_fahrt' => 'Fahrtkosten', 'fincat_verpflegung' => 'Verpflegung', 'fincat_sonstiges' => 'Sonstiges',
   'fl_fin_saved' => 'Buchung gespeichert.', 'fl_fin_deleted' => 'Buchung gelöscht.',
   'fl_fin_invalid' => 'Bitte Datum, Beschreibung und gültigen Betrag angeben.',
@@ -583,11 +591,15 @@ Gitarre: vorne rechts",
 
 // Bandkassen-Kategorien
 const FIN_CATEGORIES = [
-  'gage' => 'Gage', 'ausschuettung' => 'Ausschüttung', 'einlage' => 'Einlage',
-  'merch' => 'Merch/Verkauf', 'proberaum' => 'Proberaum', 'equipment' => 'Equipment',
-  'gema' => 'GEMA', 'fahrt' => 'Fahrtkosten', 'verpflegung' => 'Verpflegung',
-  'sonstiges' => 'Sonstiges',
+  'gage' => 'Gage', 'ausschuettung' => 'Ausschüttung', 'einlage' => 'Einzahlung Mitglieder',
+  'merch' => 'Merch/Verkauf', 'proberaum' => 'Proberaum', 'nebenkosten' => 'Nebenkosten',
+  'equipment' => 'Equipment', 'gema' => 'GEMA', 'fahrt' => 'Fahrtkosten',
+  'verpflegung' => 'Verpflegung', 'sonstiges' => 'Sonstiges',
 ];
+
+// Wofür die Einzahlungen der Mitglieder in erster Linie da sind. Die Kasse
+// stellt beides gegenüber, damit man sieht, was die Band selbst draufzahlt.
+const FIN_DEPOSIT_COVERS = ['proberaum', 'nebenkosten'];
 
 // Welche Felder bei welcher Termin-Art sinnvoll sind — der Rest wird im
 // Formular ausgeblendet. Die öffentliche Seite zeigt ausschließlich Gigs,
@@ -919,6 +931,7 @@ $tables = [
     end_date DATE NULL,
     next_date DATE NOT NULL,
     paused TINYINT(1) NOT NULL DEFAULT 0,
+    private TINYINT(1) NOT NULL DEFAULT 0,
     created_by INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_next (next_date)
@@ -1081,6 +1094,13 @@ if (!column_exists('finances', 'standing_order_id')) {
 // zählen für den Kontostand. Was jemand privat zahlt, geht die Band nichts an.
 if (!column_exists('finances', 'private_for')) {
   $db->exec('ALTER TABLE finances ADD COLUMN private_for INT NULL');
+}
+// „Gehört einem Mitglied" und „sieht nur dieses Mitglied" sind zweierlei:
+// eine Einzahlung gehört dem Einzahler und geht trotzdem alle an. Bestehende
+// Aufträge mit Besitzer waren bis dahin immer privat.
+if (!column_exists('standing_orders', 'private')) {
+  $db->exec('ALTER TABLE standing_orders ADD COLUMN private TINYINT(1) NOT NULL DEFAULT 0');
+  $db->exec('UPDATE standing_orders SET private = 1 WHERE owner_id IS NOT NULL');
 }
 foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {

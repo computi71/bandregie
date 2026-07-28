@@ -14,26 +14,29 @@ declare(strict_types=1);
 const ORDER_INTERVALS = ['monthly' => '+1 month', 'quarterly' => '+3 months', 'yearly' => '+1 year'];
 
 /**
- * Daueraufträge, die jemand sehen darf: die der Band und die eigenen.
- * Wer die Kasse gar nicht sehen darf, bekommt nichts.
+ * Daueraufträge, die jemand sehen darf: alles, was die Band angeht — auch die
+ * Einzahlungen der anderen —, dazu die eigenen privaten. Wer die Kasse gar
+ * nicht sehen darf, bekommt nichts.
  */
 function orders_for(?array $user): array {
   if (!perm_allows($user, 'kasse')) return [];
   return rows('SELECT s.*, u.name AS owner_name FROM standing_orders s
                LEFT JOIN users u ON u.id = s.owner_id
-               WHERE s.owner_id IS NULL OR s.owner_id = ?
-               ORDER BY s.owner_id IS NULL DESC, s.next_date', [$user['id'] ?? 0]);
+               WHERE s.private = 0 OR s.owner_id = ?
+               ORDER BY s.owner_id IS NULL DESC, s.private, s.next_date', [$user['id'] ?? 0]);
 }
 
 /**
- * Darf jemand diesen Dauerauftrag ändern? Die der Band ändert, wer in der
- * Kasse schreiben darf; die eigenen ändert nur der Besitzer — auch ein Admin
- * verwaltet keine fremden Privatbuchungen.
+ * Darf jemand diesen Dauerauftrag ändern? Einen privaten ändert nur sein
+ * Besitzer — auch ein Admin verwaltet keine fremden Privatbuchungen. Alles
+ * andere ist Bandsache und damit Sache der Kassenführung; eine Einzahlung
+ * ändert außerdem, wer sie eingerichtet hat.
  */
 function may_edit_order(?array $user, ?array $order): bool {
   if (!$user || !$order) return false;
-  if ($order['owner_id'] === null) return perm_allows($user, 'kasse', 'write');
-  return (int) $order['owner_id'] === (int) $user['id'];
+  if ((int) $order['owner_id'] === (int) $user['id'] && $order['owner_id'] !== null) return true;
+  if ((int) $order['private']) return false;
+  return perm_allows($user, 'kasse', 'write');
 }
 
 /** Nächstes Fälligkeitsdatum nach einem gebuchten Termin. */
@@ -57,13 +60,14 @@ function orders_run(): int {
     // dass ein kaputtes Datum eine Endlosschleife dreht.
     for ($guard = 0; $guard < 120 && $date <= $today; $guard++) {
       if ($order['end_date'] !== null && $date > $order['end_date']) break;
-      // Ein eigener Dauerauftrag bucht privat: die Zeile steht im Kassenbuch,
+      // Ein privater Auftrag bucht privat: die Zeile steht im Kassenbuch,
       // sieht sie aber nur ihr Besitzer, und sie zählt nicht zum Bandvermögen.
+      // Eine Einzahlung trägt denselben Namen, geht aber alle an.
       q('INSERT INTO finances (date, type, amount_cents, category, description, member_id, created_by, standing_order_id, private_for)
          VALUES (?,?,?,?,?,?,?,?,?)', [
         $date, $order['type'], $order['amount_cents'], $order['category'],
         $order['description'], $order['owner_id'], $order['created_by'], $order['id'],
-        $order['owner_id'],
+        (int) $order['private'] ? $order['owner_id'] : null,
       ]);
       $made++;
       $date = order_next_date($date, $order['interval_kind']);

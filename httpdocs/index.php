@@ -1676,20 +1676,26 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Daueraufträge ----------
   if ($path === '/intern/kasse/dauerauftrag' && $method === 'POST') {
     if (!perm_allows($me, 'kasse')) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
-    // Für die Band anlegen darf, wer in der Kasse schreiben darf; einen
-    // eigenen darf jeder anlegen, der die Kasse überhaupt sieht.
-    $forBand = ($_POST['scope'] ?? 'own') === 'band';
-    if ($forBand && !perm_allows($me, 'kasse', 'write')) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
+    // Drei Fälle: die Bandkasse führt, wer dort schreiben darf. Die eigene
+    // Einzahlung und den privaten Auftrag richtet jeder selbst ein, der die
+    // Kasse überhaupt sieht — beide tragen seinen Namen.
+    $scope = in_array($_POST['scope'] ?? '', ['band', 'einzahlung', 'own'], true) ? $_POST['scope'] : 'own';
+    if ($scope === 'band' && !perm_allows($me, 'kasse', 'write')) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
+    $forBand = $scope === 'band';
     $cents = price_to_cents((string) ($_POST['amount'] ?? ''));
     $start = trim($_POST['start_date'] ?? '') ?: date('Y-m-d');
     if ($cents && trim($_POST['description'] ?? '') !== '') {
-      q('INSERT INTO standing_orders (owner_id, type, amount_cents, category, description,
+      // Eine Einzahlung ist per Definition eine Einnahme der Band unter
+      // „Einzahlung Mitglieder" — Art und Kategorie stehen damit fest.
+      q('INSERT INTO standing_orders (owner_id, private, type, amount_cents, category, description,
                                       interval_kind, start_date, end_date, next_date, created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?)', [
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
         $forBand ? null : $me['id'],
-        ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
+        $scope === 'own' ? 1 : 0,
+        $scope === 'einzahlung' || ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
         $cents,
-        array_key_exists($_POST['category'] ?? '', FIN_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+        $scope === 'einzahlung' ? 'einlage'
+          : (array_key_exists($_POST['category'] ?? '', FIN_CATEGORIES) ? $_POST['category'] : 'sonstiges'),
         trim($_POST['description']),
         array_key_exists($_POST['interval_kind'] ?? '', ORDER_INTERVALS) ? $_POST['interval_kind'] : 'monthly',
         $start, trim($_POST['end_date'] ?? '') ?: null, $start, $me['id'],
