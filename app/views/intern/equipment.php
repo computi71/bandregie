@@ -20,7 +20,9 @@
     <label><?= e(t('eq_slot')) ?><input name="slot" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
     <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
     <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on"></label>
-    <label><?= e(t('eq_price_each')) ?><input type="number" name="price" step="0.01" min="0" placeholder="0,00"></label>
+    <?php // Kein type="number": das Feld wirft ein Komma stillschweigend weg,
+          // aus 231,27 wird 23127. Als Textfeld kommt die Eingabe heil an. ?>
+    <label><?= e(t('eq_price_each')) ?><input name="price" inputmode="decimal" placeholder="0,00"></label>
     <label><?= e(t('eq_count')) ?><input type="number" name="count" value="1" min="1" max="99"></label>
     <label class="checkbox"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
     <p class="muted span2"><?= e(t('eq_count_hint')) ?></p>

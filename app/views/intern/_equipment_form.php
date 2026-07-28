@@ -41,7 +41,9 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
   <?php endif; ?>
   <?php if ($eqSeePrice): ?>
     <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on" value="<?= e($formEq['purchased_on'] ?? '') ?>" <?= $eqLock ?>></label>
-    <label><?= e(t('eq_price')) ?><input type="number" name="price" step="0.01" min="0" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, '.', '')) : '' ?>" <?= $eqLock ?>></label>
+    <?php // Textfeld statt type="number", sonst geht das Komma verloren.
+          // Angezeigt wird deshalb auch in der Schreibweise des Landes. ?>
+    <label><?= e(t('eq_price')) ?><input name="price" inputmode="decimal" placeholder="0,00" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, ',', '.')) : '' ?>" <?= $eqLock ?>></label>
   <?php else: ?>
     <p class="muted small span2">🔒 <?= e(t('eq_price_hidden')) ?></p>
   <?php endif; ?>
