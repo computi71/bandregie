@@ -78,7 +78,11 @@ function wing_port(string $group, int $input, array $inputs): string {
 
   if (($inputs[$group][(string) $input]['mode'] ?? 'M') !== 'ST') return $port($input);
   $first = $input % 2 === 1 ? $input : $input - 1;
-  return $port($first) . '–' . ($first + 1);
+  // „A9–A10" bei den Stageboxen, „Local 7–8" bei den ausgeschriebenen: das
+  // Kürzel zweimal zu wiederholen liest sich dort nur umständlich.
+  return strlen($label) === 1
+    ? $port($first) . '–' . $port($first + 1)
+    : $port($first) . '–' . ($first + 1);
 }
 
 /**
