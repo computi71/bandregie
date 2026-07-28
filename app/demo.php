@@ -275,7 +275,7 @@ function demo_install_rows(): void {
   }
 
   demo_install_background();
-  demo_install_stage_plot();
+  demo_install_stage_plot($members);
 }
 
 /**
@@ -283,10 +283,14 @@ function demo_install_rows(): void {
  * schon; dazu kommt, was auf keinem Plan fehlen darf und wonach der
  * Veranstalter sonst fragt: Verstärker, Monitore, Strom.
  */
-function demo_install_stage_plot(): void {
-  if (rows('SELECT id FROM stage_items LIMIT 1')) return;
-  $members = rows("SELECT name, stage_name, instrument FROM users WHERE instrument <> '' ORDER BY id");
-  $items = stage_default_items($members);
+function demo_install_stage_plot(array $memberIds): void {
+  // Nur die Demoband: auf einer Instanz mit echten Mitgliedern hätte die Demo
+  // sonst deren Namen auf die Bühne gestellt.
+  if (!$memberIds || rows('SELECT id FROM stage_items LIMIT 1')) return;
+  $marks = implode(',', array_fill(0, count($memberIds), '?'));
+  $items = stage_default_items(
+    rows("SELECT name, stage_name, instrument FROM users WHERE id IN ($marks) ORDER BY id", $memberIds)
+  );
   $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 20, 'y' => 45, 'note' => ''];
   $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 14, 'y' => 22, 'note' => ''];
   $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 50, 'y' => 90, 'note' => 'Gesang'];
