@@ -275,6 +275,31 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
 </details>
 
+<?php require_once BASE_DIR . '/app/steuer.php'; ?>
+<details class="card acc" name="setacc">
+  <summary>⚖ <?= e(t('set_tax')) ?></summary>
+  <p class="muted small"><?= e(t('set_tax_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
+    <input type="hidden" name="_tax_form" value="1">
+    <label class="checkbox span2">
+      <input type="checkbox" name="tax_small_business" value="1" <?= setting('tax_small_business', '0') === '1' ? 'checked' : '' ?>>
+      <?= e(t('set_tax_small')) ?>
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_small_hint')) ?></p>
+    <label><?= e(t('set_tax_prev')) ?><input name="tax_limit_prev_year" inputmode="decimal" value="<?= e(setting('tax_limit_prev_year', '25000')) ?>"></label>
+    <label><?= e(t('set_tax_this')) ?><input name="tax_limit_this_year" inputmode="decimal" value="<?= e(setting('tax_limit_this_year', '100000')) ?>"></label>
+    <label class="span2"><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">
+      <span class="muted small"><?= e(t('set_tax_gwg_hint')) ?></span>
+    </label>
+    <label class="span2"><?= e(t('set_tax_checked')) ?>
+      <input type="date" name="tax_values_checked" value="<?= e(setting('tax_values_checked', '')) ?>">
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_source')) ?></p>
+    <p class="muted small span2">⚖ <?= e(t('tax_no_advice')) ?></p>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <?php require_once BASE_DIR . '/app/update.php'; $upCmd = update_command(); $upLatest = update_latest_version(); ?>
 <details class="card acc" name="setacc" <?= update_available() ? 'open' : '' ?>>
   <summary>⬆ <?= e(t('up_title')) ?><?= update_available() ? ' — ' . e(sprintf(t('up_available'), $upLatest)) : '' ?></summary>

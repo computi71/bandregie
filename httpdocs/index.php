@@ -1744,6 +1744,18 @@ if (str_starts_with($path, '/intern')) {
       set_setting('public_mode', ($_POST['public_mode'] ?? '') === 'redirect' ? 'redirect' : 'website');
       if (($_POST['redirect_url'] ?? '') !== '') set_setting('redirect_url', trim($_POST['redirect_url']));
     }
+    if (isset($_POST['_tax_form'])) {
+      // Die Beträge kommen als Zahl mit Komma oder Punkt herein; price_to_cents
+      // kennt beides, gespeichert wird wieder in Euro.
+      foreach (['tax_limit_prev_year', 'tax_limit_this_year', 'tax_gwg_limit'] as $taxKey) {
+        $cents = price_to_cents((string) ($_POST[$taxKey] ?? ''));
+        if ($cents !== null && $cents >= 0) set_setting($taxKey, (string) round($cents / 100, 2));
+      }
+      set_setting('tax_small_business', isset($_POST['tax_small_business']) ? '1' : '0');
+      $taxDate = trim($_POST['tax_values_checked'] ?? '');
+      set_setting('tax_values_checked', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxDate) ? $taxDate : date('Y-m-d'));
+      flash(t('fl_tax_saved'));
+    }
     if (isset($_POST['_update_form'])) {
       set_setting('update_check', isset($_POST['update_check']) ? '1' : '0');
       // Beim Einschalten gleich nachsehen, statt bis morgen zu warten.

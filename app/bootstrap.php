@@ -95,6 +95,27 @@ const UI_STRINGS = [
   'up_check' => 'Einmal am Tag nachsehen, ob es eine neue Fassung gibt',
   'up_check_hint' => 'Fragt bei GitHub nach der Versionsnummer — ohne Anmeldung und ohne Angaben über diese Installation. Abgeschaltet fragt Bandroadie nie von sich aus nach draußen.',
   'fl_up_saved' => 'Einstellung zur Aktualisierung gespeichert.',
+  'tax_title' => 'Umsatzgrenze im Blick',
+  'tax_turnover_year' => 'Umsatz %d:',
+  'tax_of' => 'von',
+  'tax_state_close' => 'Ihr nähert euch der Grenze für dieses Jahr.',
+  'tax_state_over_this' => 'Die Grenze für das laufende Jahr ist überschritten. Die Befreiung endet damit — sprecht mit eurer Steuerberatung, bevor die nächste Rechnung rausgeht.',
+  'tax_state_over_prev' => 'Der Umsatz des Vorjahres lag über der Grenze. Für dieses Jahr gilt die Befreiung damit nicht mehr.',
+  'tax_counts_hint' => 'Gezählt werden alle Einnahmen der Band außer den Einzahlungen der Mitglieder — die sind Beiträge und kein Verkauf. Private Buchungen bleiben außen vor.',
+  'tax_no_advice' => 'Eine Rechenhilfe, keine Steuerberatung. Die Grenzen stehen in den Einstellungen und lassen sich ändern.',
+  'set_tax' => 'Steuerliche Werte',
+  'set_tax_hint' => 'Voreingestellt ist der deutsche Stand. Ändert der Gesetzgeber die Zahlen — oder sitzt ihr anderswo —, tragt sie hier ein und bestätigt das Datum.',
+  'set_tax_small' => 'Wir nutzen die Kleinunternehmerregelung',
+  'set_tax_small_hint' => 'Erst damit rechnet die Kasse mit und warnt an der Grenze.',
+  'set_tax_prev' => 'Grenze Vorjahr (€)', 'set_tax_this' => 'Grenze laufendes Jahr (€)',
+  'set_tax_gwg' => 'Grenze geringwertige Wirtschaftsgüter (€, netto)',
+  'set_tax_gwg_hint' => 'Bis zu diesem Betrag ist ein Gerät im Jahr des Kaufs abgeschrieben, darüber über seine Nutzungsdauer.',
+  'set_tax_checked' => 'Werte zuletzt geprüft am',
+  'set_tax_source' => 'Stand Juli 2026, Deutschland: § 19 UStG 25.000 € Vorjahr und 100.000 € laufendes Jahr, § 6 Abs. 2 EStG 800 € netto.',
+  'sys_tax_stale' => 'Steuerliche Werte',
+  'sys_tax_stale_detail' => 'seit über einem Jahr nicht bestätigt',
+  'sys_tax_stale_conseq' => 'Prüft, ob die Grenzen noch stimmen, und bestätigt das Datum in den Einstellungen.',
+  'fl_tax_saved' => 'Steuerliche Werte gespeichert.',
   'privacy_title' => 'Datenschutzerklärung',
   'legal_credits' => 'Bildnachweis',
   'legal_credit_background' => 'Hintergrundbild: Konzertpublikum,',
@@ -1283,6 +1304,15 @@ $defaults = [
   // einer Versionsnummer, gesendet wird nichts über die Installation. Wer das
   // nicht will, schaltet es in den Einstellungen ab.
   'update_check' => '1', 'update_checked_at' => '0', 'update_latest' => '',
+  // Steuerliche Werte. Voreinstellung ist der deutsche Stand vom Juli 2026;
+  // sie stehen hier, damit eine Band sie ändern kann, wenn der Gesetzgeber
+  // sie ändert oder die Band anderswo sitzt. Aus ist die Grenzwarnung, bis
+  // jemand sagt, dass die Regelung überhaupt gilt.
+  'tax_small_business' => '0',
+  'tax_limit_prev_year' => '25000',
+  'tax_limit_this_year' => '100000',
+  'tax_gwg_limit' => '800',
+  'tax_values_checked' => '2026-07-28',
   // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
   // Installation ungefragt die Platte des Servers, auf dem sie liegt.
   'backup_enabled' => '0', 'backup_interval' => 'daily', 'backup_keep' => '7',

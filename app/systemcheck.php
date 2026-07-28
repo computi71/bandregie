@@ -67,6 +67,18 @@ function system_checks(): array {
     $site !== '' ? $site : t('sys_site_url_empty'), $site !== '' ? '' : t('sys_site_url_hint')
   );
 
+  // Steuerliche Grenzen altern still: der Gesetzgeber ändert sie, die
+  // Installation merkt davon nichts. Nur hier fällt es auf.
+  require_once BASE_DIR . '/app/steuer.php';
+  if (setting('tax_small_business', '0') === '1') {
+    $taxStale = tax_values_stale();
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_tax_stale'), $taxStale ? 'warn' : 'ok',
+      $taxStale ? t('sys_tax_stale_detail') : fmt_date(setting('tax_values_checked')),
+      $taxStale ? t('sys_tax_stale_conseq') : ''
+    );
+  }
+
   $backup = row("SELECT created_at, status FROM backup_runs WHERE status = 'ok' ORDER BY id DESC LIMIT 1");
   $age = $backup ? (time() - strtotime($backup['created_at'])) : null;
   $groups[t('sys_operation')][] = check_row(

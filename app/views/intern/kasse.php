@@ -72,6 +72,34 @@ foreach ($entries as $en) {
 </div>
 <?php endif; ?>
 
+<?php require_once BASE_DIR . '/app/steuer.php'; $tax = tax_small_business_status(); ?>
+<?php if ($tax): ?>
+  <div class="card">
+    <h2><?= e(t('tax_title')) ?></h2>
+    <ul class="task-list">
+      <li>
+        <strong><?= e(sprintf(t('tax_turnover_year'), date('Y'))) ?></strong>
+        <span class="<?= in_array($tax['state'], ['close', 'over_this'], true) ? 'warn' : 'muted' ?>">
+          <?= fmt_money($tax['this_year']) ?> <?= e(t('tax_of')) ?> <?= fmt_money($tax['limit_this']) ?>
+        </span>
+      </li>
+      <li>
+        <strong><?= e(sprintf(t('tax_turnover_year'), date('Y') - 1)) ?></strong>
+        <span class="<?= $tax['state'] === 'over_prev' ? 'warn' : 'muted' ?>">
+          <?= fmt_money($tax['prev_year']) ?> <?= e(t('tax_of')) ?> <?= fmt_money($tax['limit_prev']) ?>
+        </span>
+      </li>
+    </ul>
+    <?php if ($tax['state'] !== 'ok'): ?>
+      <p class="<?= $tax['state'] === 'close' ? 'muted' : 'warn' ?>">
+        <strong><?= e(t('tax_state_' . $tax['state'])) ?></strong>
+      </p>
+    <?php endif; ?>
+    <p class="muted small"><?= e(t('tax_counts_hint')) ?></p>
+    <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
+  </div>
+<?php endif; ?>
+
 <?php if (!can_finance()): ?><p class="muted small"><?= e(t('fin_readonly_hint')) ?></p><?php endif; ?>
 
 <details class="card acc" name="kasseacc" <?= $orders ? '' : '' ?>>
