@@ -236,7 +236,7 @@ function demo_install_rows(): void {
     'owner_id' => null, 'location' => 'Rehearsal room', 'is_standard' => 1,
     'notes' => 'Enough for about 300 people.']);
   demo_insert('equipment', ['name' => 'Light set with stands', 'category' => 'licht',
-    'owner_id' => $members[3], 'location' => 'at Ben''s', 'is_standard' => 0, 'notes' => '',
+    'owner_id' => $members[3], 'location' => "at Ben's", 'is_standard' => 0, 'notes' => '',
     'purchased_on' => $d('-3 years'), 'price_cents' => 89000]);
 
   // Ein Koffer mit Inhalt zeigt, wie Bestandteile funktionieren: Besitzer und
@@ -298,10 +298,10 @@ function demo_install_rows(): void {
   // das deutlichste Beispiel dafür, wofür der Besitzer da ist: den Kaufpreis
   // sieht nur, wem das Gerät gehört.
   foreach ([
-    [$members[1], 'Electric guitar', 'at Tom''s', '-4 years', 129000],
-    [$members[2], 'Electric bass', 'at Ines''s', '-6 years', 98000],
+    [$members[1], 'Electric guitar', "at Tom's", '-4 years', 129000],
+    [$members[2], 'Electric bass', "at Ines's", '-6 years', 98000],
     [$members[3], 'Drums', 'Rehearsal room', '-8 years', 185000],
-    [$members[0], 'In-ear system', 'at Lisa''s', '-1 year', 54900],
+    [$members[0], 'In-ear system', "at Lisa's", '-1 year', 54900],
   ] as [$ownerId, $name, $where, $when, $price]) {
     demo_insert('equipment', ['name' => $name, 'category' => 'instrument',
       'owner_id' => $ownerId, 'location' => $where, 'is_standard' => 1, 'notes' => '',
