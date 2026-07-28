@@ -273,9 +273,40 @@ function demo_install_rows(): void {
   foreach ([$eqPa, $eqCase, $eqTrailer] as $gearId) {
     q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$evNext, $gearId]);
   }
+
+  demo_install_background();
+}
+
+/**
+ * Hintergrundbild der Demoband: eine Bühne mit Publikum. Ohne Bild wirkt die
+ * öffentliche Seite leer und man sieht nicht, wofür die Einstellung da ist.
+ *
+ * Das mitgelieferte Bild bleibt liegen, kopiert wird es — sonst wäre es nach
+ * dem ersten Entfernen der Demodaten weg. Ein bereits eingestellter
+ * Hintergrund wird nicht angetastet: eine echte Band, die sich die Demo
+ * ansieht, soll ihr eigenes Bild behalten.
+ */
+function demo_install_background(): void {
+  if (setting('background_file') !== '') return;
+  $source = BASE_DIR . '/seed/demo/stage-crowd.jpg';
+  if (!is_file($source)) return;
+  $name = 'background_demo_' . bin2hex(random_bytes(8)) . '.jpg';
+  if (!@copy($source, UPLOADS_DIR . '/' . $name)) return;
+  set_setting('background_file', $name);
+}
+
+/** Das Hintergrundbild der Demo wieder entfernen — aber nur das eigene. */
+function demo_remove_background(): void {
+  $name = setting('background_file');
+  if ($name === '' || !str_starts_with($name, 'background_demo_')) return;
+  @unlink(UPLOADS_DIR . '/' . $name);
+  set_setting('background_file', '');
 }
 
 function demo_remove(): void {
+  // Das Bild hängt an keiner Zeile, es erkennt sich am eigenen Namen — und
+  // muss deshalb auch weg, wenn sonst nichts mehr zu löschen ist.
+  demo_remove_background();
   $rows = rows('SELECT table_name, row_id FROM demo_rows');
   if (!$rows) return;
 
