@@ -87,10 +87,13 @@
   <h2><?= e(t('rider_inputs')) ?></h2>
   <?php if ($channels): ?>
     <table class="table">
-      <thead><tr><th style="width:4rem"><?= e(t('ch_number')) ?></th><th><?= e(t('ch_patch')) ?></th><th><?= e(t('ch_name')) ?></th><th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th></tr></thead>
+      <thead><tr><th style="width:4rem"><?= e(t('ch_input')) ?></th><th><?= e(t('ch_name')) ?></th><th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th></tr></thead>
       <tbody>
+        <?php // Der Veranstalter patcht Ports, nicht unsere Kanalnummern —
+              // die braucht nur, wer bei uns am Pult steht. Wer keine Ports
+              // gepflegt hat, bekommt die Kanalnummer: eine Spalte, nie zwei. ?>
         <?php foreach ($channels as $c): ?>
-          <tr><td><?= (int) $c['number'] ?></td><td><?= e($c['patch']) ?></td><td><?= e($c['name']) ?></td><td><?= e($c['source']) ?></td><td class="muted"><?= e($c['notes']) ?></td></tr>
+          <tr><td><?= e($c['patch'] !== '' ? $c['patch'] : (string) (int) $c['number']) ?></td><td><?= e($c['name']) ?></td><td><?= e($c['source']) ?></td><td class="muted"><?= e($c['notes']) ?></td></tr>
         <?php endforeach; ?>
       </tbody>
     </table>
