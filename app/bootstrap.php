@@ -1735,6 +1735,42 @@ function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqc
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 
 /**
+ * Preiseingabe in Cent; leer bleibt leer.
+ *
+ * Punkt und Komma bedeuten je nach Land das Gegenteil, deshalb wird das
+ * Trennzeichen aus der Eingabe erschlossen statt angenommen: „1.249,90",
+ * „1,249.90", „231.27" und „231,27" ergeben alle das Erwartete. Bleibt ein
+ * einzelnes Trennzeichen mit genau drei Ziffern dahinter, ist es die
+ * Tausendergruppe — „1.249" sind tausendzweihundertneunundvierzig.
+ */
+function price_to_cents(string $raw): ?int {
+  $raw = trim($raw);
+  if ($raw === '') return null;
+  $raw = str_replace([' ', "\u{00A0}", '€'], '', $raw);
+
+  $lastDot = strrpos($raw, '.');
+  $lastComma = strrpos($raw, ',');
+  if ($lastDot !== false && $lastComma !== false) {
+    // Beide vorhanden: das hintere trennt die Nachkommastellen.
+    $decimalAt = max($lastDot, $lastComma);
+  } elseif ($lastDot === false && $lastComma === false) {
+    $decimalAt = null;
+  } else {
+    $sep = $lastDot !== false ? '.' : ',';
+    $at = $lastDot !== false ? $lastDot : $lastComma;
+    $onlyOnce = substr_count($raw, $sep) === 1;
+    $decimalAt = $onlyOnce && strlen($raw) - $at - 1 !== 3 ? $at : null;
+  }
+
+  $whole = $decimalAt === null ? $raw : substr($raw, 0, $decimalAt);
+  $fraction = $decimalAt === null ? '' : substr($raw, $decimalAt + 1);
+  $clean = preg_replace('~\D~', '', $whole) . ($fraction === '' ? '' : '.' . preg_replace('~\D~', '', $fraction));
+  if ($clean === '' || $clean === '.') return null;
+  $cents = (int) round((float) $clean * 100);
+  return str_starts_with(ltrim($raw), '-') ? -$cents : $cents;
+}
+
+/**
  * Adresse einer mitgelieferten Datei, mit Versionsanhang.
  *
  * Der Anhang wechselt mit jeder Version. Dadurch darf der Browser die Datei

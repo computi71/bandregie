@@ -1898,14 +1898,6 @@ if (str_starts_with($path, '/intern')) {
 }
 
 // ---------- Formularwerte ----------
-/** Preiseingabe wie „1.249,90" oder „1249.90" in Cent; leer bleibt leer. */
-function price_to_cents(string $raw): ?int {
-  $raw = trim($raw);
-  if ($raw === '') return null;
-  $raw = str_replace(['.', ' ', '€'], '', $raw);
-  return (int) round((float) str_replace(',', '.', $raw) * 100);
-}
-
 /** Bestandteile erben Besitzer und Standort vom übergeordneten Gerät. */
 function equipment_inherit(?int $parentId, $ownerId, string $location): array {
   if (!$parentId) return [$ownerId ?: null, $location];
