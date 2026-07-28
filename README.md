@@ -172,8 +172,9 @@ HTTP: `sudo certbot --nginx -d band.example.com`.
 Open the site. All tables are created and the translations are imported
 automatically. An administrator account is created with a random password,
 written once to `data/INITIAL-PASSWORD.txt` (outside the web root). Log in with
-it, set your own password when prompted, change the email address under
-*Profil*, then delete that file.
+it and set your own password when prompted — the file is deleted at that
+moment, so it never outlives the password it holds. Then change the email
+address under *Profil*.
 
 Under *Settings → Demo data* one button fills the installation with a fictional
 band so you can explore every feature, and a second button removes exactly

@@ -384,6 +384,12 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_pw_mismatch'));
       } else {
         q('UPDATE users SET password_hash = ?, must_change_pw = 0 WHERE id = ?', [password_hash($pw, PASSWORD_DEFAULT), $me['id']]);
+        // Das Startpasswort ist damit verbraucht. Die Datei liegen zu lassen
+        // heißt, dass sie irgendwann etwas anderes behauptet als die Wahrheit
+        // — und bis dahin ein gültiges Passwort im Klartext herumliegt. Die
+        // README bat den Betreiber, sie selbst zu löschen; das kann das
+        // Programm auch allein.
+        if (($me['role'] ?? '') === 'admin') @unlink(DATA_DIR . '/INITIAL-PASSWORD.txt');
         flash(t('fl_pw_changed'));
         redirect('/intern');
       }
