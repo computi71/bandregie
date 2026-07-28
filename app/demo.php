@@ -312,11 +312,17 @@ function demo_install_orders(array $members): void {
     'category' => 'proberaum', 'description' => 'Proberaummiete', 'interval_kind' => 'monthly',
     'start_date' => $start, 'next_date' => $start, 'created_by' => $members[0],
   ]);
-  demo_insert('standing_orders', [
-    'owner_id' => $members[0], 'private' => 0, 'type' => 'einnahme', 'amount_cents' => 1500,
-    'category' => 'einlage', 'description' => 'Einzahlung Lisa', 'interval_kind' => 'monthly',
-    'start_date' => $start, 'next_date' => $start, 'created_by' => $members[0],
-  ]);
+  // Jedes Mitglied zahlt monatlich ein — genau dafür ist die
+  // Gegenüberstellung mit der Miete da.
+  foreach ($members as $memberId) {
+    $name = row('SELECT first_name, name FROM users WHERE id = ?', [$memberId]);
+    demo_insert('standing_orders', [
+      'owner_id' => $memberId, 'private' => 0, 'type' => 'einnahme', 'amount_cents' => 1500,
+      'category' => 'einlage', 'description' => 'Einzahlung ' . ($name['first_name'] ?: $name['name']),
+      'interval_kind' => 'monthly', 'start_date' => $start, 'next_date' => $start,
+      'created_by' => $memberId,
+    ]);
+  }
   // Gleich buchen lassen, sonst steht die Kasse bis zum nächsten Seitenaufruf
   // leer. Die dabei entstandenen Zeilen gehören zur Demo und müssen mit ihr
   // wieder verschwinden — orders_run() weiß nichts von Demodaten.
