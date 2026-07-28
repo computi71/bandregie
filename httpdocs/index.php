@@ -601,8 +601,7 @@ if (str_starts_with($path, '/intern')) {
     $setlist = row('SELECT * FROM setlists WHERE id = ?', [$m[1]]);
     if (!$setlist) redirect('/intern/setlists');
     // Wer die Setlist in der Liste nicht sieht, sieht sie auch nicht einzeln
-    $slVisible = visible_setlist_ids($me);
-    if ($slVisible !== null && !in_array((int) $m[1], $slVisible, true)) {
+    if (!may_see_setlist($me, (int) $m[1])) {
       flash(t('fl_no_permission'));
       redirect('/intern/setlists');
     }
@@ -623,12 +622,12 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/setlists/(\d+)/print$~', $path, $m) && $method === 'GET') {
     $setlist = row('SELECT * FROM setlists WHERE id = ?', [$m[1]]);
-    if (!$setlist) redirect('/intern/setlists');
+    if (!$setlist || !may_see_setlist($me, (int) $m[1])) redirect('/intern/setlists');
     view('intern/setlist_print', ['title' => $setlist['name'], 'setlist' => $setlist, 'entries' => setlist_entries((int) $m[1])]);
   }
   if (preg_match('~^/intern/setlists/(\d+)/gema$~', $path, $m) && $method === 'GET') {
     $setlist = row('SELECT * FROM setlists WHERE id = ?', [$m[1]]);
-    if (!$setlist) redirect('/intern/setlists');
+    if (!$setlist || !may_see_setlist($me, (int) $m[1])) redirect('/intern/setlists');
     $event = row('SELECT e.*, v.name AS venue_name, v.city AS venue_city FROM events e
                   LEFT JOIN venues v ON v.id = e.venue_id
                   WHERE e.setlist_id = ? ORDER BY e.date DESC LIMIT 1', [$m[1]]);
@@ -848,7 +847,12 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/datei/(\d+)$~', $path, $m) && $method === 'GET') {
     $f = row('SELECT * FROM files WHERE id = ?', [$m[1]]);
-    if (!$f || !is_file(FILES_DIR . '/' . $f['filename'])) { http_response_code(404); exit('Datei nicht gefunden'); }
+    // Der Anhang erbt die Sichtbarkeit seines Gegenstands; unbekannt und
+    // gesperrt antworten gleich, damit die Antwort nichts verrät.
+    if (!$f || !may_see_file($me, $f) || !is_file(FILES_DIR . '/' . $f['filename'])) {
+      http_response_code(404);
+      exit('Datei nicht gefunden');
+    }
     file_serve($f);
   }
 
@@ -1476,9 +1480,12 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/termine/export' && $method === 'GET') {
     require_once BASE_DIR . '/app/export.php';
     $rows = [];
-    $allEvents = rows('SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
+    // Der Export zeigt genau die Termine, die auch die Liste zeigt
+    [$expWhere, $expParams] = visible_clause(visible_event_ids($me), 'e.id');
+    $allEvents = rows("SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
                        LEFT JOIN venues v ON v.id = e.venue_id
-                       LEFT JOIN users u ON u.id = e.responsible_id ORDER BY e.date');
+                       LEFT JOIN users u ON u.id = e.responsible_id
+                       WHERE 1 = 1$expWhere ORDER BY e.date", $expParams);
     $exportGear = event_gear_map(array_column($allEvents, 'id'));
     foreach ($allEvents as $ev) {
       $rows[] = [

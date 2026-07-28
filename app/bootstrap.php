@@ -1346,6 +1346,45 @@ function visible_song_ids(?array $user): ?array {
     'song_id'));
 }
 
+/**
+ * Darf jemand diesen einen Termin sehen? Für alle außer Ersatzleuten ja.
+ *
+ * Die drei Fragen unten gehören zusammen an eine Stelle: Wer eine zweite
+ * Route auf denselben Datensatz baut — Druckansicht, Export, Dateianhang —
+ * muss die Prüfung mitnehmen, und das soll eine Zeile sein.
+ */
+function may_see_event(?array $user, int $eventId): bool {
+  $ids = visible_event_ids($user);
+  return $ids === null || in_array($eventId, $ids, true);
+}
+
+/** Darf jemand diese Setlist sehen? */
+function may_see_setlist(?array $user, int $setlistId): bool {
+  $ids = visible_setlist_ids($user);
+  return $ids === null || in_array($setlistId, $ids, true);
+}
+
+/** Darf jemand diesen Song sehen? */
+function may_see_song(?array $user, int $songId): bool {
+  $ids = visible_song_ids($user);
+  return $ids === null || in_array($songId, $ids, true);
+}
+
+/**
+ * Darf jemand diesen Dateianhang sehen? Der Anhang erbt die Sichtbarkeit von
+ * der Sache, an der er hängt — sonst käme über die Datei heraus, was die
+ * Seite selbst verbirgt.
+ */
+function may_see_file(?array $user, array $file): bool {
+  $id = (int) $file['entity_id'];
+  return match ($file['entity_type']) {
+    'event' => may_see_event($user, $id),
+    'setlist' => may_see_setlist($user, $id),
+    'song' => may_see_song($user, $id),
+    default => true,
+  };
+}
+
 /** Baut „AND id IN (...)“ für eine Sichtbarkeitsliste; null lässt alles durch. */
 function visible_clause(?array $ids, string $column = 'id'): array {
   if ($ids === null) return ['', []];
