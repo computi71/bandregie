@@ -99,5 +99,5 @@
   <?php endif; ?>
   <a class="btn btn-small btn-ghost" href="/intern/kanaele"><?= e(t('rider_inputs_from')) ?> →</a>
 </div>
-<script src="/assets/stageplot.js" defer></script>
+<script src="<?= e(asset('/assets/stageplot.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

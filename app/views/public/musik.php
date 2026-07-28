@@ -28,5 +28,5 @@
     </div>
   <?php endforeach; ?>
 </div>
-<script src="/assets/embed.js" defer></script>
+<script src="<?= e(asset('/assets/embed.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

@@ -1,4 +1,39 @@
+# Alle Anfragen, die keine vorhandene Datei treffen, gehen an den
+# Front-Controller.
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
+
+# Mitgelieferte Dateien darf der Browser lange behalten: ihre Adressen tragen
+# die Version (siehe asset() in app/bootstrap.php), nach einem Update ändert
+# sich also die Adresse und der Browser holt sie ohnehin neu. Ohne diese
+# Regeln fragt er bei jedem Seitenaufruf nach und bekommt ein „unverändert"
+# zurück — richtig, aber unnötig.
+#
+# Wer nginx betreibt, findet die entsprechende Anweisung in der README;
+# aus der Anwendung heraus lässt sich das dort nicht setzen.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # Seiten selbst nie zwischenspeichern — sie hängen an der Anmeldung
+  <FilesMatch "\.php$">
+    Header set Cache-Control "no-store"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
+
+# Versionsverwaltung und Editorreste gehören nicht ins Netz
+<FilesMatch "^\.(git|env|htaccess)|~$">
+  Require all denied
+</FilesMatch>

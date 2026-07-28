@@ -22,7 +22,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <?php else: ?>
     <link rel="icon" type="image/png" href="<?= e(app_icon(192)) ?>">
   <?php endif; ?>
-  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="<?= e(asset('/assets/style.css')) ?>">
   <?php // Als App installierbar: Manifest, Farbe der Systemleiste, Symbol für iOS ?>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#17120f">
@@ -30,11 +30,11 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="<?= e($settings['band_name']) ?>">
   <link rel="apple-touch-icon" href="<?= e(app_icon(192)) ?>">
-  <script src="/assets/app.js" defer></script>
-  <script src="/assets/actions.js" defer></script>
-  <script src="/assets/lightbox.js" defer></script>
-  <script src="/assets/nav.js" defer></script>
-  <script src="/assets/accordion.js" defer></script>
+  <script src="<?= e(asset('/assets/app.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/lightbox.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/nav.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/accordion.js')) ?>" defer></script>
   <?php if (!empty($settings['background_file'])): ?>
     <style>
       body {

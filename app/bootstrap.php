@@ -348,6 +348,32 @@ const UI_STRINGS = [
   'fin_add' => 'Buchen', 'fin_all_years' => 'Alle Jahre',
   'fin_none' => 'Noch keine Buchungen.', 'fin_by_category' => 'Nach Kategorie',
   'fin_import_gage' => 'Gage übernehmen', 'fin_open_fees' => 'Noch nicht verbuchte Gagen',
+  // Systemprüfung
+  'sys_title' => 'Systemprüfung',
+  'sys_intro' => 'Was diese Installation kann — und was ihr fehlt, samt Folge.',
+  'sys_required' => 'Notwendig', 'sys_optional' => 'Erweitert den Funktionsumfang',
+  'sys_operation' => 'Betrieb',
+  'sys_ok' => 'vorhanden', 'sys_missing' => 'fehlt',
+  'sys_php_old' => 'zu alt', 'sys_php_old_hint' => 'Bandroadie braucht mindestens PHP 8.1.',
+  'sys_ext_db' => 'Ohne diese Erweiterung gibt es keine Verbindung zur Datenbank.',
+  'sys_ext_text' => 'Nötig für Umlaute und Sonderzeichen in allen Texten.',
+  'sys_ext_files' => 'Nötig, um beim Hochladen den Dateityp zu erkennen.',
+  'sys_ext_zlib' => 'Nötig für die Sicherungen — sie werden gepackt abgelegt.',
+  'sys_writable' => 'beschreibbar', 'sys_not_writable' => 'nicht beschreibbar',
+  'sys_not_writable_hint' => 'Uploads, Dateien und Sicherungen können nicht gespeichert werden. Dem Benutzer des Webservers Schreibrecht geben.',
+  'sys_opt_gd' => 'Ohne Bildbibliothek gibt es keine verkleinerten Vorschauen — die Galerie lädt dann die Originale.',
+  'sys_opt_curl' => 'Ohne curl lassen sich Fremddienste nicht abfragen; auch diese Prüfseite sieht dann weniger.',
+  'sys_opt_ftp' => 'Ohne FTP fällt der zweite Sicherungsort weg; die Sicherung bleibt dann nur hier liegen.',
+  'sys_opt_zip' => 'Nicht zwingend: Sicherungen werden als tar.gz geschrieben, das geht auch ohne.',
+  'sys_opt_openssl' => 'Nötig für verschlüsselte Verbindungen beim Versand und beim FTP-Ziel.',
+  'sys_https' => 'Verschlüsselte Verbindung',
+  'sys_no_https' => 'aus', 'sys_no_https_hint' => 'Ohne HTTPS gehen Passwörter im Klartext über die Leitung, und die App lässt sich nicht auf dem Handy installieren.',
+  'sys_site_url_empty' => 'nicht gesetzt',
+  'sys_site_url_hint' => 'Ohne feste Adresse werden Links in E-Mails aus der Anfrage gebaut — angreifbar, wenn der Webserver fremde Hostnamen durchreicht.',
+  'sys_no_backup' => 'noch keine', 'sys_no_backup_hint' => 'Es gibt keine frische Sicherung. Unter Sicherung einschalten oder von Hand anstoßen.',
+  'sys_cache' => 'Zwischenspeicher für Dateien',
+  'sys_cache_none' => 'keine Vorgabe', 'sys_cache_unknown' => 'nicht prüfbar',
+  'sys_cache_hint' => 'Der Browser fragt bei jedem Seitenaufruf nach. Bei Apache genügt die mitgelieferte .htaccess; bei nginx die Anweisung aus der README.',
   'set_fin' => 'Bandkasse',
   'set_fin_open_fees' => 'Noch nicht verbuchte Gagen anzeigen',
   'set_fin_open_fees_hint' => 'Listet auf der Kassenseite alle Auftritte mit Gage, zu denen noch keine Einnahme gebucht ist — samt Knopf zum Übernehmen. Aus, solange ihr das nicht braucht.',
@@ -1577,6 +1603,19 @@ function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'f
 function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
+
+/**
+ * Adresse einer mitgelieferten Datei, mit Versionsanhang.
+ *
+ * Der Anhang wechselt mit jeder Version. Dadurch darf der Browser die Datei
+ * lange behalten, holt sie nach einem Update aber sofort neu — ohne dass
+ * jemand am Webserver etwas einstellen muss. Genau deshalb steht das hier
+ * und nicht in einer Serverkonfiguration: Wer das Projekt woanders
+ * installiert, hat diesen Vorteil ohne Zutun.
+ */
+function asset(string $path): string {
+  return $path . '?v=' . rawurlencode(BANDROADIE_VERSION);
+}
 
 /**
  * Darf jemand diese hochgeladene Datei sehen? Logo, Hintergrund, Favicon und

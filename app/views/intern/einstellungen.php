@@ -269,6 +269,27 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
 </details>
 
+<details class="card acc" name="setacc">
+  <summary>🩺 <?= e(t('sys_title')) ?></summary>
+  <p class="muted small"><?= e(t('sys_intro')) ?></p>
+  <?php require_once BASE_DIR . '/app/systemcheck.php'; ?>
+  <?php foreach (system_checks() as $sysGroup => $sysRows): ?>
+    <h3><?= e($sysGroup) ?></h3>
+    <ul class="task-list sys-list">
+      <?php foreach ($sysRows as $sysRow): ?>
+        <li class="sys-<?= e($sysRow['state']) ?>">
+          <span class="sys-mark"><?= $sysRow['state'] === 'ok' ? '✔' : ($sysRow['state'] === 'warn' ? '!' : '✘') ?></span>
+          <strong><?= e($sysRow['name']) ?></strong>
+          <span class="muted"><?= e($sysRow['detail']) ?></span>
+          <?php if ($sysRow['consequence'] !== ''): ?>
+            <div class="muted small"><?= e($sysRow['consequence']) ?></div>
+          <?php endif; ?>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endforeach; ?>
+</details>
+
 <?php require_once BASE_DIR . '/app/demo.php'; ?>
 
 <details class="card acc" name="setacc">

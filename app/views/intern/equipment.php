@@ -125,5 +125,5 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
   </details>
 <?php endforeach; ?>
 <?php if (!$items): ?><p class="muted center"><?= e(t('eq_none')) ?></p><?php endif; ?>
-<script src="/assets/equipment.js" defer></script>
+<script src="<?= e(asset('/assets/equipment.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

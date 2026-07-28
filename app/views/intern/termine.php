@@ -218,5 +218,5 @@ require BASE_DIR . '/app/views/_header.php';
   </section>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>
-<script src="/assets/eventfields.js" defer></script>
+<script src="<?= e(asset('/assets/eventfields.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

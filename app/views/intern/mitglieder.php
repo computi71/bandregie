@@ -124,5 +124,5 @@
 <datalist id="instrument-list">
   <?php foreach ($instruments as $i): ?><option value="<?= e($i) ?>"><?php endforeach; ?>
 </datalist>
-<script src="/assets/strength.js" defer></script>
+<script src="<?= e(asset('/assets/strength.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

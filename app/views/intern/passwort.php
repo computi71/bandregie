@@ -7,5 +7,5 @@
     <?php require BASE_DIR . '/app/views/_passwortfelder.php'; ?>
   </form>
 </div>
-<script src="/assets/strength.js" defer></script>
+<script src="<?= e(asset('/assets/strength.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

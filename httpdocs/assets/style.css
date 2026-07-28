@@ -444,6 +444,15 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 }
 .sub-option form { margin: 0; }
 
+/* Systemprüfung: das Zeichen vorne trägt die Aussage, die Farbe verstärkt sie
+   nur — wer Farben schlecht unterscheidet, liest trotzdem ✔, ! oder ✘. */
+.sys-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
+.sys-mark { flex: 0 0 1.2rem; font-weight: 700; }
+.sys-ok .sys-mark { color: #7fb069; }
+.sys-warn .sys-mark { color: var(--accent); }
+.sys-fail .sys-mark { color: #d9534f; }
+.sys-list .small { flex-basis: 100%; }
+
 /* Rechtevergabe: je Bereich eine Zeile mit zwei Häkchen. Auf schmalen
    Schirmen rutschen die Häkchen unter den Namen, statt zu quetschen. */
 .perm-list { list-style: none; padding: 0; margin: 0.4rem 0; }

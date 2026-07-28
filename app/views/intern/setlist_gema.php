@@ -83,6 +83,6 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
     Medleys sind mit „P" (Potpourri), Ausschnitte mit „F" (Fragment) zu kennzeichnen.
     Diese Liste dient als Vorlage/Beleg für die Meldung.
   </p>
-<script src="/assets/actions.js" defer></script>
+<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>

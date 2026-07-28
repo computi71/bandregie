@@ -63,5 +63,5 @@
     </div>
   <?php endif; ?>
 </div>
-<?php if (!$locked): ?><p class="muted small">↕ <?= e(t('sl_drag_hint')) ?></p><script src="/assets/sortable.js" defer></script><?php endif; ?>
+<?php if (!$locked): ?><p class="muted small">↕ <?= e(t('sl_drag_hint')) ?></p><script src="<?= e(asset('/assets/sortable.js')) ?>" defer></script><?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
