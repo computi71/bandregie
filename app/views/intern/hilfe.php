@@ -21,6 +21,7 @@
     <p class="muted"><?= e(t('help_tax_band')) ?></p>
     <p class="muted"><?= e(t('help_tax_counts')) ?></p>
     <p class="muted"><?= e(t('help_tax_over')) ?></p>
+    <p class="muted"><?= e(t('help_tax_next_year')) ?></p>
     <p class="muted"><?= e(t('help_tax_gwg')) ?></p>
     <h3><?= e(t('help_tax_offset_title')) ?></h3>
     <p class="muted"><?= e(t('help_tax_offset_intro')) ?></p>

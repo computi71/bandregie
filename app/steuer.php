@@ -41,7 +41,7 @@ function tax_turnover(int $year): int {
  * @return array{
  *   this_year: int, prev_year: int, limit_this: int, limit_prev: int,
  *   share: float, state: string
- * }|null  state: 'ok' | 'close' | 'over_prev' | 'over_this'
+ * }|null  state: 'ok' | 'close' | 'next_year' | 'over_prev' | 'over_this'
  */
 function tax_small_business_status(): ?array {
   if (setting('tax_small_business', '0') !== '1') return null;
@@ -52,11 +52,17 @@ function tax_small_business_status(): ?array {
   $thisYear = tax_turnover($year);
   $prevYear = tax_turnover($year - 1);
 
-  // Reihenfolge nach Dringlichkeit: die Grenze des laufenden Jahres beendet
-  // die Befreiung sofort, die des Vorjahres erst für dieses Jahr.
+  // Reihenfolge nach Dringlichkeit:
+  //  over_this  — die Jahresgrenze ist gerissen, die Befreiung endet sofort
+  //  over_prev  — das Vorjahr lag darüber, sie gilt dieses Jahr schon nicht
+  //  next_year  — dieses Jahr liegt über der Vorjahresgrenze: die Befreiung
+  //               läuft noch bis Silvester und endet dann von selbst. Das ist
+  //               der häufige Fall, und er kündigt sich nicht von allein an.
+  //  close      — es wird eng an der Jahresgrenze
   $state = 'ok';
-  if ($limitThis > 0 && $thisYear > $limitThis)      $state = 'over_this';
-  elseif ($limitPrev > 0 && $prevYear > $limitPrev)  $state = 'over_prev';
+  if ($limitThis > 0 && $thisYear > $limitThis)           $state = 'over_this';
+  elseif ($limitPrev > 0 && $prevYear > $limitPrev)       $state = 'over_prev';
+  elseif ($limitPrev > 0 && $thisYear > $limitPrev)       $state = 'next_year';
   elseif ($limitThis > 0 && $thisYear >= $limitThis * 0.8) $state = 'close';
 
   return [
