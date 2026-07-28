@@ -200,6 +200,28 @@ able to deliver mail for your domain; send from an address on that domain
 Back up the database and the `data/` folder. Updating the code never touches
 either, but never overwrite `data/` or `app/config.php` when deploying.
 
+### Tax figures
+
+Under *Settings → Tax values* a band can say that it uses the German
+small-business rule (§ 19 UStG). The treasury then counts turnover against
+both limits and warns before one is crossed — fees, merch and sold gear
+count, member deposits do not, because they are contributions rather than
+sales.
+
+Every figure is a setting, because legislatures move them and because not
+every band sits in Germany. The defaults are the German position as of July
+2026: **25.000 €** for the previous year and **100.000 €** for the current
+one, and **800 €** net as the line above which equipment is written off over
+its useful life rather than at once (§ 6 Abs. 2 EStG).
+
+Each value carries the date it was last confirmed. The system check says so
+once that date is more than a year old, and a new release may ship better
+defaults but never overwrites a figure a band has set — the release notes
+name any change. There is no automatic lookup: no reliable machine-readable
+source exists for this, and a band's server should not depend on one.
+
+This is arithmetic, not tax advice.
+
 ### Updating
 
 The application never updates itself. Giving the web server write access to
