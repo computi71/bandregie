@@ -15,6 +15,8 @@
 <?php if ($imageCredit): ?>
   <div class="card">
     <h2><?= e(t('legal_credits')) ?></h2>
+    <?php // Bewusst unmaskiert: der Text besteht aus zwei festen Verweisen und
+          // einem bereits maskierten Baustein, siehe demo_background_credit(). ?>
     <p class="muted small"><?= $imageCredit ?></p>
   </div>
 <?php endif; ?>

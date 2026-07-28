@@ -1268,7 +1268,8 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/equipment/(\d+)/(kauf|abgang)$~', $path, $m) && $method === 'POST') {
     $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
     $payer = in_array($_POST['payer'] ?? '', EQ_PAYERS, true) ? $_POST['payer'] : 'band';
-    if (!eq_may_book($eq, $me, $payer)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+    $mayBook = $m[2] === 'abgang' ? eq_may_dispose($eq, $me, $payer) : eq_may_book($eq, $me, $payer);
+    if (!$mayBook) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
     // Beim Kauf stehen Betrag und Datum am Gerät; beim Abgang nennt sie das
     // Formular, denn verkauft wird selten zum Kaufpreis.
     $cents = $m[2] === 'kauf'
@@ -2112,7 +2113,7 @@ function files_map(string $type, array $ids): array {
   $in = implode(',', array_map('intval', $ids));
   $map = [];
   foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
-                 WHERE f.entity_type = '" . $type . "' AND f.entity_id IN ($in) ORDER BY f.created_at") as $f) {
+                 WHERE f.entity_type = ? AND f.entity_id IN ($in) ORDER BY f.created_at", [$type]) as $f) {
     $map[$f['entity_id']][] = $f;
   }
   return $map;

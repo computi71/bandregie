@@ -25,6 +25,16 @@ function eq_may_book(?array $eq, ?array $user, string $payer): bool {
   return perm_allows($user, 'kasse', 'write');
 }
 
+/**
+ * Darf jemand dieses Gerät abgeben? Den Erlös verbucht die Kassenführung —
+ * aber ein Abgang nimmt das Gerät aus dem Bestand, von jeder Packliste und
+ * aus dem Rider. Das ist eine Entscheidung über fremdes Eigentum und braucht
+ * dasselbe Recht wie jede andere Änderung am Gerät.
+ */
+function eq_may_dispose(?array $eq, ?array $user, string $payer): bool {
+  return eq_may_book($eq, $user, $payer) && eq_may_edit_owner_fields($eq, $user);
+}
+
 /** Die Buchungen zu einem Gerät, soweit der Betrachter sie sehen darf. */
 function eq_bookings(int $equipmentId, ?array $user): array {
   return rows('SELECT * FROM finances
