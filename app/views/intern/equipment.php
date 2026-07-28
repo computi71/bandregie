@@ -1,6 +1,11 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1>🎛 <?= e(t('inav_equipment')) ?></h1>
 
+<?php // Einmal für die ganze Seite: alle Formulare verweisen darauf. ?>
+<datalist id="eq-locations">
+  <?php foreach (eq_locations($items) as $loc): ?><option value="<?= e($loc) ?>"><?php endforeach; ?>
+</datalist>
+
 <details class="card collapsible" <?= $items ? '' : 'open' ?>>
   <summary>➕ <?= e(t('eq_new')) ?></summary>
   <form method="post" action="/intern/equipment" class="form-grid"><?= csrf_field() ?>
@@ -11,7 +16,7 @@
     <label data-eqinherit><?= e(t('eq_owner')) ?>
       <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
-    <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
+    <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" list="eq-locations" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
     <label><?= e(t('eq_parent')) ?>
       <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
         <?php foreach ($items as $other): ?><option value="<?= $other['id'] ?>"><?= e($other['name']) ?></option><?php endforeach; ?>

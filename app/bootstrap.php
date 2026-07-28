@@ -1855,6 +1855,21 @@ function app_icon(int $size): string {
   return "/assets/app/icon-$size.png";
 }
 
+/**
+ * Die Lagerorte, die schon vergeben sind — als Vorschlagsliste. Ohne sie
+ * heißt derselbe Ort dreimal anders geschrieben, und dann gruppiert nichts
+ * mehr. Neue Orte bleiben trotzdem frei eintippbar.
+ */
+function eq_locations(array $items): array {
+  $seen = [];
+  foreach ($items as $item) {
+    $loc = trim((string) ($item['location'] ?? ''));
+    if ($loc !== '') $seen[mb_strtolower($loc)] = $loc;
+  }
+  sort($seen, SORT_NATURAL | SORT_FLAG_CASE);
+  return $seen;
+}
+
 /** Kaufpreis und -datum eines Geräts als eine lesbare Angabe. */
 function eq_purchase_label(array $eq): string {
   $parts = [];

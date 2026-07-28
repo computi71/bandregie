@@ -20,7 +20,8 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
   <label data-eqinherit><?= e(t('eq_owner')) ?>
     <select name="owner_id" <?= $eqLock ?>><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $formEq['owner_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
   </label>
-  <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" value="<?= e($formEq['location']) ?>"></label>
+  <?php // Die Vorschlagsliste steht einmal oben auf der Seite. ?>
+  <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" list="eq-locations" value="<?= e($formEq['location']) ?>"></label>
   <label><?= e(t('eq_parent')) ?>
     <?php
       // Sich selbst oder einen eigenen Bestandteil als übergeordnetes Gerät zu
