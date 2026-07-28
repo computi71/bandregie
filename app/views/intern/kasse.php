@@ -96,6 +96,7 @@ foreach ($entries as $en) {
       </p>
     <?php endif; ?>
     <p class="muted small"><?= e(t('tax_counts_hint')) ?></p>
+    <p class="muted small"><?= e(t('tax_gbr_hint')) ?></p>
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
   </div>
 <?php endif; ?>

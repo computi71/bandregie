@@ -102,6 +102,7 @@ const UI_STRINGS = [
   'tax_state_over_this' => 'Die Grenze für das laufende Jahr ist überschritten. Die Befreiung endet damit — sprecht mit eurer Steuerberatung, bevor die nächste Rechnung rausgeht.',
   'tax_state_over_prev' => 'Der Umsatz des Vorjahres lag über der Grenze. Für dieses Jahr gilt die Befreiung damit nicht mehr.',
   'tax_counts_hint' => 'Gezählt werden alle Einnahmen der Band außer den Einzahlungen der Mitglieder — die sind Beiträge und kein Verkauf. Private Buchungen bleiben außen vor.',
+  'tax_gbr_hint' => 'Gerechnet wird mit dem Umsatz der Band als Ganzes. Das passt, wenn ihr gemeinsam auftretet und abrechnet — der Regelfall. Stellt jedes Mitglied eigene Rechnungen, zählt stattdessen jeder für sich, und diese Zahl sagt darüber nichts.',
   'tax_no_advice' => 'Eine Rechenhilfe, keine Steuerberatung. Die Grenzen stehen in den Einstellungen und lassen sich ändern.',
   'set_tax' => 'Steuerliche Werte',
   'set_tax_hint' => 'Voreingestellt ist der deutsche Stand. Ändert der Gesetzgeber die Zahlen — oder sitzt ihr anderswo —, tragt sie hier ein und bestätigt das Datum.',
