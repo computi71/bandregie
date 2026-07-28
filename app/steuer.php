@@ -55,15 +55,16 @@ function tax_small_business_status(): ?array {
   // Reihenfolge nach Dringlichkeit:
   //  over_this  — die Jahresgrenze ist gerissen, die Befreiung endet sofort
   //  over_prev  — das Vorjahr lag darüber, sie gilt dieses Jahr schon nicht
-  //  next_year  — dieses Jahr liegt über der Vorjahresgrenze: die Befreiung
-  //               läuft noch bis Silvester und endet dann von selbst. Das ist
-  //               der häufige Fall, und er kündigt sich nicht von allein an.
-  //  close      — es wird eng an der Jahresgrenze
+  //  close      — nahe an der Jahresgrenze. Wer hier steht, ist zwangsläufig
+  //               auch über der Vorjahresgrenze; der Text nennt deshalb beides.
+  //  next_year  — über der Vorjahresgrenze, aber weit von der Decke: die
+  //               Befreiung läuft bis Silvester und endet dann von selbst.
+  //               Der häufige Fall, und er kündigt sich nicht von allein an.
   $state = 'ok';
-  if ($limitThis > 0 && $thisYear > $limitThis)           $state = 'over_this';
-  elseif ($limitPrev > 0 && $prevYear > $limitPrev)       $state = 'over_prev';
-  elseif ($limitPrev > 0 && $thisYear > $limitPrev)       $state = 'next_year';
+  if ($limitThis > 0 && $thisYear > $limitThis)            $state = 'over_this';
+  elseif ($limitPrev > 0 && $prevYear > $limitPrev)        $state = 'over_prev';
   elseif ($limitThis > 0 && $thisYear >= $limitThis * 0.8) $state = 'close';
+  elseif ($limitPrev > 0 && $thisYear > $limitPrev)        $state = 'next_year';
 
   return [
     'this_year'  => $thisYear,
