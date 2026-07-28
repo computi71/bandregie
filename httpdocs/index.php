@@ -9,6 +9,7 @@ if (php_sapi_name() === 'cli-server') {
 
 require dirname(__DIR__) . '/app/bootstrap.php';
 require dirname(__DIR__) . '/app/backup.php';
+require dirname(__DIR__) . '/app/dauerauftrag.php';
 
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -354,6 +355,10 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern');
     }
   }
+
+  // Fällige Daueraufträge buchen. Das kostet fast nichts, wenn nichts fällig
+  // ist — eine Abfrage auf ein Datum —, und erspart einen zweiten Zeitgeber.
+  orders_run();
 
   // Fällige Sicherung nebenbei anstoßen. Ohne Cronjob gibt es keinen anderen
   // Zeitpunkt; die Sperre in backup_run() verhindert doppelte Läufe. Wo der
@@ -1525,9 +1530,13 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Bandkasse ----------
   if ($path === '/intern/kasse' && $method === 'GET') {
-    $years = array_column(rows('SELECT DISTINCT YEAR(date) AS y FROM finances ORDER BY y DESC'), 'y');
+    $years = array_column(rows('SELECT DISTINCT YEAR(date) AS y FROM finances
+                                WHERE private_for IS NULL OR private_for = ? ORDER BY y DESC', [$me['id']]), 'y');
     $year = in_array((int) ($_GET['jahr'] ?? 0), array_map('intval', $years), true) ? (int) $_GET['jahr'] : null;
-    $where = $year ? ' WHERE YEAR(f.date) = ' . $year : '';
+    // Private Buchungen sieht nur, wem sie gehören — sie stehen zwar im
+    // selben Kassenbuch, sind aber kein Bandgeld.
+    $where = ' WHERE (f.private_for IS NULL OR f.private_for = ' . (int) $me['id'] . ')';
+    if ($year) $where .= ' AND YEAR(f.date) = ' . $year;
     $entries = rows("SELECT f.*, e.title AS event_title, e.date AS event_date, u.name AS member_name
                      FROM finances f LEFT JOIN events e ON e.id = f.event_id LEFT JOIN users u ON u.id = f.member_id
                      $where ORDER BY f.date DESC, f.id DESC");
@@ -1540,7 +1549,7 @@ if (str_starts_with($path, '/intern')) {
     // abgeschaltet hat, für den wird sie auch nicht erst berechnet.
     $openFees = setting('fin_open_fees') === '1'
       ? rows("SELECT e.* FROM events e WHERE e.type = 'gig' AND e.fee != '' AND e.status != 'abgesagt'
-              AND e.date >= COALESCE((SELECT MIN(f2.date) FROM finances f2), '1000-01-01')
+              AND e.date >= COALESCE((SELECT MIN(f2.date) FROM finances f2 WHERE f2.private_for IS NULL), '1000-01-01')
               AND NOT EXISTS (SELECT 1 FROM finances fi WHERE fi.event_id = e.id AND fi.type = 'einnahme')
               ORDER BY e.date DESC")
       : [];
@@ -1551,7 +1560,10 @@ if (str_starts_with($path, '/intern')) {
       'years' => $years,
       'year' => $year,
       'openFees' => $openFees,
-      'balance' => (int) (row("SELECT COALESCE(SUM(IF(type='einnahme', amount_cents, -amount_cents)), 0) AS b FROM finances")['b'] ?? 0),
+      'orders' => orders_for($me),
+      // Der Kontostand ist der der Bandkasse — private Buchungen bleiben außen vor.
+      'balance' => (int) (row("SELECT COALESCE(SUM(IF(type='einnahme', amount_cents, -amount_cents)), 0) AS b
+                               FROM finances WHERE private_for IS NULL")['b'] ?? 0),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'events' => rows('SELECT id, title, date FROM events ORDER BY date DESC LIMIT 100'),
     ]);
@@ -1593,7 +1605,10 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/kasse');
   }
   if (preg_match('~^/intern/kasse/(\d+)/delete$~', $path, $m) && $method === 'POST') {
-    if (!can_finance()) { flash(t('fl_finance_required')); redirect('/intern/kasse'); }
+    if (!may_edit_finance(row('SELECT * FROM finances WHERE id = ?', [$m[1]]))) {
+      flash(t('fl_finance_required'));
+      redirect('/intern/kasse');
+    }
     q('DELETE FROM finances WHERE id = ?', [$m[1]]);
     flash(t('fl_fin_deleted'));
     redirect('/intern/kasse');
@@ -1658,6 +1673,50 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
+  // ---------- Daueraufträge ----------
+  if ($path === '/intern/kasse/dauerauftrag' && $method === 'POST') {
+    if (!perm_allows($me, 'kasse')) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
+    // Für die Band anlegen darf, wer in der Kasse schreiben darf; einen
+    // eigenen darf jeder anlegen, der die Kasse überhaupt sieht.
+    $forBand = ($_POST['scope'] ?? 'own') === 'band';
+    if ($forBand && !perm_allows($me, 'kasse', 'write')) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
+    $cents = price_to_cents((string) ($_POST['amount'] ?? ''));
+    $start = trim($_POST['start_date'] ?? '') ?: date('Y-m-d');
+    if ($cents && trim($_POST['description'] ?? '') !== '') {
+      q('INSERT INTO standing_orders (owner_id, type, amount_cents, category, description,
+                                      interval_kind, start_date, end_date, next_date, created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?)', [
+        $forBand ? null : $me['id'],
+        ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
+        $cents,
+        array_key_exists($_POST['category'] ?? '', FIN_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+        trim($_POST['description']),
+        array_key_exists($_POST['interval_kind'] ?? '', ORDER_INTERVALS) ? $_POST['interval_kind'] : 'monthly',
+        $start, trim($_POST['end_date'] ?? '') ?: null, $start, $me['id'],
+      ]);
+      orders_run();
+      flash(t('fl_order_saved'));
+    } else {
+      flash(t('fl_fin_invalid'));
+    }
+    redirect('/intern/kasse');
+  }
+  if (preg_match('~^/intern/kasse/dauerauftrag/(\d+)/(pause|delete)$~', $path, $m) && $method === 'POST') {
+    $order = row('SELECT * FROM standing_orders WHERE id = ?', [$m[1]]);
+    if (!may_edit_order($me, $order)) { flash(t('fl_no_permission')); redirect('/intern/kasse'); }
+    if ($m[2] === 'pause') {
+      q('UPDATE standing_orders SET paused = 1 - paused WHERE id = ?', [$m[1]]);
+      flash((int) $order['paused'] ? t('fl_order_resumed') : t('fl_order_paused'));
+    } else {
+      // Die bereits erzeugten Buchungen bleiben stehen — sie sind Geschichte,
+      // kein Zubehör des Auftrags. Nur der Verweis wird gelöst.
+      q('UPDATE finances SET standing_order_id = NULL WHERE standing_order_id = ?', [$m[1]]);
+      q('DELETE FROM standing_orders WHERE id = ?', [$m[1]]);
+      flash(t('fl_order_deleted'));
+    }
+    redirect('/intern/kasse');
+  }
+
   if ($path === '/intern/einstellungen/kasse' && $method === 'POST') {
     require_admin();
     set_setting('fin_open_fees', isset($_POST['fin_open_fees']) ? '1' : '0');

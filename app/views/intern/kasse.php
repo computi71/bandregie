@@ -10,8 +10,15 @@
 </div>
 
 <?php
-$sumIn = 0; $sumOut = 0; $byCat = [];
+// Summen und Kategorien zeigen die Bandkasse. Eigene private Buchungen
+// stehen zwar in der Liste, gehören aber nicht in die Bandzahlen — sie
+// bekommen ihre eigene Zeile.
+$sumIn = 0; $sumOut = 0; $byCat = []; $ownPrivate = 0;
 foreach ($entries as $en) {
+  if ($en['private_for'] !== null) {
+    $ownPrivate += $en['type'] === 'einnahme' ? $en['amount_cents'] : -$en['amount_cents'];
+    continue;
+  }
   if ($en['type'] === 'einnahme') $sumIn += $en['amount_cents']; else $sumOut += $en['amount_cents'];
   $byCat[$en['category']][$en['type']] = ($byCat[$en['category']][$en['type']] ?? 0) + $en['amount_cents'];
 }
@@ -25,6 +32,9 @@ foreach ($entries as $en) {
       <?= e(t('fin_income')) ?> <strong><?= fmt_money($sumIn) ?></strong> ·
       <?= e(t('fin_expense')) ?> <strong><?= fmt_money($sumOut) ?></strong>
     </p>
+    <?php if ($ownPrivate !== 0): ?>
+      <p class="muted small">🔒 <?= e(t('fin_private_sum')) ?> <strong><?= fmt_money($ownPrivate) ?></strong></p>
+    <?php endif; ?>
   </div>
   <div class="card">
     <h2><?= e(t('fin_by_category')) ?></h2>
@@ -44,6 +54,73 @@ foreach ($entries as $en) {
 </div>
 
 <?php if (!can_finance()): ?><p class="muted small"><?= e(t('fin_readonly_hint')) ?></p><?php endif; ?>
+
+<details class="card acc" name="kasseacc" <?= $orders ? '' : '' ?>>
+  <summary>🔁 <?= e(t('ord_title')) ?> (<?= count($orders) ?>)</summary>
+  <p class="muted small"><?= e(t('ord_intro')) ?></p>
+
+  <?php if (!$orders): ?><p class="muted small"><?= e(t('ord_none')) ?></p><?php endif; ?>
+  <ul class="task-list">
+    <?php foreach ($orders as $ord): ?>
+      <li class="<?= $ord['paused'] ? 'muted' : '' ?>">
+        <span class="badge <?= $ord['type'] === 'einnahme' ? 'public' : '' ?>"><?= e(fmt_money((int) $ord['amount_cents'])) ?></span>
+        <strong><?= e($ord['description']) ?></strong>
+        <span class="muted small">
+          <?= e(t('ord_' . ['monthly' => 'monthly', 'quarterly' => 'quarterly', 'yearly' => 'yearly'][$ord['interval_kind']] ?? 'monthly')) ?>
+          · <?= e(fin_category_label($ord['category'])) ?>
+          · <?= e($ord['owner_id'] === null ? t('ord_scope_band') : t('ord_scope_own')) ?>
+          <?php if ($ord['paused']): ?> · <?= e(t('ord_paused')) ?>
+          <?php else: ?> · <?= e(t('ord_next')) ?> <?= fmt_date($ord['next_date']) ?><?php endif; ?>
+          <?php if ($ord['end_date']): ?> · <?= e(t('ord_end')) ?>: <?= fmt_date($ord['end_date']) ?><?php endif; ?>
+        </span>
+        <form class="inline" method="post" action="/intern/kasse/dauerauftrag/<?= $ord['id'] ?>/pause"><?= csrf_field() ?>
+          <button class="btn btn-tiny"><?= e($ord['paused'] ? t('ord_resume') : t('ord_pause')) ?></button>
+        </form>
+        <form class="inline" method="post" action="/intern/kasse/dauerauftrag/<?= $ord['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+          <button class="btn btn-tiny btn-danger">🗑</button>
+        </form>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+
+  <details class="subsection">
+    <summary>➕ <?= e(t('ord_new')) ?></summary>
+    <form method="post" action="/intern/kasse/dauerauftrag" class="form-grid"><?= csrf_field() ?>
+      <label><?= e(t('ord_scope')) ?>
+        <select name="scope">
+          <option value="own"><?= e(t('ord_scope_own')) ?></option>
+          <?php if (can_finance()): ?><option value="band"><?= e(t('ord_scope_band')) ?></option><?php endif; ?>
+        </select>
+        <span class="muted small"><?= e(t('ord_scope_hint')) ?></span>
+      </label>
+      <label><?= e(t('fin_type_out')) ?> / <?= e(t('fin_type_in')) ?>
+        <select name="type">
+          <option value="ausgabe"><?= e(t('fin_type_out')) ?></option>
+          <option value="einnahme"><?= e(t('fin_type_in')) ?></option>
+        </select>
+      </label>
+      <label><?= e(t('fin_amount')) ?><input name="amount" required placeholder="0,00"></label>
+      <label><?= e(t('fin_category')) ?>
+        <select name="category">
+          <?php foreach (array_keys(FIN_CATEGORIES) as $cat): ?>
+            <option value="<?= $cat ?>"><?= e(fin_category_label($cat)) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label class="span2"><?= e(t('fin_description')) ?><input name="description" required placeholder="z. B. Proberaummiete"></label>
+      <label><?= e(t('ord_interval')) ?>
+        <select name="interval_kind">
+          <option value="monthly"><?= e(t('ord_monthly')) ?></option>
+          <option value="quarterly"><?= e(t('ord_quarterly')) ?></option>
+          <option value="yearly"><?= e(t('ord_yearly')) ?></option>
+        </select>
+      </label>
+      <label><?= e(t('ord_start')) ?><input type="date" name="start_date" value="<?= date('Y-m-d') ?>" required></label>
+      <label class="span2"><?= e(t('ord_end')) ?><input type="date" name="end_date"></label>
+      <button class="btn btn-primary span2"><?= e(t('ord_new')) ?></button>
+    </form>
+  </details>
+</details>
 
 <?php if ($openFees && can_finance()): ?>
 <details class="card acc" name="kasseacc">
@@ -103,6 +180,10 @@ foreach ($entries as $en) {
             <strong><?= e($en['description']) ?></strong>
             <?php if ($en['event_title']): ?><div class="muted small">📅 <?= e($en['event_title']) ?></div><?php endif; ?>
             <?php if ($en['member_name']): ?><div class="muted small">👤 <?= e($en['member_name']) ?></div><?php endif; ?>
+            <?php // Woher der Betrag stammt — sonst wundert man sich über eine
+                  // Buchung, die niemand eingetippt hat ?>
+            <?php if (!empty($en['standing_order_id'])): ?><div class="muted small">🔁 <?= e(t('ord_from_order')) ?></div><?php endif; ?>
+            <?php if ($en['private_for'] !== null): ?><div class="muted small">🔒 <?= e(t('fin_private')) ?></div><?php endif; ?>
             <?php foreach ($filesByFinance[$en['id']] ?? [] as $f): ?>
               <div class="small">📎 <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a></div>
             <?php endforeach; ?>
@@ -112,7 +193,7 @@ foreach ($entries as $en) {
             <?= $en['type'] === 'einnahme' ? '+' : '−' ?><?= fmt_money($en['amount_cents']) ?>
           </td>
           <td class="row-buttons">
-            <?php if (can_finance()): ?>
+            <?php if (may_edit_finance($en)): ?>
               <details class="inline-details">
                 <summary class="btn btn-tiny">📎</summary>
                 <form method="post" action="/intern/dateien" enctype="multipart/form-data" class="comment-form"><?= csrf_field() ?>

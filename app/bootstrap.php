@@ -374,6 +374,22 @@ const UI_STRINGS = [
   'sys_cache' => 'Zwischenspeicher für Dateien',
   'sys_cache_none' => 'keine Vorgabe', 'sys_cache_unknown' => 'nicht prüfbar',
   'sys_cache_hint' => 'Der Browser fragt bei jedem Seitenaufruf nach. Bei Apache genügt die mitgelieferte .htaccess; bei nginx die Anweisung aus der README.',
+  // Daueraufträge
+  'ord_title' => 'Daueraufträge', 'ord_new' => 'Neuer Dauerauftrag',
+  'ord_intro' => 'Wiederkehrende Buchungen tragen sich selbst ein — Proberaum, GEMA, Versicherung.',
+  'ord_scope' => 'Gilt für', 'ord_scope_band' => 'die Bandkasse', 'ord_scope_own' => 'mich selbst',
+  'ord_scope_hint' => 'Eigene Daueraufträge sieht nur, wer sie angelegt hat.',
+  'ord_interval' => 'Wie oft', 'ord_monthly' => 'monatlich', 'ord_quarterly' => 'vierteljährlich',
+  'ord_yearly' => 'jährlich',
+  'ord_start' => 'Erste Buchung', 'ord_end' => 'Letzte Buchung (frei lassen für „unbefristet")',
+  'ord_next' => 'nächste Buchung', 'ord_paused' => 'pausiert',
+  'ord_pause' => 'Pausieren', 'ord_resume' => 'Fortsetzen',
+  'ord_none' => 'Noch keine Daueraufträge.',
+  'ord_from_order' => 'aus einem Dauerauftrag',
+  'fin_private' => 'privat — siehst nur du',
+  'fin_private_sum' => 'Eigene private Buchungen:',
+  'fl_order_saved' => 'Dauerauftrag angelegt.', 'fl_order_deleted' => 'Dauerauftrag gelöscht — die gebuchten Beträge bleiben stehen.',
+  'fl_order_paused' => 'Dauerauftrag pausiert.', 'fl_order_resumed' => 'Dauerauftrag läuft wieder.',
   'set_fin' => 'Bandkasse',
   'set_fin_open_fees' => 'Noch nicht verbuchte Gagen anzeigen',
   'set_fin_open_fees_hint' => 'Listet auf der Kassenseite alle Auftritte mit Gage, zu denen noch keine Einnahme gebucht ist — samt Knopf zum Übernehmen. Aus, solange ihr das nicht braucht.',
@@ -888,6 +904,26 @@ $tables = [
     INDEX idx_user (user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Daueraufträge: wiederkehrende Buchungen, die sich selbst eintragen.
+  // owner_id NULL heißt „für die Bandkasse"; steht dort jemand, ist es sein
+  // eigener und geht nur ihn etwas an.
+  "CREATE TABLE IF NOT EXISTS standing_orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id INT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'ausgabe',
+    amount_cents INT NOT NULL,
+    category VARCHAR(30) NOT NULL DEFAULT 'sonstiges',
+    description VARCHAR(255) NOT NULL,
+    interval_kind VARCHAR(12) NOT NULL DEFAULT 'monthly',
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    next_date DATE NOT NULL,
+    paused TINYINT(1) NOT NULL DEFAULT 0,
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_next (next_date)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Rechte je Mitglied und Bereich; fehlt die Zeile, gibt es kein Recht
   "CREATE TABLE IF NOT EXISTS permissions (
     user_id INT NOT NULL,
@@ -1035,6 +1071,16 @@ foreach ([
 // Ergebnis des Zweitziels je Lauf: NULL = nicht eingerichtet, 0 = fehlgeschlagen
 if (!column_exists('backup_runs', 'ftp_ok')) {
   $db->exec('ALTER TABLE backup_runs ADD COLUMN ftp_ok TINYINT(1) NULL');
+}
+// Woher eine Buchung stammt: von Hand oder aus einem Dauerauftrag. Ohne den
+// Verweis ließe sich ein falscher Betrag später nicht zurückverfolgen.
+if (!column_exists('finances', 'standing_order_id')) {
+  $db->exec('ALTER TABLE finances ADD COLUMN standing_order_id INT NULL');
+}
+// Wem eine Buchung privat gehört. NULL heißt „der Band" — nur diese Zeilen
+// zählen für den Kontostand. Was jemand privat zahlt, geht die Band nichts an.
+if (!column_exists('finances', 'private_for')) {
+  $db->exec('ALTER TABLE finances ADD COLUMN private_for INT NULL');
 }
 foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {
@@ -1467,6 +1513,17 @@ function can_finance(): bool {
   // Seit es Rechte je Bereich gibt, ist das Finanz-Häkchen das Schreibrecht
   // an der Kasse. Zwei Schalter für dieselbe Sache wären nur verwirrend.
   return perm_allows(current_user(), 'kasse', 'write');
+}
+
+/**
+ * Darf jemand diese Buchung löschen? Bandbuchungen räumt auf, wer an der
+ * Kasse schreiben darf; eine private Buchung gehört nur ihrem Besitzer —
+ * auch die Kassenwartin fasst sie nicht an.
+ */
+function may_edit_finance(?array $entry): bool {
+  if (!$entry) return false;
+  if ($entry['private_for'] === null) return can_finance();
+  return (int) $entry['private_for'] === (int) (current_user()['id'] ?? 0);
 }
 
 function redirect(string $to): never { header("Location: $to"); exit; }
