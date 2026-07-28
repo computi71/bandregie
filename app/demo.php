@@ -199,22 +199,27 @@ function demo_install_rows(): void {
       'created_by' => $adminId]);
   }
 
-  // --- Kanalbelegung (zeigt die Inputliste im Stagerider)
+  // --- Kanalbelegung (die Inputliste im Stagerider)
+  //
+  // Der Port ist, was den Veranstalter angeht: da kommt das Kabel rein. Die
+  // Kanalnummer ist unsere. Beim Playback zeigt „A11–A12" ein Stereopaar —
+  // ein Eingang, zwei Buchsen, ungerade und gerade.
   foreach ([
-    [1, 'Bassdrum', 'Großmembran, dynamisch', ''],
-    [2, 'Snare', 'Dynamisch, Clip-On', ''],
-    [3, 'HiHat', 'Kleinmembran-Kondensator', 'Phantomspeisung +48 V'],
-    [4, 'Tom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
-    [5, 'Standtom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
-    [6, 'Overhead links', 'Kondensator', 'Phantomspeisung +48 V'],
-    [7, 'Overhead rechts', 'Kondensator', 'Phantomspeisung +48 V'],
-    [8, 'Bass', 'DI-Box', ''],
-    [9, 'Gitarre', 'Dynamisch am Verstärker', ''],
-    [10, 'Gesang Lisa', 'Gesangsmikrofon', ''],
-    [11, 'Gesang Tom', 'Gesangsmikrofon', ''],
-    [12, 'Playback', 'Stereo-DI vom Laptop', 'nur bei zwei Songs'],
-  ] as [$number, $name, $source, $chNotes]) {
-    demo_insert('channels', ['number' => $number, 'name' => $name, 'source' => $source, 'notes' => $chNotes]);
+    [1,  'A1',        'Bassdrum', 'Großmembran, dynamisch', ''],
+    [2,  'A2',        'Snare', 'Dynamisch, Clip-On', ''],
+    [3,  'A3',        'HiHat', 'Kleinmembran-Kondensator', 'Phantomspeisung +48 V'],
+    [4,  'A4',        'Tom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
+    [5,  'A5',        'Standtom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
+    [6,  'A6',        'Overhead links', 'Kondensator', 'Phantomspeisung +48 V'],
+    [7,  'A7',        'Overhead rechts', 'Kondensator', 'Phantomspeisung +48 V'],
+    [8,  'A8',        'Bass', 'DI-Box', ''],
+    [9,  'A9',        'Gitarre', 'Dynamisch am Verstärker', ''],
+    [10, 'A10',       'Gesang Lisa', 'Gesangsmikrofon', ''],
+    [11, 'A13',       'Gesang Tom', 'Gesangsmikrofon', ''],
+    [12, 'A11–A12',   'Playback', 'Stereo-DI vom Laptop', 'nur bei zwei Songs'],
+  ] as [$number, $patch, $name, $source, $chNotes]) {
+    demo_insert('channels', ['number' => $number, 'patch' => $patch, 'name' => $name,
+                             'source' => $source, 'notes' => $chNotes]);
   }
 
   // --- Equipment mit Fristen
