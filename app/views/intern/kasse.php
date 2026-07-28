@@ -179,7 +179,9 @@ foreach ($entries as $en) {
           <td>
             <strong><?= e($en['description']) ?></strong>
             <?php if ($en['event_title']): ?><div class="muted small">📅 <?= e($en['event_title']) ?></div><?php endif; ?>
-            <?php if ($en['member_name']): ?><div class="muted small">👤 <?= e($en['member_name']) ?></div><?php endif; ?>
+            <?php // Bei einer privaten Buchung ist der Name der eigene — das
+                  // sagt das Schloss darunter schon. ?>
+            <?php if ($en['member_name'] && $en['private_for'] === null): ?><div class="muted small">👤 <?= e($en['member_name']) ?></div><?php endif; ?>
             <?php // Woher der Betrag stammt — sonst wundert man sich über eine
                   // Buchung, die niemand eingetippt hat ?>
             <?php if (!empty($en['standing_order_id'])): ?><div class="muted small">🔁 <?= e(t('ord_from_order')) ?></div><?php endif; ?>
