@@ -12,7 +12,7 @@ Public band page plus an internal organization area for one band: events with av
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
-**Multilingual:** the interface ships in German, English, Dutch, French, Spanish and Italian; band texts and the legal pages are maintained per language, with a fallback chain (selected language → English → German). Which languages appear is up to the admin, and every string can be corrected in the band area.
+**Multilingual:** the interface ships in German, English, Dutch, French, Spanish and Italian; band texts and the legal pages are maintained per language, with a fallback chain (selected language → default language → English → German). Which languages appear is up to the admin — only the default language stays switched on, because something has to be there when nothing else fits — and every string can be corrected in the band area.
 
 **Stack:** PHP 8.1+ with MariaDB/MySQL (PDO), no framework, no build step, no dependencies.
 
@@ -188,6 +188,10 @@ starting point, not legal advice.
 - `app/views/` — templates (public + internal)
 - `seed/translations/` — translation seeds, imported automatically on first run
 - `data/` — uploads and attachments (outside the webroot, created automatically)
+
+## Security
+
+Found a hole? Please report it privately first — see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
