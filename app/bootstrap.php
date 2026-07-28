@@ -1498,6 +1498,26 @@ function perm_module_for(string $path): ?string {
   return null;
 }
 
+/**
+ * Schreibende Pfade, die schon mit dem Leserecht offenstehen, weil man dort
+ * nur über sich selbst bestimmt: auf einen Termin antworten, den eigenen
+ * Dauerauftrag verwalten, die eigene Buchung wieder löschen. Die Routen
+ * prüfen anschließend selbst, dass es wirklich die eigene Sache ist.
+ */
+const SELF_SERVICE_PATHS = [
+  '~^/intern/termine/\d+/zusage$~',
+  '~^/intern/kasse/dauerauftrag$~',
+  '~^/intern/kasse/dauerauftrag/\d+/(pause|delete)$~',
+  '~^/intern/kasse/\d+/delete$~',
+];
+
+function is_self_service(string $path): bool {
+  foreach (SELF_SERVICE_PATHS as $pattern) {
+    if (preg_match($pattern, $path)) return true;
+  }
+  return false;
+}
+
 /** Rechte einer Rolle setzen; Admins brauchen keine Zeilen, sie dürfen alles. */
 function perm_apply_template(int $userId, string $role): void {
   $tpl = PERM_TEMPLATES[$role] ?? PERM_TEMPLATES['member'];

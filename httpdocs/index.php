@@ -346,10 +346,10 @@ if (str_starts_with($path, '/intern')) {
   // Rechte je Bereich, an einer Stelle für alle Routen. Ein GET braucht das
   // Leserecht, alles Schreibende das Änderungsrecht. Pfade ohne Bereich —
   // Übersicht, eigenes Profil, Passwort — stehen jedem Angemeldeten offen,
-  // und die Zu- oder Absage zu einem Termin gehört zum Sehen: wer eingeladen
-  // ist, darf antworten, auch ohne den Termin ändern zu dürfen.
+  // und was nur einen selbst betrifft (siehe SELF_SERVICE_PATHS) reicht
+  // ebenfalls das Leserecht; diese Routen prüfen selbst weiter.
   if ($permModule = perm_module_for($path)) {
-    $permNeed = $method === 'GET' || preg_match('~^/intern/termine/\d+/zusage$~', $path) ? 'read' : 'write';
+    $permNeed = $method === 'GET' || is_self_service($path) ? 'read' : 'write';
     if (!perm_allows($me, $permModule, $permNeed)) {
       flash(t('fl_no_permission'));
       redirect('/intern');
