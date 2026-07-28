@@ -275,6 +275,26 @@ function demo_install_rows(): void {
   }
 
   demo_install_background();
+  demo_install_stage_plot();
+}
+
+/**
+ * Bühnenplan der Demoband. Die Standardaufstellung kennt die Instrumente
+ * schon; dazu kommt, was auf keinem Plan fehlen darf und wonach der
+ * Veranstalter sonst fragt: Verstärker, Monitore, Strom.
+ */
+function demo_install_stage_plot(): void {
+  if (rows('SELECT id FROM stage_items LIMIT 1')) return;
+  $members = rows("SELECT name, stage_name, instrument FROM users WHERE instrument <> '' ORDER BY id");
+  $items = stage_default_items($members);
+  $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 20, 'y' => 45, 'note' => ''];
+  $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 14, 'y' => 22, 'note' => ''];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 50, 'y' => 90, 'note' => 'Gesang'];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 26, 'y' => 84, 'note' => 'Gitarre'];
+  $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 30, 'y' => 26, 'note' => ''];
+  foreach ($items as $i => $item) {
+    demo_insert('stage_items', $item + ['position' => $i]);
+  }
 }
 
 /**
