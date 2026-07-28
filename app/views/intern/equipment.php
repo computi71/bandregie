@@ -5,6 +5,9 @@
 <datalist id="eq-locations">
   <?php foreach (eq_locations($items) as $loc): ?><option value="<?= e($loc) ?>"><?php endforeach; ?>
 </datalist>
+<datalist id="eq-slots">
+  <?php foreach (eq_slots($items) as $slot): ?><option value="<?= e($slot) ?>"><?php endforeach; ?>
+</datalist>
 
 <details class="card collapsible" <?= $items ? '' : 'open' ?>>
   <summary>➕ <?= e(t('eq_new')) ?></summary>
@@ -22,7 +25,7 @@
         <?php foreach ($items as $other): ?><option value="<?= $other['id'] ?>"><?= e($other['name']) ?></option><?php endforeach; ?>
       </select>
     </label>
-    <label><?= e(t('eq_slot')) ?><input name="slot" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
+    <label><?= e(t('eq_slot')) ?><input name="slot" list="eq-slots" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
     <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
     <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on"></label>
     <?php // Kein type="number": das Feld wirft ein Komma stillschweigend weg,

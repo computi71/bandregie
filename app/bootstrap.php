@@ -1861,10 +1861,20 @@ function app_icon(int $size): string {
  * mehr. Neue Orte bleiben trotzdem frei eintippbar.
  */
 function eq_locations(array $items): array {
+  return eq_distinct_values($items, 'location');
+}
+
+/** Dasselbe für die Steckplätze: „Kanal 1", „Wechselkopf" wiederholen sich. */
+function eq_slots(array $items): array {
+  return eq_distinct_values($items, 'slot');
+}
+
+/** Vorhandene Werte eines Feldes, ohne Dubletten und ohne Rücksicht auf Groß-/Kleinschreibung. */
+function eq_distinct_values(array $items, string $field): array {
   $seen = [];
   foreach ($items as $item) {
-    $loc = trim((string) ($item['location'] ?? ''));
-    if ($loc !== '') $seen[mb_strtolower($loc)] = $loc;
+    $value = trim((string) ($item[$field] ?? ''));
+    if ($value !== '') $seen[mb_strtolower($value)] = $value;
   }
   sort($seen, SORT_NATURAL | SORT_FLAG_CASE);
   return $seen;

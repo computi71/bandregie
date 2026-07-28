@@ -35,7 +35,7 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
       <?php endforeach; ?>
     </select>
   </label>
-  <label><?= e(t('eq_slot')) ?><input name="slot" value="<?= e($formEq['slot'] ?? '') ?>" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
+  <label><?= e(t('eq_slot')) ?><input name="slot" list="eq-slots" value="<?= e($formEq['slot'] ?? '') ?>" placeholder="<?= e(t('eq_slot_ph')) ?>"></label>
   <p class="muted span2" data-eqhint hidden><?= e(t('eq_inherit_hint')) ?></p>
   <?php if (!$eqMayOwn): ?>
     <p class="muted small span2">🔒 <?= e(t('eq_owner_locked')) ?></p>
