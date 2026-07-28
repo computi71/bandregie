@@ -13,7 +13,18 @@ DELETE FROM translations WHERE tkey = 'ord_scope_hint' AND value IN (
   'I tuoi ordini permanenti personali li vedi solo tu.'
 );
 
+-- Same for the deposit category: it used to be a neutral "contribution" and is
+-- now the money members put in for the rent, so it is named after that.
+DELETE FROM translations WHERE tkey = 'fincat_einlage' AND value IN (
+  'Contribution', 'Apport', 'Aportación', 'Inleg', 'Quota'
+);
+
 INSERT INTO translations (lang, tkey, value) VALUES
+('en','fincat_einlage','Member deposits'),
+('fr','fincat_einlage','Versements des membres'),
+('es','fincat_einlage','Aportaciones de los miembros'),
+('nl','fincat_einlage','Stortingen van de leden'),
+('it','fincat_einlage','Versamenti dei membri'),
 ('en','fincat_nebenkosten','Utilities'),
 ('en','ord_scope_deposit','my deposit into the band treasury'),
 ('en','ord_scope_hint','A deposit is visible to everyone and counts as band income. What runs for yourself only you see.'),
