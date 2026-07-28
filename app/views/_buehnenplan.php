@@ -19,9 +19,10 @@ $stroke = $stagePrint ? '#333' : 'currentColor';
 
   <?php foreach ($stageItems as $it): ?>
     <?php
-      // Prozent auf die Zeichenfläche legen; y gedreht, weil vorne unten ist
+      // y zählt von hinten nach vorne, gezeichnet wird von oben nach unten:
+      // 0 landet also oben an der Rückwand, 100 vorne an der Bühnenkante.
       $px = 60 + ((int) $it['x'] / 100) * 880;
-      $py = 560 - ((int) $it['y'] / 100) * 480;
+      $py = 80 + ((int) $it['y'] / 100) * 480;
       $sym = STAGE_KINDS[$it['kind']] ?? '▫';
     ?>
     <g class="stage-item" data-id="<?= (int) $it['id'] ?>" transform="translate(<?= round($px) ?>,<?= round($py) ?>)">

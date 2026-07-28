@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Umgekehrt zur Zeichnung: Bildpunkt zurück auf Prozent rechnen
   const toPercent = (px, py) => ({
     x: Math.max(0, Math.min(100, Math.round(((px - 60) / 880) * 100))),
-    y: Math.max(0, Math.min(100, Math.round(((560 - py) / 480) * 100))),
+    y: Math.max(0, Math.min(100, Math.round(((py - 80) / 480) * 100))),
   });
 
   const place = (item, x, y) => {
-    item.setAttribute('transform', `translate(${60 + (x / 100) * 880},${560 - (y / 100) * 480})`);
+    item.setAttribute('transform', `translate(${60 + (x / 100) * 880},${80 + (y / 100) * 480})`);
   };
 
   let dragged = null;

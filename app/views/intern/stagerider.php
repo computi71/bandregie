@@ -28,20 +28,16 @@
               <input name="item[<?= $si['id'] ?>][note]" value="<?= e($si['note']) ?>" placeholder="<?= e(t('stage_note')) ?>" aria-label="<?= e(t('stage_note')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][x]" value="<?= (int) $si['x'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_x')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][y]" value="<?= (int) $si['y'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_y')) ?>">
+              <?php // Ein eigenes Formular je Zeile wäre verschachtelt und damit
+                    // ungültig — der Knopf schickt stattdessen seine Kennung mit. ?>
+              <button class="btn btn-tiny btn-danger" name="remove" value="<?= $si['id'] ?>"
+                      title="<?= e(t('delete')) ?>" formnovalidate
+                      onclick="return confirm('<?= e(t('confirm_delete')) ?>')">🗑</button>
             </li>
           <?php endforeach; ?>
         </ul>
         <div class="row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <ul class="task-list">
-        <?php foreach ($stageItems as $si): ?>
-          <li class="inline">
-            <form method="post" action="/intern/stagerider/plan/<?= $si['id'] ?>/delete" class="inline" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
-              <button class="btn btn-tiny btn-danger">🗑 <?= e($si['label'] ?: t('stagekind_' . $si['kind'])) ?></button>
-            </form>
-          </li>
-        <?php endforeach; ?>
-      </ul>
     <?php endif; ?>
 
     <details class="subsection">

@@ -900,6 +900,11 @@ if (str_starts_with($path, '/intern')) {
         trim($_POST['note'] ?? ''),
         (int) (row('SELECT COALESCE(MAX(position), 0) + 1 AS p FROM stage_items')['p'] ?? 1),
       ]);
+    } elseif ($m[1] === 'update' && ($_POST['remove'] ?? '') !== '') {
+      // Der Löschknopf steckt im selben Formular; ein eigenes wäre verschachtelt
+      q('DELETE FROM stage_items WHERE id = ?', [(int) $_POST['remove']]);
+      flash(t('fl_stage_deleted'));
+      redirect('/intern/stagerider');
     } elseif ($m[1] === 'update') {
       // Alle Einträge auf einmal — beim Ziehen im Plan ändern sich mehrere
       foreach ((array) ($_POST['item'] ?? []) as $id => $vals) {
