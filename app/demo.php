@@ -276,6 +276,80 @@ function demo_install_rows(): void {
 
   demo_install_background();
   demo_install_stage_plot($members);
+  demo_install_topics($members);
+  demo_install_orders($members);
+  demo_install_substitute($members, $evNext);
+  demo_install_photo($members[0]);
+}
+
+/** Ein Gespräch im Bandbereich — sonst steht dort ein leerer Menüpunkt. */
+function demo_install_topics(array $members): void {
+  $topic = demo_insert('topics', [
+    'title' => 'Merch für den Herbst', 'created_by' => $members[0], 'closed' => 0,
+  ]);
+  foreach ([
+    [$members[0], 'Ich hätte gern T-Shirts für die nächsten Auftritte. Wer kümmert sich um Angebote?'],
+    [$members[1], 'Mach ich. Zwei Druckereien angefragt, Preise kommen diese Woche.'],
+    [$members[2], 'Bitte auch Beutel anfragen, die gehen auf kleinen Bühnen besser als Shirts.'],
+  ] as [$uid, $text]) {
+    demo_insert('topic_posts', ['topic_id' => $topic, 'user_id' => $uid, 'text' => $text]);
+  }
+}
+
+/**
+ * Zwei Daueraufträge: die Miete zahlt die Band, dazu die Einzahlung eines
+ * Mitglieds. Erst damit zeigt die Kasse, wofür die Gegenüberstellung von
+ * Miete und Einzahlungen gut ist.
+ */
+function demo_install_orders(array $members): void {
+  $start = date('Y-m-d', strtotime('-3 months'));
+  demo_insert('standing_orders', [
+    'owner_id' => null, 'private' => 0, 'type' => 'ausgabe', 'amount_cents' => 5000,
+    'category' => 'proberaum', 'description' => 'Proberaummiete', 'interval_kind' => 'monthly',
+    'start_date' => $start, 'next_date' => $start, 'created_by' => $members[0],
+  ]);
+  demo_insert('standing_orders', [
+    'owner_id' => $members[0], 'private' => 0, 'type' => 'einnahme', 'amount_cents' => 1500,
+    'category' => 'einlage', 'description' => 'Einzahlung Lisa', 'interval_kind' => 'monthly',
+    'start_date' => $start, 'next_date' => $start, 'created_by' => $members[0],
+  ]);
+  // Gleich buchen lassen, sonst steht die Kasse bis zum nächsten Seitenaufruf
+  // leer. Die dabei entstandenen Zeilen gehören zur Demo und müssen mit ihr
+  // wieder verschwinden — orders_run() weiß nichts von Demodaten.
+  orders_run();
+  foreach (rows('SELECT f.id FROM finances f
+                 JOIN demo_rows d ON d.table_name = ? AND d.row_id = f.standing_order_id',
+                ['standing_orders']) as $booked) {
+    demo_track('finances', (int) $booked['id']);
+  }
+}
+
+/**
+ * Eine Aushilfe samt Anfrage für den kommenden Gig. Ohne sie ist von den
+ * eingeschränkten Rechten und der Anfrage-Logik nichts zu sehen.
+ */
+function demo_install_substitute(array $members, int $eventId): void {
+  $sub = demo_insert('users', [
+    'name' => 'Nora Falk', 'first_name' => 'Nora', 'last_name' => 'Falk', 'stage_name' => '',
+    'email' => 'nora@example.com', 'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
+    'role' => 'ersatz', 'instrument' => 'Gesang', 'must_change_pw' => 1,
+    'substitute_for' => $members[0], 'substitute_rank' => 1,
+  ]);
+  perm_apply_template($sub, 'ersatz');
+  q('INSERT IGNORE INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,?)',
+    [$eventId, $sub, $members[0], $members[0]]);
+}
+
+/** Ein Foto in der Galerie — dasselbe mitgelieferte Bild, öffentlich gestellt. */
+function demo_install_photo(int $uploader): void {
+  $source = BASE_DIR . '/seed/demo/stage-crowd.jpg';
+  if (!is_file($source)) return;
+  $name = 'foto_demo_' . bin2hex(random_bytes(8)) . '.jpg';
+  if (!@copy($source, UPLOADS_DIR . '/' . $name)) return;
+  demo_insert('photos', [
+    'filename' => $name, 'caption' => 'Sommerfest Musterstadt', 'is_public' => 1,
+    'uploaded_by' => $uploader,
+  ]);
 }
 
 /**
@@ -348,6 +422,12 @@ function demo_remove(): void {
   // Das Bild hängt an keiner Zeile, es erkennt sich am eigenen Namen — und
   // muss deshalb auch weg, wenn sonst nichts mehr zu löschen ist.
   demo_remove_background();
+  // Fotodateien liegen auf der Platte, nicht in der Tabelle. Erst die Datei,
+  // dann fällt die Zeile weiter unten mit allen anderen.
+  foreach (rows('SELECT p.filename FROM photos p
+                 JOIN demo_rows d ON d.table_name = ? AND d.row_id = p.id', ['photos']) as $p) {
+    @unlink(UPLOADS_DIR . '/' . $p['filename']);
+  }
   $rows = rows('SELECT table_name, row_id FROM demo_rows');
   if (!$rows) return;
 
