@@ -636,10 +636,22 @@ function stage_default_items(array $members): array {
     'gesang'     => [50, 78], 'vocals' => [50, 78], 'saxophon' => [75, 62],
   ];
   $items = [];
-  $fallback = [[38, 70], [62, 70], [15, 45], [85, 45], [50, 55]];
+  $fallback = [[38, 68], [66, 68], [12, 48], [88, 48], [50, 42]];
+  $taken = [];
   foreach (array_values($members) as $i => $m) {
     $key = mb_strtolower(trim((string) ($m['instrument'] ?? '')));
     [$x, $y] = $spots[$key] ?? ($fallback[$i % count($fallback)]);
+    // Zwei Namen übereinander kann niemand lesen — wer zu dicht landet,
+    // rückt zur Seite, abwechselnd nach rechts und links.
+    for ($try = 0; $try < 8; $try++) {
+      $clash = false;
+      foreach ($taken as [$tx, $ty]) {
+        if (abs($tx - $x) < 14 && abs($ty - $y) < 14) { $clash = true; break; }
+      }
+      if (!$clash) break;
+      $x = max(4, min(96, $x + ($try % 2 ? -1 : 1) * 15 * (int) ceil(($try + 1) / 2)));
+    }
+    $taken[] = [$x, $y];
     $items[] = ['kind' => 'musiker', 'label' => $m['stage_name'] ?: $m['name'],
                 'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? '')];
   }

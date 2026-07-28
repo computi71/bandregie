@@ -427,7 +427,11 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .stage-print { color: #222; }
 .stage-list li { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .stage-list input, .stage-list select { margin: 0; }
-.stage-num { width: 5rem; }
+/* Beschriftung und Zusatz teilen sich den Platz, die Zahlen bleiben schmal —
+   so passt eine Zeile auch auf ein Tablet, ohne dass der Knopf umbricht. */
+.stage-list input:not(.stage-num) { flex: 1 1 7rem; min-width: 5rem; }
+.stage-list select { flex: 0 1 9rem; }
+.stage-num { flex: 0 0 4.2rem; width: 4.2rem; }
 
 /* Ersatzleute am Termin: Name, Erfahrung und Knopf bleiben zusammen, auch
    wenn die Zeile umbricht. */
