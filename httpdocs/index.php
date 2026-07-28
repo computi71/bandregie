@@ -171,10 +171,31 @@ if (preg_match('~^/download/(\d+)$~', $path, $m) && $method === 'GET') {
   file_serve($f);
 }
 
-// Hochgeladene Bilder ausliefern (liegen außerhalb des Webroots)
+// Hochgeladene Bilder ausliefern (liegen außerhalb des Webroots).
+//
+// Nicht jedes Bild geht die Allgemeinheit etwas an: Logo, Hintergrund und
+// Favicon stehen auf der öffentlichen Seite, ebenso als öffentlich markierte
+// Fotos. Alles andere — das Fotoarchiv der Band und die Bilder der Mitglieder
+// — gibt es nur für Angemeldete. Vorher genügte der Dateiname, und der ließ
+// sich raten.
 if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
   $file = UPLOADS_DIR . '/' . basename($m[1]);
   if (!is_file($file)) { http_response_code(404); exit('Not found'); }
+
+  $name = basename($m[1]);
+  $branding = array_filter([
+    setting('logo_file'), setting('background_file'), setting('favicon_file'),
+    setting('print_logo_file'), setting('print_watermark_file'),
+  ]);
+  $photo = row('SELECT is_public FROM photos WHERE filename = ?', [$name]);
+  $isPublic = in_array($name, $branding, true) || (int) ($photo['is_public'] ?? 0) === 1;
+
+  if (!$isPublic) {
+    $viewer = current_user();
+    // Wer nicht angemeldet ist, erfährt nicht einmal, dass es die Datei gibt
+    if (!$viewer) { http_response_code(404); exit('Not found'); }
+    if ($photo && !perm_allows($viewer, 'fotos')) { http_response_code(404); exit('Not found'); }
+  }
   $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp']
     [strtolower(pathinfo($file, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
   header("Content-Type: $mime");
@@ -706,7 +727,9 @@ if (str_starts_with($path, '/intern')) {
       if (($_FILES['photos']['size'][$i] ?? 0) > 10 * 1024 * 1024) continue;
       $mime = mime_content_type($tmp) ?: '';
       if (!str_starts_with($mime, 'image/')) continue;
-      $safe = time() . '_' . preg_replace('~[^\w.\-]+~', '_', $_FILES['photos']['name'][$i]);
+      // Zufälliger Teil im Namen: die Zugriffsprüfung ist der Schutz, aber ein
+      // ratbarer Name wäre eine zweite Tür, falls sie je umgangen wird.
+      $safe = bin2hex(random_bytes(8)) . '_' . preg_replace('~[^\w.\-]+~', '_', $_FILES['photos']['name'][$i]);
       if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $safe)) {
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by) VALUES (?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id']]);
@@ -884,7 +907,7 @@ if (str_starts_with($path, '/intern')) {
     if (is_uploaded_file($tmp) && ($_FILES['avatar']['size'] ?? 0) <= 5 * 1024 * 1024
         && str_starts_with(mime_content_type($tmp) ?: '', 'image/')) {
       $ext = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION) ?: 'jpg');
-      $name = 'avatar_' . $me['id'] . '_' . time() . '.' . preg_replace('~[^a-z0-9]~', '', $ext);
+      $name = 'avatar_' . $me['id'] . '_' . bin2hex(random_bytes(6)) . '.' . preg_replace('~[^a-z0-9]~', '', $ext);
       if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $name)) {
         $old = row('SELECT avatar_file FROM users WHERE id = ?', [$me['id']])['avatar_file'] ?? '';
         if ($old) @unlink(UPLOADS_DIR . '/' . $old);
