@@ -15,8 +15,12 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <?php if (in_array($path, ['/impressum', '/datenschutz'], true)): ?>
     <meta name="robots" content="noindex, nofollow">
   <?php endif; ?>
+  <?php // Ohne eigenes Zeichen das App-Symbol nehmen — sonst fragt jeder
+        // Browser bei jedem Aufruf vergeblich nach /favicon.ico ?>
   <?php if (!empty($settings['favicon_file'])): ?>
     <link rel="icon" type="image/png" href="/uploads/<?= e($settings['favicon_file']) ?>">
+  <?php else: ?>
+    <link rel="icon" type="image/png" href="<?= e(app_icon(192)) ?>">
   <?php endif; ?>
   <link rel="stylesheet" href="/assets/style.css">
   <?php // Als App installierbar: Manifest, Farbe der Systemleiste, Symbol für iOS ?>
