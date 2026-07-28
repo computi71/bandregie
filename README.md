@@ -288,6 +288,12 @@ including commercially. This keeps it possible to offer Bandroadie as a
 service later without having to track down every contributor. Contributors are
 credited in `CONTRIBUTORS` and shown in the member area.
 
+## Supporting the project
+
+If Bandroadie saves your band an evening of spreadsheet wrangling, there is a
+Sponsor button at the top of the repository. Entirely optional — the licence
+does not change either way.
+
 ## License
 
 [Functional Source License 1.1 with Apache 2.0 future license](LICENSE.md)

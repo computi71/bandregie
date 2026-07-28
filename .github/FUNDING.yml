@@ -1,0 +1,19 @@
+# Puts a "Sponsor" button at the top of the repository.
+#
+# Nothing is active yet — a fully commented file renders no button, so the
+# page stays as it is until a line below is filled in and uncommented.
+#
+# The quickest way is `custom` with any address you already have; it needs no
+# account anywhere and can be swapped for GitHub Sponsors later without
+# touching anything else.
+
+# custom: ["https://paypal.me/YOUR-NAME"]
+
+# GitHub Sponsors — the button lives on GitHub and payments run through it.
+# Needs a one-time signup: identity check, bank details via Stripe, tax form.
+# github: [computi71]
+
+# Ko-fi, Buy Me a Coffee, Liberapay — an account, no paperwork.
+# ko_fi: YOUR-NAME
+# buy_me_a_coffee: YOUR-NAME
+# liberapay: YOUR-NAME
