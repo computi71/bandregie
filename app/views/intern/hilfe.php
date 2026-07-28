@@ -12,5 +12,10 @@
   <?php $helpFirst = false; ?>
 <?php endforeach; ?>
 
+<details class="card acc" name="helpacc">
+  <summary>📱 <?= e(t('app_install')) ?></summary>
+  <p class="muted"><?= e(t('app_install_hint')) ?></p>
+</details>
+
 <p class="muted small"><?= e(t('help_more')) ?> <a href="/intern/ueber"><?= e(t('about_open')) ?> →</a></p>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

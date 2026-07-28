@@ -19,6 +19,14 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
     <link rel="icon" type="image/png" href="/uploads/<?= e($settings['favicon_file']) ?>">
   <?php endif; ?>
   <link rel="stylesheet" href="/assets/style.css">
+  <?php // Als App installierbar: Manifest, Farbe der Systemleiste, Symbol für iOS ?>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#17120f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<?= e($settings['band_name']) ?>">
+  <link rel="apple-touch-icon" href="<?= e(app_icon(192)) ?>">
+  <script src="/assets/app.js" defer></script>
   <script src="/assets/lightbox.js" defer></script>
   <script src="/assets/nav.js" defer></script>
   <script src="/assets/accordion.js" defer></script>

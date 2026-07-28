@@ -413,6 +413,9 @@ const UI_STRINGS = [
   'rider_light_lbl' => 'Licht', 'rider_getin_lbl' => 'Anlieferung, Aufbau, Soundcheck',
   'rider_extras_lbl' => 'Sonstiges (Parken, Catering, Backstage)',
   // Bühnenplan
+  'app_description' => 'Termine, Setlists und Technik der Band — auch unterwegs.',
+  'app_install' => 'Auf dem Handy installieren',
+  'app_install_hint' => 'Im Browsermenü „Zum Startbildschirm hinzufügen" wählen. Danach startet Bandroadie wie eine App, und Termine, Setlists und Songs sind auch ohne Empfang da.',
   'stage_plot' => 'Bühnenplan', 'stage_back' => 'hinten', 'stage_front' => 'vorne (Publikum)',
   'stage_empty' => 'Noch nichts aufgestellt.',
   'stage_add' => 'Aufstellen', 'stage_kind' => 'Was', 'stage_label' => 'Beschriftung',
@@ -1496,6 +1499,21 @@ function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'f
 function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
+
+/**
+ * Symbol für den Startbildschirm. Hat die Band ein quadratisches Logo
+ * hochgeladen, nimmt die App das; sonst das mitgelieferte Zeichen. Skaliert
+ * wird nichts — GD fehlt auf manchen Servern, und ein verzerrtes Logo wäre
+ * schlimmer als ein neutrales Symbol.
+ */
+function app_icon(int $size): string {
+  $logo = setting('logo_file');
+  if ($logo !== '' && is_file(UPLOADS_DIR . '/' . $logo)) {
+    $info = @getimagesize(UPLOADS_DIR . '/' . $logo);
+    if ($info && $info[0] === $info[1] && $info[0] >= $size) return '/uploads/' . rawurlencode($logo);
+  }
+  return "/assets/app/icon-$size.png";
+}
 
 /** Kaufpreis und -datum eines Geräts als eine lesbare Angabe. */
 function eq_purchase_label(array $eq): string {

@@ -34,6 +34,31 @@ if ($method === 'POST' && !csrf_valid()) {
 // Öffentliche Seiten
 // ============================================================
 
+// ---------- App: Manifest und Symbole ----------
+// Das Manifest macht die Seite installierbar. Es trägt den Bandnamen, damit
+// auf dem Startbildschirm nicht „Bandroadie" steht, sondern die Band.
+if ($path === '/manifest.webmanifest' && $method === 'GET') {
+  header('Content-Type: application/manifest+json; charset=utf-8');
+  header('Cache-Control: public, max-age=3600');
+  $band = setting('band_name') ?: 'Bandroadie';
+  exit(json_encode([
+    'name' => $band,
+    'short_name' => mb_substr($band, 0, 12),
+    'description' => t('app_description'),
+    'start_url' => '/intern',
+    'scope' => '/',
+    'display' => 'standalone',
+    'orientation' => 'portrait-primary',
+    'background_color' => '#17120f',
+    'theme_color' => '#17120f',
+    'lang' => current_lang(),
+    'icons' => [
+      ['src' => app_icon(192), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+      ['src' => app_icon(512), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+    ],
+  ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+}
+
 // Sprachwechsel (?lang=de|en|nl|fr|es|it, nur aktivierte Sprachen)
 if (isset($_GET['lang']) && in_array($_GET['lang'], enabled_langs(), true)) {
   $_SESSION['pub_lang'] = $_GET['lang'];
