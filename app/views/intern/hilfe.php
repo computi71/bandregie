@@ -72,6 +72,9 @@
 <details class="card acc" name="helpacc">
   <summary>📱 <?= e(t('app_install')) ?></summary>
   <p class="muted"><?= e(t('app_install_hint')) ?></p>
+  <p class="muted"><?= e(t('app_install_offline')) ?></p>
+  <p class="muted"><?= e(t('app_install_store')) ?></p>
+  <p class="muted"><?= e(t('app_install_push')) ?></p>
 </details>
 
 <p class="muted small"><?= e(t('help_more')) ?> <a href="/intern/ueber"><?= e(t('about_open')) ?> →</a></p>
