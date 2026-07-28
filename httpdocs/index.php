@@ -11,6 +11,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 require dirname(__DIR__) . '/app/backup.php';
 require_once dirname(__DIR__) . '/app/dauerauftrag.php';
 require dirname(__DIR__) . '/app/equipmentbuchung.php';
+require dirname(__DIR__) . '/app/mischpult.php';
 
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -1442,22 +1443,23 @@ if (str_starts_with($path, '/intern')) {
     if (upload_rejected((int) ($_FILES['scene']['error'] ?? UPLOAD_ERR_NO_FILE)) || !is_uploaded_file($tmp)) {
       redirect('/intern/kanaele');
     }
-    // Eine .scn vom X32/M32 enthält Zeilen wie: /ch/01/config "Kick" 1 RD 1
-    $found = [];
-    foreach (explode("
-", (string) file_get_contents($tmp)) as $line) {
-      if (preg_match('~^/ch/(\d+)/config\s+"([^"]*)"~', trim($line), $m)) {
-        $name = trim($m[2]);
-        if ($name !== '') $found[(int) $m[1]] = $name;
-      }
-    }
+    $found = mixer_channels((string) file_get_contents($tmp));
     if (!$found) {
       flash(t('fl_ch_none_found'));
       redirect('/intern/kanaele');
     }
     if (isset($_POST['replace'])) q('DELETE FROM channels');
-    foreach ($found as $number => $name) {
-      q('INSERT INTO channels (number, name) VALUES (?,?) ON DUPLICATE KEY UPDATE name = VALUES(name)', [$number, $name]);
+    foreach ($found as $number => $channel) {
+      // Die Quelle nur setzen, wenn die Datei eine nennt — sonst stünde nach
+      // einem X32-Import überall eine leere Buchse statt der bisherigen.
+      if ($channel['source'] !== '') {
+        q('INSERT INTO channels (number, name, source) VALUES (?,?,?)
+           ON DUPLICATE KEY UPDATE name = VALUES(name), source = VALUES(source)',
+          [$number, $channel['name'], $channel['source']]);
+      } else {
+        q('INSERT INTO channels (number, name) VALUES (?,?)
+           ON DUPLICATE KEY UPDATE name = VALUES(name)', [$number, $channel['name']]);
+      }
     }
     flash(t('fl_ch_imported') . ' ' . count($found));
     redirect('/intern/kanaele');

@@ -11,7 +11,7 @@
   <summary>📥 <?= e(t('ch_import')) ?></summary>
   <p class="muted small"><?= e(t('ch_import_hint')) ?></p>
   <form method="post" action="/intern/kanaele/import" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
-    <label class="span2"><?= e(t('ch_file')) ?><input type="file" name="scene" accept=".scn,.txt" required></label>
+    <label class="span2"><?= e(t('ch_file')) ?><input type="file" name="scene" accept=".scn,.snap,.txt" required></label>
     <label class="checkbox span2"><input type="checkbox" name="replace" value="1"> <?= e(t('ch_replace')) ?></label>
     <button class="btn btn-primary span2"><?= e(t('upload')) ?></button>
   </form>
