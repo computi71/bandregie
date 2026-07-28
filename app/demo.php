@@ -46,8 +46,16 @@ function demo_install(): void {
 function demo_install_rows(): void {
   $d = fn(string $mod): string => date('Y-m-d', strtotime($mod));
 
-  // --- Mitglieder (Zufallspasswörter, Wechsel erzwungen — reine Demokonten)
-  $pw = fn(): string => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
+  // --- Mitglieder. Zufallspasswörter, aber gemerkt: ohne sie sieht man die
+  // Demo nur als Admin und nie als Mitglied oder Aushilfe — also gerade das
+  // nicht, was die Rechte ausmachen. Sie landen einmalig in einer Datei
+  // außerhalb des Webroots.
+  $logins = [];
+  $pw = function (string $email) use (&$logins): string {
+    $plain = bin2hex(random_bytes(6));
+    $logins[$email] = $plain;
+    return password_hash($plain, PASSWORD_DEFAULT);
+  };
   $members = [];
   foreach ([
     ['Lisa', 'Berg', 'Lisa', 'lisa@example.com', 'Gesang'],
@@ -58,8 +66,10 @@ function demo_install_rows(): void {
     $members[] = demo_insert('users', [
       'name' => "$first $last", 'first_name' => $first, 'last_name' => $last,
       'stage_name' => $stage, 'email' => $mail,
-      'password_hash' => $pw(), 'role' => 'member', 'instrument' => $instr,
-      'must_change_pw' => 1,
+      'password_hash' => $pw($mail), 'role' => 'member', 'instrument' => $instr,
+      // Kein erzwungener Wechsel: das Passwort steht in der Datei und soll
+      // zum Ausprobieren taugen. Mit der Demo verschwindet das Konto wieder.
+      'must_change_pw' => 0,
     ]);
     // Ohne Rechte könnte die Demoband nichts öffnen
     perm_apply_template(end($members), 'member');
@@ -282,8 +292,36 @@ function demo_install_rows(): void {
   demo_install_stage_plot($members);
   demo_install_topics($members);
   demo_install_orders($members);
-  demo_install_substitute($members, $evNext);
+  demo_install_substitute($members, $evNext, $pw);
   demo_install_photo($members[0]);
+  demo_write_logins($logins);
+}
+
+/**
+ * Die Zugangsdaten der Demokonten einmalig festhalten — außerhalb des
+ * Webroots und nur für den Eigentümer lesbar, wie beim ersten Admin-Konto.
+ * Ein festes Passwort wie „demo" wäre die Alternative gewesen; das steht dann
+ * aber auch auf einer Installation, die längst echt genutzt wird.
+ */
+function demo_write_logins(array $logins): void {
+  if (!$logins) return;
+  $text = "Bandroadie - demo accounts
+
+"
+    . "These accounts exist only while the demo data is installed and are
+"
+    . "deleted with it. Use them to see the application as a member and as a
+"
+    . "stand-in, not only as the administrator.
+
+";
+  foreach ($logins as $mail => $plain) $text .= str_pad($mail, 24) . $plain . "
+";
+  $text .= "
+Delete this file once you have finished looking around.
+";
+  @file_put_contents(DATA_DIR . '/DEMO-LOGINS.txt', $text);
+  @chmod(DATA_DIR . '/DEMO-LOGINS.txt', 0600);
 }
 
 /** Ein Gespräch im Bandbereich — sonst steht dort ein leerer Menüpunkt. */
@@ -338,11 +376,11 @@ function demo_install_orders(array $members): void {
  * Eine Aushilfe samt Anfrage für den kommenden Gig. Ohne sie ist von den
  * eingeschränkten Rechten und der Anfrage-Logik nichts zu sehen.
  */
-function demo_install_substitute(array $members, int $eventId): void {
+function demo_install_substitute(array $members, int $eventId, callable $pw): void {
   $sub = demo_insert('users', [
     'name' => 'Nora Falk', 'first_name' => 'Nora', 'last_name' => 'Falk', 'stage_name' => '',
-    'email' => 'nora@example.com', 'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
-    'role' => 'ersatz', 'instrument' => 'Gesang', 'must_change_pw' => 1,
+    'email' => 'nora@example.com', 'password_hash' => $pw('nora@example.com'),
+    'role' => 'ersatz', 'instrument' => 'Gesang', 'must_change_pw' => 0,
     'substitute_for' => $members[0], 'substitute_rank' => 1,
   ]);
   perm_apply_template($sub, 'ersatz');
@@ -432,6 +470,7 @@ function demo_remove(): void {
   // Das Bild hängt an keiner Zeile, es erkennt sich am eigenen Namen — und
   // muss deshalb auch weg, wenn sonst nichts mehr zu löschen ist.
   demo_remove_background();
+  @unlink(DATA_DIR . '/DEMO-LOGINS.txt');
   // Fotodateien liegen auf der Platte, nicht in der Tabelle. Erst die Datei,
   // dann fällt die Zeile weiter unten mit allen anderen.
   foreach (rows('SELECT p.filename FROM photos p
