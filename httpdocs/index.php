@@ -1256,6 +1256,12 @@ if (str_starts_with($path, '/intern')) {
       ? ($eq['purchased_on'] ?: date('Y-m-d'))
       : (trim($_POST['date'] ?? '') ?: date('Y-m-d'));
     if ($m[2] === 'kauf' && $cents <= 0) { flash(t('fl_eq_book_needs_price')); redirect('/intern/equipment'); }
+    // Ein Kauf ist einmal. Dass das Formular danach verschwindet, ist nur die
+    // Anzeige — geprüft wird es hier.
+    if ($m[2] === 'kauf' && row('SELECT id FROM finances WHERE equipment_id = ? AND type = ?', [$m[1], 'ausgabe'])) {
+      flash(t('fl_eq_booked_already'));
+      redirect('/intern/equipment');
+    }
     eq_book($eq, $me, $payer, $m[2], $cents, $date);
     // Ein Abgang beendet das Gerät im Bestand — die Zeile bleibt als
     // Geschichte stehen, taucht aber auf keiner Packliste mehr auf.
