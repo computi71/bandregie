@@ -159,6 +159,10 @@ const UI_STRINGS = [
   'help_est_src_est15' => '— wann alle Einkünfte gewerblich werden',
   'help_est_src_est18' => '— die künstlerische Tätigkeit',
   'help_est_src_bfh' => '— die Bagatellgrenze aus der Rechtsprechung',
+  'about_donate' => 'Trinkgeld',
+  'about_donate_link' => 'für das Projekt',
+  'about_donate_note' => 'Bandroadie ist kostenlos und bleibt es. Wer trotzdem etwas dalassen mag, darf — nötig ist es nicht. Abschaltbar in den Einstellungen.',
+  'set_about_donate' => 'Hinweis auf Trinkgeld unter „Über" zeigen',
   'privacy_title' => 'Datenschutzerklärung',
   'legal_credits' => 'Bildnachweis',
   'legal_credit_background' => 'Hintergrundbild: Konzertpublikum,',
@@ -806,6 +810,13 @@ const PERM_ENTITY_MODULES = [
  */
 const PERM_EXPLICIT_MODULES = ['kasse'];
 
+/**
+ * Wohin ein Trinkgeld geht, wenn jemand eins geben mag. Leer lassen heißt:
+ * die Zeile erscheint nirgends — wer das Projekt weitergibt, muss keine
+ * fremde Zahlungsadresse mitschleppen.
+ */
+const DONATE_URL = 'https://paypal.me/computi71';
+
 const PERM_TEMPLATES = [
   'member' => [
     'termine' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
@@ -1347,6 +1358,7 @@ $defaults = [
   // einer Versionsnummer, gesendet wird nichts über die Installation. Wer das
   // nicht will, schaltet es in den Einstellungen ab.
   'update_check' => '1', 'update_checked_at' => '0', 'update_latest' => '',
+  'about_donate' => '1',
   // Steuerliche Werte. Voreinstellung ist der deutsche Stand vom Juli 2026;
   // sie stehen hier, damit eine Band sie ändern kann, wenn der Gesetzgeber
   // sie ändert oder die Band anderswo sitzt. Aus ist die Grenzwarnung, bis

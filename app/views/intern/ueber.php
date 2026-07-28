@@ -22,6 +22,13 @@
     <li><strong><?= e(t('about_version')) ?></strong> <span class="muted"><?= e(BANDROADIE_VERSION) ?></span>
       · <a href="https://github.com/computi71/bandroadie/releases" target="_blank" rel="noopener"><?= e(t('about_changelog')) ?></a></li>
     <li><strong><?= e(t('about_stack')) ?></strong> <span class="muted">PHP <?= e(PHP_VERSION) ?> · MariaDB/MySQL</span></li>
+    <?php // Ein Angebot, keine Aufforderung — und abschaltbar, weil es in der
+          // Installation einer fremden Band steht und nicht in meiner. ?>
+    <?php if (setting('about_donate', '1') === '1' && DONATE_URL !== ''): ?>
+      <li><strong><?= e(t('about_donate')) ?></strong>
+        <a href="<?= e(DONATE_URL) ?>" target="_blank" rel="noopener"><?= e(t('about_donate_link')) ?></a>
+        <div class="muted small"><?= e(t('about_donate_note')) ?></div></li>
+    <?php endif; ?>
   </ul>
   <p class="muted small"><?= e(t('about_data_note')) ?></p>
 </div>

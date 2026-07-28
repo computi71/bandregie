@@ -335,6 +335,12 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       <?= e(t('up_check')) ?>
     </label>
     <p class="muted small"><?= e(t('up_check_hint')) ?></p>
+    <?php if (DONATE_URL !== ''): ?>
+      <label class="checkbox">
+        <input type="checkbox" name="about_donate" value="1" <?= setting('about_donate', '1') === '1' ? 'checked' : '' ?>>
+        <?= e(t('set_about_donate')) ?>
+      </label>
+    <?php endif; ?>
     <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
 </details>
