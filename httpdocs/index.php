@@ -1743,6 +1743,12 @@ if (str_starts_with($path, '/intern')) {
       set_setting('public_mode', ($_POST['public_mode'] ?? '') === 'redirect' ? 'redirect' : 'website');
       if (($_POST['redirect_url'] ?? '') !== '') set_setting('redirect_url', trim($_POST['redirect_url']));
     }
+    if (isset($_POST['_update_form'])) {
+      set_setting('update_check', isset($_POST['update_check']) ? '1' : '0');
+      // Beim Einschalten gleich nachsehen, statt bis morgen zu warten.
+      if (isset($_POST['update_check'])) set_setting('update_checked_at', '0');
+      flash(t('fl_up_saved'));
+    }
     if (isset($_POST['_langs_form'])) {
       $chosen = array_values(array_intersect(array_keys(LANGS), (array) ($_POST['langs'] ?? [])));
       // Die Standardsprache ist die Rückfallebene und damit immer aktiv —

@@ -275,6 +275,42 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
 </details>
 
+<?php require_once BASE_DIR . '/app/update.php'; $upCmd = update_command(); $upLatest = update_latest_version(); ?>
+<details class="card acc" name="setacc" <?= update_available() ? 'open' : '' ?>>
+  <summary>⬆ <?= e(t('up_title')) ?><?= update_available() ? ' — ' . e(sprintf(t('up_available'), $upLatest)) : '' ?></summary>
+  <p class="muted small"><?= e(t('up_intro')) ?></p>
+  <ul class="task-list">
+    <li><strong><?= e(t('up_installed')) ?></strong> <span class="muted"><?= e(BANDROADIE_VERSION) ?></span></li>
+    <li>
+      <strong><?= e(t('up_latest')) ?></strong>
+      <span class="<?= update_available() ? 'warn' : 'muted' ?>"><?= e($upLatest ?: t('up_unknown')) ?></span>
+    </li>
+  </ul>
+
+  <?php // Der Weg, der auf dieser Maschine funktioniert — nicht der, der
+        // im Lehrbuch steht. ?>
+  <?php if ($upCmd['kind'] === 'manual'): ?>
+    <p class="muted small"><?= e(t('up_manual')) ?></p>
+  <?php else: ?>
+    <p class="muted small"><?= e($upCmd['kind'] === 'plesk' ? t('up_how_plesk') : t('up_how_git')) ?></p>
+    <pre class="prewrap"><?= e($upCmd['command']) ?></pre>
+    <?php if ($upCmd['kind'] === 'git'): ?>
+      <p class="muted small"><?= e(t('up_cron')) ?></p>
+      <pre class="prewrap">30 4 * * 1  sh <?= e(BASE_DIR) ?>/bin/update.sh &gt;&gt; /var/log/bandroadie-update.log 2&gt;&amp;1</pre>
+    <?php endif; ?>
+  <?php endif; ?>
+
+  <form method="post" action="/intern/einstellungen"><?= csrf_field() ?>
+    <input type="hidden" name="_update_form" value="1">
+    <label class="checkbox">
+      <input type="checkbox" name="update_check" value="1" <?= setting('update_check', '1') === '1' ? 'checked' : '' ?>>
+      <?= e(t('up_check')) ?>
+    </label>
+    <p class="muted small"><?= e(t('up_check_hint')) ?></p>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <details class="card acc" name="setacc">
   <summary>🩺 <?= e(t('sys_title')) ?></summary>
   <p class="muted small"><?= e(t('sys_intro')) ?></p>

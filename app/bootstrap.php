@@ -84,6 +84,17 @@ const UI_STRINGS = [
   'song_key_ph' => 'z. B. Am',
   'song_tempo_ph' => 'z. B. 120 BPM',
   'ev_fee_ph' => 'z. B. 800 €',
+  'up_title' => 'Aktualisierung',
+  'up_available' => 'Fassung %s ist da',
+  'up_intro' => 'Bandroadie aktualisiert sich nicht selbst. Dafür müsste der Webserver in sein eigenes Verzeichnis schreiben dürfen, und dann würde aus jeder Lücke, die einmal eine Datei schreiben lässt, eine dauerhafte Übernahme. Ein Befehl auf der Konsole kostet zwei Sekunden mehr und diesen Preis nicht.',
+  'up_installed' => 'Installiert:', 'up_latest' => 'Neueste Fassung:', 'up_unknown' => 'nicht nachgesehen',
+  'up_how_git' => 'Das Skript sichert erst Datenbank und Dateien und holt dann die neue Fassung:',
+  'up_how_plesk' => 'Diese Installation läuft unter Plesk — das ausgelieferte Verzeichnis ist keine Git-Arbeitskopie, ein „git pull" liefe hier ins Leere. Plesk holt und verteilt:',
+  'up_manual' => 'Diese Installation ist keine Git-Arbeitskopie. Neue Dateien einspielen, aber data/ und app/config.php dabei niemals überschreiben — und vorher eine Sicherung ziehen.',
+  'up_cron' => 'Soll es von allein laufen, gehört es in die cron-Tabelle des Benutzers, dem die Arbeitskopie gehört:',
+  'up_check' => 'Einmal am Tag nachsehen, ob es eine neue Fassung gibt',
+  'up_check_hint' => 'Fragt bei GitHub nach der Versionsnummer — ohne Anmeldung und ohne Angaben über diese Installation. Abgeschaltet fragt Bandroadie nie von sich aus nach draußen.',
+  'fl_up_saved' => 'Einstellung zur Aktualisierung gespeichert.',
   'privacy_title' => 'Datenschutzerklärung',
   'legal_credits' => 'Bildnachweis',
   'legal_credit_background' => 'Hintergrundbild: Konzertpublikum,',
@@ -1268,6 +1279,10 @@ $defaults = [
   // eingetragen schützt sie Links in E-Mails vor einem gefälschten Host.
   'site_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
+  // Einmal am Tag nachsehen, ob es eine neue Fassung gibt. Gefragt wird nach
+  // einer Versionsnummer, gesendet wird nichts über die Installation. Wer das
+  // nicht will, schaltet es in den Einstellungen ab.
+  'update_check' => '1', 'update_checked_at' => '0', 'update_latest' => '',
   // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
   // Installation ungefragt die Platte des Servers, auf dem sie liegt.
   'backup_enabled' => '0', 'backup_interval' => 'daily', 'backup_keep' => '7',
