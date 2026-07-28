@@ -1360,8 +1360,9 @@ if ((int) row('SELECT COUNT(*) AS n FROM users')['n'] === 0) {
   @file_put_contents(DATA_DIR . '/INITIAL-PASSWORD.txt',
     "Bandroadie — initial administrator account\n\n"
     . "Email:    admin@example.com\nPassword: $startPw\n\n"
-    . "You must change this password at first login. Change the email address\n"
-    . "under Intern -> Profil, then delete this file.\n");
+    . "You must change this password at first login. This file is removed the\n"
+    . "moment you do, so it can never outlive the password it holds. Change\n"
+    . "the email address afterwards under Intern -> Profil.\n");
   @chmod(DATA_DIR . '/INITIAL-PASSWORD.txt', 0600);
 }
 
