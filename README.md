@@ -177,7 +177,9 @@ it, set your own password when prompted, change the email address under
 
 Under *Settings → Demo data* one button fills the installation with a fictional
 band so you can explore every feature, and a second button removes exactly
-those rows again.
+those rows again. The demo accounts get random passwords, written once to
+`data/DEMO-LOGINS.txt` — log in as a member or as the stand-in to see how much
+less they are shown. Removing the demo deletes the accounts and that file.
 
 ### Apache instead of nginx
 
