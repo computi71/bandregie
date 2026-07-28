@@ -297,8 +297,10 @@ function demo_install_stage_plot(array $memberIds): void {
   $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 8, 'y' => 32, 'note' => ''];
   $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 10, 'y' => 58, 'note' => ''];
   $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 40, 'y' => 34, 'note' => ''];
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 50, 'y' => 93, 'note' => 'Gesang'];
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 25, 'y' => 77, 'note' => 'Gitarre'];
+  // Monitore stehen vor der Person, für die sie da sind — seitlich versetzt,
+  // damit ihre Beschriftung nicht auf deren Instrumentenzeile fällt.
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 64, 'y' => 90, 'note' => 'Gesang'];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 12, 'y' => 82, 'note' => 'Gitarre'];
   foreach ($items as $i => $item) {
     demo_insert('stage_items', $item + ['position' => $i]);
   }
