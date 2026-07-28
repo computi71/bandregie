@@ -26,7 +26,9 @@ $stroke = $stagePrint ? '#333' : 'currentColor';
       $sym = STAGE_KINDS[$it['kind']] ?? '▫';
     ?>
     <g class="stage-item" data-id="<?= (int) $it['id'] ?>" transform="translate(<?= round($px) ?>,<?= round($py) ?>)">
-      <circle r="30" fill="none" stroke="<?= $stroke ?>" stroke-width="2" opacity="0.7"/>
+      <?php // fill="transparent" statt "none": sonst ist der Kreis innen nicht
+            // anfassbar und man erwischt beim Ziehen nur die dünne Linie. ?>
+      <circle r="30" fill="transparent" stroke="<?= $stroke ?>" stroke-width="2" opacity="0.7"/>
       <text text-anchor="middle" y="10" font-size="30"><?= $sym ?></text>
       <text text-anchor="middle" y="52" font-size="22" fill="<?= $stroke ?>"><?= e($it['label']) ?></text>
       <?php if ($it['note'] !== ''): ?>
