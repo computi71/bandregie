@@ -586,15 +586,17 @@ const FIN_CATEGORIES = [
  */
 const EVENT_TYPE_FIELDS = [
   'gig'          => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
-  'party'        => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
   'probe'        => ['times', 'venue', 'setlist', 'gear'],
   'aufnahme'     => ['times', 'venue', 'setlist', 'gear'],
   'fotoshooting' => ['times', 'venue', 'gear'],
-  'besprechung'  => ['times', 'venue'],
   'aufbau'       => ['times', 'venue', 'production', 'gear'],
   'reise'        => ['times', 'venue', 'gear'],
+  'besprechung'  => ['times', 'venue'],
+  // Party und Sonstiges sind Termine, bei denen die Band nicht spielt —
+  // eine Feier, ein Theaterbesuch. Wo die Band auftritt, ist es ein Gig.
+  'party'        => ['times', 'venue'],
+  'sonstiges'    => ['times', 'venue'],
   'dayoff'       => [],
-  'sonstiges'    => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
 ];
 
 /**
