@@ -8,13 +8,54 @@ author is offering Bandroadie itself as a commercial product or hosted service.
 Two years after each release, that restriction lapses and the version becomes
 Apache 2.0. See [LICENSE.md](LICENSE.md).
 
-Public band page plus an internal organization area for one band: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury, equipment with recurring deadlines and an iCal calendar feed.
+A band of six runs on a group chat, three spreadsheets and one person who
+remembers everything. Bandroadie replaces that with one place: a public page
+for promoters and fans, and an internal area for the work behind it.
+
+## What it is for
+
+**One band, not a platform.** An installation belongs to a single band. No
+accounts to manage across bands, no tenant separation to get wrong, no
+service in the middle that can disappear. The band owns the server, the
+database and the data.
+
+**Answers, not lists.** Who can play on the 14th? What did we play at that
+venue last time? Does the rehearsal room cost more than we pay in? Which
+microphone is in which case, and what did it cost? Every screen exists
+because somebody had to ask that in a chat and wait for an answer.
+
+**Nothing that has to be maintained to keep working.** No framework to
+upgrade, no build step, no package lock, no third-party script. PHP and a
+database. A band that installs this should still be able to run it in five
+years without anyone touching it.
+
+**What is private stays private.** What a member paid for their own
+equipment, what they deposit, what they own — visible to them, not to the
+band. Permissions are enforced in the route, never only in the interface,
+and a stand-in sees the dates they were asked for and nothing else.
+
+## What it does
+
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders and member deposits, equipment with recurring deadlines and an iCal calendar feed.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
 **Multilingual:** the interface ships in German, English, Dutch, French, Spanish and Italian; band texts and the legal pages are maintained per language, with a fallback chain (selected language → default language → English → German). Which languages appear is up to the admin — only the default language stays switched on, because something has to be there when nothing else fits — and every string can be corrected in the band area.
 
 **Stack:** PHP 8.1+ with MariaDB/MySQL (PDO), no framework, no build step, no dependencies.
+
+## Screenshots
+
+The demo data ships with the project, so a fresh installation looks like this
+straight away — a fictional band with events, songs, a treasury and gear.
+
+| | |
+|---|---|
+| ![Public page](docs/screenshots/public-page.jpg) **Public page** — what promoters and fans see. Band name, logo and background come from the settings. | ![Events](docs/screenshots/events.jpg) **Events** — availability in one click, absences flagged before anyone drives anywhere. |
+| ![Setlists](docs/screenshots/setlist.jpg) **Setlists** — breaks and encores in place, with a print view for the stage. | ![Treasury](docs/screenshots/treasury.jpg) **Treasury** — standing orders book themselves; deposits are set against the rehearsal room rent. |
+| ![Equipment](docs/screenshots/equipment.jpg) **Equipment** — cases within cases, purchase prices only the owner sees, deadlines for what needs testing. | ![Stage plot](docs/screenshots/stageplot.jpg) **Stage rider** — a plot the promoter can read, from the members and their instruments. |
+
+More: [songs](docs/screenshots/songs.jpg) · [members and permissions](docs/screenshots/members.jpg)
 
 ## Installation
 
