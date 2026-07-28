@@ -58,6 +58,72 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
 $eqHasParts = (bool) array_filter($items, fn($i) => (int) ($i['parent_id'] ?? 0) === (int) $formEq['id']);
 $eqQtyHint = eq_quantity_hint($formEq);
 ?>
+<?php
+// Kauf und Abgang in der Kasse. Was schon gebucht ist, steht als Verweis da —
+// zweimal buchen macht aus einem Kauf keine zwei.
+$eqBooked = $bookingsByEq[(int) $formEq['id']] ?? [];
+$eqBoughtAlready = (bool) array_filter($eqBooked, fn($b) => $b['type'] === 'ausgabe');
+?>
+<?php if ($eqSeePrice && perm_allows($user, 'kasse')): ?>
+  <details class="subsection">
+    <summary>💰 <?= e(t('eqb_title')) ?><?= $eqBooked ? ' (' . count($eqBooked) . ')' : '' ?></summary>
+
+    <?php if ($eqBooked): ?>
+      <ul class="task-list">
+        <?php foreach ($eqBooked as $b): ?>
+          <li>
+            <span class="badge"><?= e(fmt_date($b['date'])) ?></span>
+            <strong><?= $b['type'] === 'einnahme' ? '+' : '−' ?><?= e(fmt_money((int) $b['amount_cents'])) ?></strong>
+            <span class="muted small">
+              <?= e($b['description']) ?>
+              <?= $b['private_for'] !== null ? ' · 🔒 ' . e(t('fin_private')) : '' ?>
+            </span>
+            <a class="btn btn-tiny" href="/intern/kasse?jahr=<?= (int) substr($b['date'], 0, 4) ?>"><?= e(t('eqb_show')) ?> →</a>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <?php if (!$eqBoughtAlready && $formEq['price_cents'] !== null): ?>
+      <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/kauf" class="inline"><?= csrf_field() ?>
+        <label><?= e(t('eqb_payer')) ?>
+          <select name="payer">
+            <?php if (perm_allows($user, 'kasse', 'write')): ?><option value="band"><?= e(t('eqb_payer_band')) ?></option><?php endif; ?>
+            <?php if ((int) ($formEq['owner_id'] ?? 0) === (int) $user['id']): ?><option value="privat"><?= e(t('eqb_payer_private')) ?></option><?php endif; ?>
+          </select>
+        </label>
+        <button class="btn btn-small"><?= e(sprintf(t('eqb_book_purchase'), fmt_money((int) $formEq['price_cents']))) ?></button>
+      </form>
+      <p class="muted small"><?= e(t('eqb_hint')) ?></p>
+    <?php elseif ($formEq['price_cents'] === null): ?>
+      <p class="muted small"><?= e(t('eqb_needs_price')) ?></p>
+    <?php endif; ?>
+
+    <?php if (empty($formEq['disposed_on'])): ?>
+      <details>
+        <summary><?= e(t('eqb_dispose')) ?></summary>
+        <p class="muted small"><?= e(t('eqb_dispose_hint')) ?></p>
+        <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/abgang" class="form-grid"><?= csrf_field() ?>
+          <label><?= e(t('eqb_proceeds')) ?><input name="amount" inputmode="decimal" placeholder="0,00"></label>
+          <label><?= e(t('date')) ?><input type="date" name="date" value="<?= date('Y-m-d') ?>"></label>
+          <label><?= e(t('eqb_payer_gets')) ?>
+            <select name="payer">
+              <?php if (perm_allows($user, 'kasse', 'write')): ?><option value="band"><?= e(t('eqb_payer_band')) ?></option><?php endif; ?>
+              <?php if ((int) ($formEq['owner_id'] ?? 0) === (int) $user['id']): ?><option value="privat"><?= e(t('eqb_payer_private')) ?></option><?php endif; ?>
+            </select>
+          </label>
+          <button class="btn btn-small span2"><?= e(t('eqb_dispose')) ?></button>
+        </form>
+      </details>
+    <?php else: ?>
+      <p class="muted small">📦 <?= e(sprintf(t('eqb_disposed_on'), fmt_date($formEq['disposed_on']))) ?></p>
+      <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/reaktivieren" class="inline"><?= csrf_field() ?>
+        <button class="btn btn-tiny"><?= e(t('eqb_reactivate')) ?></button>
+      </form>
+    <?php endif; ?>
+  </details>
+<?php endif; ?>
+
 <?php if ($eqMayOwn && !$eqHasParts): ?>
   <details class="subsection">
     <summary><?= e(t('eq_split')) ?><?= $eqQtyHint ? ' ' . e(sprintf(t('eq_split_found'), $eqQtyHint)) : '' ?></summary>

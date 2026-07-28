@@ -45,6 +45,8 @@
 // statt sich als Gesamtwert auszugeben.
 $eqValue = 0; $eqHidden = 0;
 foreach ($items as $it) {
+  // Was abgegeben ist, gehört nicht mehr zum Bestand.
+  if (!empty($it['disposed_on'])) continue;
   if (!eq_may_see_price($it, $user)) { $eqHidden++; continue; }
   $eqValue += (int) ($it['price_cents'] ?? 0);
 }
@@ -62,7 +64,7 @@ foreach ($items as $it) {
 // — über beliebig viele Ebenen, vom Rack bis zur Kapsel im Mikrofon.
 $childrenOf = eq_by_parent($items);
 $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
-          'filesByEq' => $filesByEq, 'user' => $user];
+          'filesByEq' => $filesByEq, 'user' => $user, 'bookingsByEq' => $bookingsByEq];
 ?>
 <?php $eqFirst = true; ?>
 <?php foreach ($items as $eq): ?>
@@ -74,7 +76,8 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
     <?php $eqFirst = false; ?>
     <summary class="eq-summary">
       <strong><?= e($eq['name']) ?></strong>
-      <?php if ($eq['is_standard']): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
+      <?php if (!empty($eq['disposed_on'])): ?><span class="badge">📦 <?= e(sprintf(t('eqb_disposed_on'), fmt_date($eq['disposed_on']))) ?></span><?php endif; ?>
+      <?php if ($eq['is_standard'] && empty($eq['disposed_on'])): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
       <span class="muted"><?= e(t('eq_owner')) ?>: <?= e($eq['owner_name'] ?: t('eq_owner_band')) ?></span>
       <?php if ($eq['location']): ?><span class="muted">📍 <?= e($eq['location']) ?></span><?php endif; ?>
       <?php if (eq_may_see_price($eq, $user) && ($eq['price_cents'] !== null || !empty($eq['purchased_on']))): ?>

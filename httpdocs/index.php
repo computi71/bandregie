@@ -10,6 +10,7 @@ if (php_sapi_name() === 'cli-server') {
 require dirname(__DIR__) . '/app/bootstrap.php';
 require dirname(__DIR__) . '/app/backup.php';
 require dirname(__DIR__) . '/app/dauerauftrag.php';
+require dirname(__DIR__) . '/app/equipmentbuchung.php';
 
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -446,7 +447,9 @@ if (str_starts_with($path, '/intern')) {
       'venues' => $venues,
       'venueMap' => array_column($venues, null, 'id'),
       'absentByEvent' => $absentByEvent,
-      'equipment' => rows('SELECT id, name, category, parent_id FROM equipment ORDER BY category, name'),
+      // Abgegebene Geräte kann niemand mehr einpacken.
+      'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
+                           WHERE disposed_on IS NULL ORDER BY category, name'),
       'gearByEvent' => event_gear_map($ids),
       'gearConflicts' => event_gear_conflicts($ids),
       'filesByEvent' => files_map('event', $ids),
@@ -1043,7 +1046,8 @@ if (str_starts_with($path, '/intern')) {
       'perms' => $permByUser,
       'members' => rows('SELECT u.*, s.name AS substitute_for_name FROM users u
                          LEFT JOIN users s ON s.id = u.substitute_for ORDER BY u.name'),
-      'instruments' => array_column(rows("SELECT name FROM equipment WHERE category = 'instrument' ORDER BY name"), 'name'),
+      'instruments' => array_column(rows("SELECT name FROM equipment
+                                          WHERE category = 'instrument' AND disposed_on IS NULL ORDER BY name"), 'name'),
     ]);
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/update$~', $path, $m) && $method === 'POST') {
@@ -1207,6 +1211,7 @@ if (str_starts_with($path, '/intern')) {
                        LEFT JOIN equipment p ON p.id = e.parent_id
                        ORDER BY FIELD(e.category, "instrument","pa","licht","transport","sonstiges"), e.name'),
       'filesByEq' => $filesByEq,
+      'bookingsByEq' => eq_bookings_by_equipment($me),
       'deadlinesByEq' => $deadlinesByEq,
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
     ]);
@@ -1235,6 +1240,38 @@ if (str_starts_with($path, '/intern')) {
       }
       flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
     }
+    redirect('/intern/equipment');
+  }
+  // Kauf oder Abgang eines Geräts in der Kasse buchen.
+  if (preg_match('~^/intern/equipment/(\d+)/(kauf|abgang)$~', $path, $m) && $method === 'POST') {
+    $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
+    $payer = in_array($_POST['payer'] ?? '', EQ_PAYERS, true) ? $_POST['payer'] : 'band';
+    if (!eq_may_book($eq, $me, $payer)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+    // Beim Kauf stehen Betrag und Datum am Gerät; beim Abgang nennt sie das
+    // Formular, denn verkauft wird selten zum Kaufpreis.
+    $cents = $m[2] === 'kauf'
+      ? (int) ($eq['price_cents'] ?? 0)
+      : (int) (price_to_cents((string) ($_POST['amount'] ?? '')) ?? 0);
+    $date = $m[2] === 'kauf'
+      ? ($eq['purchased_on'] ?: date('Y-m-d'))
+      : (trim($_POST['date'] ?? '') ?: date('Y-m-d'));
+    if ($m[2] === 'kauf' && $cents <= 0) { flash(t('fl_eq_book_needs_price')); redirect('/intern/equipment'); }
+    eq_book($eq, $me, $payer, $m[2], $cents, $date);
+    // Ein Abgang beendet das Gerät im Bestand — die Zeile bleibt als
+    // Geschichte stehen, taucht aber auf keiner Packliste mehr auf.
+    if ($m[2] === 'abgang') {
+      q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
+      q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
+    }
+    flash(t($m[2] === 'kauf' ? 'fl_eq_booked' : 'fl_eq_disposed'));
+    redirect('/intern/equipment');
+  }
+  // Ein Abgang, der ein Versehen war: Kennzeichen weg, Buchung bleibt stehen.
+  if (preg_match('~^/intern/equipment/(\d+)/reaktivieren$~', $path, $m) && $method === 'POST') {
+    $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
+    if (!eq_may_edit_owner_fields($eq, $me)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+    q('UPDATE equipment SET disposed_on = NULL WHERE id = ?', [$m[1]]);
+    flash(t('fl_eq_reactivated'));
     redirect('/intern/equipment');
   }
   // Eine Zeile, die für mehrere gleiche Geräte steht, in einzelne aufteilen.
@@ -1565,8 +1602,11 @@ if (str_starts_with($path, '/intern')) {
     // selben Kassenbuch, sind aber kein Bandgeld.
     $where = ' WHERE (f.private_for IS NULL OR f.private_for = ' . (int) $me['id'] . ')';
     if ($year) $where .= ' AND YEAR(f.date) = ' . $year;
-    $entries = rows("SELECT f.*, e.title AS event_title, e.date AS event_date, u.name AS member_name
-                     FROM finances f LEFT JOIN events e ON e.id = f.event_id LEFT JOIN users u ON u.id = f.member_id
+    $entries = rows("SELECT f.*, e.title AS event_title, e.date AS event_date, u.name AS member_name,
+                            eq.name AS equipment_name
+                     FROM finances f LEFT JOIN events e ON e.id = f.event_id
+                     LEFT JOIN users u ON u.id = f.member_id
+                     LEFT JOIN equipment eq ON eq.id = f.equipment_id
                      $where ORDER BY f.date DESC, f.id DESC");
     $filesByFinance = [];
     foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by WHERE f.entity_type = 'finance'") as $f) {

@@ -582,6 +582,23 @@ Gitarre: vorne rechts",
   'eq_overdue' => 'überfällig', 'eq_due_soon' => 'fällig in', 'eq_days' => 'Tagen',
   'dash_deadlines' => 'Anstehende Fristen',
   'fl_eq_saved_n' => '%d Geräte angelegt.',
+  'eqb_title' => 'In der Kasse',
+  'eqb_payer' => 'Bezahlt hat', 'eqb_payer_band' => 'die Band', 'eqb_payer_private' => 'ich privat',
+  'eqb_payer_gets' => 'Der Erlös geht an',
+  'eqb_book_purchase' => 'Kauf über %s buchen',
+  'eqb_hint' => 'Zahlt die Band, ist es eine Ausgabe wie jede andere. Zahlst du privat, sieht die Buchung nur du und sie zählt nicht zum Bandvermögen.',
+  'eqb_needs_price' => 'Trag erst einen Kaufpreis ein, dann lässt sich der Kauf buchen.',
+  'eqb_show' => 'in der Kasse',
+  'eqb_bought_prefix' => 'Kauf', 'eqb_sold_prefix' => 'Verkauf',
+  'eqb_dispose' => 'Verkauft oder ausgemustert',
+  'eqb_dispose_hint' => 'Das Gerät bleibt als Geschichte stehen, zählt aber nicht mehr zum Bestand und kommt auf keine Packliste mehr. Ohne Erlös ist es eine Ausmusterung.',
+  'eqb_proceeds' => 'Erlös',
+  'eqb_disposed_on' => 'abgegeben am %s',
+  'eqb_reactivate' => 'Doch wieder in den Bestand',
+  'fl_eq_booked' => 'Kauf in der Kasse gebucht.',
+  'fl_eq_disposed' => 'Gerät als abgegeben vermerkt.',
+  'fl_eq_reactivated' => 'Gerät ist wieder im Bestand.',
+  'fl_eq_book_needs_price' => 'Ohne Kaufpreis lässt sich nichts buchen.',
   'eq_split' => 'In einzelne Geräte aufteilen',
   'eq_split_found' => '(sieht nach %d Stück aus)',
   'eq_split_hint' => 'Steht diese Zeile für mehrere gleiche Geräte, macht das daraus durchnummerierte Einzelgeräte — jedes mit eigenem Preis, eigener Frist und eigenem Häkchen auf der Packliste. Die Stückzahl im Namen entfällt dabei.',
@@ -1110,6 +1127,16 @@ if (!column_exists('finances', 'private_for')) {
 // „Gehört einem Mitglied" und „sieht nur dieses Mitglied" sind zweierlei:
 // eine Einzahlung gehört dem Einzahler und geht trotzdem alle an. Bestehende
 // Aufträge mit Besitzer waren bis dahin immer privat.
+// Ein Gerätekauf gehört in beide Richtungen verknüpft: die Buchung nennt das
+// Gerät, das Gerät zeigt seine Buchung.
+if (!column_exists('finances', 'equipment_id')) {
+  $db->exec('ALTER TABLE finances ADD COLUMN equipment_id INT NULL');
+}
+// Verkauft oder ausgemustert: das Gerät bleibt als Geschichte stehen, zählt
+// aber nicht mehr zum Bestand und kommt auf keine Packliste mehr.
+if (!column_exists('equipment', 'disposed_on')) {
+  $db->exec('ALTER TABLE equipment ADD COLUMN disposed_on DATE NULL');
+}
 if (!column_exists('standing_orders', 'private')) {
   $db->exec('ALTER TABLE standing_orders ADD COLUMN private TINYINT(1) NOT NULL DEFAULT 0');
   $db->exec('UPDATE standing_orders SET private = 1 WHERE owner_id IS NOT NULL');
@@ -1981,7 +2008,8 @@ function eq_tree_value(array $eq, array $items, ?array $user): int {
   $sum = 0;
   foreach ([(int) $eq['id'], ...eq_descendants((int) $eq['id'], $items)] as $id) {
     $item = $byId[$id] ?? null;
-    if (!$item || $item['price_cents'] === null || $item['price_cents'] === ''
+    if (!$item || !empty($item['disposed_on'])
+        || $item['price_cents'] === null || $item['price_cents'] === ''
         || !eq_may_see_price($item, $user)) continue;
     $sum += (int) $item['price_cents'];
   }
@@ -1995,7 +2023,7 @@ function eq_tree_value(array $eq, array $items, ?array $user): int {
  */
 function eq_render_parts(array $childItems, array $ctx, int $depth = 1): void {
   ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
-   'filesByEq' => $filesByEq, 'user' => $user] = $ctx;
+   'filesByEq' => $filesByEq, 'user' => $user, 'bookingsByEq' => $bookingsByEq] = $ctx;
   include BASE_DIR . '/app/views/intern/_equipment_children.php';
 }
 // Übersetzbare Inhalte (Bio, Slogan, Booking-Text, Rechtstexte):
