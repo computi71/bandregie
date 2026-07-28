@@ -9,7 +9,7 @@ if (php_sapi_name() === 'cli-server') {
 
 require dirname(__DIR__) . '/app/bootstrap.php';
 require dirname(__DIR__) . '/app/backup.php';
-require dirname(__DIR__) . '/app/dauerauftrag.php';
+require_once dirname(__DIR__) . '/app/dauerauftrag.php';
 require dirname(__DIR__) . '/app/equipmentbuchung.php';
 
 $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';

@@ -6,6 +6,10 @@ declare(strict_types=1);
 // vermerkt — beim Entfernen wird ausschließlich das wieder gelöscht, echte
 // Daten bleiben unangetastet.
 
+// Die Demo legt Daueraufträge an und lässt sie gleich buchen. Selbst geholt,
+// damit die Datei nicht davon abhängt, wer sie einbindet.
+require_once __DIR__ . '/dauerauftrag.php';
+
 function demo_installed(): bool {
   return (int) (row('SELECT COUNT(*) AS n FROM demo_rows')['n'] ?? 0) > 0;
 }
