@@ -375,6 +375,22 @@ if (str_starts_with($path, '/intern')) {
       backup_run('auto');
     });
   }
+  // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
+  // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
+  // war — sie koennen ohnehin nichts aktualisieren.
+  if ($path === '/intern/version' && $method === 'GET') {
+    require_once BASE_DIR . '/app/update.php';
+    if (($me['role'] ?? '') === 'admin') set_setting('update_checked_at', '0');
+    $latest = update_latest_version();
+    $available = $latest !== null && version_compare($latest, BANDROADIE_VERSION, '>');
+    header('Content-Type: application/json; charset=utf-8');
+    exit(json_encode([
+      'installedLabel' => t('up_installed') . ' ' . BANDROADIE_VERSION,
+      'latestLabel'    => t('up_latest') . ' ' . ($latest ?? t('up_unknown')),
+      'verdict'        => $available ? sprintf(t('up_available'), $latest) : t('up_current'),
+      'available'      => $available,
+    ], JSON_UNESCAPED_UNICODE));
+  }
   if ($path === '/intern/passwort') {
     if ($method === 'POST') {
       $pw = $_POST['password'] ?? '';
