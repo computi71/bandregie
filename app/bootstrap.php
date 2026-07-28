@@ -1574,6 +1574,63 @@ function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqc
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 
 /**
+ * Darf jemand diese hochgeladene Datei sehen? Logo, Hintergrund, Favicon und
+ * als öffentlich markierte Fotos gehören auf die Website; das Fotoarchiv und
+ * die Bilder der Mitglieder nicht. Eine Stelle entscheidet das — sonst hat
+ * die nächste Route, die Bilder ausliefert, die Prüfung wieder nicht.
+ */
+function may_see_upload(?array $user, string $name): bool {
+  $branding = array_filter([
+    setting('logo_file'), setting('background_file'), setting('favicon_file'),
+    setting('print_logo_file'), setting('print_watermark_file'),
+  ]);
+  if (in_array($name, $branding, true)) return true;
+
+  $photo = row('SELECT is_public FROM photos WHERE filename = ?', [$name]);
+  if ((int) ($photo['is_public'] ?? 0) === 1) return true;
+  if (!$user) return false;
+  return !$photo || perm_allows($user, 'fotos');
+}
+
+/**
+ * Verkleinerte Fassung eines Bildes, beim ersten Abruf erzeugt und danach
+ * wiederverwendet. Die Galerie zeigt Kacheln von 160 bis 230 Pixeln, lud
+ * bisher aber die Originale — bei hundert Fotos ein Vielfaches der nötigen
+ * Datenmenge. Fehlt die Bildbibliothek, gibt es eben das Original.
+ */
+function thumb_file(string $name, int $width = 480): ?string {
+  $source = UPLOADS_DIR . '/' . $name;
+  if (!is_file($source) || !function_exists('imagecreatetruecolor')) return null;
+
+  $dir = DATA_DIR . '/thumbs';
+  if (!is_dir($dir)) @mkdir($dir, 0700, true);
+  $target = $dir . '/' . $width . '_' . preg_replace('~[^\w.\-]~', '_', $name) . '.jpg';
+  if (is_file($target) && filemtime($target) >= filemtime($source)) return $target;
+
+  $info = @getimagesize($source);
+  if (!$info) return null;
+  $img = match ($info['mime']) {
+    'image/jpeg' => @imagecreatefromjpeg($source),
+    'image/png'  => @imagecreatefrompng($source),
+    'image/gif'  => @imagecreatefromgif($source),
+    'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
+    default      => false,
+  };
+  if (!$img) return null;
+
+  // Kleinere Bilder werden nicht künstlich vergrößert
+  $scale = min(1, $width / max(1, imagesx($img)));
+  $w = max(1, (int) round(imagesx($img) * $scale));
+  $h = max(1, (int) round(imagesy($img) * $scale));
+  $small = imagecreatetruecolor($w, $h);
+  imagecopyresampled($small, $img, 0, 0, 0, 0, $w, $h, imagesx($img), imagesy($img));
+  imagejpeg($small, $target, 82);
+  imagedestroy($small);
+  imagedestroy($img);
+  return is_file($target) ? $target : null;
+}
+
+/**
  * Symbol für den Startbildschirm. Hat die Band ein quadratisches Logo
  * hochgeladen, nimmt die App das; sonst das mitgelieferte Zeichen. Skaliert
  * wird nichts — GD fehlt auf manchen Servern, und ein verzerrtes Logo wäre

@@ -7,7 +7,8 @@
     var overlay = document.createElement('div');
     overlay.className = 'lightbox-overlay';
     var big = document.createElement('img');
-    big.src = img.src;
+    // Die Kachel zeigt eine verkleinerte Fassung; groß wird das Original geholt
+    big.src = img.dataset.full || img.src;
     big.alt = img.alt || '';
     overlay.appendChild(big);
     var caption = img.closest('figure') && img.closest('figure').querySelector('figcaption');

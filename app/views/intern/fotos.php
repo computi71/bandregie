@@ -13,7 +13,9 @@
 <div class="photo-grid large">
   <?php foreach ($photos as $photo): ?>
     <figure class="photo-admin">
-      <img src="/uploads/<?= e($photo['filename']) ?>" alt="<?= e($photo['caption']) ?>" loading="lazy">
+      <?php // Kachel lädt die verkleinerte Fassung; das Original zeigt erst die Lupe ?>
+      <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"
+           alt="<?= e($photo['caption']) ?>" loading="lazy">
       <figcaption>
         <?= $photo['caption'] ? e($photo['caption']) . ' · ' : '' ?><span class="muted"><?= e($photo['uploader'] ?? '') ?></span>
         <div class="row-buttons">

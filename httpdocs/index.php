@@ -172,6 +172,24 @@ if (preg_match('~^/download/(\d+)$~', $path, $m) && $method === 'GET') {
   file_serve($f);
 }
 
+// Verkleinerte Fassung für Galerien. Dieselbe Zugriffsprüfung wie beim
+// Original — eine Vorschau ist genauso privat wie das Bild selbst.
+if (preg_match('~^/thumb/([\w.\-]+)$~', $path, $m)) {
+  $name = basename($m[1]);
+  if (!is_file(UPLOADS_DIR . '/' . $name) || !may_see_upload(current_user(), $name)) {
+    http_response_code(404);
+    exit('Not found');
+  }
+  $small = thumb_file($name, 480) ?? UPLOADS_DIR . '/' . $name;
+  header('Content-Type: ' . ($small === UPLOADS_DIR . '/' . $name
+    ? (['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp']
+       [strtolower(pathinfo($name, PATHINFO_EXTENSION))] ?? 'application/octet-stream')
+    : 'image/jpeg'));
+  header('Cache-Control: private, max-age=86400');
+  readfile($small);
+  exit;
+}
+
 // Hochgeladene Bilder ausliefern (liegen außerhalb des Webroots).
 //
 // Nicht jedes Bild geht die Allgemeinheit etwas an: Logo, Hintergrund und
@@ -183,20 +201,8 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
   $file = UPLOADS_DIR . '/' . basename($m[1]);
   if (!is_file($file)) { http_response_code(404); exit('Not found'); }
 
-  $name = basename($m[1]);
-  $branding = array_filter([
-    setting('logo_file'), setting('background_file'), setting('favicon_file'),
-    setting('print_logo_file'), setting('print_watermark_file'),
-  ]);
-  $photo = row('SELECT is_public FROM photos WHERE filename = ?', [$name]);
-  $isPublic = in_array($name, $branding, true) || (int) ($photo['is_public'] ?? 0) === 1;
-
-  if (!$isPublic) {
-    $viewer = current_user();
-    // Wer nicht angemeldet ist, erfährt nicht einmal, dass es die Datei gibt
-    if (!$viewer) { http_response_code(404); exit('Not found'); }
-    if ($photo && !perm_allows($viewer, 'fotos')) { http_response_code(404); exit('Not found'); }
-  }
+  // Wer nichts sehen darf, erfährt nicht einmal, dass es die Datei gibt
+  if (!may_see_upload(current_user(), basename($m[1]))) { http_response_code(404); exit('Not found'); }
   $mime = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp']
     [strtolower(pathinfo($file, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
   header("Content-Type: $mime");
