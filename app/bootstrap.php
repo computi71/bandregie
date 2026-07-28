@@ -348,6 +348,9 @@ const UI_STRINGS = [
   'fin_add' => 'Buchen', 'fin_all_years' => 'Alle Jahre',
   'fin_none' => 'Noch keine Buchungen.', 'fin_by_category' => 'Nach Kategorie',
   'fin_import_gage' => 'Gage übernehmen', 'fin_open_fees' => 'Noch nicht verbuchte Gagen',
+  'set_fin' => 'Bandkasse',
+  'set_fin_open_fees' => 'Noch nicht verbuchte Gagen anzeigen',
+  'set_fin_open_fees_hint' => 'Listet auf der Kassenseite alle Auftritte mit Gage, zu denen noch keine Einnahme gebucht ist — samt Knopf zum Übernehmen. Aus, solange ihr das nicht braucht.',
   'fincat_gage' => 'Gage', 'fincat_ausschuettung' => 'Ausschüttung',
   'fincat_einlage' => 'Einlage', 'fincat_merch' => 'Merch/Verkauf',
   'fincat_proberaum' => 'Proberaum', 'fincat_equipment' => 'Equipment', 'fincat_gema' => 'GEMA',
@@ -1086,6 +1089,8 @@ $defaults = [
   'backup_ftp_tls' => '1', 'backup_ftp_passive' => '1', 'backup_ftp_keep' => '14',
   // Ersatz wird von Hand angefragt, bis die Band etwas anderes einstellt
   'substitute_auto' => 'off',
+  // Die Liste der noch nicht verbuchten Gagen bleibt aus, bis jemand sie will
+  'fin_open_fees' => '0',
 ];
 // Neuinstallationen starten auf Englisch; bestehende Installationen behalten
 // Deutsch, damit ein Update ihre Seite nicht plötzlich umstellt.

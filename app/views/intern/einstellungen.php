@@ -147,6 +147,15 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
 </details>
 
 <details class="card acc" name="setacc">
+  <summary>💰 <?= e(t('set_fin')) ?></summary>
+  <form method="post" action="/intern/einstellungen/kasse" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2"><input type="checkbox" name="fin_open_fees" value="1" <?= setting('fin_open_fees') === '1' ? 'checked' : '' ?>> <?= e(t('set_fin_open_fees')) ?></label>
+    <p class="muted small span2"><?= e(t('set_fin_open_fees_hint')) ?></p>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+</details>
+
+<details class="card acc" name="setacc">
   <summary>🔁 <?= e(t('set_sub_auto')) ?></summary>
   <p class="muted small"><?= e(t('set_sub_auto_hint')) ?></p>
   <form method="post" action="/intern/einstellungen/ersatz" class="form-grid"><?= csrf_field() ?>

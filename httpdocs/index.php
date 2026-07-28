@@ -1536,11 +1536,14 @@ if (str_starts_with($path, '/intern')) {
       $filesByFinance[$f['entity_id']][] = $f;
     }
     // Gigs mit Gage, die noch nicht als Einnahme verbucht sind — erst ab
-    // Beginn des Kassenbuchs (ältere Gigs stecken im Übertrag)
-    $openFees = rows("SELECT e.* FROM events e WHERE e.type = 'gig' AND e.fee != '' AND e.status != 'abgesagt'
-                      AND e.date >= COALESCE((SELECT MIN(f2.date) FROM finances f2), '1000-01-01')
-                      AND NOT EXISTS (SELECT 1 FROM finances fi WHERE fi.event_id = e.id AND fi.type = 'einnahme')
-                      ORDER BY e.date DESC");
+    // Beginn des Kassenbuchs (ältere Gigs stecken im Übertrag). Wer die Liste
+    // abgeschaltet hat, für den wird sie auch nicht erst berechnet.
+    $openFees = setting('fin_open_fees') === '1'
+      ? rows("SELECT e.* FROM events e WHERE e.type = 'gig' AND e.fee != '' AND e.status != 'abgesagt'
+              AND e.date >= COALESCE((SELECT MIN(f2.date) FROM finances f2), '1000-01-01')
+              AND NOT EXISTS (SELECT 1 FROM finances fi WHERE fi.event_id = e.id AND fi.type = 'einnahme')
+              ORDER BY e.date DESC")
+      : [];
     view('intern/kasse', [
       'title' => t('fin_title'),
       'entries' => $entries,
@@ -1652,6 +1655,12 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_texts_saved'));
       redirect('/intern/einstellungen');
     }
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  if ($path === '/intern/einstellungen/kasse' && $method === 'POST') {
+    require_admin();
+    set_setting('fin_open_fees', isset($_POST['fin_open_fees']) ? '1' : '0');
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
