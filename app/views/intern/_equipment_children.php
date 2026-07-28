@@ -10,6 +10,7 @@
     <li>
       <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
       <button type="button" class="linklike" data-eqopen="eq-dlg-<?= $child['id'] ?>"><strong><?= e($child['name']) ?></strong></button>
+      <?php if (!empty($child['disposed_on'])): ?><span class="badge">📦 <?= e(sprintf(t('eqb_disposed_on'), fmt_date($child['disposed_on']))) ?></span><?php endif; ?>
       <?php if (eq_may_see_price($child, $user) && ($child['price_cents'] !== null || !empty($child['purchased_on']))): ?>
         <span class="muted small">🧾 <?= e(eq_purchase_label($child)) ?></span>
       <?php endif; ?>
