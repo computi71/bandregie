@@ -20,7 +20,9 @@
 <div class="card">
   <table class="table">
     <thead><tr>
-      <th style="width:4rem"><?= e(t('ch_number')) ?></th><th><?= e(t('ch_name')) ?></th>
+      <th style="width:4rem"><?= e(t('ch_number')) ?></th>
+      <th style="width:6rem"><?= e(t('ch_patch')) ?></th>
+      <th><?= e(t('ch_name')) ?></th>
       <th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th><th></th>
     </tr></thead>
     <tbody>
@@ -28,6 +30,7 @@
         <tr>
           <form method="post" action="/intern/kanaele/<?= $c['id'] ?>/update"><?= csrf_field() ?>
             <td><strong><?= (int) $c['number'] ?></strong></td>
+            <td><input name="patch" value="<?= e($c['patch']) ?>" style="width:100%" placeholder="<?= e(t('ch_patch_ph')) ?>"></td>
             <td><input name="name" value="<?= e($c['name']) ?>" style="width:100%"></td>
             <td><input name="source" value="<?= e($c['source']) ?>" style="width:100%" placeholder="z. B. SM57, DI"></td>
             <td><input name="notes" value="<?= e($c['notes']) ?>" style="width:100%"></td>
@@ -48,8 +51,9 @@
   <form method="post" action="/intern/kanaele/neu" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('ch_number')) ?><input type="number" name="number" min="1" max="128" required
       value="<?= $channels ? max(array_column($channels, 'number')) + 1 : 1 ?>"></label>
+    <label><?= e(t('ch_patch')) ?><input name="patch" placeholder="<?= e(t('ch_patch_ph')) ?>"></label>
     <label><?= e(t('ch_name')) ?><input name="name"></label>
-    <label><?= e(t('ch_source')) ?><input name="source"></label>
+    <label><?= e(t('ch_source')) ?><input name="source" placeholder="z. B. SM57, DI"></label>
     <label><?= e(t('notes')) ?><input name="notes"></label>
     <button class="btn btn-primary span2"><?= e(t('ch_add')) ?></button>
   </form>

@@ -1450,12 +1450,13 @@ if (str_starts_with($path, '/intern')) {
     }
     if (isset($_POST['replace'])) q('DELETE FROM channels');
     foreach ($found as $number => $channel) {
-      // Die Quelle nur setzen, wenn die Datei eine nennt — sonst stünde nach
-      // einem X32-Import überall eine leere Buchse statt der bisherigen.
-      if ($channel['source'] !== '') {
-        q('INSERT INTO channels (number, name, source) VALUES (?,?,?)
-           ON DUPLICATE KEY UPDATE name = VALUES(name), source = VALUES(source)',
-          [$number, $channel['name'], $channel['source']]);
+      // Den Eingang nur setzen, wenn die Datei ihn nennt — eine X32-Szene tut
+      // das nicht, und dann soll der bisherige stehen bleiben. Das Mikrofon
+      // fasst kein Import an: das weiß kein Pult, das weiß nur die Band.
+      if ($channel['patch'] !== '') {
+        q('INSERT INTO channels (number, name, patch) VALUES (?,?,?)
+           ON DUPLICATE KEY UPDATE name = VALUES(name), patch = VALUES(patch)',
+          [$number, $channel['name'], $channel['patch']]);
       } else {
         q('INSERT INTO channels (number, name) VALUES (?,?)
            ON DUPLICATE KEY UPDATE name = VALUES(name)', [$number, $channel['name']]);
@@ -1467,9 +1468,11 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/kanaele/neu' && $method === 'POST') {
     $number = (int) ($_POST['number'] ?? 0);
     if ($number > 0) {
-      q('INSERT INTO channels (number, name, source, notes) VALUES (?,?,?,?)
-         ON DUPLICATE KEY UPDATE name = VALUES(name), source = VALUES(source), notes = VALUES(notes)',
-        [$number, trim($_POST['name'] ?? ''), trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? '')]);
+      q('INSERT INTO channels (number, patch, name, source, notes) VALUES (?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE patch = VALUES(patch), name = VALUES(name),
+                                 source = VALUES(source), notes = VALUES(notes)',
+        [$number, trim($_POST['patch'] ?? ''), trim($_POST['name'] ?? ''),
+         trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? '')]);
       flash(t('fl_ch_saved'));
     }
     redirect('/intern/kanaele');
@@ -1479,8 +1482,9 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM channels WHERE id = ?', [$m[1]]);
       flash(t('fl_ch_deleted'));
     } else {
-      q('UPDATE channels SET name = ?, source = ?, notes = ? WHERE id = ?',
-        [trim($_POST['name'] ?? ''), trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? ''), $m[1]]);
+      q('UPDATE channels SET patch = ?, name = ?, source = ?, notes = ? WHERE id = ?',
+        [trim($_POST['patch'] ?? ''), trim($_POST['name'] ?? ''),
+         trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? ''), $m[1]]);
       flash(t('fl_ch_saved'));
     }
     redirect('/intern/kanaele');
@@ -1489,10 +1493,10 @@ if (str_starts_with($path, '/intern')) {
     require_once BASE_DIR . '/app/export.php';
     $rows = [];
     foreach (rows('SELECT * FROM channels ORDER BY number') as $c) {
-      $rows[] = [$c['number'], $c['name'], $c['source'], $c['notes']];
+      $rows[] = [$c['number'], $c['patch'], $c['name'], $c['source'], $c['notes']];
     }
     export_send('kanalbelegung-' . date('Y-m-d'),
-      [t('ch_number'), t('ch_name'), t('ch_source'), t('notes')], $rows);
+      [t('ch_number'), t('ch_patch'), t('ch_name'), t('ch_source'), t('notes')], $rows);
   }
 
   // ---------- Diskussionsthemen ----------

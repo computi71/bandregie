@@ -518,7 +518,9 @@ Gitarre: vorne rechts",
   'ch_import' => 'Aus Mischpult-Backup einlesen',
   'ch_import_hint' => 'Szene eines Behringer X32 oder Midas M32 (.scn) oder eine Momentaufnahme vom Behringer WING (.snap). Die WING-Datei bringt auch die Quelle mit, die X32-Szene nur die Beschriftung. Vorhandene Kanäle mit gleicher Nummer werden aktualisiert, eigene Notizen bleiben erhalten.',
   'ch_file' => 'Szenendatei', 'ch_replace' => 'Vorhandene Belegung vorher leeren',
-  'ch_number' => 'Kanal', 'ch_name' => 'Bezeichnung', 'ch_source' => 'Quelle / Mikrofon',
+  'ch_number' => 'Kanal', 'ch_name' => 'Bezeichnung', 'ch_source' => 'Mikrofon / DI',
+  'ch_patch' => 'Eingang',
+  'ch_patch_ph' => 'z. B. A1',
   'ch_add' => 'Kanal hinzufügen', 'ch_none' => 'Noch keine Kanäle — Szenendatei hochladen oder von Hand anlegen.',
   'ch_count' => 'Kanäle', 'ch_export' => 'Tabelle',
   'fl_ch_imported' => 'Kanäle eingelesen:', 'fl_ch_none_found' => 'In der Datei wurden keine Kanalnamen gefunden.',
@@ -1151,6 +1153,11 @@ if (!column_exists('finances', 'private_for')) {
 // „Gehört einem Mitglied" und „sieht nur dieses Mitglied" sind zweierlei:
 // eine Einzahlung gehört dem Einzahler und geht trotzdem alle an. Bestehende
 // Aufträge mit Besitzer waren bis dahin immer privat.
+// Der Stagebox-Eingang ist nicht das Mikrofon: „A1" sagt, wo das Signal
+// eingesteckt ist, „SM57" sagt, was es erzeugt. Ein Rider braucht beides.
+if (!column_exists('channels', 'patch')) {
+  $db->exec("ALTER TABLE channels ADD COLUMN patch VARCHAR(60) NOT NULL DEFAULT '' AFTER number");
+}
 // Ein Gerätekauf gehört in beide Richtungen verknüpft: die Buchung nennt das
 // Gerät, das Gerät zeigt seine Buchung.
 if (!column_exists('finances', 'equipment_id')) {

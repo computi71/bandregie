@@ -78,10 +78,10 @@ $blocks = [
   <?php if ($channels): ?>
     <h2><?= e(t('rider_inputs')) ?></h2>
     <table>
-      <thead><tr><th style="width:12mm"><?= e(t('ch_number')) ?></th><th><?= e(t('ch_name')) ?></th><th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th></tr></thead>
+      <thead><tr><th style="width:12mm"><?= e(t('ch_number')) ?></th><th><?= e(t('ch_patch')) ?></th><th><?= e(t('ch_name')) ?></th><th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th></tr></thead>
       <tbody>
         <?php foreach ($channels as $c): ?>
-          <tr><td><?= (int) $c['number'] ?></td><td><?= e($c['name']) ?></td><td><?= e($c['source']) ?></td><td><?= e($c['notes']) ?></td></tr>
+          <tr><td><?= (int) $c['number'] ?></td><td><?= e($c['patch']) ?></td><td><?= e($c['name']) ?></td><td><?= e($c['source']) ?></td><td><?= e($c['notes']) ?></td></tr>
         <?php endforeach; ?>
       </tbody>
     </table>
