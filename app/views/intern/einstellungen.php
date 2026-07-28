@@ -291,6 +291,9 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <label class="span2"><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">
       <span class="muted small"><?= e(t('set_tax_gwg_hint')) ?></span>
     </label>
+    <label><?= e(t('set_tax_comm_share')) ?><input name="tax_commercial_share" inputmode="decimal" value="<?= e(setting('tax_commercial_share', '3')) ?>"></label>
+    <label><?= e(t('set_tax_comm_abs')) ?><input name="tax_commercial_abs" inputmode="decimal" value="<?= e(setting('tax_commercial_abs', '24500')) ?>"></label>
+    <p class="muted small span2"><?= e(t('set_tax_comm_hint')) ?></p>
     <label class="span2"><?= e(t('set_tax_checked')) ?>
       <input type="date" name="tax_values_checked" value="<?= e(setting('tax_values_checked', '')) ?>">
     </label>

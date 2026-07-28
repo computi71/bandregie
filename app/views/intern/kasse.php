@@ -97,6 +97,26 @@ foreach ($entries as $en) {
     <?php endif; ?>
     <p class="muted small"><?= e(t('tax_counts_hint')) ?></p>
     <p class="muted small"><?= e(t('tax_gbr_hint')) ?></p>
+    <?php $comm = tax_commercial_status((int) date('Y')); ?>
+    <?php if ($comm && $comm['commercial'] > 0): ?>
+      <h3><?= e(t('tax_comm_title')) ?></h3>
+      <p class="muted small"><?= e(t('tax_comm_intro')) ?></p>
+      <ul class="task-list">
+        <li>
+          <strong><?= e(fmt_money($comm['commercial'])) ?></strong>
+          <span class="muted"><?= e(t('tax_comm_of')) ?> <?= fmt_money($comm['total']) ?>
+            = <?= number_format($comm['share'] * 100, 1, ',', '.') ?> %</span>
+          <span class="muted small">(<?= number_format($comm['limit_share'] * 100, 0) ?> % <?= e(t('tax_of')) ?>
+            <?= fmt_money($comm['limit_abs']) ?>)</span>
+        </li>
+      </ul>
+      <?php if ($comm['state'] !== 'ok'): ?>
+        <p class="<?= $comm['state'] === 'close' ? 'muted' : 'warn' ?>">
+          <strong><?= e(t('tax_comm_state_' . $comm['state'])) ?></strong>
+        </p>
+      <?php endif; ?>
+    <?php endif; ?>
+
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
   </div>
 <?php endif; ?>

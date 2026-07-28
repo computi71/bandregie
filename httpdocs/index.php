@@ -1747,7 +1747,8 @@ if (str_starts_with($path, '/intern')) {
     if (isset($_POST['_tax_form'])) {
       // Die Beträge kommen als Zahl mit Komma oder Punkt herein; price_to_cents
       // kennt beides, gespeichert wird wieder in Euro.
-      foreach (['tax_limit_prev_year', 'tax_limit_this_year', 'tax_gwg_limit'] as $taxKey) {
+      foreach (['tax_limit_prev_year', 'tax_limit_this_year', 'tax_gwg_limit',
+                'tax_commercial_share', 'tax_commercial_abs'] as $taxKey) {
         $cents = price_to_cents((string) ($_POST[$taxKey] ?? ''));
         if ($cents !== null && $cents >= 0) set_setting($taxKey, (string) round($cents / 100, 2));
       }

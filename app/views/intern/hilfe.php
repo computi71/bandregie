@@ -35,6 +35,12 @@
 
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
 
+    <h3><?= e(t('help_est_title')) ?></h3>
+    <p class="muted"><?= e(t('help_est_who')) ?></p>
+    <p class="muted"><?= e(t('help_est_euer')) ?></p>
+    <p class="muted"><?= e(t('help_est_merch')) ?></p>
+    <p class="muted"><?= e(t('help_est_hobby')) ?></p>
+
     <h3><?= e(t('help_tax_sources')) ?></h3>
     <p class="muted small"><?= e(sprintf(t('help_tax_checked'), fmt_date(setting('tax_values_checked')))) ?></p>
     <ul class="task-list">
@@ -44,6 +50,12 @@
         <span class="muted small"><?= e(t('help_tax_src_estg')) ?></span></li>
       <li><a href="https://www.bundesfinanzministerium.de/Content/DE/Standardartikel/Themen/Steuern/Weitere_Steuerthemen/Betriebspruefung/AfA-Tabellen/Ergaenzende-AfA-Tabellen/AfA-Tabelle_AV.html" rel="noopener" target="_blank">AfA-Tabelle AV</a>
         <span class="muted small"><?= e(t('help_tax_src_afa')) ?></span></li>
+      <li><a href="https://www.gesetze-im-internet.de/estg/__15.html" rel="noopener" target="_blank">§ 15 Abs. 3 EStG</a>
+        <span class="muted small"><?= e(t('help_est_src_est15')) ?></span></li>
+      <li><a href="https://www.gesetze-im-internet.de/estg/__18.html" rel="noopener" target="_blank">§ 18 EStG</a>
+        <span class="muted small"><?= e(t('help_est_src_est18')) ?></span></li>
+      <li><a href="https://www.bundesfinanzhof.de/en/entscheidungen/entscheidungen-online/decision-detail/STRE201510047/" rel="noopener" target="_blank">BFH VIII R 16/11</a>
+        <span class="muted small"><?= e(t('help_est_src_bfh')) ?></span></li>
     </ul>
   </details>
 <?php endif; ?>

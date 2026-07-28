@@ -85,3 +85,47 @@ function tax_values_stale(): bool {
   if ($checked === '') return true;
   return strtotime($checked) < strtotime('-1 year');
 }
+
+/**
+ * Kategorien, die als gewerblich gelten. Spielen ist künstlerisch, T-Shirts
+ * verkaufen ist Handel — und das färbt ab.
+ */
+const TAX_COMMERCIAL = ['merch'];
+
+/**
+ * Anteil des gewerblichen Umsatzes. Bei einer Personengesellschaft macht
+ * schon ein kleiner Handelsanteil alle Einkünfte gewerblich (§ 15 Abs. 3
+ * Nr. 1 EStG). Die Rechtsprechung lässt eine Bagatellgrenze zu, und die ist
+ * eng: unter 3 Prozent des Nettoumsatzes *und* unter 24.500 € im Jahr —
+ * beides, nicht eines von beiden.
+ *
+ * @return array{
+ *   total: int, commercial: int, share: float,
+ *   limit_share: float, limit_abs: int, state: string
+ * }|null  state: 'ok' | 'close' | 'over'
+ */
+function tax_commercial_status(int $year): ?array {
+  $total = tax_turnover($year);
+  if ($total <= 0) return null;
+
+  $marks = implode(',', array_fill(0, count(TAX_COMMERCIAL), '?'));
+  $row = row("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM finances
+              WHERE type = 'einnahme' AND private_for IS NULL
+                AND YEAR(date) = ? AND category IN ($marks)",
+             [$year, ...TAX_COMMERCIAL]);
+  $commercial = (int) ($row['total'] ?? 0);
+
+  $limitShare = (float) setting('tax_commercial_share', '3') / 100;
+  $limitAbs = (int) round((float) setting('tax_commercial_abs', '24500') * 100);
+  $share = $commercial / $total;
+
+  // Gerissen ist die Grenze, sobald *eine* der beiden nicht mehr hält.
+  $state = 'ok';
+  if ($share > $limitShare || ($limitAbs > 0 && $commercial > $limitAbs)) $state = 'over';
+  elseif ($share >= $limitShare * 0.8) $state = 'close';
+
+  return [
+    'total' => $total, 'commercial' => $commercial, 'share' => $share,
+    'limit_share' => $limitShare, 'limit_abs' => $limitAbs, 'state' => $state,
+  ];
+}
