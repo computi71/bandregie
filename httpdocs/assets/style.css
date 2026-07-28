@@ -248,7 +248,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 .task-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.7rem; padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
 .task-list li:last-child { border-bottom: 0; }
 .task-list li.done strong { text-decoration: line-through; color: var(--muted); }
-.check { background: none; border: none; color: var(--accent); font-size: 1.1rem; cursor: pointer; padding: 0; }
+/* Abhaken passiert oft im Stehen, mit dem Daumen: die Flaeche muss zu
+   treffen sein, auch wenn das Zeichen darin klein bleibt. */
+.check { background: none; border: none; color: var(--accent); font-size: 1.1rem; cursor: pointer;
+         padding: 0; min-width: 2.75rem; min-height: 2.75rem; display: inline-flex;
+         align-items: center; justify-content: center; }
 
 .setlist-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
 .setlist-name { font-size: 1.1rem; font-weight: 600; }
