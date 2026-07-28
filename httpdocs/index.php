@@ -1775,7 +1775,6 @@ if (str_starts_with($path, '/intern')) {
     }
     if (isset($_POST['_update_form'])) {
       set_setting('update_check', isset($_POST['update_check']) ? '1' : '0');
-      set_setting('about_donate', isset($_POST['about_donate']) ? '1' : '0');
       // Beim Einschalten gleich nachsehen, statt bis morgen zu warten.
       if (isset($_POST['update_check'])) set_setting('update_checked_at', '0');
       flash(t('fl_up_saved'));

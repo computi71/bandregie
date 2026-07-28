@@ -161,8 +161,7 @@ const UI_STRINGS = [
   'help_est_src_bfh' => '— die Bagatellgrenze aus der Rechtsprechung',
   'about_donate' => 'Trinkgeld',
   'about_donate_link' => 'für das Projekt',
-  'about_donate_note' => 'Bandroadie ist kostenlos und bleibt es. Wer trotzdem etwas dalassen mag, darf — nötig ist es nicht. Abschaltbar in den Einstellungen.',
-  'set_about_donate' => 'Hinweis auf Trinkgeld unter „Über" zeigen',
+  'about_donate_note' => 'Bandroadie ist kostenlos und bleibt es. Wer trotzdem etwas dalassen mag, darf — nötig ist es nicht.',
   'help_est_own_title' => 'Was beim einzelnen Musiker zählt',
   'help_est_own_taxed' => 'Versteuert wird der Anteil am Gewinn — auch wenn nichts ausgezahlt wurde. Spart die Band auf eine PA, hat niemand Geld gesehen und trotzdem erklärt jeder seinen Anteil. Das überrascht regelmäßig.',
   'help_est_own_costs' => 'Dagegen steht, was in den Zahlen der Band gar nicht vorkommt: das eigene Instrument samt Saiten und Zubehör, Fahrten zu Proben und Auftritten, Noten und Fachliteratur, ein Arbeitszimmer unter engen Voraussetzungen, Beiträge zur Künstlersozialkasse. Das gehört in die persönliche Erklärung.',
@@ -820,7 +819,8 @@ const PERM_ENTITY_MODULES = [
 const PERM_EXPLICIT_MODULES = ['kasse'];
 
 /**
- * Wohin ein Trinkgeld geht, wenn jemand eins geben mag. Leer lassen heißt:
+ * Wohin ein Trinkgeld geht. Steht beim Entwickler, weil damit die Person
+ * gemeint ist und nicht das Repository. Leer lassen heißt:
  * die Zeile erscheint nirgends — wer das Projekt weitergibt, muss keine
  * fremde Zahlungsadresse mitschleppen.
  */
@@ -1367,7 +1367,6 @@ $defaults = [
   // einer Versionsnummer, gesendet wird nichts über die Installation. Wer das
   // nicht will, schaltet es in den Einstellungen ab.
   'update_check' => '1', 'update_checked_at' => '0', 'update_latest' => '',
-  'about_donate' => '1',
   // Steuerliche Werte. Voreinstellung ist der deutsche Stand vom Juli 2026;
   // sie stehen hier, damit eine Band sie ändern kann, wenn der Gesetzgeber
   // sie ändert oder die Band anderswo sitzt. Aus ist die Grenzwarnung, bis
