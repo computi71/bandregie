@@ -200,6 +200,45 @@ able to deliver mail for your domain; send from an address on that domain
 Back up the database and the `data/` folder. Updating the code never touches
 either, but never overwrite `data/` or `app/config.php` when deploying.
 
+### Updating
+
+The application never updates itself. Giving the web server write access to
+its own code turns any future file-write bug into a permanent takeover, which
+is a poor trade for two saved seconds. *Settings → Update* shows the installed
+and the latest version and names the command for **your** installation.
+
+**Git checkout.** The shipped script backs up the database and `data/` first
+and refuses to continue if it cannot:
+
+```bash
+sh bin/update.sh
+```
+
+Run it as the user who owns the checkout. The backup runs as the web user, so
+either be that user or allow `sudo -u www-data` for it. Set `BANDROADIE_WEBUSER`
+if your web server runs as somebody else.
+
+To have it run by itself, put it in that user's crontab:
+
+```
+30 4 * * 1  sh /var/www/bandroadie/bin/update.sh >> /var/log/bandroadie-update.log 2>&1
+```
+
+**Plesk.** The deployed directory is not a git checkout — Plesk keeps the
+repository elsewhere and copies files into place, so `git pull` there would do
+nothing. Take a backup in the settings first, then:
+
+```bash
+plesk ext git --fetch -domain YOUR-DOMAIN -name bandroadie
+plesk ext git --deploy -domain YOUR-DOMAIN -name bandroadie
+```
+
+**Neither.** Copy the new files over the old ones, but never `data/` or
+`app/config.php` — and take a backup before you start.
+
+Database changes run on the next page view either way; there is no migration
+step to remember.
+
 ### Development
 
 For quick local work PHP's built-in server is enough — it needs no web server
