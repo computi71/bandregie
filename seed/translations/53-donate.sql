@@ -1,6 +1,10 @@
 -- A line on the about page saying where a tip can go.
 SET NAMES utf8mb4;
 
+-- Der Hinweis laesst sich nicht mehr abschalten; sein Schaltertext ist damit
+-- gegenstandslos. Seeds ueberschreiben nie, deshalb hier ausdruecklich weg.
+DELETE FROM translations WHERE tkey = 'set_about_donate';
+
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','about_donate','Tip jar'),
 ('en','about_donate_link','for the project'),
