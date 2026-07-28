@@ -1,13 +1,10 @@
 # Puts a "Sponsor" button at the top of the repository.
 #
-# Nothing is active yet — a fully commented file renders no button, so the
-# page stays as it is until a line below is filled in and uncommented.
-#
-# The quickest way is `custom` with any address you already have; it needs no
-# account anywhere and can be swapped for GitHub Sponsors later without
-# touching anything else.
+# `custom` takes any address and needs no account beyond the one you already
+# have. It can be swapped for GitHub Sponsors later without touching anything
+# else — the alternatives below stay commented out until then.
 
-# custom: ["https://paypal.me/YOUR-NAME"]
+custom: ["https://paypal.me/computi71"]
 
 # GitHub Sponsors — the button lives on GitHub and payments run through it.
 # Needs a one-time signup: identity check, bank details via Stripe, tax form.
