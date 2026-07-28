@@ -7,7 +7,7 @@
       <button class="btn btn-ghost"><?= e($topic['closed'] ? t('topic_reopen') : t('topic_close')) ?></button>
     </form>
     <?php if ((int) $topic['created_by'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-      <form class="inline" method="post" action="/intern/themen/<?= $topic['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
+      <form class="inline" method="post" action="/intern/themen/<?= $topic['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
       </form>
     <?php endif; ?>

@@ -122,7 +122,7 @@ foreach ($entries as $en) {
                   <button class="btn btn-tiny"><?= e(t('upload')) ?></button>
                 </form>
               </details>
-              <form class="inline" method="post" action="/intern/kasse/<?= $en['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+              <form class="inline" method="post" action="/intern/kasse/<?= $en['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
             <?php endif; ?>
           </td>
         </tr>

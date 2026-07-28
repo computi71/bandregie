@@ -32,7 +32,7 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
   </style>
 </head>
 <body>
-  <div class="toolbar"><button onclick="window.print()">🖨 Als PDF drucken</button></div>
+  <div class="toolbar"><button data-print>🖨 Als PDF drucken</button></div>
 
   <h1>Musikfolge (Setlist) für die GEMA-Meldung</h1>
 
@@ -83,5 +83,6 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
     Medleys sind mit „P" (Potpourri), Ausschnitte mit „F" (Fragment) zu kennzeichnen.
     Diese Liste dient als Vorlage/Beleg für die Meldung.
   </p>
+<script src="/assets/actions.js" defer></script>
 </body>
 </html>

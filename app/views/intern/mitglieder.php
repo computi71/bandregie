@@ -48,7 +48,7 @@
           </details>
         <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id']): ?>
-          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </span>
     </div>

@@ -41,7 +41,7 @@ $blocks = [
   </style>
 </head>
 <body>
-<div class="toolbar"><button onclick="window.print()">🖨 <?= e(t('sl_print')) ?></button></div>
+<div class="toolbar"><button data-print>🖨 <?= e(t('sl_print')) ?></button></div>
 <div class="sheet">
   <div class="head-row">
     <div>
@@ -99,5 +99,6 @@ $blocks = [
     </div>
   <?php endif; ?>
 </div>
+<script src="/assets/actions.js" defer></script>
 </body>
 </html>

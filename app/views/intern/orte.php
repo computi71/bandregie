@@ -58,7 +58,7 @@
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($v['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/orte/<?= $v['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')" class="inline"><?= csrf_field() ?>
+      <form method="post" action="/intern/orte/<?= $v['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
       </form>
     </details>

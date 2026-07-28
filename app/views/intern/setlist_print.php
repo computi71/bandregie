@@ -72,7 +72,7 @@ $fontFor = function (array $set): int {
   </style>
 </head>
 <body>
-  <div class="toolbar"><button onclick="window.print()">🖨 Drucken</button></div>
+  <div class="toolbar"><button data-print>🖨 Drucken</button></div>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
       <?php if ($watermark): ?>
@@ -105,5 +105,6 @@ $fontFor = function (array $set): int {
       </div>
     </div>
   <?php endforeach; ?>
+<script src="/assets/actions.js" defer></script>
 </body>
 </html>

@@ -34,7 +34,7 @@
             <td class="row-buttons">
               <button class="btn btn-tiny btn-primary">✓</button>
           </form>
-          <form class="inline" method="post" action="/intern/kanaele/<?= $c['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
+          <form class="inline" method="post" action="/intern/kanaele/<?= $c['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
             <button class="btn btn-tiny btn-danger">🗑</button>
           </form>
             </td>

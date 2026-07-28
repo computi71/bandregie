@@ -8,7 +8,7 @@
   <span class="muted small">— <?= e(t('cal_open_hint')) ?></span></p>
   <p class="muted small"><?= e(t('cal_copy_manual')) ?></p>
   <p><code id="ical-link"><?= e($icalUrl) ?></code>
-  <button class="btn btn-small" onclick="navigator.clipboard.writeText(document.getElementById('ical-link').textContent).then(() => this.textContent = '✔ <?= e(t('copied')) ?>')"><?= e(t('copy')) ?></button></p>
+  <button class="btn btn-small" data-copy="ical-link" data-copied="<?= e(t('copied')) ?>"><?= e(t('copy')) ?></button></p>
   <p class="warn"><?= e(t('cal_token_warn')) ?></p>
 </div>
 

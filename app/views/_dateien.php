@@ -21,7 +21,7 @@ $fmtSize = function (int $b): string {
         <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
         <?php if ((int) $f['uploaded_by'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-          <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+          <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </li>
     <?php endforeach; ?>

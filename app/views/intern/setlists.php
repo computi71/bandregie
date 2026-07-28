@@ -21,7 +21,7 @@
       <a class="btn btn-small btn-ghost" href="/intern/setlists/<?= $sl['id'] ?>/gema" target="_blank">🏛 GEMA</a>
       <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/copy"><?= csrf_field() ?><button class="btn btn-small btn-ghost"><?= e(t('copy')) ?></button></form>
       <?php if (!$sl['locked']): ?>
-        <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-small btn-danger"><?= e(t('delete')) ?></button></form>
+        <form class="inline" method="post" action="/intern/setlists/<?= $sl['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-small btn-danger"><?= e(t('delete')) ?></button></form>
       <?php endif; ?>
     </div>
   </div>

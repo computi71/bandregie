@@ -18,12 +18,13 @@ $today = date('Y-m-d');
 // soll auch auf einem Server sicher stehen, der das nicht tut. Die Regeln
 // erlauben nur eigene Inhalte; die Musikseite bettet YouTube und Spotify ein,
 // deshalb stehen genau diese beiden als Rahmenquellen darin.
-// 'unsafe-inline' ist nötig, solange Bestätigungsdialoge als onclick und
-// Druckansichten mit <style> im Dokument stehen — eingeschleuste Skripte von
-// fremden Adressen blockt die Regel trotzdem.
+// Skripte laufen ausschließlich aus eigenen Dateien: eingeschleuster Code im
+// Dokument wird nicht ausgeführt, selbst wenn er es je hineinschaffte. Für
+// Stile bleibt 'unsafe-inline' vorerst nötig, weil die Druckansichten ihr
+// Blattlayout im Dokument tragen — ein Stil kann keinen Code ausführen.
 if (!headers_sent()) {
   header("Content-Security-Policy: default-src 'self'; "
-    . "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+    . "script-src 'self'; style-src 'self' 'unsafe-inline'; "
     . "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
     . "frame-src https://www.youtube-nocookie.com https://open.spotify.com; "
     . "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'");

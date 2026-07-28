@@ -32,7 +32,7 @@
                     // ungültig — der Knopf schickt stattdessen seine Kennung mit. ?>
               <button class="btn btn-tiny btn-danger" name="remove" value="<?= $si['id'] ?>"
                       title="<?= e(t('delete')) ?>" formnovalidate
-                      onclick="return confirm('<?= e(t('confirm_delete')) ?>')">🗑</button>
+                      data-confirm="<?= e(t('confirm_delete')) ?>">🗑</button>
             </li>
           <?php endforeach; ?>
         </ul>
@@ -56,7 +56,7 @@
       </form>
     </details>
 
-    <form method="post" action="/intern/stagerider/plan/vorlage" class="inline" onsubmit="return <?= $stageItems ? "confirm('" . e(t('stage_replace_warn')) . "')" : 'true' ?>"><?= csrf_field() ?>
+    <form method="post" action="/intern/stagerider/plan/vorlage" class="inline" <?= $stageItems ? 'data-confirm="' . e(t('stage_replace_warn')) . '"' : '' ?>><?= csrf_field() ?>
       <button class="btn"><?= e(t('stage_from_members')) ?></button>
     </form>
     <p class="muted small"><?= e(t('stage_from_members_hint')) ?></p>

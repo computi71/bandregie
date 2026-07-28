@@ -61,7 +61,7 @@
           <td class="row-buttons">
             <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/edit">✏️</a>
             <?php if ($song['played_count'] == 0): ?>
-              <form class="inline" method="post" action="/intern/songs/<?= $song['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+              <form class="inline" method="post" action="/intern/songs/<?= $song['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
             <?php endif; ?>
           </td>
         </tr>

@@ -91,7 +91,7 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
               <?= $dl['notes'] ? ' · ' . e($dl['notes']) : '' ?>
             </span>
             <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/erledigt"><?= csrf_field() ?><button class="btn btn-tiny"><?= e(t('eq_done')) ?></button></form>
-            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/delete" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+            <form class="inline" method="post" action="/intern/equipment/frist/<?= $dl['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
           </li>
         <?php endforeach; ?>
       </ul>

@@ -239,11 +239,11 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
         <?php endif; ?>
         <?php if ($bkRun['message'] !== ''): ?><span class="muted small"><?= e($bkRun['message']) ?></span><?php endif; ?>
         <?php if ($bkRun['filename'] !== ''): ?>
-          <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/restore" class="inline" onsubmit="return confirm('<?= e(t('bk_restore_confirm')) ?>')"><?= csrf_field() ?>
+          <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/restore" class="inline" data-confirm="<?= e(t('bk_restore_confirm')) ?>"><?= csrf_field() ?>
             <button class="btn btn-tiny">⏪ <?= e(t('bk_restore')) ?></button>
           </form>
         <?php endif; ?>
-        <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/delete" class="inline" onsubmit="return confirm('<?= e(t('confirm_delete')) ?>')"><?= csrf_field() ?>
+        <form method="post" action="/intern/backup/<?= $bkRun['id'] ?>/delete" class="inline" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
           <button class="btn btn-tiny btn-danger">🗑</button>
         </form>
       </li>
@@ -266,7 +266,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <summary>🧪 <?= e(t('set_demo')) ?></summary>
   <?php if (demo_installed()): ?>
     <p class="muted small"><?= e(t('set_demo_active')) ?></p>
-    <form method="post" action="/intern/einstellungen/demo/remove" onsubmit="return confirm('<?= e(t('set_demo_confirm')) ?>')"><?= csrf_field() ?>
+    <form method="post" action="/intern/einstellungen/demo/remove" data-confirm="<?= e(t('set_demo_confirm')) ?>"><?= csrf_field() ?>
       <button class="btn btn-danger"><?= e(t('set_demo_remove')) ?></button>
     </form>
   <?php else: ?>
