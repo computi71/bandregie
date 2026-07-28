@@ -58,10 +58,10 @@ function demo_install_rows(): void {
   };
   $members = [];
   foreach ([
-    ['Lisa', 'Berg', 'Lisa', 'lisa@example.com', 'Gesang'],
-    ['Tom', 'Krause', 'Tommy', 'tom@example.com', 'Gitarre'],
+    ['Lisa', 'Berg', 'Lisa', 'lisa@example.com', 'Vocals'],
+    ['Tom', 'Krause', 'Tommy', 'tom@example.com', 'Guitar'],
     ['Ines', 'Adler', '', 'ines@example.com', 'Bass'],
-    ['Ben', 'Rauch', 'Benny', 'ben@example.com', 'Schlagzeug'],
+    ['Ben', 'Rauch', 'Benny', 'ben@example.com', 'Drums'],
   ] as [$first, $last, $stage, $mail, $instr]) {
     $members[] = demo_insert('users', [
       'name' => "$first $last", 'first_name' => $first, 'last_name' => $last,
@@ -77,33 +77,35 @@ function demo_install_rows(): void {
 
   // --- Veranstaltungsorte
   $venue1 = demo_insert('venues', [
-    'name' => 'Stadthalle Musterstadt', 'city' => 'Musterstadt',
-    'address' => "Hallenweg 3\n12345 Musterstadt",
-    'contact_name' => 'Frau Sommer', 'contact_email' => 'buehne@example.com',
+    'name' => 'Sampleton Town Hall', 'city' => 'Sampleton',
+    'address' => "3 Hall Lane
+12345 Sampleton",
+    'contact_name' => 'Ms Sommer', 'contact_email' => 'buehne@example.com',
     'contact_phone' => '0123 456789',
-    'notes' => 'Bühne 8 × 6 m, Strom 2 × 32 A, Parken direkt hinter der Halle.',
+    'notes' => 'Stage 8 × 6 m, power 2 × 32 A, parking right behind the hall.',
   ]);
   $venue2 = demo_insert('venues', [
-    'name' => 'Kulturscheune Beispieldorf', 'city' => 'Beispieldorf',
-    'address' => "Dorfstraße 1\n12346 Beispieldorf",
-    'contact_name' => 'Herr Winter', 'contact_email' => 'scheune@example.com',
+    'name' => 'Exampleton Barn', 'city' => 'Exampleton',
+    'address' => "1 Village Road
+12346 Exampleton",
+    'contact_name' => 'Mr Winter', 'contact_email' => 'scheune@example.com',
     'contact_phone' => '0123 987654',
-    'notes' => 'Kleine Bühne, eigene PA vorhanden. Anfahrt über den Feldweg.',
+    'notes' => 'Small stage, house PA available. Access along the field track.',
   ]);
 
   // --- Songs (frei erfundene Titel, damit keine echten Rechte berührt werden)
   $songs = [];
   foreach ([
-    ['Sommerregen', 'Eigenkomposition', 'G', '128 BPM', 214, 'aktiv'],
-    ['Neonlicht', 'Eigenkomposition', 'Am', '140 BPM', 186, 'aktiv'],
-    ['Letzter Zug', 'Eigenkomposition', 'D', '96 BPM', 245, 'aktiv'],
-    ['Neue Ufer', 'Eigenkomposition', 'C', '132 BPM', 198, 'aktiv'],
-    ['Kalter Kaffee', 'Eigenkomposition', 'Em', '150 BPM', 172, 'aktiv'],
-    ['Zwischen den Zeilen', 'Eigenkomposition', 'F', '88 BPM', 262, 'aktiv'],
-    ['Rückenwind', 'Eigenkomposition', 'A', '160 BPM', 205, 'in_arbeit'],
-    ['Nachtschicht', 'Eigenkomposition', 'Bm', '118 BPM', 228, 'in_arbeit'],
-    ['Alte Straße', 'Eigenkomposition', 'G', '104 BPM', 190, 'vorschlag'],
-    ['Ohne Titel', 'Eigenkomposition', 'C', '', 0, 'vorschlag'],
+    ['Summer Rain', 'Own composition', 'G', '128 BPM', 214, 'aktiv'],
+    ['Neon Light', 'Own composition', 'Am', '140 BPM', 186, 'aktiv'],
+    ['Last Train', 'Own composition', 'D', '96 BPM', 245, 'aktiv'],
+    ['New Shores', 'Own composition', 'C', '132 BPM', 198, 'aktiv'],
+    ['Cold Coffee', 'Own composition', 'Em', '150 BPM', 172, 'aktiv'],
+    ['Between the Lines', 'Own composition', 'F', '88 BPM', 262, 'aktiv'],
+    ['Tailwind', 'Own composition', 'A', '160 BPM', 205, 'in_arbeit'],
+    ['Night Shift', 'Own composition', 'Bm', '118 BPM', 228, 'in_arbeit'],
+    ['Old Road', 'Own composition', 'G', '104 BPM', 190, 'vorschlag'],
+    ['Untitled', 'Own composition', 'C', '', 0, 'vorschlag'],
   ] as [$title, $artist, $key, $tempo, $sec, $status]) {
     $songs[] = demo_insert('songs', [
       'title' => $title, 'artist' => $artist, 'song_key' => $key,
@@ -114,13 +116,13 @@ function demo_install_rows(): void {
 
   // --- Setlists: eine gespielte (wird durch den vergangenen Gig fixiert)
   //     und eine für den nächsten Auftritt, mit Pause und Zugabe
-  $slPast = demo_insert('setlists', ['name' => 'Sommerfest — gespielt', 'notes' => 'Ablauf wie besprochen.']);
+  $slPast = demo_insert('setlists', ['name' => 'Summer festival — as played', 'notes' => 'Running order as agreed.']);
   $pos = 1;
   foreach (array_slice($songs, 0, 6) as $sid) {
     demo_insert('setlist_songs', ['setlist_id' => $slPast, 'song_id' => $sid, 'is_break' => 0, 'position' => $pos++]);
   }
 
-  $slNext = demo_insert('setlists', ['name' => 'Nächster Auftritt', 'notes' => '']);
+  $slNext = demo_insert('setlists', ['name' => 'Next show', 'notes' => '']);
   $pos = 1;
   foreach (array_slice($songs, 0, 4) as $sid) {
     demo_insert('setlist_songs', ['setlist_id' => $slNext, 'song_id' => $sid, 'is_break' => 0, 'position' => $pos++]);
@@ -134,31 +136,31 @@ function demo_install_rows(): void {
 
   // --- Termine: vergangener Gig (fixiert), kommender Gig, Probe, Besprechung
   $evPast = demo_insert('events', [
-    'type' => 'gig', 'title' => 'Sommerfest Musterstadt', 'date' => $d('-10 weeks'),
+    'type' => 'gig', 'title' => 'Summer Festival Sampleton', 'date' => $d('-10 weeks'),
     'time' => '20:00', 'time_meet' => '17:00', 'time_end' => '23:00',
-    'venue_id' => $venue1, 'location' => '', 'notes' => 'Lief gut, Zugabe war gewünscht.',
+    'venue_id' => $venue1, 'location' => '', 'notes' => 'Went well, they asked for an encore.',
     'is_public' => 1, 'setlist_id' => $slPast, 'status' => 'bestaetigt',
     'fee' => '900 €', 'invoice_no' => 'R-2026-014', 'public_title' => '', 'public_link' => '', 'public_info' => '',
   ]);
   $evNext = demo_insert('events', [
-    'type' => 'gig', 'title' => 'Kulturscheune Beispieldorf', 'date' => $d('+6 weeks'),
+    'type' => 'gig', 'title' => 'Exampleton Barn', 'date' => $d('+6 weeks'),
     'time' => '21:00', 'time_meet' => '18:00', 'time_end' => '00:30',
-    'venue_id' => $venue2, 'location' => '', 'notes' => 'Eigene PA mitbringen, Backline steht.',
+    'venue_id' => $venue2, 'location' => '', 'notes' => 'Bring our own PA, backline is provided.',
     'is_public' => 1, 'setlist_id' => $slNext, 'status' => 'bestaetigt',
     'fee' => '750 €', 'invoice_no' => '', 'public_title' => '', 'public_link' => '',
-    'public_info' => 'Einlass 20 Uhr',
+    'public_info' => 'Doors at 8 pm',
   ]);
   demo_insert('events', [
-    'type' => 'probe', 'title' => 'Probe vor dem Auftritt', 'date' => $d('+2 weeks'),
+    'type' => 'probe', 'title' => 'Rehearsal before the show', 'date' => $d('+2 weeks'),
     'time' => '19:00', 'time_meet' => '', 'time_end' => '22:00', 'venue_id' => null,
-    'location' => 'Proberaum', 'notes' => 'Neue Songs durchgehen.', 'is_public' => 0,
+    'location' => 'Rehearsal room', 'notes' => 'Run through the new songs.', 'is_public' => 0,
     'setlist_id' => null, 'status' => 'bestaetigt', 'fee' => '', 'invoice_no' => '',
     'public_title' => '', 'public_link' => '', 'public_info' => '',
   ]);
   demo_insert('events', [
-    'type' => 'besprechung', 'title' => 'Bandbesprechung', 'date' => $d('+3 days'),
+    'type' => 'besprechung', 'title' => 'Band meeting', 'date' => $d('+3 days'),
     'time' => '19:30', 'time_meet' => '', 'time_end' => '21:00', 'venue_id' => null,
-    'location' => 'Proberaum', 'notes' => 'Planung Herbst, Merch, Fotoshooting.',
+    'location' => 'Rehearsal room', 'notes' => 'Autumn planning, merch, photo session.',
     'is_public' => 0, 'setlist_id' => null, 'status' => 'bestaetigt', 'fee' => '',
     'invoice_no' => '', 'public_title' => '', 'public_link' => '', 'public_info' => '',
   ]);
@@ -169,15 +171,15 @@ function demo_install_rows(): void {
   }
   demo_insert('comments', [
     'event_id' => $evNext, 'user_id' => $members[1],
-    'text' => 'Ich nehme den großen Verstärker mit, im Auto ist noch Platz für zwei Boxen.',
+    'text' => 'I will bring the big amp, there is room in the car for two cabs.',
   ]);
 
   // --- Aufgaben
   demo_insert('tasks', ['title' => 'Technik-Rider an den Veranstalter schicken', 'notes' => '',
     'assigned_to' => $members[0], 'due_date' => $d('+10 days'), 'status' => 'offen']);
-  demo_insert('tasks', ['title' => 'Neue Fotos für die Website aussuchen', 'notes' => 'Am besten vom Sommerfest.',
+  demo_insert('tasks', ['title' => 'Pick new photos for the website', 'notes' => 'Preferably from the summer festival.',
     'assigned_to' => $members[2], 'due_date' => $d('+3 weeks'), 'status' => 'offen']);
-  demo_insert('tasks', ['title' => 'Anhänger zur Prüfung anmelden', 'notes' => '',
+  demo_insert('tasks', ['title' => 'Book the trailer in for its test', 'notes' => '',
     'assigned_to' => null, 'due_date' => $d('-1 week'), 'status' => 'erledigt']);
 
   // --- Abwesenheit (erzeugt die Warnung beim Termin, falls sie zusammenfällt)
@@ -187,12 +189,12 @@ function demo_install_rows(): void {
   // --- Kasse
   $adminId = (int) (row("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")['id'] ?? 0) ?: null;
   foreach ([
-    [$d('-10 weeks'), 'einnahme', 90000, 'gage', 'Sommerfest Musterstadt', $evPast],
-    [$d('-10 weeks'), 'ausgabe', 60000, 'ausschuettung', 'Ausschüttung Sommerfest', $evPast],
-    [$d('-9 weeks'), 'einnahme', 4500, 'merch', 'Verkauf T-Shirts', null],
-    [$d('-8 weeks'), 'ausgabe', 12000, 'equipment', 'Neue Mikrofonkabel', null],
-    [$d('-6 weeks'), 'ausgabe', 15000, 'proberaum', 'Miete Proberaum (Quartal)', null],
-    [$d('-2 weeks'), 'ausgabe', 3200, 'verpflegung', 'Getränke für die Probe', null],
+    [$d('-10 weeks'), 'einnahme', 90000, 'gage', 'Summer Festival Sampleton', $evPast],
+    [$d('-10 weeks'), 'ausgabe', 60000, 'ausschuettung', 'Payout summer festival', $evPast],
+    [$d('-9 weeks'), 'einnahme', 4500, 'merch', 'T-shirt sales', null],
+    [$d('-8 weeks'), 'ausgabe', 12000, 'equipment', 'New microphone cables', null],
+    [$d('-6 weeks'), 'ausgabe', 15000, 'proberaum', 'Rehearsal room rent (quarterly)', null],
+    [$d('-2 weeks'), 'ausgabe', 3200, 'verpflegung', 'Drinks for the rehearsal', null],
   ] as [$date, $type, $cents, $cat, $desc, $ev]) {
     demo_insert('finances', ['date' => $date, 'type' => $type, 'amount_cents' => $cents,
       'category' => $cat, 'description' => $desc, 'event_id' => $ev, 'member_id' => null,
@@ -205,51 +207,51 @@ function demo_install_rows(): void {
   // Kanalnummer ist unsere. Beim Playback zeigt „A11–A12" ein Stereopaar —
   // ein Eingang, zwei Buchsen, ungerade und gerade.
   foreach ([
-    [1,  'A1',        'Bassdrum', 'Großmembran, dynamisch', ''],
-    [2,  'A2',        'Snare', 'Dynamisch, Clip-On', ''],
-    [3,  'A3',        'HiHat', 'Kleinmembran-Kondensator', 'Phantomspeisung +48 V'],
-    [4,  'A4',        'Tom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
-    [5,  'A5',        'Standtom', 'Clip-On Kondensator', 'Phantomspeisung +48 V'],
-    [6,  'A6',        'Overhead links', 'Kondensator', 'Phantomspeisung +48 V'],
-    [7,  'A7',        'Overhead rechts', 'Kondensator', 'Phantomspeisung +48 V'],
-    [8,  'A8',        'Bass', 'DI-Box', ''],
-    [9,  'A9',        'Gitarre', 'Dynamisch am Verstärker', ''],
-    [10, 'A10',       'Gesang Lisa', 'Gesangsmikrofon', ''],
-    [11, 'A13',       'Gesang Tom', 'Gesangsmikrofon', ''],
-    [12, 'A11–A12',   'Playback', 'Stereo-DI vom Laptop', 'nur bei zwei Songs'],
+    [1,  'A1',        'Kick drum', 'Large diaphragm, dynamic', ''],
+    [2,  'A2',        'Snare', 'Dynamic, clip-on', ''],
+    [3,  'A3',        'HiHat', 'Small diaphragm condenser', 'Phantom power +48 V'],
+    [4,  'A4',        'Tom', 'Clip-on condenser', 'Phantom power +48 V'],
+    [5,  'A5',        'Floor tom', 'Clip-on condenser', 'Phantom power +48 V'],
+    [6,  'A6',        'Overhead left', 'Condenser', 'Phantom power +48 V'],
+    [7,  'A7',        'Overhead right', 'Condenser', 'Phantom power +48 V'],
+    [8,  'A8',        'Bass', 'DI box', ''],
+    [9,  'A9',        'Guitar', 'Dynamic at the amp', ''],
+    [10, 'A10',       'Vocals Lisa', 'Vocal microphone', ''],
+    [11, 'A13',       'Vocals Tom', 'Vocal microphone', ''],
+    [12, 'A11–A12',   'Playback', 'Stereo DI from the laptop', 'only on two songs'],
   ] as [$number, $patch, $name, $source, $chNotes]) {
     demo_insert('channels', ['number' => $number, 'patch' => $patch, 'name' => $name,
                              'source' => $source, 'notes' => $chNotes]);
   }
 
   // --- Equipment mit Fristen
-  $eqTrailer = demo_insert('equipment', ['name' => 'Bandanhänger', 'category' => 'transport',
-    'owner_id' => null, 'location' => 'Hof am Proberaum', 'is_standard' => 1,
-    'notes' => 'Kennzeichen im Handschuhfach, Ersatzrad hinten links.']);
-  demo_insert('equipment_deadlines', ['equipment_id' => $eqTrailer, 'title' => 'Hauptuntersuchung',
+  $eqTrailer = demo_insert('equipment', ['name' => 'Band trailer', 'category' => 'transport',
+    'owner_id' => null, 'location' => 'Yard at the rehearsal room', 'is_standard' => 1,
+    'notes' => 'Registration in the glovebox, spare wheel rear left.']);
+  demo_insert('equipment_deadlines', ['equipment_id' => $eqTrailer, 'title' => 'Roadworthiness test',
     'due_date' => $d('+5 weeks'), 'interval_months' => 24, 'notes' => '']);
-  demo_insert('equipment_deadlines', ['equipment_id' => $eqTrailer, 'title' => 'Versicherung',
+  demo_insert('equipment_deadlines', ['equipment_id' => $eqTrailer, 'title' => 'Insurance',
     'due_date' => $d('+4 months'), 'interval_months' => 12, 'notes' => '']);
-  $eqPa = demo_insert('equipment', ['name' => 'PA-Anlage (2 Tops, 2 Subs)', 'category' => 'pa',
-    'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
-    'notes' => 'Reicht bis etwa 300 Gäste.']);
-  demo_insert('equipment', ['name' => 'Lichtset mit Stativen', 'category' => 'licht',
-    'owner_id' => $members[3], 'location' => 'bei Ben', 'is_standard' => 0, 'notes' => '',
+  $eqPa = demo_insert('equipment', ['name' => 'PA system (2 tops, 2 subs)', 'category' => 'pa',
+    'owner_id' => null, 'location' => 'Rehearsal room', 'is_standard' => 1,
+    'notes' => 'Enough for about 300 people.']);
+  demo_insert('equipment', ['name' => 'Light set with stands', 'category' => 'licht',
+    'owner_id' => $members[3], 'location' => 'at Ben''s', 'is_standard' => 0, 'notes' => '',
     'purchased_on' => $d('-3 years'), 'price_cents' => 89000]);
 
   // Ein Koffer mit Inhalt zeigt, wie Bestandteile funktionieren: Besitzer und
   // Lagerort erben sie vom Koffer, eigene Angaben brauchen sie nicht.
-  $eqCase = demo_insert('equipment', ['name' => 'Mikrofonkoffer', 'category' => 'pa',
-    'owner_id' => $members[1], 'location' => 'Proberaum, Regal links', 'is_standard' => 1,
-    'notes' => 'Bitte nach dem Gig vollzählig zurücklegen.',
+  $eqCase = demo_insert('equipment', ['name' => 'Microphone case', 'category' => 'pa',
+    'owner_id' => $members[1], 'location' => 'Rehearsal room, left shelf', 'is_standard' => 1,
+    'notes' => 'Please put them all back after the gig.',
     'purchased_on' => $d('-2 years'), 'price_cents' => 12900]);
   $mics = [
-    ['Gesangsmikrofon', 'Kanal 1', 11900],
-    ['Gesangsmikrofon', 'Kanal 2', 11900],
-    ['Bassdrum-Mikrofon', 'Kanal 3', 21900],
-    ['Snare-Mikrofon', 'Kanal 4', 9900],
-    ['Overhead links', 'Kanal 5', 14900],
-    ['Overhead rechts', 'Kanal 6', 14900],
+    ['Vocal microphone', 'Channel 1', 11900],
+    ['Vocal microphone', 'Channel 2', 11900],
+    ['Kick drum microphone', 'Channel 3', 21900],
+    ['Snare microphone', 'Channel 4', 9900],
+    ['Overhead left', 'Channel 5', 14900],
+    ['Overhead right', 'Channel 6', 14900],
   ];
   foreach ($mics as [$micName, $micSlot, $micPrice]) {
     demo_insert('equipment', ['name' => $micName, 'category' => 'pa',
@@ -261,32 +263,32 @@ function demo_install_rows(): void {
   // Vier Ebenen zeigen, dass die Verschachtelung nicht bei den Bestandteilen
   // aufhört: im Rack steckt ein Empfänger, dazu gehört ein Handsender, und in
   // dem sitzt eine Kapsel.
-  $eqRack = demo_insert('equipment', ['name' => 'Funkrack', 'category' => 'pa',
-    'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
-    'notes' => 'Antennen vor dem Aufbau ausklappen.',
+  $eqRack = demo_insert('equipment', ['name' => 'Wireless rack', 'category' => 'pa',
+    'owner_id' => null, 'location' => 'Rehearsal room', 'is_standard' => 1,
+    'notes' => 'Fold out the antennas before setting up.',
     'purchased_on' => $d('-18 months'), 'price_cents' => 24900]);
-  $eqRx = demo_insert('equipment', ['name' => 'Funkempfänger', 'category' => 'pa',
+  $eqRx = demo_insert('equipment', ['name' => 'Wireless receiver', 'category' => 'pa',
     'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
     'parent_id' => $eqRack, 'slot' => 'HE 1',
     'purchased_on' => $d('-18 months'), 'price_cents' => 39900]);
-  $eqTx = demo_insert('equipment', ['name' => 'Handsender', 'category' => 'pa',
+  $eqTx = demo_insert('equipment', ['name' => 'Handheld transmitter', 'category' => 'pa',
     'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
-    'parent_id' => $eqRx, 'slot' => 'Kanal A',
+    'parent_id' => $eqRx, 'slot' => 'Channel A',
     'purchased_on' => $d('-18 months'), 'price_cents' => 21900]);
-  demo_insert('equipment', ['name' => 'Mikrofonkapsel', 'category' => 'pa',
+  demo_insert('equipment', ['name' => 'Microphone capsule', 'category' => 'pa',
     'owner_id' => null, 'location' => '', 'is_standard' => 0,
-    'notes' => 'Nierencharakteristik.', 'parent_id' => $eqTx, 'slot' => '',
+    'notes' => 'Cardioid pattern.', 'parent_id' => $eqTx, 'slot' => '',
     'purchased_on' => $d('-18 months'), 'price_cents' => 9900]);
 
   // Die Kabelkiste ist selbst ein Gerät, kein Ortsname: die Kabel liegen
   // darin, so wie die Mikrofone im Koffer. Eingepackt wird die Kiste, nicht
   // sechs Kabel einzeln.
-  $eqCables = demo_insert('equipment', ['name' => 'Kabelkiste', 'category' => 'sonstiges',
-    'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
-    'notes' => 'Kabel nach dem Gig bitte aufgerollt zurücklegen.',
+  $eqCables = demo_insert('equipment', ['name' => 'Cable box', 'category' => 'sonstiges',
+    'owner_id' => null, 'location' => 'Rehearsal room', 'is_standard' => 1,
+    'notes' => 'Please coil the cables before putting them back.',
     'purchased_on' => $d('-14 months'), 'price_cents' => 4900]);
   for ($i = 1; $i <= 6; $i++) {
-    demo_insert('equipment', ['name' => 'XLR-Kabel 10 m #' . $i, 'category' => 'sonstiges',
+    demo_insert('equipment', ['name' => 'XLR cable 10 m #' . $i, 'category' => 'sonstiges',
       'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
       'parent_id' => $eqCables, 'slot' => '',
       'purchased_on' => $d('-14 months'), 'price_cents' => 1490]);
@@ -296,10 +298,10 @@ function demo_install_rows(): void {
   // das deutlichste Beispiel dafür, wofür der Besitzer da ist: den Kaufpreis
   // sieht nur, wem das Gerät gehört.
   foreach ([
-    [$members[1], 'E-Gitarre', 'bei Tom', '-4 years', 129000],
-    [$members[2], 'E-Bass', 'bei Ines', '-6 years', 98000],
-    [$members[3], 'Schlagzeug', 'Proberaum', '-8 years', 185000],
-    [$members[0], 'In-Ear-Strecke', 'bei Lisa', '-1 year', 54900],
+    [$members[1], 'Electric guitar', 'at Tom''s', '-4 years', 129000],
+    [$members[2], 'Electric bass', 'at Ines''s', '-6 years', 98000],
+    [$members[3], 'Drums', 'Rehearsal room', '-8 years', 185000],
+    [$members[0], 'In-ear system', 'at Lisa''s', '-1 year', 54900],
   ] as [$ownerId, $name, $where, $when, $price]) {
     demo_insert('equipment', ['name' => $name, 'category' => 'instrument',
       'owner_id' => $ownerId, 'location' => $where, 'is_standard' => 1, 'notes' => '',
@@ -353,12 +355,12 @@ Delete this file once you have finished looking around.
 /** Ein Gespräch im Bandbereich — sonst steht dort ein leerer Menüpunkt. */
 function demo_install_topics(array $members): void {
   $topic = demo_insert('topics', [
-    'title' => 'Merch für den Herbst', 'created_by' => $members[0], 'closed' => 0,
+    'title' => 'Merch for the autumn', 'created_by' => $members[0], 'closed' => 0,
   ]);
   foreach ([
-    [$members[0], 'Ich hätte gern T-Shirts für die nächsten Auftritte. Wer kümmert sich um Angebote?'],
-    [$members[1], 'Mach ich. Zwei Druckereien angefragt, Preise kommen diese Woche.'],
-    [$members[2], 'Bitte auch Beutel anfragen, die gehen auf kleinen Bühnen besser als Shirts.'],
+    [$members[0], 'I would like T-shirts for the next shows. Who can get us some quotes?'],
+    [$members[1], 'On it. Asked two printers, prices should come this week.'],
+    [$members[2], 'Ask about tote bags too — they sell better than shirts at small venues.'],
   ] as [$uid, $text]) {
     demo_insert('topic_posts', ['topic_id' => $topic, 'user_id' => $uid, 'text' => $text]);
   }
@@ -373,7 +375,7 @@ function demo_install_orders(array $members): void {
   $start = date('Y-m-d', strtotime('-3 months'));
   demo_insert('standing_orders', [
     'owner_id' => null, 'private' => 0, 'type' => 'ausgabe', 'amount_cents' => 5000,
-    'category' => 'proberaum', 'description' => 'Proberaummiete', 'interval_kind' => 'monthly',
+    'category' => 'proberaum', 'description' => 'Rehearsal room rent', 'interval_kind' => 'monthly',
     'start_date' => $start, 'next_date' => $start, 'created_by' => $members[0],
   ]);
   // Jedes Mitglied zahlt monatlich ein — genau dafür ist die
@@ -382,7 +384,7 @@ function demo_install_orders(array $members): void {
     $name = row('SELECT first_name, name FROM users WHERE id = ?', [$memberId]);
     demo_insert('standing_orders', [
       'owner_id' => $memberId, 'private' => 0, 'type' => 'einnahme', 'amount_cents' => 1500,
-      'category' => 'einlage', 'description' => 'Einzahlung ' . ($name['first_name'] ?: $name['name']),
+      'category' => 'einlage', 'description' => 'Deposit ' . ($name['first_name'] ?: $name['name']),
       'interval_kind' => 'monthly', 'start_date' => $start, 'next_date' => $start,
       'created_by' => $memberId,
     ]);
@@ -406,7 +408,7 @@ function demo_install_substitute(array $members, int $eventId, callable $pw): vo
   $sub = demo_insert('users', [
     'name' => 'Nora Falk', 'first_name' => 'Nora', 'last_name' => 'Falk', 'stage_name' => '',
     'email' => 'nora@example.com', 'password_hash' => $pw('nora@example.com'),
-    'role' => 'ersatz', 'instrument' => 'Gesang', 'must_change_pw' => 0,
+    'role' => 'ersatz', 'instrument' => 'Vocals', 'must_change_pw' => 0,
     'substitute_for' => $members[0], 'substitute_rank' => 1,
   ]);
   perm_apply_template($sub, 'ersatz');
@@ -421,7 +423,7 @@ function demo_install_photo(int $uploader): void {
   $name = 'foto_demo_' . bin2hex(random_bytes(8)) . '.jpg';
   if (!@copy($source, UPLOADS_DIR . '/' . $name)) return;
   demo_insert('photos', [
-    'filename' => $name, 'caption' => 'Sommerfest Musterstadt', 'is_public' => 1,
+    'filename' => $name, 'caption' => 'Summer Festival Sampleton', 'is_public' => 1,
     'uploaded_by' => $uploader,
   ]);
 }
@@ -442,13 +444,13 @@ function demo_install_stage_plot(array $memberIds): void {
   // Abstand zu den Musikern: zwei Beschriftungen übereinander liest niemand.
   // Die Standardaufstellung setzt Gesang auf 50/78, Gitarre 25/60,
   // Bass 22/25, Schlagzeug 50/12 — daran entlang.
-  $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 8, 'y' => 32, 'note' => ''];
-  $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 10, 'y' => 58, 'note' => ''];
+  $items[] = ['kind' => 'amp', 'label' => 'Bass amp', 'x' => 8, 'y' => 32, 'note' => ''];
+  $items[] = ['kind' => 'amp', 'label' => 'Guitar amp', 'x' => 10, 'y' => 58, 'note' => ''];
   $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 40, 'y' => 34, 'note' => ''];
   // Monitore stehen vor der Person, für die sie da sind — seitlich versetzt,
   // damit ihre Beschriftung nicht auf deren Instrumentenzeile fällt.
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 64, 'y' => 90, 'note' => 'Gesang'];
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 12, 'y' => 82, 'note' => 'Gitarre'];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 64, 'y' => 90, 'note' => 'Vocals'];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 12, 'y' => 82, 'note' => 'Guitar'];
   foreach ($items as $i => $item) {
     demo_insert('stage_items', $item + ['position' => $i]);
   }

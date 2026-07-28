@@ -792,9 +792,12 @@ function stage_default_items(array $members): array {
     $items[] = ['kind' => 'musiker', 'label' => $m['stage_name'] ?: $m['name'],
                 'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? '')];
   }
-  // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach
-  $items[] = ['kind' => 'strom', 'label' => 'Strom', 'x' => 8, 'y' => 8, 'note' => '230 V'];
-  $items[] = ['kind' => 'strom', 'label' => 'Strom', 'x' => 92, 'y' => 8, 'note' => '230 V'];
+  // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach.
+  // Die Beschriftung kommt aus den Übersetzungen: der Plan wird verschickt,
+  // und zwar an Veranstalter, die nicht zwingend Deutsch lesen.
+  $power = t('stagekind_strom');
+  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 8, 'y' => 8, 'note' => '230 V'];
+  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 92, 'y' => 8, 'note' => '230 V'];
   return $items;
 }
 
