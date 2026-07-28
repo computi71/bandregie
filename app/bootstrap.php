@@ -85,6 +85,7 @@ const UI_STRINGS = [
   'song_tempo_ph' => 'z. B. 120 BPM',
   'ev_fee_ph' => 'z. B. 800 €',
   'up_title' => 'Aktualisierung',
+  'up_out' => 'ist da',
   'up_available' => 'Fassung %s ist da',
   'up_intro' => 'Bandroadie aktualisiert sich nicht selbst. Dafür müsste der Webserver in sein eigenes Verzeichnis schreiben dürfen, und dann würde aus jeder Lücke, die einmal eine Datei schreiben lässt, eine dauerhafte Übernahme. Ein Befehl auf der Konsole kostet zwei Sekunden mehr und diesen Preis nicht.',
   'up_installed' => 'Installiert:', 'up_latest' => 'Neueste Fassung:', 'up_unknown' => 'nicht nachgesehen',

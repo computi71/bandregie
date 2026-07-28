@@ -11,6 +11,14 @@
   <?php if ($user && str_starts_with($path, '/intern')): ?>
     <div class="version small muted">
       <a href="/intern/ueber">Bandroadie v<?= e(BANDROADIE_VERSION) ?></a>
+      <?php // Nur für Admins, und nur wenn es wirklich etwas Neueres gibt —
+            // eine Klammer, in der die eigene Version steht, sagt nichts. ?>
+      <?php if (($user['role'] ?? '') === 'admin'): ?>
+        <?php require_once BASE_DIR . '/app/update.php'; ?>
+        <?php if (update_available()): ?>
+          <a class="warn" href="/intern/einstellungen">(<?= e(update_latest_version()) ?> <?= e(t('up_out')) ?>)</a>
+        <?php endif; ?>
+      <?php endif; ?>
     </div>
   <?php endif; ?>
 </footer>
