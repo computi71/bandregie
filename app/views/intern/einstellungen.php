@@ -14,6 +14,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_bandname')) ?><input name="band_name" value="<?= e($settings['band_name']) ?>" required></label>
     <label><?= e(t('set_contact_email')) ?><input type="email" name="contact_email" value="<?= e($settings['contact_email']) ?>"></label>
+    <label class="span2"><?= e(t('set_site_url')) ?>
+      <input name="site_url" value="<?= e($settings['site_url'] ?? '') ?>" placeholder="https://<?= e($_SERVER['HTTP_HOST'] ?? 'example.de') ?>">
+      <span class="muted small"><?= e(t('set_site_url_hint')) ?></span>
+    </label>
     <label class="span2"><?= e(t('set_copyright')) ?>
       <input name="copyright_text" value="<?= e($settings['copyright_text'] ?? '') ?>"
              placeholder="© <?= date('Y') ?> <?= e($settings['band_name']) ?>">

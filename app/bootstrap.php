@@ -413,6 +413,8 @@ const UI_STRINGS = [
   'rider_light_lbl' => 'Licht', 'rider_getin_lbl' => 'Anlieferung, Aufbau, Soundcheck',
   'rider_extras_lbl' => 'Sonstiges (Parken, Catering, Backstage)',
   // Bühnenplan
+  'set_site_url' => 'Feste Adresse dieser Installation',
+  'set_site_url_hint' => 'Wird für Links in E-Mails und im Kalender benutzt. Leer lassen heißt: aus der Anfrage übernehmen — eingetragen ist sicherer.',
   'app_description' => 'Termine, Setlists und Technik der Band — auch unterwegs.',
   'app_install' => 'Auf dem Handy installieren',
   'app_install_hint' => 'Im Browsermenü „Zum Startbildschirm hinzufügen" wählen. Danach startet Bandroadie wie eine App, und Termine, Setlists und Songs sind auch ohne Empfang da.',
@@ -1071,6 +1073,9 @@ $defaults = [
   'public_embed_mode' => 'consent',
   'public_mode' => 'website',
   'redirect_url' => '',
+  // Feste Adresse der Installation. Leer heißt „aus der Anfrage nehmen";
+  // eingetragen schützt sie Links in E-Mails vor einem gefälschten Host.
+  'site_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
   // Sicherungen sind aus, bis jemand sie einschaltet — sonst füllt eine
   // Installation ungefragt die Platte des Servers, auf dem sie liegt.
@@ -1385,7 +1390,24 @@ function can_finance(): bool {
 }
 
 function redirect(string $to): never { header("Location: $to"); exit; }
-function back(string $fallback): never { redirect($_SERVER['HTTP_REFERER'] ?? $fallback); }
+
+/**
+ * Zurück zur vorherigen Seite. Der Browser schickt dafür den Referer mit —
+ * der kommt aber von außen und darf nicht ungeprüft in die Weiterleitung.
+ * Sonst schickt eine fremde Seite Besucher über die eigene Adresse wieder zu
+ * sich selbst zurück und leiht sich so das Vertrauen in die Domain.
+ * Übernommen wird nur, was auf diese Installation zeigt.
+ */
+function back(string $fallback): never {
+  $ref = $_SERVER['HTTP_REFERER'] ?? '';
+  if ($ref === '') redirect($fallback);
+  $parts = parse_url($ref);
+  $host = $parts['host'] ?? '';
+  if ($host !== '' && $host !== ($_SERVER['HTTP_HOST'] ?? '')) redirect($fallback);
+  $target = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+  // Kein „//evil.example" — das wäre für den Browser wieder ein fremder Host
+  redirect(str_starts_with($target, '/') && !str_starts_with($target, '//') ? $target : $fallback);
+}
 function flash(string $msg): void { $_SESSION['flash'] = $msg; }
 
 function e(mixed $s): string { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
@@ -1627,9 +1649,22 @@ function content(string $key): string {
   }
   return setting($key);
 }
+/**
+ * Vollständige Adresse für Links in E-Mails und Kalenderdateien.
+ *
+ * Die Adresse aus dem Anfragekopf zu nehmen ist bequem, aber angreifbar:
+ * Wer beim Zurücksetzen eines Passworts einen fremden Host mitschickt,
+ * bekommt einen Link auf seine eigene Seite in die fremde Mail. Steht eine
+ * feste Adresse in den Einstellungen, gilt die; sonst wird der Host nur
+ * übernommen, wenn er wie ein Hostname aussieht.
+ */
 function absolute_url(string $path): string {
+  $fixed = setting('site_url');
+  if ($fixed !== '') return rtrim($fixed, '/') . $path;
   $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-  return $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $path;
+  $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+  if (!preg_match('~^[A-Za-z0-9.\-]+(:\d+)?$~', $host)) $host = 'localhost';
+  return $scheme . '://' . $host . $path;
 }
 function fmt_date(?string $iso): string {
   if (!$iso) return '';
