@@ -29,9 +29,21 @@
   </form>
 </details>
 
-<?php $eqValue = 0.0; foreach ($items as $it) $eqValue += (int) ($it['price_cents'] ?? 0); ?>
+<?php
+// Die Summe zählt nur, was der Betrachter auch sehen darf — fremde Preise
+// bleiben außen vor und die Summe gibt sich als Teilsumme zu erkennen,
+// statt sich als Gesamtwert auszugeben.
+$eqValue = 0; $eqHidden = 0;
+foreach ($items as $it) {
+  if (!eq_may_see_price($it, $user)) { $eqHidden++; continue; }
+  $eqValue += (int) ($it['price_cents'] ?? 0);
+}
+?>
 <?php if ($eqValue > 0): ?>
-  <p class="muted"><?= e(t('eq_value_sum')) ?>: <strong><?= e(fmt_money($eqValue)) ?></strong></p>
+  <p class="muted">
+    <?= e(t('eq_value_sum')) ?>: <strong><?= e(fmt_money($eqValue)) ?></strong>
+    <?php if ($eqHidden): ?><span class="small">(<?= e(t('eq_value_own_only')) ?>)</span><?php endif; ?>
+  </p>
 <?php endif; ?>
 
 <?php $lastCat = null; ?>
@@ -55,11 +67,11 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
       <?php if ($eq['is_standard']): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
       <span class="muted"><?= e(t('eq_owner')) ?>: <?= e($eq['owner_name'] ?: t('eq_owner_band')) ?></span>
       <?php if ($eq['location']): ?><span class="muted">📍 <?= e($eq['location']) ?></span><?php endif; ?>
-      <?php if ($eq['price_cents'] !== null || !empty($eq['purchased_on'])): ?>
+      <?php if (eq_may_see_price($eq, $user) && ($eq['price_cents'] !== null || !empty($eq['purchased_on']))): ?>
         <span class="muted">🧾 <?= e(eq_purchase_label($eq)) ?></span>
       <?php endif; ?>
       <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
-        <?php [$eqSum, $eqMissing] = eq_tree_value($eq, $items); ?>
+        <?php [$eqSum, $eqMissing] = eq_tree_value($eq, $items, $user); ?>
         <?php if ($eqSum > 0): ?>
           <span class="muted">Σ <?= e(t('eq_total')) ?>: <strong><?= e(fmt_money($eqSum)) ?></strong><?= $eqMissing ? ' <span class="small">(' . e(t('eq_total_partial')) . ')</span>' : '' ?></span>
         <?php endif; ?>

@@ -412,7 +412,9 @@ const UI_STRINGS = [
   'prod_eigene' => 'Eigenes Material', 'prod_leih' => 'Geliehen/Gemietet', 'prod_vorhanden' => 'Vor Ort vorhanden',
   'prod_none' => 'nicht festgelegt', 'prod_hint' => 'Angebote und Rechnungen kommen als Datei an den Termin.',
   'prod_gear' => 'Was nehmt ihr mit?', 'prod_gear_none' => 'Im Inventar steht noch nichts.',
-  'eq_total' => 'Gesamtwert', 'eq_total_partial' => 'ohne die Geräte ohne Preis',
+  'eq_total' => 'Gesamtwert', 'eq_total_partial' => 'ohne die Geräte ohne sichtbaren Preis',
+  'eq_value_own_only' => 'nur Bandeigentum und deine eigenen Geräte',
+  'eq_price_hidden' => 'Kaufpreis und Kaufdatum sieht nur, wem das Gerät gehört.',
   // Sicherungen
   'bk_title' => 'Sicherung', 'bk_enabled' => 'Regelmäßig sichern',
   'bk_interval' => 'Wie oft', 'bk_daily' => 'täglich', 'bk_weekly' => 'wöchentlich',
@@ -1818,6 +1820,17 @@ function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
 }
 
 /**
+ * Was ein Gerät gekostet hat und wann es gekauft wurde, geht die Band nur bei
+ * ihrem eigenen Material etwas an. Was jemandem persönlich gehört, sieht sein
+ * Besitzer — und die Verwaltung, die die Werte pflegen können muss.
+ */
+function eq_may_see_price(?array $eq, ?array $user): bool {
+  if (($user['role'] ?? '') === 'admin') return true;
+  if (empty($eq['owner_id'])) return true;
+  return (int) $eq['owner_id'] === (int) ($user['id'] ?? 0);
+}
+
+/**
  * Springt jemand nur ein? Die Rolle sagt es, und das Feld „vertritt" sagt es
  * auch — beides zählt, sonst hinge das Ergebnis davon ab, welche der beiden
  * Angaben gerade gepflegt wurde.
@@ -1855,19 +1868,21 @@ function eq_descendants(int $id, array $items): array {
 
 /**
  * Anschaffungswert eines Geräts samt allem, was darin steckt. Gibt Summe und
- * die Zahl der Geräte ohne Preis zurück — ohne Preis wird nicht als 0 gezählt,
- * sondern als „noch unvollständig" ausgewiesen.
+ * die Zahl der Geräte zurück, die nicht mitgezählt werden konnten — weil kein
+ * Preis eingetragen ist oder weil er dem Betrachter nicht zusteht. Beides
+ * heißt dasselbe: die Summe ist nicht der volle Wert und sagt das auch.
  *
- * @return array{0:int,1:int} Summe in Cent, Anzahl ohne Preis
+ * @return array{0:int,1:int} Summe in Cent, Anzahl der nicht gezählten Geräte
  */
-function eq_tree_value(array $eq, array $items): array {
+function eq_tree_value(array $eq, array $items, ?array $user): array {
   $byId = array_column($items, null, 'id');
   $sum = 0;
   $missing = 0;
   foreach ([(int) $eq['id'], ...eq_descendants((int) $eq['id'], $items)] as $id) {
     $item = $byId[$id] ?? null;
     if (!$item) continue;
-    if ($item['price_cents'] === null || $item['price_cents'] === '') $missing++;
+    if ($item['price_cents'] === null || $item['price_cents'] === ''
+        || !eq_may_see_price($item, $user)) $missing++;
     else $sum += (int) $item['price_cents'];
   }
   return [$sum, $missing];

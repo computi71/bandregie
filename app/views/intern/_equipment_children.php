@@ -10,12 +10,12 @@
     <li>
       <?php if ($child['slot']): ?><span class="badge"><?= e($child['slot']) ?></span><?php endif; ?>
       <button type="button" class="linklike" data-eqopen="eq-dlg-<?= $child['id'] ?>"><strong><?= e($child['name']) ?></strong></button>
-      <?php if ($child['price_cents'] !== null || !empty($child['purchased_on'])): ?>
+      <?php if (eq_may_see_price($child, $user) && ($child['price_cents'] !== null || !empty($child['purchased_on']))): ?>
         <span class="muted small">🧾 <?= e(eq_purchase_label($child)) ?></span>
       <?php endif; ?>
       <?php $subParts = $childrenOf[(int) $child['id']] ?? []; ?>
       <?php if ($subParts): ?>
-        <?php [$subSum, $subMissing] = eq_tree_value($child, $items); ?>
+        <?php [$subSum, $subMissing] = eq_tree_value($child, $items, $user); ?>
         <?php if ($subSum > 0): ?>
           <span class="muted small">Σ <?= e(fmt_money($subSum)) ?><?= $subMissing ? ' (' . e(t('eq_total_partial')) . ')' : '' ?></span>
         <?php endif; ?>

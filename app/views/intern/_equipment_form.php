@@ -8,6 +8,9 @@
 // gesperrt, entscheidend ist aber die Prüfung in der Route.
 $eqMayOwn = eq_may_edit_owner_fields($formEq, $user);
 $eqLock = $eqMayOwn ? '' : 'disabled';
+// Was jemand für sein Gerät bezahlt hat, steht auch nicht in einem gesperrten
+// Feld — ein gesperrtes Feld verbirgt nichts, es zeigt nur grau an.
+$eqSeePrice = eq_may_see_price($formEq, $user);
 ?>
 <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
   <label><?= e(t('name')) ?><input name="name" value="<?= e($formEq['name']) ?>" required></label>
@@ -36,8 +39,12 @@ $eqLock = $eqMayOwn ? '' : 'disabled';
   <?php if (!$eqMayOwn): ?>
     <p class="muted small span2">🔒 <?= e(t('eq_owner_locked')) ?></p>
   <?php endif; ?>
-  <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on" value="<?= e($formEq['purchased_on'] ?? '') ?>" <?= $eqLock ?>></label>
-  <label><?= e(t('eq_price')) ?><input type="number" name="price" step="0.01" min="0" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, '.', '')) : '' ?>" <?= $eqLock ?>></label>
+  <?php if ($eqSeePrice): ?>
+    <label><?= e(t('eq_purchased')) ?><input type="date" name="purchased_on" value="<?= e($formEq['purchased_on'] ?? '') ?>" <?= $eqLock ?>></label>
+    <label><?= e(t('eq_price')) ?><input type="number" name="price" step="0.01" min="0" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, '.', '')) : '' ?>" <?= $eqLock ?>></label>
+  <?php else: ?>
+    <p class="muted small span2">🔒 <?= e(t('eq_price_hidden')) ?></p>
+  <?php endif; ?>
   <label class="checkbox span2"><input type="checkbox" name="is_standard" value="1" <?= $formEq['is_standard'] ? 'checked' : '' ?>> 📦 <?= e(t('eq_standard')) ?></label>
   <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($formEq['notes']) ?></textarea></label>
   <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
