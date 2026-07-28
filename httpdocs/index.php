@@ -741,9 +741,11 @@ if (str_starts_with($path, '/intern')) {
       if (($_FILES['photos']['size'][$i] ?? 0) > 10 * 1024 * 1024) continue;
       $mime = mime_content_type($tmp) ?: '';
       if (!str_starts_with($mime, 'image/')) continue;
-      // Zufälliger Teil im Namen: die Zugriffsprüfung ist der Schutz, aber ein
-      // ratbarer Name wäre eine zweite Tür, falls sie je umgangen wird.
-      $safe = bin2hex(random_bytes(8)) . '_' . preg_replace('~[^\w.\-]+~', '_', $_FILES['photos']['name'][$i]);
+      // Der Name sagt nichts: die Zugriffsprüfung ist der Schutz, aber ein
+      // sprechender Name wäre eine zweite Tür, falls sie je umgangen wird.
+      // Wie die Datei ursprünglich hieß, steht in der Bildunterschrift.
+      $photoExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($_FILES['photos']['name'][$i], PATHINFO_EXTENSION) ?: 'jpg'));
+      $safe = 'foto_' . bin2hex(random_bytes(16)) . '.' . $photoExt;
       if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $safe)) {
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by) VALUES (?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id']]);
@@ -850,7 +852,13 @@ if (str_starts_with($path, '/intern')) {
         if (!is_uploaded_file($tmp)) continue;
         if (($_FILES['files']['size'][$i] ?? 0) > 20 * 1024 * 1024) { flash(t('fl_file_too_big')); continue; }
         $orig = $_FILES['files']['name'][$i];
-        $safe = 'file_' . time() . '_' . $i . '_' . preg_replace('~[^\w.\-]+~', '_', $orig);
+        // Der Zufallsanteil ist nicht die Zugriffsprüfung — die steht in der
+        // Route. Er sorgt nur dafür, dass Namen nichts verraten und sich
+        // nicht durchzählen lassen.
+        // Wie die Datei heißt, steht in original_name — auf der Platte muss
+        // es nicht noch einmal stehen.
+        $fileExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($orig, PATHINFO_EXTENSION)));
+        $safe = 'datei_' . bin2hex(random_bytes(16)) . ($fileExt !== '' ? '.' . $fileExt : '');
         if (move_uploaded_file($tmp, FILES_DIR . '/' . $safe)) {
           q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
             [$type, $entityId, $safe, $orig, $_FILES['files']['size'][$i], $me['id']]);

@@ -1317,6 +1317,14 @@ if (setting('translations_seed') !== $seedStamp) {
   set_setting('translations_seed', $seedStamp);
 }
 
+// Einmalig: Uploads aus der Zeit vor der Zugriffsprüfung tragen sprechende,
+// durchzählbare Namen. Als Migration und nicht als Skript, das jemand finden
+// muss — sonst behält eine Installation die alten Namen aus Versehen.
+if (setting('uploads_renamed') === '') {
+  uploads_randomise_names();
+  set_setting('uploads_renamed', date('Y-m-d'));
+}
+
 // Erster Start: Admin-Konto mit zufälligem Passwort anlegen. Das Passwort steht
 // einmalig in data/INITIAL-PASSWORD.txt (außerhalb des Webroots) und muss beim
 // ersten Login geändert werden — so werden keine festen Zugangsdaten ausgeliefert.
@@ -1918,6 +1926,37 @@ function eq_distinct_values(array $items, string $field): array {
   }
   sort($seen, SORT_NATURAL | SORT_FLAG_CASE);
   return $seen;
+}
+
+/**
+ * Private Uploads auf unerratbare Namen umstellen — einmalig.
+ *
+ * Vor der Zugriffsprüfung hießen Dateien nach ihrem Inhalt und ihrem Datum
+ * („foto_2025-06-14_003.jpg"). Erreichbar ist das heute nicht mehr, die Namen
+ * beschreiben aber weiter, was drinsteckt, und lassen sich durchzählen, sobald
+ * jemand eine Sitzung hat. Öffentliche Bilder — Logo, Hintergrund, Favicon —
+ * bleiben lesbar benannt, die sollen ja abgerufen werden.
+ *
+ * @return int Zahl der umbenannten Dateien
+ */
+function uploads_randomise_names(): int {
+  $done = 0;
+  foreach ([['photos', 'filename', UPLOADS_DIR, 'foto'],
+            ['users', 'avatar_file', UPLOADS_DIR, 'avatar'],
+            ['files', 'filename', FILES_DIR, 'datei']] as [$table, $column, $dir, $prefix]) {
+    foreach (rows("SELECT id, `$column` AS name FROM `$table` WHERE `$column` <> ''") as $r) {
+      if (!is_file($dir . '/' . $r['name'])) continue;
+      $ext = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($r['name'], PATHINFO_EXTENSION)));
+      $new = $prefix . '_' . bin2hex(random_bytes(16)) . ($ext !== '' ? '.' . $ext : '');
+      if (!@rename($dir . '/' . $r['name'], $dir . '/' . $new)) continue;
+      q("UPDATE `$table` SET `$column` = ? WHERE id = ?", [$new, $r['id']]);
+      $done++;
+    }
+  }
+  // Ein Vorschaubild trägt den Namen seiner Quelle im eigenen. Weg damit —
+  // beim nächsten Aufruf entsteht es neu.
+  foreach (glob(DATA_DIR . '/thumbs/*') ?: [] as $thumb) @unlink($thumb);
+  return $done;
 }
 
 /** Kaufpreis und -datum eines Geräts als eine lesbare Angabe. */
