@@ -1644,9 +1644,13 @@ if (str_starts_with($path, '/intern')) {
     }
     if (isset($_POST['_langs_form'])) {
       $chosen = array_values(array_intersect(array_keys(LANGS), (array) ($_POST['langs'] ?? [])));
-      if (!in_array('de', $chosen, true)) array_unshift($chosen, 'de');
+      // Die Standardsprache ist die Rückfallebene und damit immer aktiv —
+      // ihr Häkchen ist gesperrt und wird deshalb gar nicht erst gesendet.
+      // Eine neu gewählte Standardsprache schaltet sich selbst ein.
+      $newDefault = array_key_exists($_POST['default_lang'] ?? '', LANGS) ? $_POST['default_lang'] : default_lang();
+      if (!in_array($newDefault, $chosen, true)) array_unshift($chosen, $newDefault);
+      set_setting('default_lang', $newDefault);
       set_setting('enabled_langs', implode(',', $chosen));
-      if (in_array($_POST['default_lang'] ?? '', $chosen, true)) set_setting('default_lang', $_POST['default_lang']);
       unset($_SESSION['pub_lang']);
     }
     // Mehrsprachige Texte: alle Sprachen in einem Formular (txt[lang][feld]).

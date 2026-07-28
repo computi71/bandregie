@@ -127,18 +127,24 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
     <input type="hidden" name="_langs_form" value="1">
     <label class="span2"><?= e(t('set_default_lang')) ?>
+      <?php // Alle Sprachen zur Wahl: eine neu gewählte Standardsprache
+            // schaltet sich beim Speichern selbst ein. Sonst müsste man erst
+            // aktivieren, speichern und dann noch einmal auswählen. ?>
       <select name="default_lang">
-        <?php foreach ($activeLangs as $code): ?>
-          <option value="<?= $code ?>" <?= default_lang() === $code ? 'selected' : '' ?>><?= LANGS[$code] ?></option>
+        <?php foreach (LANGS as $code => $name): ?>
+          <option value="<?= $code ?>" <?= default_lang() === $code ? 'selected' : '' ?>><?= $name ?></option>
         <?php endforeach; ?>
       </select>
     </label>
     <p class="muted small span2"><?= e(t('set_default_lang_hint')) ?></p>
     <div class="span2 row-buttons">
+      <?php // Die Standardsprache lässt sich nicht abwählen — sie ist die
+            // Rückfallebene, wenn keine andere passt. ?>
       <?php foreach (LANGS as $code => $name): ?>
         <label class="checkbox">
-          <input type="checkbox" name="langs[]" value="<?= $code ?>" <?= in_array($code, $activeLangs, true) ? 'checked' : '' ?> <?= $code === 'de' ? 'disabled' : '' ?>>
+          <input type="checkbox" name="langs[]" value="<?= $code ?>" <?= in_array($code, $activeLangs, true) ? 'checked' : '' ?> <?= $code === default_lang() ? 'disabled' : '' ?>>
           <?= flag_svg($code) ?> <?= $name ?>
+          <?php if ($code === default_lang()): ?><span class="muted small">(<?= e(t('set_langs_default_locked')) ?>)</span><?php endif; ?>
         </label>
       <?php endforeach; ?>
     </div>

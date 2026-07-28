@@ -276,7 +276,8 @@ const UI_STRINGS = [
   'set_embed_consent' => 'Konform: Zwei-Klick-Einwilligung (empfohlen, DSGVO/TDDDG)',
   'set_embed_direct' => 'Direkt laden: ohne Einwilligung (rechtlich auf eigene Verantwortung)',
   'set_langs' => 'Sprachen',
-  'set_langs_hint' => 'Welche Sprachen im Auswahlmenü der Website erscheinen. Deutsch ist immer aktiv (Fallback).',
+  'set_langs_hint' => 'Welche Sprachen im Auswahlmenü der Website erscheinen. Die Standardsprache bleibt immer aktiv, alle anderen könnt ihr abschalten.',
+  'set_langs_default_locked' => 'Standardsprache',
   'set_default_lang' => 'Standardsprache',
   'set_default_lang_hint' => 'Besucher bekommen automatisch ihre Browsersprache, sofern sie hier aktiviert ist. Passt keine, gilt diese Standardsprache. Eingeloggte Mitglieder sehen ihre Sprache aus dem Profil.',
   'set_langs_check' => 'Übersetzungen prüfen und korrigieren',
@@ -1659,14 +1660,25 @@ function upload_rejected(int $errorCode): bool {
   return true;
 }
 
+/**
+ * Sprachen im Auswahlmenü. Die Standardsprache ist immer dabei — sonst
+ * hätte die Seite eine Rückfallebene, die niemand aufrufen kann. Alle
+ * anderen darf eine Band abschalten, auch Deutsch.
+ */
 function enabled_langs(): array {
   $langs = array_values(array_intersect(array_keys(LANGS), array_map('trim', explode(',', setting('enabled_langs', 'de')))));
-  if (!in_array('de', $langs, true)) array_unshift($langs, 'de');
+  $default = default_lang();
+  if (!in_array($default, $langs, true)) array_unshift($langs, $default);
   return $langs;
 }
+/**
+ * Die Standardsprache. Sie fragt bewusst nicht bei enabled_langs() nach —
+ * das prüft umgekehrt gegen sie, und beide würden sich sonst gegenseitig
+ * aufrufen.
+ */
 function default_lang(): string {
   $lang = setting('default_lang', 'de');
-  return in_array($lang, enabled_langs(), true) ? $lang : 'de';
+  return array_key_exists($lang, LANGS) ? $lang : 'de';
 }
 /** Wunschsprache aus dem Accept-Language-Header, sofern sie aktiviert ist. */
 function browser_lang(): ?string {
@@ -1692,7 +1704,7 @@ function current_lang(): string {
   foreach ([$_SESSION['pub_lang'] ?? null, browser_lang(), default_lang()] as $candidate) {
     if ($candidate !== null && in_array($candidate, enabled_langs(), true)) return $lang = $candidate;
   }
-  return $lang = 'de';
+  return $lang = default_lang();
 }
 function t(string $key): string {
   static $cache = null;
