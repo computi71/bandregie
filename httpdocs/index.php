@@ -1952,6 +1952,11 @@ if (str_starts_with($path, '/intern')) {
     require_admin();
     require_once BASE_DIR . '/app/demo.php';
     if ($m[1] === 'add') {
+      // Dass der Knopf verschwindet, ist die Anzeige. Geprüft wird hier.
+      if (demo_in_real_use()) {
+        flash(t('fl_demo_in_use'));
+        redirect('/intern/einstellungen');
+      }
       demo_install();
       flash(t('fl_demo_added'));
     } else {

@@ -10,6 +10,24 @@ declare(strict_types=1);
 // damit die Datei nicht davon abhängt, wer sie einbindet.
 require_once __DIR__ . '/dauerauftrag.php';
 
+/**
+ * Ist die Installation schon in Gebrauch? Sobald ein Mitglied oder ein Termin
+ * darin steht, den nicht die Demo angelegt hat, gehört sie einer Band — und
+ * dann darf man ihr nicht mehr mit einem Klick eine zweite hineinschütten.
+ *
+ * Das erste Admin-Konto zählt nicht: das legt die Installation selbst an.
+ */
+function demo_in_real_use(): bool {
+  foreach (['users', 'events'] as $table) {
+    $extra = $table === 'users' ? " AND t.role <> 'admin'" : '';
+    $row = row("SELECT COUNT(*) AS n FROM `$table` t
+                WHERE NOT EXISTS (SELECT 1 FROM demo_rows d WHERE d.table_name = ? AND d.row_id = t.id)$extra",
+               [$table]);
+    if ((int) ($row['n'] ?? 0) > 0) return true;
+  }
+  return false;
+}
+
 function demo_installed(): bool {
   return (int) (row('SELECT COUNT(*) AS n FROM demo_rows')['n'] ?? 0) > 0;
 }

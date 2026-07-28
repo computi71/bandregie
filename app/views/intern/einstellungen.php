@@ -366,6 +366,10 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <form method="post" action="/intern/einstellungen/demo/remove" data-confirm="<?= e(t('set_demo_confirm')) ?>"><?= csrf_field() ?>
       <button class="btn btn-danger"><?= e(t('set_demo_remove')) ?></button>
     </form>
+  <?php elseif (demo_in_real_use()): ?>
+    <?php // Entfernen bleibt oben stehen, solange etwas zu entfernen ist —
+          // hinzufügen gibt es nicht mehr, sobald die Installation benutzt wird. ?>
+    <p class="muted small"><?= e(t('set_demo_in_use')) ?></p>
   <?php else: ?>
     <p class="muted small"><?= e(t('set_demo_hint')) ?></p>
     <form method="post" action="/intern/einstellungen/demo/add"><?= csrf_field() ?>
