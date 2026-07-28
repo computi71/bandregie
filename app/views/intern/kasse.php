@@ -13,11 +13,15 @@
 // Summen und Kategorien zeigen die Bandkasse. Eigene private Buchungen
 // stehen zwar in der Liste, gehören aber nicht in die Bandzahlen — sie
 // bekommen ihre eigene Zeile.
-$sumIn = 0; $sumOut = 0; $byCat = []; $ownPrivate = 0;
+$sumIn = 0; $sumOut = 0; $byCat = []; $ownPrivate = 0; $ownByCat = [];
 $rentCost = 0; $deposits = 0;
 foreach ($entries as $en) {
   if ($en['private_for'] !== null) {
     $ownPrivate += $en['type'] === 'einnahme' ? $en['amount_cents'] : -$en['amount_cents'];
+    // Nach Kategorie sammeln: für die eigene Erklärung zählt nicht die Summe,
+    // sondern wofür es ausgegeben wurde.
+    $ownByCat[$en['category']][$en['type']] =
+      ($ownByCat[$en['category']][$en['type']] ?? 0) + $en['amount_cents'];
     continue;
   }
   if ($en['type'] === 'einnahme') $sumIn += $en['amount_cents']; else $sumOut += $en['amount_cents'];
@@ -70,6 +74,24 @@ foreach ($entries as $en) {
     </li>
   </ul>
 </div>
+<?php endif; ?>
+
+<?php if ($ownByCat): ?>
+  <div class="card">
+    <h2>🔒 <?= e(t('fin_own_title')) ?></h2>
+    <p class="muted small"><?= e(t('fin_own_hint')) ?></p>
+    <ul class="task-list">
+      <?php foreach ($ownByCat as $ownCat => $ownSums): ?>
+        <li>
+          <strong><?= e(fin_category_label($ownCat)) ?></strong>
+          <span class="muted small">
+            <?php if (!empty($ownSums['einnahme'])): ?>+<?= fmt_money($ownSums['einnahme']) ?><?php endif; ?>
+            <?php if (!empty($ownSums['ausgabe'])): ?> −<?= fmt_money($ownSums['ausgabe']) ?><?php endif; ?>
+          </span>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
 <?php endif; ?>
 
 <?php require_once BASE_DIR . '/app/steuer.php'; $tax = tax_small_business_status(); ?>

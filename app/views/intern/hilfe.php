@@ -41,6 +41,13 @@
     <p class="muted"><?= e(t('help_est_merch')) ?></p>
     <p class="muted"><?= e(t('help_est_hobby')) ?></p>
 
+    <h3><?= e(t('help_est_own_title')) ?></h3>
+    <p class="muted"><?= e(t('help_est_own_taxed')) ?></p>
+    <p class="muted"><?= e(t('help_est_own_costs')) ?></p>
+    <p class="muted"><?= e(t('help_est_own_km')) ?></p>
+    <p class="muted"><?= e(t('help_est_own_home')) ?></p>
+    <p class="muted"><?= e(t('help_est_own_ksk')) ?></p>
+
     <h3><?= e(t('help_tax_sources')) ?></h3>
     <p class="muted small"><?= e(sprintf(t('help_tax_checked'), fmt_date(setting('tax_values_checked')))) ?></p>
     <ul class="task-list">
@@ -56,6 +63,8 @@
         <span class="muted small"><?= e(t('help_est_src_est18')) ?></span></li>
       <li><a href="https://www.bundesfinanzhof.de/en/entscheidungen/entscheidungen-online/decision-detail/STRE201510047/" rel="noopener" target="_blank">BFH VIII R 16/11</a>
         <span class="muted small"><?= e(t('help_est_src_bfh')) ?></span></li>
+      <li><a href="https://www.kuenstlersozialkasse.de/kuenstler-und-publizisten/voraussetzungen" rel="noopener" target="_blank">Künstlersozialkasse</a>
+        <span class="muted small"><?= e(t('help_est_src_ksk')) ?></span></li>
     </ul>
   </details>
 <?php endif; ?>
