@@ -19,9 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Zur Bühnentechnik gehören zwei Zusätze, die nur zur jeweiligen Herkunft
-// passen: der Hinweis, wohin Angebote und Rechnungen gehören (bei Leihmaterial),
-// und die Packliste aus dem Inventar (bei eigenem Material).
+// Ein Zusatz hängt an der Herkunft der Technik: der Hinweis, wohin Angebote
+// und Rechnungen gehören. Er erscheint nur bei Leihmaterial.
+//
+// Die Packliste hängt nicht daran — sie richtet sich nach der Terminart und
+// wird oben mit den übrigen Feldern ein- und ausgeblendet.
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('form[data-eventfields]').forEach(form => {
     const sources = ['pa_source', 'light_source']
@@ -32,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const apply = () => {
       const values = sources.map(s => s.value);
       form.querySelectorAll('[data-prodhint]').forEach(el => { el.hidden = !values.includes('leih'); });
-      form.querySelectorAll('[data-prodgear]').forEach(el => { el.hidden = !values.includes('eigene'); });
     };
     sources.forEach(s => s.addEventListener('change', apply));
     apply();

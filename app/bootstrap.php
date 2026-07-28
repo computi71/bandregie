@@ -576,17 +576,25 @@ const FIN_CATEGORIES = [
 // Welche Felder bei welcher Termin-Art sinnvoll sind — der Rest wird im
 // Formular ausgeblendet. Die öffentliche Seite zeigt ausschließlich Gigs,
 // deshalb hat der öffentliche Block bei allen anderen Arten keine Wirkung.
+/**
+ * Welche Felder eine Terminart braucht.
+ *
+ * 'production' ist die Frage „woher kommen PA und Licht" — die stellt sich
+ * nur, wo beschallt wird. 'gear' ist die Packliste, also „was nehmen wir
+ * mit"; die stellt sich überall, wo etwas ins Auto geladen wird, auch bei
+ * einer Probe oder einer Aufnahme. Zwei Fragen, zwei Gruppen.
+ */
 const EVENT_TYPE_FIELDS = [
-  'gig'          => ['times', 'venue', 'setlist', 'fee', 'production', 'public'],
-  'party'        => ['times', 'venue', 'setlist', 'fee', 'production'],
-  'probe'        => ['times', 'venue', 'setlist'],
-  'aufnahme'     => ['times', 'venue', 'setlist'],
-  'fotoshooting' => ['times', 'venue'],
+  'gig'          => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
+  'party'        => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
+  'probe'        => ['times', 'venue', 'setlist', 'gear'],
+  'aufnahme'     => ['times', 'venue', 'setlist', 'gear'],
+  'fotoshooting' => ['times', 'venue', 'gear'],
   'besprechung'  => ['times', 'venue'],
-  'aufbau'       => ['times', 'venue', 'production'],
-  'reise'        => ['times'],
+  'aufbau'       => ['times', 'venue', 'production', 'gear'],
+  'reise'        => ['times', 'venue', 'gear'],
   'dayoff'       => [],
-  'sonstiges'    => ['times', 'venue', 'setlist', 'fee', 'production'],
+  'sonstiges'    => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
 ];
 
 /**

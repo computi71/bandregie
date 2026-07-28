@@ -1834,7 +1834,11 @@ function song_ratings(int $userId): array {
  */
 function save_event_gear(int $eventId): void {
   q('DELETE FROM event_equipment WHERE event_id = ?', [$eventId]);
-  if (!in_array('eigene', [$_POST['pa_source'] ?? '', $_POST['light_source'] ?? ''], true)) return;
+  // Nur Terminarten, die eine Packliste haben, bekommen auch eine. Ein
+  // ausgeblendetes Feld wird vom Browser trotzdem mitgeschickt — ohne diese
+  // Prüfung hinge an einem freien Tag plötzlich die PA.
+  $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
+  if (!in_array('gear', EVENT_TYPE_FIELDS[$type] ?? [], true)) return;
   foreach ((array) ($_POST['equipment'] ?? []) as $eqId) {
     if ((int) $eqId > 0) {
       // Nur, was es auch wirklich gibt — sonst zeigt die Packliste ins Leere

@@ -23,7 +23,11 @@ foreach ($equipment as $gearItem) $gearByParent[(int) $gearItem['parent_id']][] 
 </label>
 <div class="span2" data-eventfield="production">
   <p class="muted small" data-prodhint hidden>🧾 <?= e(t('prod_hint')) ?></p>
-  <fieldset class="gear-picker" data-prodgear hidden>
+</div>
+<?php // Die Packliste hängt an der Terminart, nicht daran, woher die PA kommt:
+      // ins Auto geladen wird auch für eine Probe oder eine Aufnahme. ?>
+<div class="span2" data-eventfield="gear">
+  <fieldset class="gear-picker">
     <legend>🎒 <?= e(t('prod_gear')) ?></legend>
     <?php if (!$equipment): ?>
       <p class="muted small"><?= e(t('prod_gear_none')) ?></p>
