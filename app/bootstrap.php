@@ -32,15 +32,26 @@ if (!is_file($configFile)) {
 }
 $config = require $configFile;
 
-$db = new PDO(
-  "mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4",
-  $config['db_user'],
-  $config['db_pass'],
-  [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  ]
-);
+// Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
+// Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
+// hilft dabei niemandem — die Meldung sagt, was zu tun ist, die Einzelheiten
+// gehen ins Fehlerprotokoll des Servers.
+try {
+  $db = new PDO(
+    "mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4",
+    $config['db_user'],
+    $config['db_pass'],
+    [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]
+  );
+} catch (PDOException $e) {
+  error_log('Bandroadie: Datenbankverbindung fehlgeschlagen — ' . $e->getMessage());
+  http_response_code(500);
+  exit('Keine Verbindung zur Datenbank. Bitte db_host, db_name, db_user und db_pass '
+     . 'in app/config.php prüfen; Einzelheiten stehen im Fehlerprotokoll des Servers.');
+}
 
 // Termin-Arten und -Status
 const EVENT_TYPES = [
