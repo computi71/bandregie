@@ -12,6 +12,31 @@
   <?php $helpFirst = false; ?>
 <?php endforeach; ?>
 
+<?php // Nur wer die Kasse sieht, und nur wenn die Band die Regelung nutzt —
+      // sonst erklärt die Hilfe etwas, das nirgends vorkommt. ?>
+<?php if (perm_allows($user, 'kasse') && setting('tax_small_business', '0') === '1'): ?>
+  <details class="card acc" name="helpacc">
+    <summary>⚖ <?= e(t('help_tax_title')) ?></summary>
+    <p class="muted"><?= e(t('help_tax_what')) ?></p>
+    <p class="muted"><?= e(t('help_tax_band')) ?></p>
+    <p class="muted"><?= e(t('help_tax_counts')) ?></p>
+    <p class="muted"><?= e(t('help_tax_over')) ?></p>
+    <p class="muted"><?= e(t('help_tax_gwg')) ?></p>
+    <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
+
+    <h3><?= e(t('help_tax_sources')) ?></h3>
+    <p class="muted small"><?= e(sprintf(t('help_tax_checked'), fmt_date(setting('tax_values_checked')))) ?></p>
+    <ul class="task-list">
+      <li><a href="https://www.gesetze-im-internet.de/ustg_1980/__19.html" rel="noopener" target="_blank">§ 19 UStG</a>
+        <span class="muted small"><?= e(t('help_tax_src_ustg')) ?></span></li>
+      <li><a href="https://www.gesetze-im-internet.de/estg/__6.html" rel="noopener" target="_blank">§ 6 Abs. 2 EStG</a>
+        <span class="muted small"><?= e(t('help_tax_src_estg')) ?></span></li>
+      <li><a href="https://www.bundesfinanzministerium.de/Content/DE/Standardartikel/Themen/Steuern/Weitere_Steuerthemen/Betriebspruefung/AfA-Tabellen/Ergaenzende-AfA-Tabellen/AfA-Tabelle_AV.html" rel="noopener" target="_blank">AfA-Tabelle AV</a>
+        <span class="muted small"><?= e(t('help_tax_src_afa')) ?></span></li>
+    </ul>
+  </details>
+<?php endif; ?>
+
 <details class="card acc" name="helpacc">
   <summary>📱 <?= e(t('app_install')) ?></summary>
   <p class="muted"><?= e(t('app_install_hint')) ?></p>
