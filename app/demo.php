@@ -438,12 +438,18 @@ function demo_install_stage_plot(array $memberIds): void {
   // sonst deren Namen auf die Bühne gestellt.
   if (!$memberIds || rows('SELECT id FROM stage_items LIMIT 1')) return;
   $marks = implode(',', array_fill(0, count($memberIds), '?'));
+  // Die Standardaufstellung beschriftet den Strom in der Sprache der Band —
+  // richtig für eine echte Installation, aber die Demoband spricht Englisch
+  // wie ihre übrigen Daten. Der Plan speichert Text, keine Schlüssel.
   $items = stage_default_items(
     rows("SELECT name, stage_name, instrument FROM users WHERE id IN ($marks) ORDER BY id", $memberIds)
   );
   // Abstand zu den Musikern: zwei Beschriftungen übereinander liest niemand.
   // Die Standardaufstellung setzt Gesang auf 50/78, Gitarre 25/60,
   // Bass 22/25, Schlagzeug 50/12 — daran entlang.
+  foreach ($items as $i => $item) {
+    if ($item['kind'] === 'strom') $items[$i]['label'] = 'Power';
+  }
   $items[] = ['kind' => 'amp', 'label' => 'Bass amp', 'x' => 8, 'y' => 32, 'note' => ''];
   $items[] = ['kind' => 'amp', 'label' => 'Guitar amp', 'x' => 10, 'y' => 58, 'note' => ''];
   $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 40, 'y' => 34, 'note' => ''];
