@@ -22,6 +22,16 @@
     <p class="muted"><?= e(t('help_tax_counts')) ?></p>
     <p class="muted"><?= e(t('help_tax_over')) ?></p>
     <p class="muted"><?= e(t('help_tax_gwg')) ?></p>
+    <h3><?= e(t('help_tax_offset_title')) ?></h3>
+    <p class="muted"><?= e(t('help_tax_offset_intro')) ?></p>
+    <ul class="task-list">
+      <li><?= e(t('help_tax_offset_deposit')) ?></li>
+      <li><?= e(t('help_tax_offset_payout')) ?></li>
+      <li><?= e(t('help_tax_offset_private')) ?></li>
+      <li><?= e(t('help_tax_offset_gwg')) ?></li>
+    </ul>
+    <p class="muted"><?= e(t('help_tax_levels')) ?></p>
+
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
 
     <h3><?= e(t('help_tax_sources')) ?></h3>
