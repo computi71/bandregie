@@ -91,14 +91,20 @@
           <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
         </form>
       </details>
-      <?php if ($mFull['role'] !== 'admin'): ?>
+      <?php
+        // Bei einem Admin steht nur zur Wahl, was auch ein Admin nicht von
+        // selbst hat — die Kasse. Sonst wäre sie an niemanden zu vergeben,
+        // der die Band verwaltet.
+        $permIsAdmin = $mFull['role'] === 'admin';
+        $permModuleList = $permIsAdmin ? PERM_EXPLICIT_MODULES : array_keys(PERM_MODULES);
+      ?>
         <details class="subsection">
           <summary>🔑 <?= e(t('perm_title')) ?></summary>
-          <p class="muted small"><?= e(t('perm_intro')) ?></p>
+          <p class="muted small"><?= e($permIsAdmin ? t('perm_admin_all') : t('perm_intro')) ?></p>
           <?php $mine = $perms[(int) $m['id']] ?? []; ?>
           <form method="post" action="/intern/rechte/<?= $m['id'] ?>"><?= csrf_field() ?>
             <ul class="perm-list">
-              <?php foreach (array_keys(PERM_MODULES) as $mod): ?>
+              <?php foreach ($permModuleList as $mod): ?>
                 <?php $canRead = (int) ($mine[$mod]['can_read'] ?? 0); $canWrite = (int) ($mine[$mod]['can_write'] ?? 0); ?>
                 <li>
                   <span class="perm-name"><?= e(t('inav_' . $mod)) ?></span>
@@ -109,15 +115,14 @@
             </ul>
             <div class="row-buttons">
               <button class="btn btn-primary"><?= e(t('save')) ?></button>
-              <button class="btn btn-ghost" name="template" value="member"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_member')) ?></button>
-              <button class="btn btn-ghost" name="template" value="ersatz"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_ersatz')) ?></button>
+              <?php if (!$permIsAdmin): ?>
+                <button class="btn btn-ghost" name="template" value="member"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_member')) ?></button>
+                <button class="btn btn-ghost" name="template" value="ersatz"><?= e(t('perm_template')) ?>: <?= e(t('perm_tpl_ersatz')) ?></button>
+              <?php endif; ?>
             </div>
-            <p class="muted small"><?= e(t('perm_tpl_hint')) ?></p>
+            <?php if (!$permIsAdmin): ?><p class="muted small"><?= e(t('perm_tpl_hint')) ?></p><?php endif; ?>
           </form>
         </details>
-      <?php else: ?>
-        <p class="muted small">🔑 <?= e(t('perm_admin_all')) ?></p>
-      <?php endif; ?>
     <?php endif; ?>
   </section>
 <?php endforeach; ?>

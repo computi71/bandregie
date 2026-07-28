@@ -1017,11 +1017,14 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/rechte/(\d+)$~', $path, $m) && $method === 'POST') {
     require_admin();
     $permTarget = row('SELECT id, role FROM users WHERE id = ?', [$m[1]]);
-    if ($permTarget && $permTarget['role'] !== 'admin') {
-      if (($_POST['template'] ?? '') !== '') {
+    if ($permTarget) {
+      // Bei einem Admin ist nur zu vergeben, was auch ein Admin nicht von
+      // selbst hat — an allem anderen gäbe es nichts einzustellen.
+      $permEditable = $permTarget['role'] === 'admin' ? PERM_EXPLICIT_MODULES : array_keys(PERM_MODULES);
+      if (($_POST['template'] ?? '') !== '' && $permTarget['role'] !== 'admin') {
         perm_apply_template((int) $m[1], $_POST['template'] === 'ersatz' ? 'ersatz' : 'member');
       } else {
-        foreach (array_keys(PERM_MODULES) as $permModuleKey) {
+        foreach ($permEditable as $permModuleKey) {
           $permWrite = isset($_POST['perm'][$permModuleKey]['write']) ? 1 : 0;
           // Ändern ohne Sehen gibt es nicht — das Häkchen zieht das andere mit
           $permRead = $permWrite || isset($_POST['perm'][$permModuleKey]['read']) ? 1 : 0;

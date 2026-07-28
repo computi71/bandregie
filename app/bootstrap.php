@@ -334,7 +334,7 @@ const UI_STRINGS = [
   // Rechte je Bereich
   'perm_title' => 'Rechte', 'perm_read' => 'sehen', 'perm_write' => 'ändern',
   'perm_intro' => 'Wer darf welchen Bereich sehen und ändern? Wer ändern darf, darf auch sehen.',
-  'perm_admin_all' => 'Admins dürfen alles — Einstellungen, Übersetzungen und Sicherungen bleiben ihnen vorbehalten.',
+  'perm_admin_all' => 'Admins dürfen alles — Einstellungen, Übersetzungen und Sicherungen bleiben ihnen vorbehalten. Nur die Kasse nicht: die zu führen ist eine eigene Aufgabe und wird hier vergeben.',
   'perm_template' => 'Vorlage einsetzen', 'perm_tpl_member' => 'Mitglied', 'perm_tpl_ersatz' => 'Ersatz',
   'perm_tpl_hint' => 'Setzt alle Häkchen auf die Voreinstellung der Rolle zurück.',
   'perm_open' => 'Rechte vergeben',
@@ -693,6 +693,16 @@ const PERM_ENTITY_MODULES = [
  * diese Rechte; danach lassen sie sich einzeln ändern. Admins stehen nicht in
  * der Liste — sie dürfen alles, sonst könnte sich niemand mehr helfen.
  */
+/**
+ * Bereiche, die auch ein Admin ausdrücklich bekommen muss.
+ *
+ * Die Kasse ist eine Rolle, kein Nebeneffekt der Verwaltung: wer sie führt,
+ * soll das entschieden haben, und in der Rechtematrix soll es jeder sehen.
+ * Ohne eigene Zeile fällt ein Admin auf das Mitglieder-Schema zurück und darf
+ * die Kasse sehen, aber nicht buchen — den Einblick verliert also niemand.
+ */
+const PERM_EXPLICIT_MODULES = ['kasse'];
+
 const PERM_TEMPLATES = [
   'member' => [
     'termine' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
@@ -1366,7 +1376,9 @@ function perm_of(int $userId): array {
 /** Darf jemand in einem Bereich lesen ($need = 'read') oder ändern ('write')? */
 function perm_allows(?array $user, string $module, string $need = 'read'): bool {
   if (!$user) return false;
-  if (($user['role'] ?? '') === 'admin') return true;
+  // Admins dürfen alles — außer, was ausdrücklich vergeben sein will. Eine
+  // Band zu verwalten ist nicht dasselbe, wie ihre Kasse zu führen.
+  if (($user['role'] ?? '') === 'admin' && !in_array($module, PERM_EXPLICIT_MODULES, true)) return true;
   $all = perm_of((int) $user['id']);
   if (!$all) {
     // Kein einziger Eintrag heißt „noch nicht entschieden", nicht „verboten" —
