@@ -295,6 +295,18 @@ function demo_install_background(): void {
   set_setting('background_file', $name);
 }
 
+/**
+ * Bildnachweis für das mitgelieferte Hintergrundbild — oder null, sobald die
+ * Band ihr eigenes eingestellt hat. CC0 verlangt keine Nennung; sie steht
+ * trotzdem im Impressum, solange das geschenkte Bild benutzt wird.
+ */
+function demo_background_credit(): ?string {
+  if (!str_starts_with(setting('background_file'), 'background_demo_')) return null;
+  return e(t('legal_credit_background')) . ' '
+    . '<a href="https://www.pexels.com/photo/panoramic-view-of-crowd-at-music-concert-248963/" rel="noopener">Pexels</a>'
+    . ' · <a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener">CC0</a>';
+}
+
 /** Das Hintergrundbild der Demo wieder entfernen — aber nur das eigene. */
 function demo_remove_background(): void {
   $name = setting('background_file');

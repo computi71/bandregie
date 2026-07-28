@@ -147,11 +147,15 @@ if ($path === '/kontakt' && $method === 'GET') {
 }
 
 if ($path === '/impressum' && $method === 'GET') {
-  view('public/rechtliches', ['title' => t('nav_impressum'), 'heading' => t('nav_impressum'), 'text' => content('impressum_text')]);
+  // Der Bildnachweis gehört ins Impressum, nicht in die Datenschutzerklärung.
+  require_once BASE_DIR . '/app/demo.php';
+  view('public/rechtliches', ['title' => t('nav_impressum'), 'heading' => t('nav_impressum'),
+                              'text' => content('impressum_text'), 'imageCredit' => demo_background_credit()]);
 }
 
 if ($path === '/datenschutz' && $method === 'GET') {
-  view('public/rechtliches', ['title' => t('privacy_title'), 'heading' => t('privacy_title'), 'text' => content('privacy_text')]);
+  view('public/rechtliches', ['title' => t('privacy_title'), 'heading' => t('privacy_title'),
+                              'text' => content('privacy_text'), 'imageCredit' => null]);
 }
 
 // Veranstalter-Downloads: öffentlich oder über geheimen Link

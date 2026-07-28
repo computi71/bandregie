@@ -73,6 +73,8 @@ const UI_STRINGS = [
   'nav_kontakt' => 'Kontakt', 'nav_downloads' => 'Downloads', 'nav_bandbereich' => 'Bandbereich',
   'nav_impressum' => 'Impressum', 'nav_datenschutz' => 'Datenschutz',
   'privacy_title' => 'Datenschutzerklärung',
+  'legal_credits' => 'Bildnachweis',
+  'legal_credit_background' => 'Hintergrundbild: Konzertpublikum,',
   'home_about' => 'Über uns', 'home_next_gigs' => 'Nächste Gigs', 'home_all_events' => 'Alle Termine',
   'home_impressions' => 'Impressionen', 'home_more_photos' => 'Mehr Fotos',
   'events_upcoming' => 'Kommende Gigs',
