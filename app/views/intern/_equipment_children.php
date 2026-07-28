@@ -15,9 +15,9 @@
       <?php endif; ?>
       <?php $subParts = $childrenOf[(int) $child['id']] ?? []; ?>
       <?php if ($subParts): ?>
-        <?php [$subSum, $subMissing] = eq_tree_value($child, $items, $user); ?>
+        <?php $subSum = eq_tree_value($child, $items, $user); ?>
         <?php if ($subSum > 0): ?>
-          <span class="muted small">Σ <?= e(fmt_money($subSum)) ?><?= $subMissing ? ' (' . e(t('eq_total_partial')) . ')' : '' ?></span>
+          <span class="muted small">Σ <?= e(fmt_money($subSum)) ?></span>
         <?php endif; ?>
       <?php endif; ?>
       <?php if ($child['notes']): ?><div class="muted small prewrap"><?= e($child['notes']) ?></div><?php endif; ?>

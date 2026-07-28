@@ -73,9 +73,9 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
         <span class="muted">🧾 <?= e(eq_purchase_label($eq)) ?></span>
       <?php endif; ?>
       <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
-        <?php [$eqSum, $eqMissing] = eq_tree_value($eq, $items, $user); ?>
+        <?php $eqSum = eq_tree_value($eq, $items, $user); ?>
         <?php if ($eqSum > 0): ?>
-          <span class="muted">Σ <?= e(t('eq_total')) ?>: <strong><?= e(fmt_money($eqSum)) ?></strong><?= $eqMissing ? ' <span class="small">(' . e(t('eq_total_partial')) . ')</span>' : '' ?></span>
+          <span class="muted">Σ <?= e(t('eq_total')) ?>: <strong><?= e(fmt_money($eqSum)) ?></strong></span>
         <?php endif; ?>
       <?php endif; ?>
     </summary>
