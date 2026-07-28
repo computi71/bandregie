@@ -582,6 +582,11 @@ Gitarre: vorne rechts",
   'eq_overdue' => 'überfällig', 'eq_due_soon' => 'fällig in', 'eq_days' => 'Tagen',
   'dash_deadlines' => 'Anstehende Fristen',
   'fl_eq_saved_n' => '%d Geräte angelegt.',
+  'eq_split' => 'In einzelne Geräte aufteilen',
+  'eq_split_found' => '(sieht nach %d Stück aus)',
+  'eq_split_hint' => 'Steht diese Zeile für mehrere gleiche Geräte, macht das daraus durchnummerierte Einzelgeräte — jedes mit eigenem Preis, eigener Frist und eigenem Häkchen auf der Packliste. Die Stückzahl im Namen entfällt dabei.',
+  'fl_eq_split' => 'In %d Geräte aufgeteilt.',
+  'fl_eq_split_impossible' => 'Aufteilen geht nur ab zwei Stück und nur bei Geräten ohne Bestandteile.',
   'fl_eq_saved' => 'Equipment gespeichert.', 'fl_eq_deleted' => 'Equipment gelöscht.',
   'fl_deadline_saved' => 'Frist gespeichert.',
   'fl_deadline_done' => 'Frist erledigt — nächster Termin gesetzt.',
@@ -603,6 +608,10 @@ const FIN_CATEGORIES = [
 // Wofür die Einzahlungen der Mitglieder in erster Linie da sind. Die Kasse
 // stellt beides gegenüber, damit man sieht, was die Band selbst draufzahlt.
 const FIN_DEPOSIT_COVERS = ['proberaum', 'nebenkosten'];
+
+// Eine Stückzahl steht allein oder in Klammern: „4×", „(2x)". Mitten im Text
+// ist sie keine — „4x4 Case" heißt nicht vier Cases.
+const EQ_QUANTITY_RE = '~(?:^|\()\s*(\d{1,2})\s*[x×]\s*(?:\)|$)~ui';
 
 // Welche Felder bei welcher Termin-Art sinnvoll sind — der Rest wird im
 // Formular ausgeblendet. Die öffentliche Seite zeigt ausschließlich Gigs,
@@ -1829,6 +1838,27 @@ function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
   // verwaltet nicht das Eigentum der Band.
   if (empty($eq['owner_id'])) return !is_substitute($user);
   return (int) $eq['owner_id'] === (int) ($user['id'] ?? 0);
+}
+
+/**
+ * Steckt in Name oder Steckplatz eine Stückzahl („4×", „(2×)")? Beim Import
+ * aus einer Liste landet die Menge oft im Text, und dann steht eine Zeile für
+ * vier Kabel. Der Fund ist nur ein Vorschlag für das Formular — aufgeteilt
+ * wird erst, wenn jemand es bestätigt. „4x4 Case" ist keine Stückzahl.
+ */
+function eq_quantity_hint(array $eq): ?int {
+  foreach ([(string) ($eq['slot'] ?? ''), (string) ($eq['name'] ?? '')] as $text) {
+    if (preg_match(EQ_QUANTITY_RE, trim($text), $m)) {
+      $n = (int) $m[1];
+      if ($n > 1 && $n <= 99) return $n;
+    }
+  }
+  return null;
+}
+
+/** Die Stückzahl aus einem Text entfernen — sie steht danach in eigenen Zeilen. */
+function eq_strip_quantity(string $text): string {
+  return trim(preg_replace(EQ_QUANTITY_RE, '', trim($text)) ?? $text);
 }
 
 /**

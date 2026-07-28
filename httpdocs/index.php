@@ -1237,6 +1237,34 @@ if (str_starts_with($path, '/intern')) {
     }
     redirect('/intern/equipment');
   }
+  // Eine Zeile, die für mehrere gleiche Geräte steht, in einzelne aufteilen.
+  // Nur bei Geräten ohne Bestandteile: was in einem Rack steckt, mitzukopieren
+  // hieße raten, welches Zubehör mitgehört.
+  if (preg_match('~^/intern/equipment/(\d+)/aufteilen$~', $path, $m) && $method === 'POST') {
+    $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
+    if (!$eq || !eq_may_edit_owner_fields($eq, $me)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+    $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
+    $hasParts = (int) row('SELECT COUNT(*) AS n FROM equipment WHERE parent_id = ?', [$m[1]])['n'] > 0;
+    if ($count < 2 || $hasParts) {
+      flash(t('fl_eq_split_impossible'));
+      redirect('/intern/equipment');
+    }
+    // Die Stückzahl verschwindet aus Name und Steckplatz — sie steht jetzt
+    // in der Zahl der Zeilen. Der Preis war der eines Geräts und bleibt es.
+    $baseName = eq_strip_quantity((string) $eq['name']);
+    $baseSlot = eq_strip_quantity((string) $eq['slot']);
+    q('UPDATE equipment SET name = ?, slot = ? WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    for ($i = 2; $i <= $count; $i++) {
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents)
+         VALUES (?,?,?,?,?,?,?,?,?,?)', [
+        $baseName . ' #' . $i, $eq['category'], $eq['owner_id'], $eq['location'],
+        $eq['is_standard'], $eq['notes'], $eq['parent_id'], $baseSlot,
+        $eq['purchased_on'], $eq['price_cents'],
+      ]);
+    }
+    flash(sprintf(t('fl_eq_split'), $count));
+    redirect('/intern/equipment');
+  }
   if (preg_match('~^/intern/equipment/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'delete') {
       q('DELETE FROM equipment WHERE id = ?', [$m[1]]);

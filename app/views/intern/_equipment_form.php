@@ -49,6 +49,22 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
   <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($formEq['notes']) ?></textarea></label>
   <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
 </form>
+<?php
+// Aufteilen bietet sich an, wenn eine Zeile für mehrere gleiche Geräte steht.
+// Bei Geräten mit Bestandteilen geht es nicht — siehe Route.
+$eqHasParts = (bool) array_filter($items, fn($i) => (int) ($i['parent_id'] ?? 0) === (int) $formEq['id']);
+$eqQtyHint = eq_quantity_hint($formEq);
+?>
+<?php if ($eqMayOwn && !$eqHasParts): ?>
+  <details class="subsection">
+    <summary><?= e(t('eq_split')) ?><?= $eqQtyHint ? ' ' . e(sprintf(t('eq_split_found'), $eqQtyHint)) : '' ?></summary>
+    <p class="muted small"><?= e(t('eq_split_hint')) ?></p>
+    <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/aufteilen" class="inline"><?= csrf_field() ?>
+      <label><?= e(t('eq_count')) ?><input type="number" name="count" value="<?= $eqQtyHint ?: 2 ?>" min="2" max="99"></label>
+      <button class="btn btn-small"><?= e(t('eq_split')) ?></button>
+    </form>
+  </details>
+<?php endif; ?>
 <form method="post" action="/intern/equipment/<?= $formEq['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>" class="inline"><?= csrf_field() ?>
   <button class="btn btn-danger btn-small"><?= e(t('delete')) ?></button>
 </form>
