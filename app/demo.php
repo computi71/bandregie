@@ -291,11 +291,14 @@ function demo_install_stage_plot(array $memberIds): void {
   $items = stage_default_items(
     rows("SELECT name, stage_name, instrument FROM users WHERE id IN ($marks) ORDER BY id", $memberIds)
   );
-  $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 20, 'y' => 45, 'note' => ''];
-  $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 14, 'y' => 22, 'note' => ''];
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 50, 'y' => 90, 'note' => 'Gesang'];
-  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 26, 'y' => 84, 'note' => 'Gitarre'];
-  $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 30, 'y' => 26, 'note' => ''];
+  // Abstand zu den Musikern: zwei Beschriftungen übereinander liest niemand.
+  // Die Standardaufstellung setzt Gesang auf 50/78, Gitarre 25/60,
+  // Bass 22/25, Schlagzeug 50/12 — daran entlang.
+  $items[] = ['kind' => 'amp', 'label' => 'Bassamp', 'x' => 8, 'y' => 32, 'note' => ''];
+  $items[] = ['kind' => 'amp', 'label' => 'Gitarrenamp', 'x' => 10, 'y' => 58, 'note' => ''];
+  $items[] = ['kind' => 'di', 'label' => 'DI Bass', 'x' => 40, 'y' => 34, 'note' => ''];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 1', 'x' => 50, 'y' => 93, 'note' => 'Gesang'];
+  $items[] = ['kind' => 'monitor', 'label' => 'Monitor 2', 'x' => 25, 'y' => 77, 'note' => 'Gitarre'];
   foreach ($items as $i => $item) {
     demo_insert('stage_items', $item + ['position' => $i]);
   }
