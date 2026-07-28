@@ -68,6 +68,16 @@ server {
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;   # match your PHP version
     }
 
+    # Stylesheets and scripts carry the release in their address
+    # (/assets/style.css?v=1.42.0), so the browser may keep them and still
+    # gets the new file after an update. Without this it revalidates every
+    # one of them on every page view. Apache installs get the same from the
+    # .htaccess that ships in httpdocs/; nginx cannot read that file.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
     # Never expose version control or Apache leftovers
     location ~ /\.(ht|git) { deny all; }
 }
