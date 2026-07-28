@@ -32,7 +32,7 @@
             <td><strong><?= (int) $c['number'] ?></strong></td>
             <td><input name="patch" value="<?= e($c['patch']) ?>" style="width:100%" placeholder="<?= e(t('ch_patch_ph')) ?>"></td>
             <td><input name="name" value="<?= e($c['name']) ?>" style="width:100%"></td>
-            <td><input name="source" value="<?= e($c['source']) ?>" style="width:100%" placeholder="z. B. SM57, DI"></td>
+            <td><input name="source" value="<?= e($c['source']) ?>" style="width:100%" placeholder="<?= e(t('ch_source_ph')) ?>"></td>
             <td><input name="notes" value="<?= e($c['notes']) ?>" style="width:100%"></td>
             <td class="row-buttons">
               <button class="btn btn-tiny btn-primary">✓</button>
@@ -53,7 +53,7 @@
       value="<?= $channels ? max(array_column($channels, 'number')) + 1 : 1 ?>"></label>
     <label><?= e(t('ch_patch')) ?><input name="patch" placeholder="<?= e(t('ch_patch_ph')) ?>"></label>
     <label><?= e(t('ch_name')) ?><input name="name"></label>
-    <label><?= e(t('ch_source')) ?><input name="source" placeholder="z. B. SM57, DI"></label>
+    <label><?= e(t('ch_source')) ?><input name="source" placeholder="<?= e(t('ch_source_ph')) ?>"></label>
     <label><?= e(t('notes')) ?><input name="notes"></label>
     <button class="btn btn-primary span2"><?= e(t('ch_add')) ?></button>
   </form>

@@ -36,7 +36,7 @@ require BASE_DIR . '/app/views/_header.php';
       <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
     <?php $prodEv = null; $gearSel = []; require BASE_DIR . '/app/views/intern/_event_production.php'; ?>
-    <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" placeholder="z. B. 800 €"></label>
+    <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" placeholder="<?= e(t('ev_fee_ph')) ?>"></label>
     <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no"></label>
     <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('ev_notes_ph')) ?>"></textarea></label>
     <fieldset class="span2 pubfields" data-eventfield="public">

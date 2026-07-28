@@ -1,0 +1,60 @@
+-- Placeholders explain a field to whoever has not used it before, so they
+-- belong in the translation table like every other label.
+SET NAMES utf8mb4;
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','eq_name_ph','e.g. band trailer, PA tops, wireless rack'),
+('en','eq_location_ph','e.g. rehearsal room, trailer, at Andy''s'),
+('en','ch_source_ph','e.g. SM57, DI'),
+('en','ord_desc_ph','e.g. rehearsal room rent'),
+('en','fin_amount_ph','e.g. 49.90'),
+('en','mem_instrument_ph','e.g. drums'),
+('en','media_title_ph','e.g. live at the town festival'),
+('en','song_key_ph','e.g. Am'),
+('en','song_tempo_ph','e.g. 120 BPM'),
+('en','ev_fee_ph','e.g. 800 €'),
+
+('fr','eq_name_ph','p. ex. remorque, têtes PA, rack HF'),
+('fr','eq_location_ph','p. ex. local de répétition, remorque, chez André'),
+('fr','ch_source_ph','p. ex. SM57, DI'),
+('fr','ord_desc_ph','p. ex. loyer du local'),
+('fr','fin_amount_ph','p. ex. 49,90'),
+('fr','mem_instrument_ph','p. ex. batterie'),
+('fr','media_title_ph','p. ex. en concert à la fête de la ville'),
+('fr','song_key_ph','p. ex. Am'),
+('fr','song_tempo_ph','p. ex. 120 BPM'),
+('fr','ev_fee_ph','p. ex. 800 €'),
+
+('es','eq_name_ph','p. ej. remolque, cajas PA, rack inalámbrico'),
+('es','eq_location_ph','p. ej. local de ensayo, remolque, en casa de Andrés'),
+('es','ch_source_ph','p. ej. SM57, DI'),
+('es','ord_desc_ph','p. ej. alquiler del local'),
+('es','fin_amount_ph','p. ej. 49,90'),
+('es','mem_instrument_ph','p. ej. batería'),
+('es','media_title_ph','p. ej. en directo en las fiestas'),
+('es','song_key_ph','p. ej. Am'),
+('es','song_tempo_ph','p. ej. 120 BPM'),
+('es','ev_fee_ph','p. ej. 800 €'),
+
+('nl','eq_name_ph','bijv. aanhanger, PA-tops, draadloosrack'),
+('nl','eq_location_ph','bijv. oefenruimte, aanhanger, bij Andy'),
+('nl','ch_source_ph','bijv. SM57, DI'),
+('nl','ord_desc_ph','bijv. huur oefenruimte'),
+('nl','fin_amount_ph','bijv. 49,90'),
+('nl','mem_instrument_ph','bijv. drums'),
+('nl','media_title_ph','bijv. live op het stadsfeest'),
+('nl','song_key_ph','bijv. Am'),
+('nl','song_tempo_ph','bijv. 120 BPM'),
+('nl','ev_fee_ph','bijv. 800 €'),
+
+('it','eq_name_ph','es. rimorchio, top PA, rack radiomicrofoni'),
+('it','eq_location_ph','es. sala prove, rimorchio, da Andrea'),
+('it','ch_source_ph','es. SM57, DI'),
+('it','ord_desc_ph','es. affitto sala prove'),
+('it','fin_amount_ph','es. 49,90'),
+('it','mem_instrument_ph','es. batteria'),
+('it','media_title_ph','es. dal vivo alla festa cittadina'),
+('it','song_key_ph','es. Am'),
+('it','song_tempo_ph','es. 120 BPM'),
+('it','ev_fee_ph','es. 800 €')
+ON DUPLICATE KEY UPDATE value = value;

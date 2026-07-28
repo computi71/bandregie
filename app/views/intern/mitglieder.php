@@ -8,7 +8,7 @@
     <label><?= e(t('mem_first_name')) ?><input name="first_name" required></label>
     <label><?= e(t('mem_last_name')) ?><input name="last_name"></label>
     <label><?= e(t('email')) ?><input type="email" name="email" required></label>
-    <label><?= e(t('instrument')) ?><input name="instrument" placeholder="z. B. Drums"></label>
+    <label><?= e(t('instrument')) ?><input name="instrument" placeholder="<?= e(t('mem_instrument_ph')) ?>"></label>
     <label><?= e(t('role')) ?>
       <select name="role"><option value="member"><?= e(t('role_member')) ?></option><option value="ersatz"><?= e(t('role_ersatz')) ?></option><option value="admin"><?= e(t('role_admin')) ?></option></select>
     </label>

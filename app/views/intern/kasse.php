@@ -130,7 +130,7 @@ foreach ($entries as $en) {
           <?php endforeach; ?>
         </select>
       </label>
-      <label class="span2"><?= e(t('fin_description')) ?><input name="description" required placeholder="z. B. Proberaummiete"></label>
+      <label class="span2"><?= e(t('fin_description')) ?><input name="description" required placeholder="<?= e(t('ord_desc_ph')) ?>"></label>
       <label><?= e(t('ord_interval')) ?>
         <select name="interval_kind">
           <option value="monthly"><?= e(t('ord_monthly')) ?></option>
@@ -174,7 +174,7 @@ foreach ($entries as $en) {
         <option value="einnahme"><?= e(t('fin_type_in')) ?></option>
       </select>
     </label>
-    <label><?= e(t('fin_amount')) ?><input name="amount" required inputmode="decimal" placeholder="z. B. 49,90"></label>
+    <label><?= e(t('fin_amount')) ?><input name="amount" required inputmode="decimal" placeholder="<?= e(t('fin_amount_ph')) ?>"></label>
     <label><?= e(t('fin_category')) ?>
       <select name="category">
         <?php foreach (FIN_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(fin_category_label($val)) ?></option><?php endforeach; ?>

@@ -6,7 +6,7 @@
   <details class="card collapsible" <?= $links ? '' : 'open' ?>>
     <summary>➕ <?= e(t('add')) ?></summary>
     <form method="post" action="/intern/musik" class="form-grid"><?= csrf_field() ?>
-      <label><?= e(t('title_lbl')) ?><input name="title" placeholder="z. B. Live beim Stadtfest"></label>
+      <label><?= e(t('title_lbl')) ?><input name="title" placeholder="<?= e(t('media_title_ph')) ?>"></label>
       <label>URL<input name="url" required placeholder="https://youtu.be/... oder https://open.spotify.com/..."></label>
       <button class="btn btn-primary span2"><?= e(t('add')) ?></button>
     </form>

@@ -18,7 +18,7 @@
     <label><?= e(t('mem_last_name')) ?><input name="last_name" value="<?= e($profile['last_name'] ?? '') ?>"></label>
     <label><?= e(t('phone')) ?><input name="phone" value="<?= e($profile['phone'] ?? '') ?>"></label>
     <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($profile['mobile'] ?? '') ?>"></label>
-    <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($profile['instrument']) ?>" placeholder="z. B. Drums"></label>
+    <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($profile['instrument']) ?>" placeholder="<?= e(t('mem_instrument_ph')) ?>"></label>
     <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($profile['email']) ?>" required></label>
     <label><?= e(t('prof_lang')) ?>
       <select name="pref_lang">

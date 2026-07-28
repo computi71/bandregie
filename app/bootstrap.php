@@ -72,6 +72,18 @@ const UI_STRINGS = [
   'nav_start' => 'Start', 'nav_termine' => 'Termine', 'nav_musik' => 'Musik', 'nav_fotos' => 'Fotos',
   'nav_kontakt' => 'Kontakt', 'nav_downloads' => 'Downloads', 'nav_bandbereich' => 'Bandbereich',
   'nav_impressum' => 'Impressum', 'nav_datenschutz' => 'Datenschutz',
+  // Beispieltexte in den Eingabefeldern — sie erklären das Feld und
+  // gehören deshalb übersetzt wie jede andere Beschriftung.
+  'eq_name_ph' => 'z. B. Bandanhänger, PA-Topteile, Funkstrecke',
+  'eq_location_ph' => 'z. B. Proberaum, Anhänger, bei Andi',
+  'ch_source_ph' => 'z. B. SM57, DI',
+  'ord_desc_ph' => 'z. B. Proberaummiete',
+  'fin_amount_ph' => 'z. B. 49,90',
+  'mem_instrument_ph' => 'z. B. Drums',
+  'media_title_ph' => 'z. B. Live beim Stadtfest',
+  'song_key_ph' => 'z. B. Am',
+  'song_tempo_ph' => 'z. B. 120 BPM',
+  'ev_fee_ph' => 'z. B. 800 €',
   'privacy_title' => 'Datenschutzerklärung',
   'legal_credits' => 'Bildnachweis',
   'legal_credit_background' => 'Hintergrundbild: Konzertpublikum,',

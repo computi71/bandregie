@@ -8,8 +8,8 @@
     <label><?= e(t('song_original')) ?><input name="artist" value="<?= e($edit['artist'] ?? '') ?>" placeholder="<?= e(t('song_original_ph')) ?>"></label>
     <label><?= e(t('song_composer')) ?><input name="composer" value="<?= e($edit['composer'] ?? '') ?>" placeholder="<?= e(t('song_composer_ph')) ?>"></label>
     <label><?= e(t('song_gema')) ?><input name="gema_werknr" value="<?= e($edit['gema_werknr'] ?? '') ?>" placeholder="<?= e(t('song_gema_ph')) ?>"></label>
-    <label><?= e(t('song_keylbl')) ?><input name="song_key" value="<?= e($edit['song_key'] ?? '') ?>" placeholder="z. B. Am"></label>
-    <label><?= e(t('song_tempo')) ?><input name="tempo" value="<?= e($edit['tempo'] ?? '') ?>" placeholder="z. B. 120 BPM"></label>
+    <label><?= e(t('song_keylbl')) ?><input name="song_key" value="<?= e($edit['song_key'] ?? '') ?>" placeholder="<?= e(t('song_key_ph')) ?>"></label>
+    <label><?= e(t('song_tempo')) ?><input name="tempo" value="<?= e($edit['tempo'] ?? '') ?>" placeholder="<?= e(t('song_tempo_ph')) ?>"></label>
     <label><?= e(t('song_len')) ?><input name="duration" value="<?= $edit && $edit['duration_sec'] ? floor($edit['duration_sec'] / 60) . ':' . str_pad((string) ($edit['duration_sec'] % 60), 2, '0', STR_PAD_LEFT) : '' ?>" placeholder="3:45"></label>
     <label><?= e(t('status')) ?>
       <select name="status">

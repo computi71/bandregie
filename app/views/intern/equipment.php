@@ -12,14 +12,14 @@
 <details class="card collapsible" <?= $items ? '' : 'open' ?>>
   <summary>➕ <?= e(t('eq_new')) ?></summary>
   <form method="post" action="/intern/equipment" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('name')) ?><input name="name" required placeholder="z. B. Bandanhänger, PA-Topteile, Funkstrecke"></label>
+    <label><?= e(t('name')) ?><input name="name" required placeholder="<?= e(t('eq_name_ph')) ?>"></label>
     <label><?= e(t('eq_cat')) ?>
       <select name="category"><?php foreach (EQ_CATEGORIES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(eq_category_label($val)) ?></option><?php endforeach; ?></select>
     </label>
     <label data-eqinherit><?= e(t('eq_owner')) ?>
       <select name="owner_id"><option value=""><?= e(t('eq_owner_band')) ?></option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
-    <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" list="eq-locations" placeholder="z. B. Proberaum, Anhänger, bei Andi"></label>
+    <label data-eqinherit><?= e(t('eq_location')) ?><input name="location" list="eq-locations" placeholder="<?= e(t('eq_location_ph')) ?>"></label>
     <label><?= e(t('eq_parent')) ?>
       <select name="parent_id"><option value=""><?= e(t('eq_parent_none')) ?></option>
         <?php foreach ($items as $other): ?><option value="<?= $other['id'] ?>"><?= e($other['name']) ?></option><?php endforeach; ?>
