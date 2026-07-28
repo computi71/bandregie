@@ -1442,7 +1442,7 @@ if (str_starts_with($path, '/intern')) {
     if (upload_rejected((int) ($_FILES['scene']['error'] ?? UPLOAD_ERR_NO_FILE)) || !is_uploaded_file($tmp)) {
       redirect('/intern/kanaele');
     }
-    // Szenendateien von X32/M32/WING enthalten Zeilen wie: /ch/01/config "Kick" 1 RD 1
+    // Eine .scn vom X32/M32 enthält Zeilen wie: /ch/01/config "Kick" 1 RD 1
     $found = [];
     foreach (explode("
 ", (string) file_get_contents($tmp)) as $line) {

@@ -273,11 +273,32 @@ function demo_install_rows(): void {
     'notes' => 'Nierencharakteristik.', 'parent_id' => $eqTx, 'slot' => '',
     'purchased_on' => $d('-18 months'), 'price_cents' => 9900]);
 
-  // Zubehör, das man üblicherweise in Mengen anlegt
+  // Die Kabelkiste ist selbst ein Gerät, kein Ortsname: die Kabel liegen
+  // darin, so wie die Mikrofone im Koffer. Eingepackt wird die Kiste, nicht
+  // sechs Kabel einzeln.
+  $eqCables = demo_insert('equipment', ['name' => 'Kabelkiste', 'category' => 'sonstiges',
+    'owner_id' => null, 'location' => 'Proberaum', 'is_standard' => 1,
+    'notes' => 'Kabel nach dem Gig bitte aufgerollt zurücklegen.',
+    'purchased_on' => $d('-14 months'), 'price_cents' => 4900]);
   for ($i = 1; $i <= 6; $i++) {
     demo_insert('equipment', ['name' => 'XLR-Kabel 10 m #' . $i, 'category' => 'sonstiges',
-      'owner_id' => null, 'location' => 'Kabelkiste', 'is_standard' => 1, 'notes' => '',
+      'owner_id' => null, 'location' => '', 'is_standard' => 0, 'notes' => '',
+      'parent_id' => $eqCables, 'slot' => '',
       'purchased_on' => $d('-14 months'), 'price_cents' => 1490]);
+  }
+
+  // Instrumente gehören den Mitgliedern, nicht der Band — der Normalfall, und
+  // das deutlichste Beispiel dafür, wofür der Besitzer da ist: den Kaufpreis
+  // sieht nur, wem das Gerät gehört.
+  foreach ([
+    [$members[1], 'E-Gitarre', 'bei Tom', '-4 years', 129000],
+    [$members[2], 'E-Bass', 'bei Ines', '-6 years', 98000],
+    [$members[3], 'Schlagzeug', 'Proberaum', '-8 years', 185000],
+    [$members[0], 'In-Ear-Strecke', 'bei Lisa', '-1 year', 54900],
+  ] as [$ownerId, $name, $where, $when, $price]) {
+    demo_insert('equipment', ['name' => $name, 'category' => 'instrument',
+      'owner_id' => $ownerId, 'location' => $where, 'is_standard' => 1, 'notes' => '',
+      'purchased_on' => $d($when), 'price_cents' => $price]);
   }
 
   // Packliste für den kommenden Gig: eigene PA, Licht steht vor Ort. Die
