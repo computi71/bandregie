@@ -366,6 +366,8 @@ const UI_STRINGS = [
   // Dateien
   'files_word' => 'Dateien',
   'files_none' => 'Noch keine Dateien — Verträge, Rechnungen, Rider, Aufnahmen ... (max. 20 MB pro Datei)',
+  'files_also' => 'Gehört auch zu anderen Geräten',
+  'files_also_hint' => 'Eine Rechnung zählt selten nur ein Gerät auf. Hake die anderen hier an — gespeichert wird die Datei trotzdem nur einmal, sie erscheint aber an jedem angehakten Gerät.',
   // Veranstalter-Downloads (intern)
   'dl_title' => 'Veranstalter-Downloads',
   'dl_intro' => 'Alles, was Veranstalter brauchen: Tech-Rider, Bühnenplan, Pressefotos, Logo in Druckqualität, Bandinfo. Diese Dateien sind — je nach Modus — ohne Login abrufbar.',
@@ -2196,6 +2198,22 @@ function eq_may_see_price(?array $eq, ?array $user): bool {
  */
 function is_substitute(?array $user): bool {
   return ($user['role'] ?? '') === 'ersatz' || !empty($user['substitute_for']);
+}
+
+/**
+ * Alle Geräte außer einem, als [id => Name] — die Auswahl, an die eine
+ * Rechnung zusätzlich gehängt werden kann. Abgegebene bleiben draußen: an ein
+ * Gerät, das die Band nicht mehr hat, heftet niemand einen neuen Beleg.
+ *
+ * @return array<int, string>
+ */
+function eq_other_names(array $items, int $exceptId): array {
+  $out = [];
+  foreach ($items as $it) {
+    if ((int) $it['id'] === $exceptId || !empty($it['disposed_on'])) continue;
+    $out[(int) $it['id']] = (string) $it['name'];
+  }
+  return $out;
 }
 
 /** Geräte nach übergeordnetem Gerät sortiert; ohne Übergeordnetes zählt 0. */

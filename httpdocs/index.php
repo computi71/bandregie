@@ -873,6 +873,20 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/dateien' && $method === 'POST') {
     $type = in_array($_POST['entity_type'] ?? '', ['event', 'song', 'venue', 'download', 'finance', 'equipment'], true) ? $_POST['entity_type'] : null;
     $entityId = (int) ($_POST['entity_id'] ?? 0);
+    // Eine Rechnung nennt oft mehrere Geräte. Sie liegt einmal auf der Platte
+    // und bekommt je Gerät eine Zeile — nur so steht sie an jedem, ohne dass
+    // jemand dieselbe Datei dreimal hochlädt.
+    $alsoIds = [];
+    if ($type === 'equipment') {
+      foreach ((array) ($_POST['also'] ?? []) as $alsoRaw) {
+        $alsoId = (int) $alsoRaw;
+        if ($alsoId > 0 && $alsoId !== $entityId) $alsoIds[$alsoId] = true;
+      }
+      $alsoIds = $alsoIds
+        ? array_column(rows('SELECT id FROM equipment WHERE id IN ('
+            . implode(',', array_fill(0, count($alsoIds), '?')) . ')', array_keys($alsoIds)), 'id')
+        : [];
+    }
     if ($type && ($entityId || $type === 'download')) {
       foreach ($_FILES['files']['tmp_name'] ?? [] as $i => $tmp) {
         if (upload_rejected((int) ($_FILES['files']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
@@ -887,8 +901,10 @@ if (str_starts_with($path, '/intern')) {
         $fileExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($orig, PATHINFO_EXTENSION)));
         $safe = 'datei_' . bin2hex(random_bytes(16)) . ($fileExt !== '' ? '.' . $fileExt : '');
         if (move_uploaded_file($tmp, FILES_DIR . '/' . $safe)) {
-          q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
-            [$type, $entityId, $safe, $orig, $_FILES['files']['size'][$i], $me['id']]);
+          foreach ([$entityId, ...$alsoIds] as $target) {
+            q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
+              [$type, (int) $target, $safe, $orig, $_FILES['files']['size'][$i], $me['id']]);
+          }
         }
       }
     }
@@ -927,7 +943,11 @@ if (str_starts_with($path, '/intern')) {
     $f = row('SELECT * FROM files WHERE id = ?', [$m[1]]);
     if ($f && ((int) $f['uploaded_by'] === (int) $me['id'] || $me['role'] === 'admin')) {
       q('DELETE FROM files WHERE id = ?', [$f['id']]);
-      @unlink(FILES_DIR . '/' . $f['filename']);
+      // Dieselbe Datei kann an mehreren Geräten hängen (eine Rechnung über
+      // mehrere Teile). Von der Platte kommt sie erst, wenn die letzte Zeile
+      // weg ist — sonst zeigen die anderen ins Leere.
+      $stillUsed = (int) (row('SELECT COUNT(*) AS c FROM files WHERE filename = ?', [$f['filename']])['c'] ?? 0);
+      if ($stillUsed === 0) @unlink(FILES_DIR . '/' . $f['filename']);
     }
     back('/intern');
   }

@@ -141,7 +141,8 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
       </form>
     </details>
 
-    <?php $attachFiles = $filesByEq[$eq['id']] ?? []; $attachType = 'equipment'; $attachId = $eq['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
+    <?php $attachFiles = $filesByEq[$eq['id']] ?? []; $attachType = 'equipment'; $attachId = $eq['id'];
+          $attachAlso = eq_other_names($items, (int) $eq['id']); require BASE_DIR . '/app/views/_dateien.php'; ?>
 
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
