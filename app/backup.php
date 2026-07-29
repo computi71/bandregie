@@ -416,8 +416,8 @@ function backup_restore(string $archive): array {
       @rmdir($tmp);
       return ['ok' => false, 'safety' => '',
               'message' => crypt_available()
-                ? 'Die Sicherung lässt sich mit diesem Schlüssel nicht öffnen'
-                : 'Die Sicherung ist verschlüsselt, aber in config.php steht kein DATA_KEY'];
+                ? 'Die Sicherung lässt sich mit dem eingetragenen data_key nicht öffnen — ist es der Schlüssel des Servers, auf dem sie entstanden ist?'
+                : 'Die Sicherung ist verschlüsselt, aber in app/config.php steht kein data_key'];
     }
     @unlink($source);
     $source = $opened;
