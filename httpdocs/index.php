@@ -1297,6 +1297,9 @@ if (str_starts_with($path, '/intern')) {
       'title' => $detailEq['name'],
       'detailEq' => $detailEq,
       'filesByEq' => $detailFiles,
+      // Ohne die Buchungen hielte das Formular jedes Gerät für ungekauft und
+      // böte den Kauf ein zweites Mal an.
+      'bookingsByEq' => [(int) $detailEq['id'] => eq_bookings((int) $detailEq['id'], $me)],
       // Für die Auswahl des übergeordneten Geräts und den Schleifenschutz
       'items' => rows('SELECT id, name, parent_id FROM equipment ORDER BY name'),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
