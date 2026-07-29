@@ -127,7 +127,7 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
     <?= e(t('taxr_applied')) ?>:
     <?= e(t('set_tax_gwg')) ?> <?= fmt_money(tax_gwg_limit_cents()) ?> ·
     <?= e(t('set_tax_afa_years')) ?> <?= (int) tax_afa_years() ?> ·
-    <?= e(t('set_tax_small')) ?>: <?= e(setting('tax_small_business', '0') === '1' ? t('taxr_small_on') : t('taxr_small_off')) ?>
+    <?= e(t('taxr_small')) ?>: <?= e(setting('tax_small_business', '0') === '1' ? t('taxr_small_on') : t('taxr_small_off')) ?>
   </p>
   <p class="note"><?= e(t('taxr_gross_hint')) ?></p>
   <p class="note">⚖ <?= e(t('tax_no_advice')) ?></p>

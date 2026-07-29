@@ -127,7 +127,7 @@ $taxQuery = fn(array $over = []): string => '?' . http_build_query(
   <ul class="task-list">
     <li><strong><?= e(t('set_tax_gwg')) ?></strong><span class="muted"><?= fmt_money(tax_gwg_limit_cents()) ?></span></li>
     <li><strong><?= e(t('set_tax_afa_years')) ?></strong><span class="muted"><?= (int) tax_afa_years() ?></span></li>
-    <li><strong><?= e(t('set_tax_small')) ?></strong>
+    <li><strong><?= e(t('taxr_small')) ?></strong>
       <span class="muted"><?= e(setting('tax_small_business', '0') === '1' ? t('taxr_small_on') : t('taxr_small_off')) ?></span></li>
   </ul>
   <p class="muted small"><?= e(t('taxr_gross_hint')) ?></p>

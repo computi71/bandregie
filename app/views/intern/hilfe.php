@@ -12,6 +12,19 @@
   <?php $helpFirst = false; ?>
 <?php endforeach; ?>
 
+<?php // Den Jahresbericht hat jeder, der die Kasse sieht — die eigenen Zahlen
+      // hängen nicht daran, ob die Band die Kleinunternehmerregelung nutzt. ?>
+<?php if (perm_allows($user, 'kasse')): ?>
+  <details class="card acc" name="helpacc">
+    <summary>⚖ <?= e(t('taxr_title')) ?></summary>
+    <p class="muted"><?= e(t('help_taxr_what')) ?></p>
+    <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
+    <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
+    <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
+    <p class="muted small"><a href="/intern/kasse/steuer"><?= e(t('taxr_open')) ?> →</a></p>
+  </details>
+<?php endif; ?>
+
 <?php // Nur wer die Kasse sieht, und nur wenn die Band die Regelung nutzt —
       // sonst erklärt die Hilfe etwas, das nirgends vorkommt. ?>
 <?php if (perm_allows($user, 'kasse') && setting('tax_small_business', '0') === '1'): ?>
