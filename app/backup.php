@@ -98,7 +98,7 @@ function backup_write_sql(string $path): void {
   global $db;
   $fh = fopen($path, 'wb');
   if (!$fh) throw new RuntimeException('SQL-Datei nicht schreibbar');
-  fwrite($fh, "-- Bandroadie " . BANDROADIE_VERSION . ", " . date('c') . "\n");
+  fwrite($fh, "-- Bandregie " . BANDREGIE_VERSION . ", " . date('c') . "\n");
   fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
   foreach ($db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $table) {
     $create = $db->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_NUM)[1] ?? '';
@@ -188,9 +188,9 @@ function backup_run(string $trigger = 'auto'): array {
   // Die Endung sagt, was drin ist. Wer die Datei in die Hand bekommt, soll
   // nicht raten müssen, ob sie sich öffnen lässt.
   $suffix = crypt_available() ? '.tar.gz.enc' : '.tar.gz';
-  $name = 'bandroadie-' . $stamp . $suffix;
+  $name = 'bandregie-' . $stamp . $suffix;
   for ($n = 2; file_exists($dir . '/' . $name); $n++) {
-    $name = 'bandroadie-' . $stamp . '-' . $n . $suffix;
+    $name = 'bandregie-' . $stamp . '-' . $n . $suffix;
   }
   $target = $dir . '/' . $name;
   $sqlFile = $dir . '/.dump.sql';
@@ -281,7 +281,7 @@ function backup_ftp_upload(string $file): array {
   $mine = [];
   foreach ($remote as $entry) {
     $base = basename($entry);
-    if (preg_match('~^bandroadie-\d{4}-\d{2}-\d{2}-\d{6}\.tar\.gz$~', $base)) $mine[] = $base;
+    if (preg_match('~^bandregie-\d{4}-\d{2}-\d{2}-\d{6}\.tar\.gz$~', $base)) $mine[] = $base;
   }
   rsort($mine);
   $dropped = 0;

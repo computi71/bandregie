@@ -1,5 +1,5 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
-<h1>Bandroadie <span class="muted">v<?= e(BANDROADIE_VERSION) ?></span></h1>
+<h1>Bandregie <span class="muted">v<?= e(BANDREGIE_VERSION) ?></span></h1>
 <p class="muted"><?= e(t('about_tagline')) ?></p>
 
 <div class="card">
@@ -22,12 +22,12 @@
   <h2><?= e(t('about_project')) ?></h2>
   <ul class="task-list">
     <li><strong><?= e(t('about_license')) ?></strong>
-      <a href="https://github.com/computi71/bandroadie/blob/main/LICENSE.md" target="_blank" rel="noopener">FSL-1.1-ALv2</a>
+      <a href="https://github.com/computi71/bandregie/blob/main/LICENSE.md" target="_blank" rel="noopener">FSL-1.1-ALv2</a>
       <div class="muted small"><?= e(t('about_license_note')) ?></div></li>
     <li><strong><?= e(t('about_source')) ?></strong>
-      <a href="https://github.com/computi71/bandroadie" target="_blank" rel="noopener">github.com/computi71/bandroadie</a></li>
-    <li><strong><?= e(t('about_version')) ?></strong> <span class="muted"><?= e(BANDROADIE_VERSION) ?></span>
-      · <a href="https://github.com/computi71/bandroadie/releases" target="_blank" rel="noopener"><?= e(t('about_changelog')) ?></a></li>
+      <a href="https://github.com/computi71/bandregie" target="_blank" rel="noopener">github.com/computi71/bandregie</a></li>
+    <li><strong><?= e(t('about_version')) ?></strong> <span class="muted"><?= e(BANDREGIE_VERSION) ?></span>
+      · <a href="https://github.com/computi71/bandregie/releases" target="_blank" rel="noopener"><?= e(t('about_changelog')) ?></a></li>
     <li><strong><?= e(t('about_stack')) ?></strong> <span class="muted">PHP <?= e(PHP_VERSION) ?> · MariaDB/MySQL</span></li>
   </ul>
   <p class="muted small"><?= e(t('about_data_note')) ?></p>

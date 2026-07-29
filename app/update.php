@@ -13,7 +13,7 @@ declare(strict_types=1);
  */
 
 /** Wo nach neuen Fassungen gefragt wird. Ohne Schlüssel, ohne Anmeldung. */
-const UPDATE_FEED = 'https://api.github.com/repos/computi71/bandroadie/releases/latest';
+const UPDATE_FEED = 'https://api.github.com/repos/computi71/bandregie/releases/latest';
 
 /** Höchstens einmal am Tag fragen — öfter nützt niemandem. */
 const UPDATE_INTERVAL = 86400;
@@ -44,8 +44,8 @@ function update_command(): array {
     $domain = preg_replace('~^www\.~', '', (string) ($_SERVER['HTTP_HOST'] ?? 'example.com'));
     $domain = preg_replace('~[^a-z0-9.\-]~i', '', explode(':', $domain)[0]);
     return ['kind' => 'plesk', 'command' =>
-      "plesk ext git --fetch -domain $domain -name bandroadie && "
-      . "plesk ext git --deploy -domain $domain -name bandroadie"];
+      "plesk ext git --fetch -domain $domain -name bandregie && "
+      . "plesk ext git --deploy -domain $domain -name bandregie"];
   }
   if (update_is_git()) {
     return ['kind' => 'git', 'command' => 'sh ' . BASE_DIR . '/bin/update.sh'];
@@ -81,7 +81,7 @@ function update_fetch_latest(): ?string {
   curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 4,
-    CURLOPT_USERAGENT => 'Bandroadie/' . BANDROADIE_VERSION,
+    CURLOPT_USERAGENT => 'Bandregie/' . BANDREGIE_VERSION,
     CURLOPT_HTTPHEADER => ['Accept: application/vnd.github+json'],
   ]);
   $body = curl_exec($ch);
@@ -98,5 +98,5 @@ function update_fetch_latest(): ?string {
 /** Gibt es etwas Neueres als das, was hier läuft? */
 function update_available(): bool {
   $latest = update_latest_version();
-  return $latest !== null && version_compare($latest, BANDROADIE_VERSION, '>');
+  return $latest !== null && version_compare($latest, BANDREGIE_VERSION, '>');
 }

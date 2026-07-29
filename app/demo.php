@@ -351,7 +351,7 @@ function demo_install_rows(): void {
  */
 function demo_write_logins(array $logins): void {
   if (!$logins) return;
-  $text = "Bandroadie - demo accounts
+  $text = "Bandregie - demo accounts
 
 "
     . "These accounts exist only while the demo data is installed and are

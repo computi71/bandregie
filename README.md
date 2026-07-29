@@ -1,15 +1,15 @@
-# Bandroadie – Band Website & Organization Tool
+# Bandregie – Band Website & Organization Tool
 
 ![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)
 
 **Free for your own band.** Install it, run it, change it, use it for a band
 that earns money with its gigs — all covered. The one thing reserved to the
-author is offering Bandroadie itself as a commercial product or hosted service.
+author is offering Bandregie itself as a commercial product or hosted service.
 Two years after each release, that restriction lapses and the version becomes
 Apache 2.0. See [LICENSE.md](LICENSE.md).
 
 A band of six runs on a group chat, three spreadsheets and one person who
-remembers everything. Bandroadie replaces that with one place: a public page
+remembers everything. Bandregie replaces that with one place: a public page
 for promoters and fans, and an internal area for the work behind it.
 
 ## What it is for
@@ -66,15 +66,15 @@ Apache works too (see below).
 ### 1. Database
 
 ```sql
-CREATE DATABASE bandroadie CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'bandroadie'@'localhost' IDENTIFIED BY 'YOUR-PASSWORD';
-GRANT ALL PRIVILEGES ON bandroadie.* TO 'bandroadie'@'localhost';
+CREATE DATABASE bandregie CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'bandregie'@'localhost' IDENTIFIED BY 'YOUR-PASSWORD';
+GRANT ALL PRIVILEGES ON bandregie.* TO 'bandregie'@'localhost';
 ```
 
 ### 2. Code
 
 Clone the repository somewhere outside the web root, for example
-`/var/www/bandroadie`, then copy `app/config.example.php` to `app/config.php`
+`/var/www/bandregie`, then copy `app/config.example.php` to `app/config.php`
 and fill in the credentials above.
 
 Only `httpdocs/` may be served publicly. `app/` holds the code and your
@@ -90,7 +90,7 @@ server {
 
     # The document root points *inside* the project: everything above
     # httpdocs (app/, data/, seed/, config.php) stays unreachable.
-    root /var/www/bandroadie/httpdocs;
+    root /var/www/bandregie/httpdocs;
     index index.php;
 
     # Must be at least as large as the biggest upload you want to allow
@@ -127,7 +127,7 @@ server {
 Enable it and reload:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/bandroadie /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/bandregie /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -142,7 +142,7 @@ upload_max_filesize = 25M
 post_max_size = 30M
 ```
 
-Keep `client_max_body_size` in nginx at or above `post_max_size`. Bandroadie
+Keep `client_max_body_size` in nginx at or above `post_max_size`. Bandregie
 reports rejected uploads instead of failing silently, but only the server
 settings decide what actually gets through.
 
@@ -153,9 +153,9 @@ The web server user needs write access to `data/`, and read access to
 everyone else:
 
 ```bash
-sudo chown -R www-data:www-data /var/www/bandroadie/data
-sudo chown root:www-data /var/www/bandroadie/app/config.php
-sudo chmod 640 /var/www/bandroadie/app/config.php
+sudo chown -R www-data:www-data /var/www/bandregie/data
+sudo chown root:www-data /var/www/bandregie/app/config.php
+sudo chmod 640 /var/www/bandregie/app/config.php
 ```
 
 Use the account that deploys the code as the owner if you pull with a
@@ -258,7 +258,7 @@ backup. On a fresh machine, in this order:
 4. Restore:
 
    ```bash
-   php app/backup.php restore bandroadie-YYYY-MM-DD-HHMMSS.tar.gz.enc
+   php app/backup.php restore bandregie-YYYY-MM-DD-HHMMSS.tar.gz.enc
    ```
 
 The restore refuses to start if the archive cannot be opened — with no key,
@@ -315,13 +315,13 @@ sh bin/update.sh
 ```
 
 Run it as the user who owns the checkout. The backup runs as the web user, so
-either be that user or allow `sudo -u www-data` for it. Set `BANDROADIE_WEBUSER`
+either be that user or allow `sudo -u www-data` for it. Set `BANDREGIE_WEBUSER`
 if your web server runs as somebody else.
 
 To have it run by itself, put it in that user's crontab:
 
 ```
-30 4 * * 1  sh /var/www/bandroadie/bin/update.sh >> /var/log/bandroadie-update.log 2>&1
+30 4 * * 1  sh /var/www/bandregie/bin/update.sh >> /var/log/bandregie-update.log 2>&1
 ```
 
 **Plesk.** The deployed directory is not a git checkout — Plesk keeps the
@@ -329,8 +329,8 @@ repository elsewhere and copies files into place, so `git pull` there would do
 nothing. Take a backup in the settings first, then:
 
 ```bash
-plesk ext git --fetch -domain YOUR-DOMAIN -name bandroadie
-plesk ext git --deploy -domain YOUR-DOMAIN -name bandroadie
+plesk ext git --fetch -domain YOUR-DOMAIN -name bandregie
+plesk ext git --deploy -domain YOUR-DOMAIN -name bandregie
 ```
 
 **Neither.** Copy the new files over the old ones, but never `data/` or
@@ -384,13 +384,13 @@ German is the source language for the interface: new strings go into
 
 By contributing you agree that your contribution is licensed under the
 project's license and that the author may also use it under other terms,
-including commercially. This keeps it possible to offer Bandroadie as a
+including commercially. This keeps it possible to offer Bandregie as a
 service later without having to track down every contributor. Contributors are
 credited in `CONTRIBUTORS` and shown in the member area.
 
 ## Supporting the project
 
-If Bandroadie saves your band an evening of spreadsheet wrangling, there is a
+If Bandregie saves your band an evening of spreadsheet wrangling, there is a
 Sponsor button at the top of the repository. Entirely optional — the licence
 does not change either way.
 
@@ -400,7 +400,7 @@ does not change either way.
 (FSL-1.1-ALv2), copyright 2026 Michael Rothe.
 
 In plain words: any use is permitted except a *competing use* — making
-Bandroadie available to others as a commercial product or service that
+Bandregie available to others as a commercial product or service that
 substitutes for it. Running it for your own band, modifying it, redistributing
 it and building on it are all fine. Each released version additionally becomes
 available under Apache 2.0 two years after its release.

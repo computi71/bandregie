@@ -14,7 +14,7 @@
             // fragt niemand, die Fußzeile steht auf jeder Seite. ?>
       <button type="button" class="linklike" data-versioncheck
               data-checking="<?= e(t('up_checking')) ?>" data-failed="<?= e(t('up_failed')) ?>">
-        Bandroadie v<?= e(BANDROADIE_VERSION) ?>
+        Bandregie v<?= e(BANDREGIE_VERSION) ?>
       </button>
       <?php // Nur für Admins, und nur wenn es wirklich etwas Neueres gibt —
             // eine Klammer, in der die eigene Version steht, sagt nichts. ?>

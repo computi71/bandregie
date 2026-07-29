@@ -1,12 +1,12 @@
 #!/bin/sh
-# Bandroadie aktualisieren: erst sichern, dann holen.
+# Bandregie aktualisieren: erst sichern, dann holen.
 #
 # Für die Konsole und für cron gedacht. Die Anwendung selbst rührt ihren Code
 # nicht an — dafür müsste der Webserver in sein eigenes Verzeichnis schreiben
 # dürfen, und das ist ein zu hoher Preis für einen eingesparten Befehl.
 #
 # Aufruf:   sh bin/update.sh
-# Per cron: 30 4 * * 1  sh /var/www/bandroadie/bin/update.sh >> /var/log/bandroadie-update.log 2>&1
+# Per cron: 30 4 * * 1  sh /var/www/bandregie/bin/update.sh >> /var/log/bandregie-update.log 2>&1
 #
 # Ausführen sollte ihn, wem die Arbeitskopie gehört. Die Sicherung läuft als
 # Webbenutzer, damit die Dateien dieselben Rechte bekommen wie alle anderen;
@@ -16,15 +16,15 @@ set -eu
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$DIR"
 
-WEBUSER=${BANDROADIE_WEBUSER:-www-data}
+WEBUSER=${BANDREGIE_WEBUSER:-www-data}
 PHP=${PHP:-php}
 
-echo "== Bandroadie-Update in $DIR"
+echo "== Bandregie-Update in $DIR"
 
 if [ ! -d .git ]; then
   echo "   Keine Git-Arbeitskopie. Läuft die Installation unter Plesk, geht es so:"
-  echo "   plesk ext git --fetch -domain DEINE-DOMAIN -name bandroadie"
-  echo "   plesk ext git --deploy -domain DEINE-DOMAIN -name bandroadie"
+  echo "   plesk ext git --fetch -domain DEINE-DOMAIN -name bandregie"
+  echo "   plesk ext git --deploy -domain DEINE-DOMAIN -name bandregie"
   exit 1
 fi
 

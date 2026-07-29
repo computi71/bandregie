@@ -58,11 +58,11 @@ if ($method === 'POST' && !csrf_valid()) {
 
 // ---------- App: Manifest und Symbole ----------
 // Das Manifest macht die Seite installierbar. Es trägt den Bandnamen, damit
-// auf dem Startbildschirm nicht „Bandroadie" steht, sondern die Band.
+// auf dem Startbildschirm nicht „Bandregie" steht, sondern die Band.
 if ($path === '/manifest.webmanifest' && $method === 'GET') {
   header('Content-Type: application/manifest+json; charset=utf-8');
   header('Cache-Control: public, max-age=3600');
-  $band = setting('band_name') ?: 'Bandroadie';
+  $band = setting('band_name') ?: 'Bandregie';
   exit(json_encode([
     'name' => $band,
     'short_name' => mb_substr($band, 0, 12),
@@ -240,7 +240,7 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
   $band = setting('band_name');
   echo "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//$band//DE\r\nX-WR-CALNAME:$band\r\n";
   foreach (rows('SELECT * FROM events ORDER BY date') as $ev) {
-    $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandroadie.local');
+    $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandregie.local');
     if ($ev['status'] === 'abgesagt') continue;
     $summary = ($ev['type'] === 'probe' ? 'Probe: ' : 'Gig: ') . $ev['title']
       . ($ev['status'] === 'angefragt' ? ' (unbestätigt)' : '');
@@ -401,10 +401,10 @@ if (str_starts_with($path, '/intern')) {
     require_once BASE_DIR . '/app/update.php';
     if (($me['role'] ?? '') === 'admin') set_setting('update_checked_at', '0');
     $latest = update_latest_version();
-    $available = $latest !== null && version_compare($latest, BANDROADIE_VERSION, '>');
+    $available = $latest !== null && version_compare($latest, BANDREGIE_VERSION, '>');
     header('Content-Type: application/json; charset=utf-8');
     exit(json_encode([
-      'installedLabel' => t('up_installed') . ' ' . BANDROADIE_VERSION,
+      'installedLabel' => t('up_installed') . ' ' . BANDREGIE_VERSION,
       'latestLabel'    => t('up_latest') . ' ' . ($latest ?? t('up_unknown')),
       'verdict'        => $available ? sprintf(t('up_available'), $latest) : t('up_current'),
       'available'      => $available,
@@ -1291,7 +1291,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/uebersetzungen?sprache=' . ($editLang ?? 'en'));
   }
 
-  // ---------- Über Bandroadie ----------
+  // ---------- Über Bandregie ----------
   if ($path === '/intern/ueber' && $method === 'GET') {
     // CONTRIBUTORS (eine Zeile pro Person) ist optional — fehlt sie, bleibt der Block leer
     $file = BASE_DIR . '/CONTRIBUTORS';

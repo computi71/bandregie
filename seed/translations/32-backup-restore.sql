@@ -10,7 +10,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','bk_upload_hint','For the case where the server was rebuilt and there is no backup here yet.'),
 ('en','bk_uploaded','uploaded from outside'),('en','bk_safety_made','Safety copy:'),
 ('en','fl_bk_uploaded','Archive uploaded.'),
-('en','fl_bk_upload_invalid','That was not a Bandroadie backup (.tar.gz).'),
+('en','fl_bk_upload_invalid','That was not a Bandregie backup (.tar.gz).'),
 ('en','fl_bk_missing','That backup is no longer on the server.'),
 
 ('fr','bk_restore','Restaurer'),
@@ -21,7 +21,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','bk_upload_hint','Pour le cas où le serveur a été refait et qu''aucune sauvegarde ne se trouve encore ici.'),
 ('fr','bk_uploaded','envoyée de l''extérieur'),('fr','bk_safety_made','Copie de sécurité :'),
 ('fr','fl_bk_uploaded','Archive envoyée.'),
-('fr','fl_bk_upload_invalid','Ce n''était pas une sauvegarde Bandroadie (.tar.gz).'),
+('fr','fl_bk_upload_invalid','Ce n''était pas une sauvegarde Bandregie (.tar.gz).'),
 ('fr','fl_bk_missing','Cette sauvegarde n''est plus sur le serveur.'),
 
 ('es','bk_restore','Restaurar'),
@@ -32,7 +32,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','bk_upload_hint','Para cuando el servidor se ha rehecho y aquí todavía no hay ninguna copia.'),
 ('es','bk_uploaded','subida desde fuera'),('es','bk_safety_made','Copia de seguridad:'),
 ('es','fl_bk_uploaded','Archivo subido.'),
-('es','fl_bk_upload_invalid','Eso no era una copia de Bandroadie (.tar.gz).'),
+('es','fl_bk_upload_invalid','Eso no era una copia de Bandregie (.tar.gz).'),
 ('es','fl_bk_missing','Esa copia ya no está en el servidor.'),
 
 ('nl','bk_restore','Terugzetten'),
@@ -43,7 +43,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','bk_upload_hint','Voor het geval de server opnieuw is opgezet en hier nog geen back-up staat.'),
 ('nl','bk_uploaded','van buitenaf geüpload'),('nl','bk_safety_made','Veiligheidskopie:'),
 ('nl','fl_bk_uploaded','Archief geüpload.'),
-('nl','fl_bk_upload_invalid','Dat was geen Bandroadie-back-up (.tar.gz).'),
+('nl','fl_bk_upload_invalid','Dat was geen Bandregie-back-up (.tar.gz).'),
 ('nl','fl_bk_missing','Die back-up staat niet meer op de server.'),
 
 ('it','bk_restore','Ripristina'),
@@ -54,6 +54,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','bk_upload_hint','Per il caso in cui il server sia stato rifatto e qui non ci sia ancora nessun backup.'),
 ('it','bk_uploaded','caricato dall''esterno'),('it','bk_safety_made','Copia di sicurezza:'),
 ('it','fl_bk_uploaded','Archivio caricato.'),
-('it','fl_bk_upload_invalid','Quello non era un backup di Bandroadie (.tar.gz).'),
+('it','fl_bk_upload_invalid','Quello non era un backup di Bandregie (.tar.gz).'),
 ('it','fl_bk_missing','Quel backup non è più sul server.')
 ON DUPLICATE KEY UPDATE value = value;

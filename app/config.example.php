@@ -3,8 +3,8 @@
 // Create the database and user first (Plesk: "Databases", or via CLI).
 return [
   'db_host' => 'localhost',
-  'db_name' => 'bandroadie',
-  'db_user' => 'bandroadie',
+  'db_name' => 'bandregie',
+  'db_user' => 'bandregie',
   'db_pass' => 'YOUR-PASSWORD-HERE',
 
   // Encryption key for backups and attachments at rest (GDPR Art. 32).

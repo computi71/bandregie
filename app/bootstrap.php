@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Frame-Options: SAMEORIGIN');
 
 define('BASE_DIR', dirname(__DIR__));
-define('BANDROADIE_VERSION', trim(@file_get_contents(dirname(__DIR__) . '/VERSION') ?: '') ?: 'dev');
+define('BANDREGIE_VERSION', trim(@file_get_contents(dirname(__DIR__) . '/VERSION') ?: '') ?: 'dev');
 define('DATA_DIR', BASE_DIR . '/data');
 define('UPLOADS_DIR', DATA_DIR . '/uploads');
 define('FILES_DIR', DATA_DIR . '/files');
@@ -52,7 +52,7 @@ try {
     ]
   );
 } catch (PDOException $e) {
-  error_log('Bandroadie: Datenbankverbindung fehlgeschlagen — ' . $e->getMessage());
+  error_log('Bandregie: Datenbankverbindung fehlgeschlagen — ' . $e->getMessage());
   http_response_code(500);
   exit('Keine Verbindung zur Datenbank. Bitte db_host, db_name, db_user und db_pass '
      . 'in app/config.php prüfen; Einzelheiten stehen im Fehlerprotokoll des Servers.');
@@ -95,14 +95,14 @@ const UI_STRINGS = [
   'up_checking' => 'Frage nach …',
   'up_failed' => 'Nachfragen hat nicht geklappt — vielleicht kommt der Server gerade nicht ins Netz.',
   'up_available' => 'Fassung %s ist da',
-  'up_intro' => 'Bandroadie aktualisiert sich nicht selbst. Dafür müsste der Webserver in sein eigenes Verzeichnis schreiben dürfen, und dann würde aus jeder Lücke, die einmal eine Datei schreiben lässt, eine dauerhafte Übernahme. Ein Befehl auf der Konsole kostet zwei Sekunden mehr und diesen Preis nicht.',
+  'up_intro' => 'Bandregie aktualisiert sich nicht selbst. Dafür müsste der Webserver in sein eigenes Verzeichnis schreiben dürfen, und dann würde aus jeder Lücke, die einmal eine Datei schreiben lässt, eine dauerhafte Übernahme. Ein Befehl auf der Konsole kostet zwei Sekunden mehr und diesen Preis nicht.',
   'up_installed' => 'Installiert:', 'up_latest' => 'Neueste Fassung:', 'up_unknown' => 'nicht nachgesehen',
   'up_how_git' => 'Das Skript sichert erst Datenbank und Dateien und holt dann die neue Fassung:',
   'up_how_plesk' => 'Diese Installation läuft unter Plesk — das ausgelieferte Verzeichnis ist keine Git-Arbeitskopie, ein „git pull" liefe hier ins Leere. Plesk holt und verteilt:',
   'up_manual' => 'Diese Installation ist keine Git-Arbeitskopie. Neue Dateien einspielen, aber data/ und app/config.php dabei niemals überschreiben — und vorher eine Sicherung ziehen.',
   'up_cron' => 'Soll es von allein laufen, gehört es in die cron-Tabelle des Benutzers, dem die Arbeitskopie gehört:',
   'up_check' => 'Einmal am Tag nachsehen, ob es eine neue Fassung gibt',
-  'up_check_hint' => 'Fragt bei GitHub nach der Versionsnummer — ohne Anmeldung und ohne Angaben über diese Installation. Abgeschaltet fragt Bandroadie nie von sich aus nach draußen.',
+  'up_check_hint' => 'Fragt bei GitHub nach der Versionsnummer — ohne Anmeldung und ohne Angaben über diese Installation. Abgeschaltet fragt Bandregie nie von sich aus nach draußen.',
   'fl_up_saved' => 'Einstellung zur Aktualisierung gespeichert.',
   'tax_title' => 'Umsatzgrenze im Blick',
   'tax_turnover_year' => 'Umsatz %d:',
@@ -196,7 +196,7 @@ const UI_STRINGS = [
   'help_est_src_bfh' => '— die Bagatellgrenze aus der Rechtsprechung',
   'about_donate' => 'Trinkgeld',
   'about_donate_link' => 'für das Projekt',
-  'about_donate_note' => 'Bandroadie ist kostenlos und bleibt es. Wer trotzdem etwas dalassen mag, darf — nötig ist es nicht.',
+  'about_donate_note' => 'Bandregie ist kostenlos und bleibt es. Wer trotzdem etwas dalassen mag, darf — nötig ist es nicht.',
   'help_est_own_title' => 'Was beim einzelnen Musiker zählt',
   'help_est_own_taxed' => 'Versteuert wird der Anteil am Gewinn — auch wenn nichts ausgezahlt wurde. Spart die Band auf eine PA, hat niemand Geld gesehen und trotzdem erklärt jeder seinen Anteil. Das überrascht regelmäßig.',
   'help_est_own_costs' => 'Dagegen steht, was in den Zahlen der Band gar nicht vorkommt: das eigene Instrument samt Saiten und Zubehör, Fahrten zu Proben und Auftritten, Noten und Fachliteratur, ein Arbeitszimmer unter engen Voraussetzungen, Beiträge zur Künstlersozialkasse. Das gehört in die persönliche Erklärung.',
@@ -537,7 +537,7 @@ const UI_STRINGS = [
   'sys_required' => 'Notwendig', 'sys_optional' => 'Erweitert den Funktionsumfang',
   'sys_operation' => 'Betrieb',
   'sys_ok' => 'vorhanden', 'sys_missing' => 'fehlt',
-  'sys_php_old' => 'zu alt', 'sys_php_old_hint' => 'Bandroadie braucht mindestens PHP 8.1.',
+  'sys_php_old' => 'zu alt', 'sys_php_old_hint' => 'Bandregie braucht mindestens PHP 8.1.',
   'sys_ext_db' => 'Ohne diese Erweiterung gibt es keine Verbindung zur Datenbank.',
   'sys_ext_text' => 'Nötig für Umlaute und Sonderzeichen in allen Texten.',
   'sys_ext_files' => 'Nötig, um beim Hochladen den Dateityp zu erkennen.',
@@ -630,7 +630,7 @@ const UI_STRINGS = [
   'bk_upload_hint' => 'Für den Fall, dass der Server neu aufgesetzt wurde und hier noch keine Sicherung liegt.',
   'bk_uploaded' => 'von außen eingespielt', 'bk_safety_made' => 'Sicherheitskopie:',
   'fl_bk_uploaded' => 'Archiv eingespielt.',
-  'fl_bk_upload_invalid' => 'Das war keine Bandroadie-Sicherung (.tar.gz).',
+  'fl_bk_upload_invalid' => 'Das war keine Bandregie-Sicherung (.tar.gz).',
   'fl_bk_missing' => 'Diese Sicherung liegt nicht mehr auf dem Server.',
   'bk_target_onedrive' => 'OneDrive',
   'bk_onedrive_pending' => 'Braucht eine Anmeldung bei Microsoft. Sobald die Verbindung für Dateien und Fotos steht, kann die Sicherung sie mitbenutzen.',
@@ -655,10 +655,10 @@ const UI_STRINGS = [
   'set_site_url_hint' => 'Wird für Links in E-Mails und im Kalender benutzt. Leer lassen heißt: aus der Anfrage übernehmen — eingetragen ist sicherer.',
   'app_description' => 'Termine, Setlists und Technik der Band — auch unterwegs.',
   'app_install' => 'Auf dem Handy installieren',
-  'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandroadie ein eigenes Symbol und startet ohne Adressleiste.',
+  'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandregie ein eigenes Symbol und startet ohne Adressleiste.',
   'app_install_offline' => 'Übersicht, Termine, Setlists und Songs bleiben auf dem Gerät und sind auch ohne Empfang da — auf Bühnen ist das oft der Fall. Beim Abmelden werden sie gelöscht, damit auf einem geteilten Handy niemand die Termine des Vorgängers findet.',
   'app_install_store' => 'Eine App aus dem App Store oder von Google Play gibt es nicht. Der Weg über den Browser leistet dasselbe — ohne Jahresgebühr, ohne Prüfverfahren bei jeder Änderung und ohne einen zweiten Programmstand, der gepflegt werden will.',
-  'app_install_push' => 'Benachrichtigungen gibt es noch nicht: Wer wissen will, ob ein Termin dazugekommen ist oder jemand abgesagt hat, muss Bandroadie öffnen. Geplant sind sie.',
+  'app_install_push' => 'Benachrichtigungen gibt es noch nicht: Wer wissen will, ob ein Termin dazugekommen ist oder jemand abgesagt hat, muss Bandregie öffnen. Geplant sind sie.',
   'stage_plot' => 'Bühnenplan', 'stage_back' => 'hinten', 'stage_front' => 'vorne (Publikum)',
   'stage_empty' => 'Noch nichts aufgestellt.',
   'stage_add' => 'Aufstellen', 'stage_kind' => 'Was', 'stage_label' => 'Beschriftung',
@@ -708,8 +708,8 @@ Gitarre: vorne rechts",
   'topic_back' => 'Alle Themen', 'topic_by' => 'von',
   'fl_topic_created' => 'Thema angelegt.', 'fl_topic_deleted' => 'Thema gelöscht.',
   'fl_post_deleted' => 'Beitrag gelöscht.',
-  // Über Bandroadie
-  'about_title' => 'Über Bandroadie',
+  // Über Bandregie
+  'about_title' => 'Über Bandregie',
   'about_tagline' => 'Website und Organisation für Bands — Termine, Setlists, Songs, Kasse, Equipment.',
   'about_credits' => 'Entwicklung',
   'about_by' => 'Entwickelt von',
@@ -1537,7 +1537,7 @@ if (setting('translations_seed') !== $seedStamp) {
       // Ein Seed darf fehlschlagen, ohne die Seite mitzureißen — aber nicht
       // lautlos. Ein Tippfehler in einer Zeichenkette lässt sonst den halben
       // Rest der Datei aus, und niemand merkt es, bis eine Sprache Lücken hat.
-      error_log('Bandroadie: Seed ' . basename($seedFile) . ' abgebrochen: ' . $seedError->getMessage());
+      error_log('Bandregie: Seed ' . basename($seedFile) . ' abgebrochen: ' . $seedError->getMessage());
     }
   }
   set_setting('translations_seed', $seedStamp);
@@ -1563,7 +1563,7 @@ if ((int) row('SELECT COUNT(*) AS n FROM users')['n'] === 0) {
   q('INSERT INTO users (name, email, password_hash, role, must_change_pw, can_finance) VALUES (?,?,?,?,1,1)',
     ['Admin', 'admin@example.com', password_hash($startPw, PASSWORD_DEFAULT), 'admin']);
   @file_put_contents(DATA_DIR . '/INITIAL-PASSWORD.txt',
-    "Bandroadie — initial administrator account\n\n"
+    "Bandregie — initial administrator account\n\n"
     . "Email:    admin@example.com\nPassword: $startPw\n\n"
     . "You must change this password at first login. This file is removed the\n"
     . "moment you do, so it can never outlive the password it holds. Change\n"
@@ -2084,7 +2084,7 @@ function price_to_cents(string $raw): ?int {
  * installiert, hat diesen Vorteil ohne Zutun.
  */
 function asset(string $path): string {
-  return $path . '?v=' . rawurlencode(BANDROADIE_VERSION);
+  return $path . '?v=' . rawurlencode(BANDREGIE_VERSION);
 }
 
 /**

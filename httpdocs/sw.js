@@ -9,7 +9,7 @@
 // Beim Abmelden wird der Zwischenspeicher der Seiten geleert, damit auf einem
 // geteilten Gerät niemand die Termine des Vorgängers findet.
 
-const VERSION = 'bandroadie-v1';
+const VERSION = 'bandregie-v1';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 

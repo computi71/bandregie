@@ -46,7 +46,7 @@ function crypt_key(): ?string {
     if (is_string($raw) && strlen($raw) === SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_KEYBYTES) {
       $key = $raw;
     } else {
-      error_log('Bandroadie: data_key ist kein 64-stelliger Hex-Schlüssel, die Verschlüsselung bleibt aus');
+      error_log('Bandregie: data_key ist kein 64-stelliger Hex-Schlüssel, die Verschlüsselung bleibt aus');
     }
   }
   return $key;
@@ -187,7 +187,7 @@ function crypt_open(?string $blob): ?string {
 function crypt_selftest(): array {
   if (!crypt_available()) return ['ok' => false, 'message' => 'kein Schlüssel gesetzt'];
 
-  $probe = 'Bandroadie ' . bin2hex(random_bytes(16));
+  $probe = 'Bandregie ' . bin2hex(random_bytes(16));
   if (crypt_open(crypt_seal($probe)) !== $probe) {
     return ['ok' => false, 'message' => 'Text kam nicht heil zurück'];
   }

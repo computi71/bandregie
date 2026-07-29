@@ -1,8 +1,8 @@
--- Translations for the "About Bandroadie" page.
+-- Translations for the "About Bandregie" page.
 SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
-('en','about_title','About Bandroadie'),
+('en','about_title','About Bandregie'),
 ('en','about_tagline','Website and organization for bands — events, setlists, songs, treasury, equipment.'),
 ('en','about_credits','Development'),('en','about_by','Developed by'),('en','about_contributors','Contributors'),
 ('en','about_thanks','Built by a band that would rather play loud than keep lists — because “who''s got the setlist again?” got old fast. Plenty of ideas still lying around.'),
@@ -10,7 +10,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','about_license','License'),('en','about_source','Source code'),('en','about_version','Version'),
 ('en','about_changelog','What''s new?'),('en','about_stack','Built with'),
 ('en','about_data_note','Everything in this instance — events, songs, photos, files — belongs to the band, not to the project.'),
-('nl','about_title','Over Bandroadie'),
+('nl','about_title','Over Bandregie'),
 ('nl','about_tagline','Website en organisatie voor bands — afspraken, setlists, nummers, kas, apparatuur.'),
 ('nl','about_credits','Ontwikkeling'),('nl','about_by','Ontwikkeld door'),('nl','about_contributors','Medewerkers'),
 ('nl','about_thanks','Gebouwd door een band die liever hard speelt dan lijstjes bijhoudt — omdat „wie heeft de setlist?” snel ging vervelen. Ideeën liggen er nog genoeg.'),
@@ -18,7 +18,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','about_license','Licentie'),('nl','about_source','Broncode'),('nl','about_version','Versie'),
 ('nl','about_changelog','Wat is er nieuw?'),('nl','about_stack','Gebouwd met'),
 ('nl','about_data_note','Alles in deze installatie — afspraken, nummers, foto''s, bestanden — is van de band, niet van het project.'),
-('fr','about_title','À propos de Bandroadie'),
+('fr','about_title','À propos de Bandregie'),
 ('fr','about_tagline','Site et organisation pour groupes — dates, setlists, chansons, caisse, équipement.'),
 ('fr','about_credits','Développement'),('fr','about_by','Développé par'),('fr','about_contributors','Contributeurs'),
 ('fr','about_thanks','Fait par un groupe qui préfère jouer fort que tenir des listes — parce que « qui a la setlist ? », on l''a assez entendu. Des idées, il en reste plein.'),
@@ -26,7 +26,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','about_license','Licence'),('fr','about_source','Code source'),('fr','about_version','Version'),
 ('fr','about_changelog','Quoi de neuf ?'),('fr','about_stack','Construit avec'),
 ('fr','about_data_note','Tout ce qui se trouve dans cette instance — dates, chansons, photos, fichiers — appartient au groupe, pas au projet.'),
-('es','about_title','Acerca de Bandroadie'),
+('es','about_title','Acerca de Bandregie'),
 ('es','about_tagline','Web y organización para bandas — eventos, setlists, canciones, caja, equipo.'),
 ('es','about_credits','Desarrollo'),('es','about_by','Desarrollado por'),('es','about_contributors','Colaboradores'),
 ('es','about_thanks','Hecho por una banda que prefiere tocar fuerte antes que llevar listas — porque «¿quién tiene la setlist?» ya cansaba. Ideas quedan de sobra.'),
@@ -34,7 +34,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','about_license','Licencia'),('es','about_source','Código fuente'),('es','about_version','Versión'),
 ('es','about_changelog','¿Qué hay de nuevo?'),('es','about_stack','Hecho con'),
 ('es','about_data_note','Todo lo que hay en esta instalación — eventos, canciones, fotos, archivos — pertenece a la banda, no al proyecto.'),
-('it','about_title','Informazioni su Bandroadie'),
+('it','about_title','Informazioni su Bandregie'),
 ('it','about_tagline','Sito e organizzazione per band — eventi, scalette, brani, cassa, attrezzatura.'),
 ('it','about_credits','Sviluppo'),('it','about_by','Sviluppato da'),('it','about_contributors','Collaboratori'),
 ('it','about_thanks','Fatto da una band che preferisce suonare forte invece di tenere elenchi — perché «chi ha la scaletta?» aveva stufato. Di idee ne restano parecchie.'),

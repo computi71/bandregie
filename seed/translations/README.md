@@ -3,14 +3,14 @@
 German is the source language and lives in `UI_STRINGS` (`app/bootstrap.php`).
 These files carry the translations for the other languages (EN, NL, FR, ES, IT).
 
-**You normally do not need to run these manually.** Bandroadie imports every
+**You normally do not need to run these manually.** Bandregie imports every
 file in this folder automatically — on a fresh installation, and again after an
 update that brings new ones.
 
 To re-import or update after pulling a new version:
 
 ```bash
-for f in seed/translations/*.sql; do mysql bandroadie < "$f"; done
+for f in seed/translations/*.sql; do mysql bandregie < "$f"; done
 ```
 
 The statements only ever add missing keys (`ON DUPLICATE KEY UPDATE value =

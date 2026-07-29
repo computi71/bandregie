@@ -5,7 +5,7 @@
 Please report security problems privately first, so a fix can go out before
 the details do.
 
-- **Preferred:** [open a private security advisory](https://github.com/computi71/bandroadie/security/advisories/new)
+- **Preferred:** [open a private security advisory](https://github.com/computi71/bandregie/security/advisories/new)
   on GitHub. It stays between you and the maintainer until it is resolved.
 - **Alternative:** Open Bug Bounty, which has been used for this project
   before and works fine.

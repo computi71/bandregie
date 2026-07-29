@@ -230,7 +230,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
       <input type="password" name="backup_ftp_pass" autocomplete="new-password"
              placeholder="<?= $ftp['pass'] !== '' ? e(t('bk_ftp_pass_set')) : '' ?>">
     </label>
-    <label><?= e(t('bk_ftp_dir')) ?><input name="backup_ftp_dir" value="<?= e($ftp['dir']) ?>" placeholder="/backups/bandroadie"></label>
+    <label><?= e(t('bk_ftp_dir')) ?><input name="backup_ftp_dir" value="<?= e($ftp['dir']) ?>" placeholder="/backups/bandregie"></label>
     <label><?= e(t('bk_ftp_keep')) ?><input type="number" name="backup_ftp_keep" min="1" max="365" value="<?= (int) $ftp['keep'] ?>"></label>
     <label class="checkbox"><input type="checkbox" name="backup_ftp_tls" value="1" <?= $ftp['tls'] ? 'checked' : '' ?>> 🔒 <?= e(t('bk_ftp_tls')) ?></label>
     <label class="checkbox"><input type="checkbox" name="backup_ftp_passive" value="1" <?= $ftp['passive'] ? 'checked' : '' ?>> <?= e(t('bk_ftp_passive')) ?></label>
@@ -350,7 +350,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <summary>⬆ <?= e(t('up_title')) ?><?= update_available() ? ' — ' . e(sprintf(t('up_available'), $upLatest)) : '' ?></summary>
   <p class="muted small"><?= e(t('up_intro')) ?></p>
   <ul class="task-list">
-    <li><strong><?= e(t('up_installed')) ?></strong> <span class="muted"><?= e(BANDROADIE_VERSION) ?></span></li>
+    <li><strong><?= e(t('up_installed')) ?></strong> <span class="muted"><?= e(BANDREGIE_VERSION) ?></span></li>
     <li>
       <strong><?= e(t('up_latest')) ?></strong>
       <span class="<?= update_available() ? 'warn' : 'muted' ?>"><?= e($upLatest ?: t('up_unknown')) ?></span>
@@ -366,7 +366,7 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <pre class="prewrap"><?= e($upCmd['command']) ?></pre>
     <?php if ($upCmd['kind'] === 'git'): ?>
       <p class="muted small"><?= e(t('up_cron')) ?></p>
-      <pre class="prewrap">30 4 * * 1  sh <?= e(BASE_DIR) ?>/bin/update.sh &gt;&gt; /var/log/bandroadie-update.log 2&gt;&amp;1</pre>
+      <pre class="prewrap">30 4 * * 1  sh <?= e(BASE_DIR) ?>/bin/update.sh &gt;&gt; /var/log/bandregie-update.log 2&gt;&amp;1</pre>
     <?php endif; ?>
   <?php endif; ?>
 
