@@ -92,7 +92,10 @@ if (isset($_GET['lang']) && in_array($_GET['lang'], enabled_langs(), true)) {
 // Interner Bereich, Login, Kalender-Feed, Uploads und die Pflichtseiten
 // (als Impressums-Ziel für die Social-Profile) bleiben erreichbar.
 if (setting('public_mode') === 'redirect' && $method === 'GET') {
-  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/uploads/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/'];
+  // /appicon und das Manifest bleiben erreichbar: ein Handy holt das Symbol
+  // für den Startbildschirm ohne Sitzung, und wer weitergeleitet wird, hat
+  // sonst das Zeichen einer fremden Seite auf dem Bildschirm.
+  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/uploads/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/', '/appicon/', '/manifest.webmanifest'];
   $keep = false;
   foreach ($keepPrefixes as $prefix) {
     if ($path === rtrim($prefix, '/') || str_starts_with($path, $prefix)) { $keep = true; break; }

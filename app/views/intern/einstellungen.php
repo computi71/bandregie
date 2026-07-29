@@ -79,7 +79,8 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <form method="post" action="/intern/einstellungen/branding" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('set_logo_lbl')) ?><input type="file" name="logo" accept="image/*"></label>
     <label><?= e(t('set_bg_lbl')) ?><input type="file" name="background" accept="image/*"></label>
-    <label><?= e(t('set_favicon_lbl')) ?><input type="file" name="favicon" accept="image/png,image/x-icon,image/svg+xml"></label>
+    <label><?= e(t('set_favicon_lbl')) ?><input type="file" name="favicon" accept="image/png,image/x-icon,image/svg+xml">
+      <span class="muted small"><?= e(t('set_favicon_hint')) ?></span></label>
     <button class="btn btn-primary span2"><?= e(t('upload')) ?></button>
   </form>
   <div class="row-buttons">
@@ -94,6 +95,13 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
     <?php if (!empty($settings['favicon_file'])): ?>
       <img src="/uploads/<?= e($settings['favicon_file']) ?>" alt="Favicon" style="max-height:32px">
       <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
+      <?php // Das Favicon ist auch das Symbol auf dem Startbildschirm. Ein
+            // Browsertab kommt mit 64 Pixeln aus, eine Kachel auf dem Handy
+            // nicht — und hochrechnen kann das niemand. ?>
+      <?php $favInfo = @getimagesize(UPLOADS_DIR . '/' . $settings['favicon_file']); ?>
+      <?php if ($favInfo && min($favInfo[0], $favInfo[1]) < 192): ?>
+        <p class="warn small"><?= e(sprintf(t('set_favicon_small'), $favInfo[0], $favInfo[1])) ?></p>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
 </details>

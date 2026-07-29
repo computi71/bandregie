@@ -438,6 +438,8 @@ const UI_STRINGS = [
   'set_bg_lbl' => 'Hintergrundbild (wird abgedunkelt, max. 5 MB)',
   'set_logo_remove' => 'Logo entfernen', 'set_bg_remove' => 'Hintergrund entfernen',
   'set_favicon_lbl' => 'Site-Icon / Favicon (quadratisches PNG, max. 5 MB)',
+  'set_favicon_hint' => 'Dieses Zeichen steht im Browsertab und auf dem Startbildschirm des Handys. Für den Tab reichen 64 Pixel, für die Kachel auf dem Handy nicht — 512×512 ist die sichere Größe.',
+  'set_favicon_small' => 'Dieses Bild ist %d×%d groß. Im Browsertab sieht man das nicht, auf dem Startbildschirm des Handys schon: die Kachel wird dort mit 192 bis 512 Pixeln gezeichnet, und größer rechnen lässt sich ein kleines Bild nicht. Ein quadratisches PNG mit 512×512 füllt sie aus.',
   'set_favicon_remove' => 'Favicon entfernen',
   'set_media' => 'Musik & Videos (öffentliche Seite)',
   'set_media_hint' => 'YouTube- und Spotify-Links werden automatisch als Player eingebettet.',
