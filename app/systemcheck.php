@@ -70,6 +70,7 @@ function system_checks(): array {
   // Steuerliche Grenzen altern still: der Gesetzgeber ändert sie, die
   // Installation merkt davon nichts. Nur hier fällt es auf.
   require_once BASE_DIR . '/app/steuer.php';
+  require_once BASE_DIR . '/app/update.php';   // für update_is_plesk()
   if (setting('tax_small_business', '0') === '1') {
     $taxStale = tax_values_stale();
     $groups[t('sys_operation')][] = check_row(
@@ -110,6 +111,20 @@ function system_checks(): array {
     );
   }
 
+  // Plesk legt die Besucherstatistik unter /plesk-stat ab. Steht sie offen,
+  // liest jeder die IP-Adressen der Besucher mit — gemeldet wurde genau das
+  // an einer laufenden Installation.
+  if (update_is_plesk()) {
+    $statCode = system_probe_status('/plesk-stat/');
+    $statOffen = $statCode === 200;
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_webstat'),
+      $statCode === null ? 'warn' : ($statOffen ? 'fail' : 'ok'),
+      $statCode === null ? t('sys_webstat_unknown') : ($statOffen ? t('sys_webstat_open') : t('sys_ok')),
+      $statOffen ? t('sys_webstat_hint') : ''
+    );
+  }
+
   $cache = system_cache_header();
   $groups[t('sys_operation')][] = check_row(
     t('sys_cache'),
@@ -119,6 +134,25 @@ function system_checks(): array {
   );
 
   return $groups;
+}
+
+/**
+ * Womit antwortet die eigene Seite auf einen Pfad? Für Stellen, die der
+ * Webserver ausliefert und von denen die Anwendung sonst nichts wüsste.
+ *
+ * @return int|null HTTP-Status oder null, wenn sich nichts abfragen ließ
+ */
+function system_probe_status(string $path): ?int {
+  if (!function_exists('curl_init')) return null;
+  $ch = curl_init(absolute_url($path));
+  curl_setopt_array($ch, [
+    CURLOPT_NOBODY => true, CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 4, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0,
+  ]);
+  $ok = curl_exec($ch) !== false;
+  $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+  curl_close($ch);
+  return $ok && $code > 0 ? $code : null;
 }
 
 /**

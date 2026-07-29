@@ -200,6 +200,23 @@ able to deliver mail for your domain; send from an address on that domain
 Back up the database and the `data/` folder. Updating the code never touches
 either, but never overwrite `data/` or `app/config.php` when deploying.
 
+### Plesk: close the statistics directory
+
+Plesk publishes AWStats reports under `/plesk-stat/`, and by default anybody
+who knows the address can read them. They contain the IP addresses of your
+visitors, the pages they asked for and where they came from — personal data
+under GDPR Art. 4, sitting in front of no login at all.
+
+*Websites & Domains → Hosting & DNS → Web Statistics* → tick **accessible via
+password-protected directory**, or:
+
+```bash
+plesk bin domain --update yourdomain.tld -webstat-protdir-access true
+```
+
+The system check tests this on a Plesk installation and says so when the
+directory answers to everyone.
+
 ### Encryption at rest
 
 A backup travels — to a NAS, an FTP target, a cloud — and the band's treasury
