@@ -120,7 +120,7 @@ function system_checks(): array {
     $groups[t('sys_operation')][] = check_row(
       t('sys_webstat'),
       $statCode === null ? 'warn' : ($statOffen ? 'fail' : 'ok'),
-      $statCode === null ? t('sys_webstat_unknown') : ($statOffen ? t('sys_webstat_open') : t('sys_ok')),
+      $statCode === null ? t('sys_webstat_unknown') : ($statOffen ? t('sys_webstat_open') : t('sys_webstat_closed')),
       $statOffen ? t('sys_webstat_hint') : ''
     );
   }

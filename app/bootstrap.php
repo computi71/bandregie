@@ -485,6 +485,7 @@ const UI_STRINGS = [
   'sys_crypt_broken' => 'Die Verschlüsselung ist eingeschaltet, aber die Prüfung schlägt fehl. Bis das geklärt ist, ist auf die Sicherungen kein Verlass.',
   'sys_webstat' => 'Besucherstatistik',
   'sys_webstat_open' => 'öffentlich lesbar',
+  'sys_webstat_closed' => 'geschützt',
   'sys_webstat_unknown' => 'nicht prüfbar',
   'sys_webstat_hint' => 'Unter /plesk-stat liegen die AWStats-Berichte dieser Domain, und darin stehen die IP-Adressen eurer Besucher — offen für jeden, der die Adresse kennt. In Plesk unter „Websites & Domains → Hosting und DNS → Webstatistik" das Häkchen „Zugriff über passwortgeschütztes Verzeichnis" setzen.',
   'sys_crypt_files' => 'Anhänge verschlüsselt',
