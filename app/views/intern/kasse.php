@@ -8,6 +8,9 @@
     <?php endforeach; ?>
   </div>
 </div>
+<?php // Der Jahresbericht steht jedem offen: die eigenen Zahlen hat jeder,
+      // auch wer die Bandkasse nicht führt. ?>
+<p class="muted small"><a href="/intern/kasse/steuer">⚖ <?= e(t('taxr_open')) ?> →</a></p>
 
 <?php
 // Summen und Kategorien zeigen die Bandkasse. Eigene private Buchungen

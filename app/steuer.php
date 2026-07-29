@@ -129,3 +129,184 @@ function tax_commercial_status(int $year): ?array {
     'limit_share' => $limitShare, 'limit_abs' => $limitAbs, 'state' => $state,
   ];
 }
+
+/**
+ * Grenze für geringwertige Wirtschaftsgüter, in Cent. Alles darunter zählt im
+ * Jahr des Kaufs vollständig, alles darüber verteilt sich (§ 6 Abs. 2 EStG:
+ * 800 € netto).
+ */
+function tax_gwg_limit_cents(): int {
+  return (int) round((float) setting('tax_gwg_limit', '800') * 100);
+}
+
+/** Voreingestellte Nutzungsdauer in Jahren, über die sich ein Kauf verteilt. */
+function tax_afa_years(): int {
+  return max(1, (int) setting('tax_afa_years', '7'));
+}
+
+/**
+ * Was von einem Kaufpreis in einem bestimmten Jahr zu Buche schlägt.
+ *
+ * Unterhalb der Grenze ist es der ganze Betrag im Jahr des Kaufs. Darüber
+ * verteilt er sich gleichmäßig über die Nutzungsdauer, und zwar ab dem
+ * Kaufmonat — wer im Oktober kauft, setzt im ersten Jahr drei Monate an
+ * (§ 7 Abs. 1 EStG).
+ *
+ * Gerechnet wird über die aufgelaufene Summe und nicht Jahr für Jahr: sonst
+ * bleiben durch das Runden am Ende ein paar Cent liegen oder es kommen welche
+ * hinzu, und die Summe der Jahre wäre nicht der Kaufpreis.
+ *
+ * @return array{kind: string, this_year: int, remaining: int, first_year: int,
+ *               last_year: int, years: int}|null  null: kein brauchbares Datum
+ */
+function tax_depreciation(int $cents, ?string $purchasedOn, int $year): ?array {
+  $ts = $purchasedOn ? strtotime($purchasedOn) : false;
+  if ($cents <= 0 || $ts === false) return null;
+
+  $buyYear = (int) date('Y', $ts);
+  $buyMonth = (int) date('n', $ts);
+  $years = tax_afa_years();
+
+  if ($cents <= tax_gwg_limit_cents()) {
+    return [
+      'kind' => 'gwg', 'years' => 1,
+      'this_year' => $year === $buyYear ? $cents : 0,
+      'remaining' => $year < $buyYear ? $cents : 0,
+      'first_year' => $buyYear, 'last_year' => $buyYear,
+    ];
+  }
+
+  $months = $years * 12;
+  // Abgeschriebene Monate bis zum Ende des Jahres $y
+  $until = function (int $y) use ($buyYear, $buyMonth, $months): int {
+    if ($y < $buyYear) return 0;
+    return max(0, min($months, ($y - $buyYear) * 12 + (13 - $buyMonth)));
+  };
+  $cum = fn(int $m): int => intdiv($cents * $m, $months);
+
+  return [
+    'kind' => 'afa', 'years' => $years,
+    'this_year' => $cum($until($year)) - $cum($until($year - 1)),
+    'remaining' => $cents - $cum($until($year)),
+    'first_year' => $buyYear,
+    'last_year' => (int) date('Y', (int) mktime(0, 0, 0, $buyMonth + $months - 1, 1, $buyYear)),
+  ];
+}
+
+/**
+ * Der Jahresbericht: was hereinkam, was hinausging, und was von den
+ * Anschaffungen in dieses Jahr fällt.
+ *
+ * Ein Gerätekauf steht nicht bei den Ausgaben — er kommt über die
+ * Abschreibung herein, sonst stünde er doppelt im Ergebnis. Der Verkauf eines
+ * Geräts dagegen ist eine Einnahme wie jede andere.
+ *
+ * @param int|null $memberId gesetzt: die privaten Buchungen dieses Mitglieds.
+ *                           null: die Zahlen der Band
+ * @return array{year: int, income: array<string,int>, expense: array<string,int>,
+ *               entries: array, equipment: array, sum_income: int,
+ *               sum_expense: int, sum_afa: int, result: int}
+ */
+function tax_report(int $year, ?int $memberId): array {
+  $scope = $memberId === null ? 'f.private_for IS NULL' : 'f.private_for = ?';
+  $args = $memberId === null ? [] : [$memberId];
+
+  $entries = rows("SELECT f.*, eq.name AS equipment_name, e.title AS event_title
+                   FROM finances f
+                   LEFT JOIN equipment eq ON eq.id = f.equipment_id
+                   LEFT JOIN events e ON e.id = f.event_id
+                   WHERE $scope AND YEAR(f.date) = ?
+                   ORDER BY f.date, f.id", [...$args, $year]);
+
+  $income = $expense = []; $sumIn = $sumOut = 0; $plain = [];
+  foreach ($entries as $en) {
+    $cents = (int) $en['amount_cents'];
+    // Der Kauf steckt in der Abschreibung, nicht in den Ausgaben.
+    if ($en['equipment_id'] !== null && $en['type'] === 'ausgabe') continue;
+    $plain[] = $en;
+    if ($en['type'] === 'einnahme') {
+      $income[$en['category']] = ($income[$en['category']] ?? 0) + $cents;
+      $sumIn += $cents;
+    } else {
+      $expense[$en['category']] = ($expense[$en['category']] ?? 0) + $cents;
+      $sumOut += $cents;
+    }
+  }
+
+  // Käufe früherer Jahre schreiben weiter ab — deshalb alle bis Silvester,
+  // nicht nur die des Jahres.
+  $purchases = rows("SELECT f.*, eq.name AS equipment_name
+                     FROM finances f
+                     LEFT JOIN equipment eq ON eq.id = f.equipment_id
+                     WHERE $scope AND f.equipment_id IS NOT NULL AND f.type = 'ausgabe'
+                       AND f.date <= ?
+                     ORDER BY f.date, f.id", [...$args, $year . '-12-31']);
+
+  $equipment = []; $sumAfa = 0;
+  foreach ($purchases as $p) {
+    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $year);
+    if ($dep === null || ($dep['this_year'] === 0 && $dep['first_year'] !== $year)) continue;
+    $equipment[] = [
+      'name' => $p['equipment_name'] ?? $p['description'],
+      'date' => $p['date'],
+      'cents' => (int) $p['amount_cents'],
+    ] + $dep;
+    $sumAfa += $dep['this_year'];
+  }
+
+  return [
+    'year' => $year,
+    'income' => $income, 'expense' => $expense,
+    'entries' => $plain, 'equipment' => $equipment,
+    'sum_income' => $sumIn, 'sum_expense' => $sumOut, 'sum_afa' => $sumAfa,
+    'result' => $sumIn - $sumOut - $sumAfa,
+  ];
+}
+
+/**
+ * Jahre, für die sich ein Bericht lohnt: die mit Buchungen, und dazu die
+ * Jahre, in denen noch etwas abzuschreiben ist.
+ *
+ * @return int[] absteigend
+ */
+function tax_report_years(?int $memberId): array {
+  $scope = $memberId === null ? 'private_for IS NULL' : 'private_for = ?';
+  $args = $memberId === null ? [] : [$memberId];
+  $years = array_map('intval', array_column(
+    rows("SELECT DISTINCT YEAR(date) AS y FROM finances WHERE $scope ORDER BY y DESC", $args), 'y'));
+  // Ein Gerät aus 2023 beschäftigt die Erklärung 2029 noch, auch wenn in dem
+  // Jahr keine einzige Zeile gebucht wurde. Über das laufende Jahr hinaus
+  // aber nicht: für ein Jahr, das noch läuft, gibt es nichts zu erklären.
+  $now = (int) date('Y');
+  foreach (rows("SELECT amount_cents, date FROM finances
+                 WHERE $scope AND equipment_id IS NOT NULL AND type = 'ausgabe'", $args) as $p) {
+    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $now);
+    if (!$dep) continue;
+    for ($y = $dep['first_year']; $y <= min($dep['last_year'], $now); $y++) $years[] = $y;
+  }
+  $years = array_values(array_unique($years));
+  rsort($years);
+  return $years;
+}
+
+/**
+ * Umfang, Jahr und Bericht aus einer Anfrage. Drei Wege zeigen dieselben
+ * Zahlen — die Seite, der Druck und die Tabelle —, und sie sollen sich nicht
+ * in Kleinigkeiten unterscheiden.
+ *
+ * @param array $query $_GET: 'umfang' ('band' oder eigene Zahlen), 'jahr'
+ */
+function tax_report_for(array $user, array $query): array {
+  // Die Zahlen der Band sieht nur, wer die Kasse führt.
+  $band = ($query['umfang'] ?? '') === 'band' && perm_allows($user, 'kasse', 'write');
+  $memberId = $band ? null : (int) $user['id'];
+  $years = tax_report_years($memberId);
+  $wanted = (int) ($query['jahr'] ?? 0);
+  $year = in_array($wanted, $years, true) ? $wanted : (int) ($years[0] ?? date('Y'));
+  return [
+    'scope' => $band ? 'band' : 'eigen',
+    'years' => $years,
+    'year'  => $year,
+    'report' => tax_report($year, $memberId),
+  ];
+}

@@ -1732,6 +1732,48 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/kasse');
   }
 
+  // ---------- Steuerübersicht ----------
+  // Die eigenen Zahlen sieht jeder für sich, die der Band sieht die
+  // Kassenführung. Ein fremder privater Kauf taucht in keiner der beiden auf.
+  if ($path === '/intern/kasse/steuer' && $method === 'GET') {
+    require_once BASE_DIR . '/app/steuer.php';
+    view('intern/steuer', ['title' => t('taxr_title')] + tax_report_for($me, $_GET));
+  }
+  if ($path === '/intern/kasse/steuer/druck' && $method === 'GET') {
+    require_once BASE_DIR . '/app/steuer.php';
+    view('intern/steuer_print', ['title' => t('taxr_title')] + tax_report_for($me, $_GET));
+  }
+  if ($path === '/intern/kasse/steuer/export' && $method === 'GET') {
+    require_once BASE_DIR . '/app/steuer.php';
+    require_once BASE_DIR . '/app/export.php';
+    $taxView = tax_report_for($me, $_GET);
+    $taxRows = [];
+    foreach ($taxView['report']['entries'] as $en) {
+      $taxRows[] = [
+        $en['date'],
+        t('fin_' . ($en['type'] === 'einnahme' ? 'income' : 'expense')),
+        fin_category_label($en['category']),
+        $en['description'],
+        number_format($en['amount_cents'] / 100, 2, '.', ''),
+        '',
+      ];
+    }
+    foreach ($taxView['report']['equipment'] as $eq) {
+      $taxRows[] = [
+        $eq['date'],
+        t('taxr_afa'),
+        fin_category_label('equipment'),
+        $eq['name'],
+        number_format($eq['this_year'] / 100, 2, '.', ''),
+        number_format($eq['cents'] / 100, 2, '.', ''),
+      ];
+    }
+    export_send('steuer-' . $taxView['year'] . '-' . $taxView['scope'], [
+      t('date'), t('ev_type'), t('fin_category'), t('fin_description'),
+      t('taxr_amount_year'), t('taxr_purchase_price'),
+    ], $taxRows);
+  }
+
   // ---------- Einstellungen ----------
   if ($path === '/intern/einstellungen' && $method === 'GET') {
     require_admin();
@@ -1768,6 +1810,10 @@ if (str_starts_with($path, '/intern')) {
         $cents = price_to_cents((string) ($_POST[$taxKey] ?? ''));
         if ($cents !== null && $cents >= 0) set_setting($taxKey, (string) round($cents / 100, 2));
       }
+      // Die Nutzungsdauer ist eine Anzahl Jahre, kein Betrag. Null Jahre gibt
+      // es nicht — dann bliebe ein Kauf für immer stehen.
+      $afaYears = (int) ($_POST['tax_afa_years'] ?? 0);
+      if ($afaYears >= 1 && $afaYears <= 50) set_setting('tax_afa_years', (string) $afaYears);
       set_setting('tax_small_business', isset($_POST['tax_small_business']) ? '1' : '0');
       $taxDate = trim($_POST['tax_values_checked'] ?? '');
       set_setting('tax_values_checked', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxDate) ? $taxDate : date('Y-m-d'));
