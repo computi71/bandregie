@@ -1519,7 +1519,14 @@ foreach ($seedFiles as $seedFile) $seedStamp .= basename($seedFile) . ':' . file
 $seedStamp = sha1($seedStamp);
 if (setting('translations_seed') !== $seedStamp) {
   foreach ($seedFiles as $seedFile) {
-    try { $db->exec((string) file_get_contents($seedFile)); } catch (PDOException) { /* Seed ist optional */ }
+    try {
+      $db->exec((string) file_get_contents($seedFile));
+    } catch (PDOException $seedError) {
+      // Ein Seed darf fehlschlagen, ohne die Seite mitzureißen — aber nicht
+      // lautlos. Ein Tippfehler in einer Zeichenkette lässt sonst den halben
+      // Rest der Datei aus, und niemand merkt es, bis eine Sprache Lücken hat.
+      error_log('Bandroadie: Seed ' . basename($seedFile) . ' abgebrochen: ' . $seedError->getMessage());
+    }
   }
   set_setting('translations_seed', $seedStamp);
 }
