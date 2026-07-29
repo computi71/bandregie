@@ -2108,15 +2108,12 @@ function thumb_file(string $name, int $width = 480): ?string {
 /**
  * Symbol für den Startbildschirm — für iOS als apple-touch-icon, für Android
  * über das Manifest. Auf dem Handy ist das das einzige Zeichen, das jemand
- * von der Band zu sehen bekommt.
+ * von der Band zu sehen bekommt, und es wird groß gezeichnet: 192 bis 512
+ * Pixel, nicht die 16, mit denen ein Browsertab auskommt.
  *
- * Drei Quellen, in dieser Reihenfolge:
- *   1. ein quadratisches Logo, groß genug — dann unverändert
- *   2. das Favicon, mittig auf eine quadratische Fläche gesetzt. Es ist
- *      ohnehin quadratisch und ist genau das Zeichen, das die Band für sich
- *      gewählt hat; ein 64er-Bild wird dabei nicht auf 512 hochgerechnet,
- *      sondern behält seine Größe auf einer größeren Fläche.
- *   3. das mitgelieferte Zeichen — auch dann, wenn die Bildbibliothek fehlt.
+ * Ein quadratisches Logo in voller Größe wird unverändert durchgereicht.
+ * Sonst wird eines gezeichnet — aus dem größeren der beiden Bilder, die die
+ * Band hochgeladen hat.
  */
 function app_icon(int $size): string {
   $logo = setting('logo_file');
@@ -2124,62 +2121,109 @@ function app_icon(int $size): string {
     $info = @getimagesize(UPLOADS_DIR . '/' . $logo);
     if ($info && $info[0] === $info[1] && $info[0] >= $size) return '/uploads/' . rawurlencode($logo);
   }
-  $fromFavicon = app_icon_from_favicon($size);
-  return $fromFavicon ?? "/assets/app/icon-$size.png";
+  return app_icon_drawn($size) ?? "/assets/app/icon-$size.png";
 }
 
 /**
- * Das Favicon als App-Symbol: mittig auf eine quadratische Fläche in der
- * Hintergrundfarbe der Anwendung, einmal erzeugt und danach wiederverwendet.
+ * Die Vorlage für das App-Symbol: das Favicon, wenn es groß genug ist, sonst
+ * das Logo, sonst das Favicon in welcher Größe auch immer.
  *
- * Hochgerechnet wird nur, was noch scharf bleibt — ein 64-Pixel-Bild auf 512
- * gezogen sähe matschig aus, mittig gesetzt dagegen sauber.
+ * Das Favicon hat den Vorrang, weil es das Zeichen ist, das die Band für die
+ * kleine Fläche gewählt hat. Ist es aber winzig und liegt ein ordentliches
+ * Logo daneben, ist das Logo die bessere Vorlage — lieber ein breites Logo
+ * mittig auf der Kachel als ein hochgerechneter Fleck.
+ */
+function app_icon_source(): ?string {
+  $mass = function (string $name): ?array {
+    if ($name === '') return null;
+    $path = UPLOADS_DIR . '/' . $name;
+    if (!is_file($path)) return null;
+    $info = @getimagesize($path);
+    return $info ? ['path' => $path, 'min' => min($info[0], $info[1]), 'mime' => $info['mime']] : null;
+  };
+  $favicon = $mass(setting('favicon_file'));
+  $logo = $mass(setting('logo_file'));
+  if ($favicon && $favicon['min'] >= 192) return $favicon['path'];
+  if ($logo && $logo['min'] >= 192) return $logo['path'];
+  return $favicon['path'] ?? $logo['path'] ?? null;
+}
+
+/**
+ * Das App-Symbol zeichnen: die Vorlage füllt die Kachel bis auf einen Rand,
+ * der Hintergrund richtet sich nach der Vorlage.
+ *
+ * Der Hintergrund ist der Punkt, an dem der erste Versuch danebenlag: ein
+ * schwarzer Totenkopf mit durchsichtigem Grund auf der dunklen Hausfarbe war
+ * ein dunkles Quadrat. Gerechnet wird deshalb die Helligkeit dessen, was
+ * wirklich gezeichnet ist — dunkle Zeichnung, heller Grund und umgekehrt.
  *
  * @return string|null öffentlicher Pfad oder null, wenn es nicht geht
  */
-function app_icon_from_favicon(int $size): ?string {
-  $favicon = setting('favicon_file');
-  if ($favicon === '' || !function_exists('imagecreatetruecolor')) return null;
-  $source = UPLOADS_DIR . '/' . $favicon;
-  if (!is_file($source)) return null;
+function app_icon_drawn(int $size): ?string {
+  if (!function_exists('imagecreatetruecolor')) return null;
+  $source = app_icon_source();
+  if ($source === null) return null;
 
   $dir = DATA_DIR . '/appicons';
   if (!is_dir($dir)) @mkdir($dir, 0700, true);
-  $name = 'icon-' . $size . '-' . substr(sha1($favicon . filemtime($source)), 0, 12) . '.png';
+  $name = 'icon-' . $size . '-' . substr(sha1($source . filemtime($source)), 0, 12) . '.png';
   $target = $dir . '/' . $name;
-  if (!is_file($target)) {
-    $info = @getimagesize($source);
-    $img = $info ? match ($info['mime']) {
-      'image/png'  => @imagecreatefrompng($source),
-      'image/jpeg' => @imagecreatefromjpeg($source),
-      'image/gif'  => @imagecreatefromgif($source),
-      'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
-      default      => false,
-    } : false;
-    if (!$img) return null;
+  if (is_file($target)) return '/appicon/' . $name;
 
-    // Bis zum Doppelten der Vorlage hochrechnen, mehr wird unscharf
-    $room = (int) ($size * 0.8);
-    $side = min($room, max(imagesx($img), imagesy($img)) * 2);
-    $scale = $side / max(1, max(imagesx($img), imagesy($img)));
-    $w = max(1, (int) round(imagesx($img) * $scale));
-    $h = max(1, (int) round(imagesy($img) * $scale));
+  $info = @getimagesize($source);
+  $img = $info ? match ($info['mime']) {
+    'image/png'  => @imagecreatefrompng($source),
+    'image/jpeg' => @imagecreatefromjpeg($source),
+    'image/gif'  => @imagecreatefromgif($source),
+    'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
+    default      => false,
+  } : false;
+  if (!$img) return null;
 
-    $canvas = imagecreatetruecolor($size, $size);
-    imagefill($canvas, 0, 0, imagecolorallocate($canvas, 0x17, 0x12, 0x0f));  // theme_color
-    imagealphablending($canvas, true);
-    imagecopyresampled($canvas, $img, (int) (($size - $w) / 2), (int) (($size - $h) / 2), 0, 0,
-                       $w, $h, imagesx($img), imagesy($img));
-    imagepng($canvas, $target);
-    imagedestroy($canvas);
-    imagedestroy($img);
-    // Alte Fassungen desselben Maßes wegräumen — das Favicon ändert sich selten,
-    // aber jede Änderung ließe sonst eine Datei liegen.
-    foreach (glob($dir . '/icon-' . $size . '-*.png') ?: [] as $old) {
-      if ($old !== $target) @unlink($old);
-    }
+  $canvas = imagecreatetruecolor($size, $size);
+  $hell = app_icon_is_dark($img);
+  imagefill($canvas, 0, 0, $hell
+    ? imagecolorallocate($canvas, 0xF5, 0xF2, 0xEE)   // helle Fläche für eine dunkle Zeichnung
+    : imagecolorallocate($canvas, 0x17, 0x12, 0x0F)); // sonst die Hausfarbe
+  imagealphablending($canvas, true);
+
+  // Bis auf einen Rand füllen: ein Symbol soll die Kachel ausnutzen
+  $rand = (int) round($size * 0.12);
+  $platz = $size - 2 * $rand;
+  $scale = min($platz / max(1, imagesx($img)), $platz / max(1, imagesy($img)));
+  $w = max(1, (int) round(imagesx($img) * $scale));
+  $h = max(1, (int) round(imagesy($img) * $scale));
+  imagecopyresampled($canvas, $img, (int) (($size - $w) / 2), (int) (($size - $h) / 2), 0, 0,
+                     $w, $h, imagesx($img), imagesy($img));
+  imagepng($canvas, $target);
+  imagedestroy($canvas);
+  imagedestroy($img);
+
+  // Ältere Fassungen desselben Maßes wegräumen
+  foreach (glob($dir . '/icon-' . $size . '-*.png') ?: [] as $alt) {
+    if ($alt !== $target) @unlink($alt);
   }
   return is_file($target) ? '/appicon/' . $name : null;
+}
+
+/**
+ * Ist die Zeichnung dunkel? Gemessen wird nur, was auch zu sehen ist:
+ * durchsichtige Stellen bleiben außen vor, sonst entschiede der leere Rand
+ * über die Farbe des Hintergrunds.
+ */
+function app_icon_is_dark($img): bool {
+  $summe = 0.0; $zahl = 0;
+  $breite = imagesx($img); $hoehe = imagesy($img);
+  $schritt = max(1, (int) (max($breite, $hoehe) / 64));   // ein Raster genügt
+  for ($x = 0; $x < $breite; $x += $schritt) {
+    for ($y = 0; $y < $hoehe; $y += $schritt) {
+      $farbe = imagecolorat($img, $x, $y);
+      if ((($farbe >> 24) & 0x7F) > 64) continue;         // zu durchsichtig
+      $summe += 0.299 * (($farbe >> 16) & 0xFF) + 0.587 * (($farbe >> 8) & 0xFF) + 0.114 * ($farbe & 0xFF);
+      $zahl++;
+    }
+  }
+  return $zahl > 0 && $summe / $zahl < 128;
 }
 
 /**
