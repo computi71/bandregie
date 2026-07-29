@@ -45,9 +45,19 @@ version rather than into backports.
   route, never only in the interface. A hidden form is not a rule.
 - The content security policy is `script-src 'self'` — there is no inline
   JavaScript and no third-party script.
-- Passwords are stored with `password_hash()`. The first administrator gets a
-  random password written to a file outside the web root, which must be
-  changed at first login. No installation ships with known credentials.
+- Passwords are stored with `password_hash()` — bcrypt with a per-password
+  random salt. The first administrator gets a random password written to a
+  file outside the web root, which must be changed at first login. No
+  installation ships with known credentials.
+- Data at rest can be encrypted: with a `data_key` in `app/config.php`,
+  backups and attachments are sealed with XChaCha20-Poly1305 (libsodium,
+  authenticated). The key never touches the database, because it would then
+  ride along inside the backups it protects. The system check tests that the
+  encryption actually works — seal, open, flip a byte, confirm the refusal —
+  as GDPR Art. 32(1)(d) asks for effectiveness to be verified rather than
+  assumed. Not encrypted, deliberately: the live database, which the server
+  has to sort and sum in, and `data/uploads`, which the web server serves
+  directly. Both are stated in the settings rather than glossed over.
 
 ## Acknowledgements
 

@@ -200,6 +200,58 @@ able to deliver mail for your domain; send from an address on that domain
 Back up the database and the `data/` folder. Updating the code never touches
 either, but never overwrite `data/` or `app/config.php` when deploying.
 
+### Encryption at rest
+
+A backup travels — to a NAS, an FTP target, a cloud — and the band's treasury
+travels with it. Set an encryption key and it does not travel in the clear:
+
+```bash
+php app/backup.php key
+```
+
+Put the line it prints into `app/config.php` as `data_key`. From then on
+backups are written as `.tar.gz.enc` and attachments are sealed on disk;
+existing attachments can be sealed afterwards under *Settings → Encryption at
+rest*. XChaCha20-Poly1305 from libsodium, authenticated, so a tampered archive
+is refused rather than half-restored.
+
+**Keep the key where you keep the database password — and not inside the
+backup it protects.** Without it an encrypted backup cannot be opened by
+anyone, including you.
+
+What is *not* encrypted, and why: the live database, because the server has to
+sort and sum in it; and `data/uploads`, because the web server hands those
+files out directly. Attachments under `data/files` go through a permission
+check and are sealed.
+
+The system check verifies that the encryption actually works — it seals,
+opens, then flips a byte and confirms the result is refused. GDPR Art. 32(1)(d)
+asks for effectiveness to be tested, not intended.
+
+### Restoring on a new server
+
+The key is in `app/config.php`, and `app/config.php` is not part of the
+backup. On a fresh machine, in this order:
+
+1. Install the code and create the database (steps 1–3 above).
+2. Write `app/config.php` — database credentials **and the same `data_key`**
+   as the old server.
+3. Copy the archive to `data/backups/`, or upload it under *Settings →
+   Backup*.
+4. Restore:
+
+   ```bash
+   php app/backup.php restore bandroadie-YYYY-MM-DD-HHMMSS.tar.gz.enc
+   ```
+
+The restore refuses to start if the archive cannot be opened — with no key,
+or with the wrong one, nothing is touched and the message says which of the
+two it was. It also writes a safety copy of the current state before replacing
+anything.
+
+Both cases are covered by the test suite, because a restore path nobody has
+walked is a hope rather than a plan.
+
 ### Tax figures
 
 Under *Settings → Tax values* a band can say that it uses the German
