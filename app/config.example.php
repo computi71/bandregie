@@ -17,4 +17,16 @@ return [
   //
   // Leave it empty and everything still works, unencrypted.
   'data_key' => '',
+
+  // Set this only on a public demo whose credentials are published.
+  //
+  // The installation then refuses everything a later visitor cannot undo:
+  // changing any password, creating or deleting accounts, changing a login
+  // address or a role, and sending mail. Everything else stays open — events,
+  // songs, setlists, treasury, equipment — because that is what a demo is for.
+  //
+  // It lives here and not in the settings on purpose: in a demo every visitor
+  // is the admin, and a switch in the settings would be the first thing to go.
+  //
+  // 'is_demo' => true,
 ];

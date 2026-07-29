@@ -1,7 +1,11 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('mem_title')) ?></h1>
 
-<?php if ($user['role'] === 'admin'): ?>
+<?php if (is_demo()): ?>
+  <p class="card muted small">🔒 <?= e(t('demo_locked_hint')) ?></p>
+<?php endif; ?>
+
+<?php if ($user['role'] === 'admin' && !is_demo()): ?>
 <details class="card collapsible">
   <summary>➕ <?= e(t('mem_new')) ?></summary>
   <form method="post" action="/intern/mitglieder" class="form-grid"><?= csrf_field() ?>
@@ -37,7 +41,7 @@
       <?php if (perm_allows($m, 'kasse', 'write')): ?><span class="badge">💰 <?= e(t('fin_badge')) ?></span><?php endif; ?>
       <span class="row-buttons">
         <?php if ((int) $m['id'] === (int) $user['id']): ?><a class="btn btn-tiny" href="/intern/profil">✏️ <?= e(t('mem_my_profile')) ?></a><?php endif; ?>
-        <?php if ((int) $m['id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
+        <?php if (((int) $m['id'] === (int) $user['id'] || $user['role'] === 'admin') && !is_demo()): ?>
           <details class="inline-details">
             <summary class="btn btn-tiny">🔑 <?= e(t('mem_password')) ?></summary>
             <form method="post" action="/intern/mitglieder/<?= $m['id'] ?>/passwort" class="comment-form"><?= csrf_field() ?>
@@ -47,7 +51,7 @@
             </form>
           </details>
         <?php endif; ?>
-        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id']): ?>
+        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </span>
@@ -80,9 +84,14 @@
             <input type="number" name="substitute_rank" min="0" max="99" value="<?= (int) ($mFull['substitute_rank'] ?? 0) ?>">
             <span class="muted small"><?= e(t('mem_substitute_rank_hint')) ?></span>
           </label>
-          <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($mFull['email']) ?>" required></label>
+          <?php // In der Demo bleiben Adresse und Rolle stehen — die Route
+                // übernimmt sie ohnehin nicht, und ein Feld, das sich tippen
+                // lässt und dann nichts tut, ist schlimmer als ein gesperrtes. ?>
+          <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($mFull['email']) ?>" required <?= is_demo() ? 'readonly' : '' ?>></label>
           <label><?= e(t('role')) ?>
-            <select name="role" <?= (int) $m['id'] === (int) $user['id'] ? 'disabled title="' . e(t('mem_own_role')) . '"' : '' ?>>
+            <select name="role" <?= (int) $m['id'] === (int) $user['id']
+              ? 'disabled title="' . e(t('mem_own_role')) . '"'
+              : (is_demo() ? 'disabled title="' . e(t('demo_locked_hint')) . '"' : '') ?>>
               <option value="member" <?= $mFull['role'] === 'member' ? 'selected' : '' ?>><?= e(t('role_member')) ?></option>
               <option value="admin" <?= $mFull['role'] === 'admin' ? 'selected' : '' ?>><?= e(t('role_admin')) ?></option>
               <option value="ersatz" <?= $mFull['role'] === 'ersatz' ? 'selected' : '' ?>><?= e(t('role_ersatz')) ?></option>

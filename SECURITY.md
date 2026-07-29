@@ -63,3 +63,8 @@ version rather than into backports.
 
 - **SecTech** — improper access control on uploaded files (OBB-4627784),
   July 2026. Reported responsibly, fixed the same day.
+- **SecTech** — an exposed `/plesk-stat/` directory on an installation, July
+  2026. The directory belongs to the hosting panel rather than to this code,
+  but the reports carry visitor IP addresses and the exposure is the Plesk
+  default — so the system check now tests for it and says how to close it
+  (#103). A finding outside the code that made the code better.

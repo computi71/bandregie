@@ -19,7 +19,12 @@
     <label><?= e(t('phone')) ?><input name="phone" value="<?= e($profile['phone'] ?? '') ?>"></label>
     <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($profile['mobile'] ?? '') ?>"></label>
     <label><?= e(t('instrument')) ?><input name="instrument" value="<?= e($profile['instrument']) ?>" placeholder="<?= e(t('mem_instrument_ph')) ?>"></label>
-    <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($profile['email']) ?>" required></label>
+    <?php // Mit der Adresse meldet man sich an; in der Demo gilt sie für alle
+          // Besucher und bleibt deshalb stehen. Die Route übernimmt sie ohnehin
+          // nicht — hier steht nur, warum das Feld nicht reagiert. ?>
+    <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($profile['email']) ?>" required <?= is_demo() ? 'readonly' : '' ?>>
+      <?php if (is_demo()): ?><span class="muted small">🔒 <?= e(t('demo_locked_hint')) ?></span><?php endif; ?>
+    </label>
     <label><?= e(t('prof_lang')) ?>
       <select name="pref_lang">
         <?php foreach (LANGS as $code => $name): ?>

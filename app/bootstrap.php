@@ -502,6 +502,11 @@ const UI_STRINGS = [
   'fl_only_admin_pw' => 'Nur Admins können fremde Passwörter zurücksetzen.',
   'fl_pw_min' => 'Passwort braucht mindestens 8 Zeichen.',
   'fl_pw_changed' => 'Passwort geändert.',
+  'fl_demo_locked' => 'In der Demo nicht möglich: Die Zugangsdaten stehen öffentlich, '
+    . 'und wer sie ändert, sperrt alle anderen aus. Alles Übrige darfst du ausprobieren.',
+  'demo_locked_hint' => 'In der Demo gesperrt — die Zugangsdaten sind öffentlich und '
+    . 'gelten für alle Besucher gleichzeitig.',
+  'demo_badge' => 'Demo',
   'fl_translations_saved' => 'Übersetzungen gespeichert.',
   'fl_texts_saved' => 'Texte gespeichert.',
   'fl_settings_saved' => 'Einstellungen gespeichert.',
@@ -1846,6 +1851,35 @@ function may_edit_finance(?array $entry): bool {
   if (!$entry) return false;
   if ($entry['private_for'] === null) return can_finance();
   return (int) $entry['private_for'] === (int) (current_user()['id'] ?? 0);
+}
+
+/**
+ * Ist diese Installation eine öffentliche Demo?
+ *
+ * Der Schalter steht in app/config.php und ausdrücklich nicht in den
+ * Einstellungen: In einer Demo ist jeder Besucher Admin, und was in den
+ * Einstellungen steht, könnte er als Erstes abschalten.
+ */
+function is_demo(): bool {
+  global $config;
+  return !empty($config['is_demo']);
+}
+
+/**
+ * Bricht ab, wenn diese Installation eine öffentliche Demo ist.
+ *
+ * Gilt für alles, was ein späterer Besucher nicht mehr rückgängig machen kann:
+ * Kennwörter, Konten und ausgehende Post. Die Zugangsdaten stehen öffentlich
+ * auf der Werbeseite — wer das Admin-Kennwort ändert oder ein Konto löscht,
+ * sperrt damit alle anderen bis zum nächsten Zurücksetzen aus.
+ *
+ * Geprüft wird hier in der Route und nicht nur in der Oberfläche: ein Formular
+ * auszublenden hält niemanden davon ab, es trotzdem abzuschicken.
+ */
+function deny_in_demo(string $backTo): void {
+  if (!is_demo()) return;
+  flash(t('fl_demo_locked'));
+  redirect($backTo);
 }
 
 function redirect(string $to): never { header("Location: $to"); exit; }

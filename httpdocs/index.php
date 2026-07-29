@@ -298,6 +298,9 @@ if ($path === '/logout' && $method === 'POST') {
 // Passwort vergessen: Link per E-Mail anfordern (ohne Konto-Enumeration)
 if ($path === '/passwort-vergessen') {
   if ($method === 'POST') {
+    // In der Demo der einzige Weg, über den ein Besucher die Anwendung dazu
+    // brächte, Post an eine fremde Adresse zu schicken.
+    deny_in_demo('/login');
     $email = strtolower(trim($_POST['email'] ?? ''));
     if (throttle_blocked('reset', $email, 5, 60)) {
       flash(t('fl_throttled'));
@@ -336,6 +339,7 @@ if (preg_match('~^/passwort-reset/([a-f0-9]{64})$~', $path, $m)) {
     redirect('/passwort-vergessen');
   }
   if ($method === 'POST') {
+    deny_in_demo('/login');
     $pw = $_POST['password'] ?? '';
     if (strlen($pw) < 8) {
       flash(t('fl_pw_min'));
@@ -408,6 +412,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/passwort') {
     if ($method === 'POST') {
+      deny_in_demo('/intern');
       $pw = $_POST['password'] ?? '';
       if (strlen($pw) < 8) {
         flash(t('fl_pw_min'));
@@ -982,11 +987,16 @@ if (str_starts_with($path, '/intern')) {
     if (display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']) !== '' && ($_POST['email'] ?? '') !== '') {
       try {
         $prefLang = array_key_exists($_POST['pref_lang'] ?? '', LANGS) ? $_POST['pref_lang'] : 'de';
+        // Am eigenen Profil darf in der Demo alles geändert werden — nur die
+        // E-Mail nicht: mit ihr meldet man sich an, sie steht als Zugangsdatum
+        // auf der Werbeseite, und eine Änderung sperrte den nächsten Besucher
+        // aus. Der Rest ist gerade das, was man ausprobieren will.
+        $email = is_demo() ? $me['email'] : strtolower(trim($_POST['email']));
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=?,
                             first_name=?, last_name=?, phone=?, mobile=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
-          strtolower(trim($_POST['email'])), $prefLang,
+          $email, $prefLang,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           $me['id'],
         ]);
@@ -1134,20 +1144,30 @@ if (str_starts_with($path, '/intern')) {
     require_admin();
     if (($_POST['first_name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
       try {
+        // In der Demo bleiben E-Mail und Rolle, wie sie sind. Mit der Adresse
+        // meldet man sich an, und die Rolle entscheidet, wie viel jemand sieht
+        // — beides steht auf der Werbeseite und gilt für alle Besucher
+        // gleichzeitig. Name, Instrument und Vertretung darf man ändern; das
+        // ist gerade das, was man an dieser Seite sehen will.
+        $email = is_demo()
+          ? (row('SELECT email FROM users WHERE id = ?', [$m[1]])['email'] ?? '')
+          : strtolower(trim($_POST['email']));
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
                             substitute_rank=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
                        row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
-          strtolower(trim($_POST['email'])),
+          $email,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
           max(0, min(99, (int) ($_POST['substitute_rank'] ?? 0))),
           $m[1],
         ]);
-        // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus)
-        if ((int) $m[1] !== (int) $me['id'] && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz'], true)) {
+        // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus).
+        // In der Demo gar nicht — siehe oben.
+        if (!is_demo() && (int) $m[1] !== (int) $me['id']
+            && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz'], true)) {
           $roleBefore = row('SELECT role FROM users WHERE id = ?', [$m[1]])['role'] ?? '';
           q('UPDATE users SET role = ? WHERE id = ?', [$_POST['role'], $m[1]]);
           // Eine neue Rolle bringt ihre Rechte mit; einzeln nachbessern geht
@@ -1165,6 +1185,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/mitglieder' && $method === 'POST') {
     require_admin();
+    // Legt ein Konto an und verschickt das Startpasswort per Mail — beides
+    // hat in einer öffentlichen Demo nichts verloren.
+    deny_in_demo('/intern/mitglieder');
     if (($_POST['first_name'] ?? '') && ($_POST['email'] ?? '')) {
       // Start-Passwort erzeugen (ohne verwechselbare Zeichen), Wechsel beim ersten Login erzwingen
       $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1206,6 +1229,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/(delete|passwort)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
+    // Ein gelöschtes Konto und ein geändertes Kennwort treffen beide den
+    // nächsten Besucher, nicht den, der es tut.
+    deny_in_demo('/intern/mitglieder');
     if ($action === 'delete') {
       require_admin();
       if ((int) $id === (int) $me['id']) {
