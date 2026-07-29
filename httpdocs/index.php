@@ -1969,7 +1969,14 @@ if (str_starts_with($path, '/intern')) {
     set_setting('backup_ftp_passive', isset($_POST['backup_ftp_passive']) ? '1' : '0');
     // Ein leeres Passwortfeld heißt „nicht ändern" — das gespeicherte wird
     // nie ins Formular zurückgeschrieben, es gäbe also nichts abzuschicken.
-    if (($_POST['backup_ftp_pass'] ?? '') !== '') set_setting('backup_ftp_pass', $_POST['backup_ftp_pass']);
+    // Das FTP-Passwort muss im Klartext an den Server gehen — anders meldet
+    // sich FTP nicht an. In der Datenbank hat es trotzdem nichts verloren:
+    // liegt ein Schlüssel, wird es versiegelt abgelegt.
+    if (($_POST['backup_ftp_pass'] ?? '') !== '') {
+      set_setting('backup_ftp_pass', crypt_available()
+        ? (string) crypt_seal($_POST['backup_ftp_pass'])
+        : $_POST['backup_ftp_pass']);
+    }
     flash(t('fl_bk_targets_saved'));
     redirect('/intern/einstellungen');
   }

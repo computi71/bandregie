@@ -266,3 +266,17 @@ function files_unseal_all(): array {
   }
   return ['done' => $done, 'failed' => $failed];
 }
+
+/**
+ * Einen Wert lesen, gleich ob er versiegelt abgelegt wurde oder nicht.
+ *
+ * Verschlüsselt wird erst ab dem Tag, an dem ein Schlüssel gesetzt ist —
+ * alles, was vorher gespeichert wurde, liegt weiter offen und muss trotzdem
+ * lesbar bleiben. Wer den Schlüssel wieder entfernt, bekommt aus versiegelten
+ * Werten nichts zurück; dann steht hier eine leere Zeichenkette statt eines
+ * Klumpens Zeichen, mit dem sich niemand anmelden kann.
+ */
+function crypt_reveal(string $stored): string {
+  if (!crypt_looks_sealed($stored)) return $stored;
+  return crypt_open($stored) ?? '';
+}

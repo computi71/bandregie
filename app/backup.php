@@ -18,10 +18,10 @@ require_once __DIR__ . '/tresor.php';
 const BACKUP_INTERVALS = ['daily' => 86400, 'weekly' => 604800];
 
 /**
- * Zugangsdaten des FTP-Ziels. Das Passwort steht im Klartext in der
- * Datenbank — anders kann sich ein Programm bei FTP nicht anmelden. Es
- * verlässt den Server nur in Richtung des eingetragenen Hosts und wird nie
- * ins Formular zurückgeschrieben.
+ * Zugangsdaten des FTP-Ziels. Das Passwort muss der Server im Klartext
+ * kennen — anders meldet sich FTP nicht an —, aber in der Datenbank liegt es
+ * versiegelt, sobald ein Schlüssel gesetzt ist. Es verlässt den Server nur in
+ * Richtung des eingetragenen Hosts und wird nie ins Formular zurückgeschrieben.
  */
 function backup_ftp_config(): array {
   return [
@@ -29,7 +29,7 @@ function backup_ftp_config(): array {
     'host'    => setting('backup_ftp_host'),
     'port'    => (int) (setting('backup_ftp_port') ?: 21),
     'user'    => setting('backup_ftp_user'),
-    'pass'    => setting('backup_ftp_pass'),
+    'pass'    => crypt_reveal(setting('backup_ftp_pass')),
     'dir'     => setting('backup_ftp_dir'),
     'tls'     => setting('backup_ftp_tls') === '1',
     'passive' => setting('backup_ftp_passive') === '1',
