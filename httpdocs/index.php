@@ -197,6 +197,18 @@ if (preg_match('~^/thumb/([\w.\-]+)$~', $path, $m)) {
   exit;
 }
 
+// Das aus dem Favicon erzeugte App-Symbol. Öffentlich wie das Favicon selbst:
+// Startbildschirm und Manifest holen es ohne Anmeldung, und es zeigt nichts,
+// was nicht ohnehin in jedem Browsertab steht.
+if (preg_match('~^/appicon/(icon-\d+-[a-f0-9]+\.png)$~', $path, $m) && $method === 'GET') {
+  $iconFile = DATA_DIR . '/appicons/' . basename($m[1]);
+  if (!is_file($iconFile)) { http_response_code(404); exit('Not found'); }
+  header('Content-Type: image/png');
+  header('Cache-Control: public, max-age=604800');
+  readfile($iconFile);
+  exit;
+}
+
 // Hochgeladene Bilder ausliefern (liegen außerhalb des Webroots).
 //
 // Nicht jedes Bild geht die Allgemeinheit etwas an: Logo, Hintergrund und

@@ -2104,10 +2104,17 @@ function thumb_file(string $name, int $width = 480): ?string {
 }
 
 /**
- * Symbol für den Startbildschirm. Hat die Band ein quadratisches Logo
- * hochgeladen, nimmt die App das; sonst das mitgelieferte Zeichen. Skaliert
- * wird nichts — GD fehlt auf manchen Servern, und ein verzerrtes Logo wäre
- * schlimmer als ein neutrales Symbol.
+ * Symbol für den Startbildschirm — für iOS als apple-touch-icon, für Android
+ * über das Manifest. Auf dem Handy ist das das einzige Zeichen, das jemand
+ * von der Band zu sehen bekommt.
+ *
+ * Drei Quellen, in dieser Reihenfolge:
+ *   1. ein quadratisches Logo, groß genug — dann unverändert
+ *   2. das Favicon, mittig auf eine quadratische Fläche gesetzt. Es ist
+ *      ohnehin quadratisch und ist genau das Zeichen, das die Band für sich
+ *      gewählt hat; ein 64er-Bild wird dabei nicht auf 512 hochgerechnet,
+ *      sondern behält seine Größe auf einer größeren Fläche.
+ *   3. das mitgelieferte Zeichen — auch dann, wenn die Bildbibliothek fehlt.
  */
 function app_icon(int $size): string {
   $logo = setting('logo_file');
@@ -2115,7 +2122,62 @@ function app_icon(int $size): string {
     $info = @getimagesize(UPLOADS_DIR . '/' . $logo);
     if ($info && $info[0] === $info[1] && $info[0] >= $size) return '/uploads/' . rawurlencode($logo);
   }
-  return "/assets/app/icon-$size.png";
+  $fromFavicon = app_icon_from_favicon($size);
+  return $fromFavicon ?? "/assets/app/icon-$size.png";
+}
+
+/**
+ * Das Favicon als App-Symbol: mittig auf eine quadratische Fläche in der
+ * Hintergrundfarbe der Anwendung, einmal erzeugt und danach wiederverwendet.
+ *
+ * Hochgerechnet wird nur, was noch scharf bleibt — ein 64-Pixel-Bild auf 512
+ * gezogen sähe matschig aus, mittig gesetzt dagegen sauber.
+ *
+ * @return string|null öffentlicher Pfad oder null, wenn es nicht geht
+ */
+function app_icon_from_favicon(int $size): ?string {
+  $favicon = setting('favicon_file');
+  if ($favicon === '' || !function_exists('imagecreatetruecolor')) return null;
+  $source = UPLOADS_DIR . '/' . $favicon;
+  if (!is_file($source)) return null;
+
+  $dir = DATA_DIR . '/appicons';
+  if (!is_dir($dir)) @mkdir($dir, 0700, true);
+  $name = 'icon-' . $size . '-' . substr(sha1($favicon . filemtime($source)), 0, 12) . '.png';
+  $target = $dir . '/' . $name;
+  if (!is_file($target)) {
+    $info = @getimagesize($source);
+    $img = $info ? match ($info['mime']) {
+      'image/png'  => @imagecreatefrompng($source),
+      'image/jpeg' => @imagecreatefromjpeg($source),
+      'image/gif'  => @imagecreatefromgif($source),
+      'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($source) : false,
+      default      => false,
+    } : false;
+    if (!$img) return null;
+
+    // Bis zum Doppelten der Vorlage hochrechnen, mehr wird unscharf
+    $room = (int) ($size * 0.8);
+    $side = min($room, max(imagesx($img), imagesy($img)) * 2);
+    $scale = $side / max(1, max(imagesx($img), imagesy($img)));
+    $w = max(1, (int) round(imagesx($img) * $scale));
+    $h = max(1, (int) round(imagesy($img) * $scale));
+
+    $canvas = imagecreatetruecolor($size, $size);
+    imagefill($canvas, 0, 0, imagecolorallocate($canvas, 0x17, 0x12, 0x0f));  // theme_color
+    imagealphablending($canvas, true);
+    imagecopyresampled($canvas, $img, (int) (($size - $w) / 2), (int) (($size - $h) / 2), 0, 0,
+                       $w, $h, imagesx($img), imagesy($img));
+    imagepng($canvas, $target);
+    imagedestroy($canvas);
+    imagedestroy($img);
+    // Alte Fassungen desselben Maßes wegräumen — das Favicon ändert sich selten,
+    // aber jede Änderung ließe sonst eine Datei liegen.
+    foreach (glob($dir . '/icon-' . $size . '-*.png') ?: [] as $old) {
+      if ($old !== $target) @unlink($old);
+    }
+  }
+  return is_file($target) ? '/appicon/' . $name : null;
 }
 
 /**
