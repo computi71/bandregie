@@ -276,12 +276,20 @@ function backup_ftp_upload(string $file): array {
     return ['ok' => false, 'message' => 'FTP: Übertragung fehlgeschlagen'];
   }
 
-  // Aufräumen nach der eigenen Zahl dieses Ziels, neueste zuerst behalten
+  // Aufräumen nach der eigenen Zahl dieses Ziels, neueste zuerst behalten.
+  //
+  // Das Muster muss alles erfassen, was diese Anwendung je geschrieben hat:
+  // verschlüsselte Archive (.enc, seit der Verschlüsselung), zwei Läufe in
+  // derselben Sekunde (-2) und den früheren Namen des Projekts. Was es nicht
+  // erfasst, bleibt auf dem Ziel für immer liegen — und genau das war der
+  // Fall, seit die Endung .enc dazukam.
   $remote = @ftp_nlist($conn, '.') ?: [];
   $mine = [];
   foreach ($remote as $entry) {
     $base = basename($entry);
-    if (preg_match('~^bandregie-\d{4}-\d{2}-\d{2}-\d{6}\.tar\.gz$~', $base)) $mine[] = $base;
+    if (preg_match('~^band(?:regie|roadie)-\d{4}-\d{2}-\d{2}-\d{6}(?:-\d+)?\.tar\.gz(?:\.enc)?$~', $base)) {
+      $mine[] = $base;
+    }
   }
   rsort($mine);
   $dropped = 0;
