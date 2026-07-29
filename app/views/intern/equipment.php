@@ -39,6 +39,27 @@
   </form>
 </details>
 
+<?php // Eine Rechnung aus dem Musikhaus zählt selten ein Gerät auf. Sie steht
+      // deshalb einmal für die ganze Seite und nicht in jedem Geräteformular:
+      // dort stünde die Geräteliste so oft, wie es Geräte gibt. ?>
+<?php if ($items): ?>
+  <details class="card collapsible">
+    <summary>🧾 <?= e(t('files_multi')) ?></summary>
+    <form method="post" action="/intern/dateien" enctype="multipart/form-data"><?= csrf_field() ?>
+      <input type="hidden" name="entity_type" value="equipment">
+      <p class="muted small"><?= e(t('files_multi_hint')) ?></p>
+      <input type="file" name="files[]" multiple required>
+      <fieldset class="gear-picker">
+        <legend><?= e(t('files_multi_pick')) ?></legend>
+        <?php foreach (eq_other_names($items, 0) as $eqId => $eqName): ?>
+          <label class="checkbox"><input type="checkbox" name="also[]" value="<?= (int) $eqId ?>"> <?= e($eqName) ?></label>
+        <?php endforeach; ?>
+      </fieldset>
+      <button class="btn btn-small"><?= e(t('upload')) ?></button>
+    </form>
+  </details>
+<?php endif; ?>
+
 <?php
 // Die Summe zählt nur, was der Betrachter auch sehen darf — fremde Preise
 // bleiben außen vor und die Summe gibt sich als Teilsumme zu erkennen,
@@ -141,8 +162,7 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
       </form>
     </details>
 
-    <?php $attachFiles = $filesByEq[$eq['id']] ?? []; $attachType = 'equipment'; $attachId = $eq['id'];
-          $attachAlso = eq_other_names($items, (int) $eq['id']); require BASE_DIR . '/app/views/_dateien.php'; ?>
+    <?php $attachFiles = $filesByEq[$eq['id']] ?? []; $attachType = 'equipment'; $attachId = $eq['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
 
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>

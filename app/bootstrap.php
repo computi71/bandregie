@@ -366,8 +366,9 @@ const UI_STRINGS = [
   // Dateien
   'files_word' => 'Dateien',
   'files_none' => 'Noch keine Dateien — Verträge, Rechnungen, Rider, Aufnahmen ... (max. 20 MB pro Datei)',
-  'files_also' => 'Gehört auch zu anderen Geräten',
-  'files_also_hint' => 'Eine Rechnung zählt selten nur ein Gerät auf. Hake die anderen hier an — gespeichert wird die Datei trotzdem nur einmal, sie erscheint aber an jedem angehakten Gerät.',
+  'files_multi' => 'Rechnung für mehrere Geräte',
+  'files_multi_hint' => 'Eine Rechnung zählt selten nur ein Gerät auf. Lade sie hier einmal hoch und hake an, wozu sie gehört — gespeichert wird sie trotzdem nur einmal, sie erscheint aber bei jedem angehakten Gerät.',
+  'files_multi_pick' => 'Gehört zu',
   // Veranstalter-Downloads (intern)
   'dl_title' => 'Veranstalter-Downloads',
   'dl_intro' => 'Alles, was Veranstalter brauchen: Tech-Rider, Bühnenplan, Pressefotos, Logo in Druckqualität, Bandinfo. Diese Dateien sind — je nach Modus — ohne Login abrufbar.',

@@ -1,12 +1,6 @@
 <?php
 // Wiederverwendbarer Datei-Anhang-Block.
 // Erwartet: $attachFiles (Array), $attachType ('event'|'song'|'venue'), $attachId (int)
-// Optional: $attachAlso — weitere Ziele als [id => Name], zur Auswahl beim Hochladen.
-//
-// $attachAlso wird gleich aufgebraucht: Der Block steht in Schleifen, und eine
-// stehengebliebene Liste haenge sonst am naechsten Gegenstand.
-$alsoList = $attachAlso ?? [];
-unset($attachAlso);
 $fmtSize = function (int $b): string {
   if ($b >= 1048576) return round($b / 1048576, 1) . ' MB';
   if ($b >= 1024) return round($b / 1024) . ' KB';
@@ -37,20 +31,6 @@ $fmtSize = function (int $b): string {
     <input type="hidden" name="entity_type" value="<?= e($attachType) ?>">
     <input type="hidden" name="entity_id" value="<?= (int) $attachId ?>">
     <input type="file" name="files[]" multiple required>
-    <?php // Eine Rechnung aus dem Musikhaus zählt selten ein Gerät auf. Wer
-          // sie hier hochlädt, hängt sie gleich an die anderen mit — hochgeladen
-          // wird sie trotzdem nur einmal. ?>
-    <?php if ($alsoList): ?>
-      <details class="subsection">
-        <summary><?= e(t('files_also')) ?></summary>
-        <p class="muted small"><?= e(t('files_also_hint')) ?></p>
-        <fieldset class="gear-picker">
-          <?php foreach ($alsoList as $alsoId => $alsoName): ?>
-            <label class="checkbox"><input type="checkbox" name="also[]" value="<?= (int) $alsoId ?>"> <?= e($alsoName) ?></label>
-          <?php endforeach; ?>
-        </fieldset>
-      </details>
-    <?php endif; ?>
     <button class="btn btn-small"><?= e(t('upload')) ?></button>
   </form>
 </details>

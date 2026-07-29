@@ -887,6 +887,9 @@ if (str_starts_with($path, '/intern')) {
             . implode(',', array_fill(0, count($alsoIds), '?')) . ')', array_keys($alsoIds)), 'id')
         : [];
     }
+    // Die Sammelrechnung nennt kein Hauptgerät: das erste angehakte übernimmt
+    // die Rolle, die übrigen bekommen ihre eigene Zeile wie sonst auch.
+    if ($type === 'equipment' && !$entityId && $alsoIds) $entityId = (int) array_shift($alsoIds);
     if ($type && ($entityId || $type === 'download')) {
       foreach ($_FILES['files']['tmp_name'] ?? [] as $i => $tmp) {
         if (upload_rejected((int) ($_FILES['files']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
