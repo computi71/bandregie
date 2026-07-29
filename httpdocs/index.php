@@ -1770,31 +1770,29 @@ if (str_starts_with($path, '/intern')) {
     require_once BASE_DIR . '/app/steuer.php';
     require_once BASE_DIR . '/app/export.php';
     $taxView = tax_report_for($me, $_GET);
-    $taxRows = [];
-    foreach ($taxView['report']['entries'] as $en) {
-      $taxRows[] = [
-        $en['date'],
-        t('fin_' . ($en['type'] === 'einnahme' ? 'income' : 'expense')),
-        fin_category_label($en['category']),
-        $en['description'],
-        number_format($en['amount_cents'] / 100, 2, '.', ''),
-        '',
-      ];
+    [$taxHead, $taxRows] = tax_export_table($taxView['report']);
+    export_send('steuer-' . $taxView['year'] . '-' . $taxView['scope'], $taxHead, $taxRows);
+  }
+  // Das Paket für die Steuerberatung: Tabelle, Belege, Beiblatt. Ohne die
+  // ZIP-Erweiterung bleibt es bei der Tabelle — dann fehlt nichts, was
+  // vorher da war.
+  if ($path === '/intern/kasse/steuer/paket' && $method === 'GET') {
+    require_once BASE_DIR . '/app/steuer.php';
+    require_once BASE_DIR . '/app/export.php';
+    $taxView = tax_report_for($me, $_GET);
+    $taxOwner = $taxView['scope'] === 'band' ? setting('band_name') : (string) $me['name'];
+    $taxZip = tax_report_package($taxView, $taxOwner);
+    if ($taxZip === null) {
+      flash(t('fl_taxr_no_zip'));
+      redirect('/intern/kasse/steuer?jahr=' . $taxView['year'] . '&umfang=' . $taxView['scope']);
     }
-    foreach ($taxView['report']['equipment'] as $eq) {
-      $taxRows[] = [
-        $eq['date'],
-        t('taxr_afa'),
-        fin_category_label('equipment'),
-        $eq['name'],
-        number_format($eq['this_year'] / 100, 2, '.', ''),
-        number_format($eq['cents'] / 100, 2, '.', ''),
-      ];
-    }
-    export_send('steuer-' . $taxView['year'] . '-' . $taxView['scope'], [
-      t('date'), t('ev_type'), t('fin_category'), t('fin_description'),
-      t('taxr_amount_year'), t('taxr_purchase_price'),
-    ], $taxRows);
+    $taxName = 'steuer-' . $taxView['year'] . '-' . $taxView['scope'] . '.zip';
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $taxName . '"');
+    header('Content-Length: ' . (string) filesize($taxZip));
+    readfile($taxZip);
+    @unlink($taxZip);
+    exit;
   }
 
   // ---------- Einstellungen ----------

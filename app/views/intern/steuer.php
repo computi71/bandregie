@@ -10,9 +10,13 @@ $taxQuery = fn(array $over = []): string => '?' . http_build_query(
   <div class="row-buttons">
     <a class="btn btn-ghost btn-small" href="/intern/kasse/steuer/druck<?= e($taxQuery()) ?>" target="_blank">🖨 <?= e(t('sl_print')) ?></a>
     <a class="btn btn-ghost btn-small" href="/intern/kasse/steuer/export<?= e($taxQuery()) ?>">⭳ <?= e(t('ev_export')) ?></a>
+    <?php if (class_exists('ZipArchive')): ?>
+      <a class="btn btn-ghost btn-small" href="/intern/kasse/steuer/paket<?= e($taxQuery()) ?>">📦 <?= e(t('taxr_package')) ?></a>
+    <?php endif; ?>
   </div>
 </div>
 <p class="muted"><?= e(t('taxr_intro')) ?></p>
+<p class="muted small">📦 <?= e(t('taxr_package_hint')) ?></p>
 
 <div class="row-buttons">
   <?php if (can_finance()): ?>

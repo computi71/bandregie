@@ -35,20 +35,28 @@ function export_csv_cell(string $value): string {
   return preg_match('~^[=+\-@\t\r]~', $value) ? "'" . $value : $value;
 }
 
-function export_send_csv(string $basename, array $head, array $rows): never {
-  header('Content-Type: text/csv; charset=utf-8');
-  header('Content-Disposition: attachment; filename="' . $basename . '.csv"');
-  $out = fopen('php://output', 'w');
+/** Die Tabelle als Zeichenkette — zum Senden und zum Beilegen in ein Paket. */
+function export_csv_bytes(array $head, array $rows): string {
+  $out = fopen('php://temp', 'r+');
   fwrite($out, "\xEF\xBB\xBF");            // BOM, damit Excel UTF-8 erkennt
   fputcsv($out, array_map('export_csv_cell', $head), ';', '"', '');
   foreach ($rows as $row) {
     fputcsv($out, array_map(fn($v) => export_csv_cell((string) $v), $row), ';', '"', '');
   }
+  rewind($out);
+  $data = (string) stream_get_contents($out);
   fclose($out);
+  return $data;
+}
+
+function export_send_csv(string $basename, array $head, array $rows): never {
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename="' . $basename . '.csv"');
+  echo export_csv_bytes($head, $rows);
   exit;
 }
 
-function export_send_xlsx(string $basename, array $head, array $rows): never {
+function export_xlsx_bytes(array $head, array $rows): string {
   $col = function (int $i): string {          // 0 -> A, 26 -> AA
     $s = '';
     for ($n = $i; $n >= 0; $n = intdiv($n, 26) - 1) $s = chr(65 + $n % 26) . $s;
@@ -103,11 +111,28 @@ function export_send_xlsx(string $basename, array $head, array $rows): never {
   $zip->open($tmp, ZipArchive::OVERWRITE);
   foreach ($parts as $name => $content) $zip->addFromString($name, $content);
   $zip->close();
+  $data = (string) file_get_contents($tmp);
+  @unlink($tmp);
+  return $data;
+}
 
+function export_send_xlsx(string $basename, array $head, array $rows): never {
+  $data = export_xlsx_bytes($head, $rows);
   header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   header('Content-Disposition: attachment; filename="' . $basename . '.xlsx"');
-  header('Content-Length: ' . (string) filesize($tmp));
-  readfile($tmp);
-  @unlink($tmp);
+  header('Content-Length: ' . (string) strlen($data));
+  echo $data;
   exit;
+}
+
+/**
+ * Die Tabelle im bestmöglichen Format, als Endung und Inhalt — für alles, was
+ * sie nicht selbst ausliefert, sondern weiterreicht.
+ *
+ * @return array{0: string, 1: string} Endung und Inhalt
+ */
+function export_table_bytes(array $head, array $rows): array {
+  return export_available_format() === 'xlsx'
+    ? ['xlsx', export_xlsx_bytes($head, $rows)]
+    : ['csv', export_csv_bytes($head, $rows)];
 }

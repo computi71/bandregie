@@ -280,6 +280,10 @@ function tax_report(int $year, ?int $memberId): array {
       'name' => $p['equipment_name'] ?? $p['description'],
       'date' => $p['date'],
       'cents' => (int) $p['amount_cents'],
+      // Für das Belegpaket: die Rechnung hängt am Gerät oder an der Buchung,
+      // und die Buchung kann aus einem früheren Jahr stammen.
+      'equipment_id' => (int) $p['equipment_id'],
+      'finance_id' => (int) $p['id'],
     ] + $dep;
     $sumAfa += $dep['this_year'];
   }
@@ -359,4 +363,150 @@ function tax_report_for(array $user, array $query): array {
     'year'  => $year,
     'report' => tax_report($year, $memberId),
   ];
+}
+
+/**
+ * Die Zeilen der Steuertabelle — dieselben für die Tabelle allein und für die
+ * im Paket. Zwei Fassungen derselben Zahlen gingen irgendwann auseinander.
+ *
+ * @return array{0: string[], 1: array<int, array<int, string>>} Kopfzeile, Zeilen
+ */
+function tax_export_table(array $report): array {
+  $rows = [];
+  foreach ($report['entries'] as $en) {
+    $rows[] = [
+      $en['date'],
+      t('fin_' . ($en['type'] === 'einnahme' ? 'income' : 'expense')),
+      fin_category_label($en['category']),
+      $en['description'],
+      number_format($en['amount_cents'] / 100, 2, '.', ''),
+      '',
+    ];
+  }
+  foreach ($report['equipment'] as $eq) {
+    $rows[] = [
+      $eq['date'],
+      t('taxr_afa'),
+      fin_category_label('equipment'),
+      $eq['name'],
+      number_format($eq['this_year'] / 100, 2, '.', ''),
+      number_format($eq['cents'] / 100, 2, '.', ''),
+    ];
+  }
+  return [[
+    t('date'), t('ev_type'), t('fin_category'), t('fin_description'),
+    t('taxr_amount_year'), t('taxr_purchase_price'),
+  ], $rows];
+}
+
+/**
+ * Die Belege zu einem Bericht: die Anhänge der Buchungen des Jahres und die
+ * Rechnungen der Geräte, die noch abschreiben — deren Papier liegt im Jahr des
+ * Kaufs und nicht im Jahr der Erklärung.
+ *
+ * Dieselbe Datei kommt nur einmal vor: eine Rechnung über mehrere Geräte hängt
+ * an jedem von ihnen (#67), ist aber ein Blatt.
+ *
+ * @return array<int, array{name: string, file: array}> Zielname im Paket und Dateizeile
+ */
+function tax_report_receipts(array $report): array {
+  $financeIds = array_map('intval', array_column($report['entries'], 'id'));
+  foreach ($report['equipment'] as $eq) $financeIds[] = (int) $eq['finance_id'];
+  $eqIds = array_filter(array_map('intval', array_column($report['equipment'], 'equipment_id')));
+  if (!$financeIds && !$eqIds) return [];
+
+  // Damit ein Gerätename im Paket auftaucht und nicht nur eine Nummer
+  $eqNames = [];
+  foreach ($report['equipment'] as $eq) $eqNames[(int) $eq['equipment_id']] = $eq['name'];
+  $dates = [];
+  foreach ($report['entries'] as $en) $dates[(int) $en['id']] = $en['date'];
+  foreach ($report['equipment'] as $eq) $dates[(int) $eq['finance_id']] = $eq['date'];
+
+  $where = []; $args = [];
+  if ($financeIds) {
+    $where[] = "(entity_type = 'finance' AND entity_id IN (" . implode(',', array_fill(0, count($financeIds), '?')) . '))';
+    $args = [...$args, ...$financeIds];
+  }
+  if ($eqIds) {
+    $where[] = "(entity_type = 'equipment' AND entity_id IN (" . implode(',', array_fill(0, count($eqIds), '?')) . '))';
+    $args = [...$args, ...$eqIds];
+  }
+
+  $out = []; $seen = [];
+  foreach (rows('SELECT * FROM files WHERE ' . implode(' OR ', $where) . ' ORDER BY id', $args) as $f) {
+    if (isset($seen[$f['filename']])) continue;
+    $seen[$f['filename']] = true;
+    $id = (int) $f['entity_id'];
+    $label = $f['entity_type'] === 'equipment' ? ($eqNames[$id] ?? '') : ($dates[$id] ?? '');
+    $out[] = ['name' => tax_receipt_name($label, $f, $dates[$id] ?? ''), 'file' => $f];
+  }
+  return $out;
+}
+
+/**
+ * Ein Name, den man ohne die Anwendung lesen kann: Datum, worum es geht, und
+ * der ursprüngliche Dateiname. Alles andere fliegt raus — ein Beleg soll auf
+ * jedem Rechner auspackbar sein.
+ */
+function tax_receipt_name(string $label, array $file, string $date): string {
+  $clean = function (string $s): string {
+    $s = strtr($s, ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'Ä' => 'Ae', 'Ö' => 'Oe', 'Ü' => 'Ue', 'ß' => 'ss']);
+    $s = preg_replace('~[^A-Za-z0-9._-]+~', '-', $s) ?? $s;
+    return trim($s, '-.');
+  };
+  $parts = array_filter([$date, $clean($label), $clean((string) $file['original_name'])]);
+  return implode('_', $parts);
+}
+
+/**
+ * Das ganze Paket als ZIP: die Tabelle, die Belege und ein Blatt, das sagt,
+ * womit gerechnet wurde. Ohne die ZIP-Erweiterung gibt es kein Paket — dann
+ * bleibt es bei der Tabelle, und die Seite sagt es.
+ *
+ * @return string|null Pfad zur fertigen Datei; null, wenn ZIP fehlt
+ */
+function tax_report_package(array $view, string $owner): ?string {
+  if (!class_exists('ZipArchive')) return null;
+  require_once BASE_DIR . '/app/export.php';
+
+  [$head, $tableRows] = tax_export_table($view['report']);
+  [$ext, $table] = export_table_bytes($head, $tableRows);
+
+  $tmp = tempnam(sys_get_temp_dir(), 'steuer');
+  $zip = new ZipArchive();
+  if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) { @unlink($tmp); return null; }
+
+  $base = 'steuer-' . $view['year'] . '-' . $view['scope'];
+  $zip->addFromString($base . '.' . $ext, $table);
+  $zip->addFromString('hinweis.txt', tax_package_note($view, $owner));
+  foreach (tax_report_receipts($view['report']) as $receipt) {
+    $path = FILES_DIR . '/' . $receipt['file']['filename'];
+    if (is_file($path)) $zip->addFile($path, 'belege/' . $receipt['name']);
+  }
+  $zip->close();
+  return $tmp;
+}
+
+/** Das Beiblatt: wessen Zahlen, welches Jahr, womit gerechnet, und der Vorbehalt. */
+function tax_package_note(array $view, string $owner): string {
+  $r = $view['report'];
+  $lines = [
+    t('taxr_title') . ' ' . $view['year'],
+    $owner . ' · ' . fmt_date(date('Y-m-d')),
+    '',
+    t('fin_income') . ': ' . fmt_money($r['sum_income']),
+    t('fin_expense') . ': ' . fmt_money($r['sum_expense']),
+    t('taxr_afa') . ': ' . fmt_money($r['sum_afa']),
+    t('taxr_sum') . ': ' . fmt_money($r['result']),
+    '',
+    t('taxr_applied') . ':',
+    '  ' . t('set_tax_gwg') . ': ' . fmt_money(tax_gwg_limit_cents()),
+    '  ' . t('set_tax_afa_years') . ': ' . tax_afa_years(),
+    '  ' . t('taxr_small') . ': ' . (setting('tax_small_business', '0') === '1' ? t('taxr_small_on') : t('taxr_small_off')),
+    '',
+    t('taxr_gross_hint'),
+    '',
+    t('tax_no_advice'),
+  ];
+  return implode("\r\n", $lines) . "\r\n";
 }
