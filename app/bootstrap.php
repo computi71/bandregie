@@ -135,6 +135,7 @@ const UI_STRINGS = [
   'taxr_method' => 'Verfahren', 'taxr_amount_year' => 'In diesem Jahr', 'taxr_remaining' => 'Restwert',
   'taxr_kind_gwg' => 'sofort (geringwertig)',
   'taxr_kind_afa' => 'über %d Jahre (%d–%d)',
+  'taxr_disposed' => 'Abgang %d, Restwert ausgebucht',
   'taxr_entries' => 'Einzelbuchungen',
   'taxr_empty' => 'Für dieses Jahr ist nichts gebucht.',
   'taxr_applied' => 'Womit gerechnet wurde',

@@ -156,16 +156,25 @@ function tax_afa_years(): int {
  * bleiben durch das Runden am Ende ein paar Cent liegen oder es kommen welche
  * hinzu, und die Summe der Jahre wäre nicht der Kaufpreis.
  *
+ * Ist das Gerät abgegeben worden, endet die Abschreibung: im Jahr des Abgangs
+ * wird der Restwert in einem Zug ausgebucht, danach ist nichts mehr da. Sonst
+ * schriebe die Band ein Gerät ab, das ihr nicht mehr gehört — und der Erlös
+ * stünde zusätzlich als Einnahme im selben Bericht.
+ *
+ * @param string|null $disposedOn Datum des Abgangs, falls verkauft
  * @return array{kind: string, this_year: int, remaining: int, first_year: int,
- *               last_year: int, years: int}|null  null: kein brauchbares Datum
+ *               last_year: int, years: int, disposed_year: int|null}|null
+ *               null: kein brauchbares Datum
  */
-function tax_depreciation(int $cents, ?string $purchasedOn, int $year): ?array {
+function tax_depreciation(int $cents, ?string $purchasedOn, int $year, ?string $disposedOn = null): ?array {
   $ts = $purchasedOn ? strtotime($purchasedOn) : false;
   if ($cents <= 0 || $ts === false) return null;
 
   $buyYear = (int) date('Y', $ts);
   $buyMonth = (int) date('n', $ts);
   $years = tax_afa_years();
+  $goneTs = $disposedOn ? strtotime($disposedOn) : false;
+  $goneYear = $goneTs === false ? null : (int) date('Y', $goneTs);
 
   if ($cents <= tax_gwg_limit_cents()) {
     return [
@@ -173,6 +182,7 @@ function tax_depreciation(int $cents, ?string $purchasedOn, int $year): ?array {
       'this_year' => $year === $buyYear ? $cents : 0,
       'remaining' => $year < $buyYear ? $cents : 0,
       'first_year' => $buyYear, 'last_year' => $buyYear,
+      'disposed_year' => $goneYear,
     ];
   }
 
@@ -184,12 +194,28 @@ function tax_depreciation(int $cents, ?string $purchasedOn, int $year): ?array {
   };
   $cum = fn(int $m): int => intdiv($cents * $m, $months);
 
+  $thisYear = $cum($until($year)) - $cum($until($year - 1));
+  $remaining = $cents - $cum($until($year));
+  $lastYear = (int) date('Y', (int) mktime(0, 0, 0, $buyMonth + $months - 1, 1, $buyYear));
+
+  if ($goneYear !== null && $goneYear <= $lastYear) {
+    if ($year > $goneYear) {
+      $thisYear = 0;
+      $remaining = 0;
+    } elseif ($year === $goneYear) {
+      $thisYear = $cents - $cum($until($year - 1));   // der ganze Rest auf einmal
+      $remaining = 0;
+    }
+    $lastYear = min($lastYear, $goneYear);
+  }
+
   return [
     'kind' => 'afa', 'years' => $years,
-    'this_year' => $cum($until($year)) - $cum($until($year - 1)),
-    'remaining' => $cents - $cum($until($year)),
+    'this_year' => $thisYear,
+    'remaining' => $remaining,
     'first_year' => $buyYear,
-    'last_year' => (int) date('Y', (int) mktime(0, 0, 0, $buyMonth + $months - 1, 1, $buyYear)),
+    'last_year' => $lastYear,
+    'disposed_year' => $goneYear,
   ];
 }
 
@@ -199,7 +225,8 @@ function tax_depreciation(int $cents, ?string $purchasedOn, int $year): ?array {
  *
  * Ein Gerätekauf steht nicht bei den Ausgaben — er kommt über die
  * Abschreibung herein, sonst stünde er doppelt im Ergebnis. Der Verkauf eines
- * Geräts dagegen ist eine Einnahme wie jede andere.
+ * Geräts ist dagegen eine Einnahme wie jede andere; zugleich beendet er die
+ * Abschreibung, damit nicht beides zusammen doppelt zählt.
  *
  * @param int|null $memberId gesetzt: die privaten Buchungen dieses Mitglieds.
  *                           null: die Zahlen der Band
@@ -242,9 +269,12 @@ function tax_report(int $year, ?int $memberId): array {
                        AND f.date <= ?
                      ORDER BY f.date, f.id", [...$args, $year . '-12-31']);
 
+  $goneOn = tax_disposals($memberId);
+
   $equipment = []; $sumAfa = 0;
   foreach ($purchases as $p) {
-    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $year);
+    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $year,
+                            $goneOn[(int) $p['equipment_id']] ?? null);
     if ($dep === null || ($dep['this_year'] === 0 && $dep['first_year'] !== $year)) continue;
     $equipment[] = [
       'name' => $p['equipment_name'] ?? $p['description'],
@@ -264,6 +294,24 @@ function tax_report(int $year, ?int $memberId): array {
 }
 
 /**
+ * Wann ein Gerät abgegeben wurde: die Einnahmezeile zum Gerät. Der frühste
+ * Abgang zählt, falls jemand mehrfach gebucht hat.
+ *
+ * @return array<int, string> Datum des Abgangs, nach Geräte-ID
+ */
+function tax_disposals(?int $memberId): array {
+  $scope = $memberId === null ? 'private_for IS NULL' : 'private_for = ?';
+  $args = $memberId === null ? [] : [$memberId];
+  $out = [];
+  foreach (rows("SELECT equipment_id, MIN(date) AS gone FROM finances
+                 WHERE $scope AND equipment_id IS NOT NULL AND type = 'einnahme'
+                 GROUP BY equipment_id", $args) as $g) {
+    $out[(int) $g['equipment_id']] = (string) $g['gone'];
+  }
+  return $out;
+}
+
+/**
  * Jahre, für die sich ein Bericht lohnt: die mit Buchungen, und dazu die
  * Jahre, in denen noch etwas abzuschreiben ist.
  *
@@ -278,9 +326,11 @@ function tax_report_years(?int $memberId): array {
   // Jahr keine einzige Zeile gebucht wurde. Über das laufende Jahr hinaus
   // aber nicht: für ein Jahr, das noch läuft, gibt es nichts zu erklären.
   $now = (int) date('Y');
-  foreach (rows("SELECT amount_cents, date FROM finances
+  $goneOn = tax_disposals($memberId);
+  foreach (rows("SELECT amount_cents, date, equipment_id FROM finances
                  WHERE $scope AND equipment_id IS NOT NULL AND type = 'ausgabe'", $args) as $p) {
-    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $now);
+    $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $now,
+                            $goneOn[(int) $p['equipment_id']] ?? null);
     if (!$dep) continue;
     for ($y = $dep['first_year']; $y <= min($dep['last_year'], $now); $y++) $years[] = $y;
   }

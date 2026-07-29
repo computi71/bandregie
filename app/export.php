@@ -17,13 +17,33 @@ function export_send(string $basename, array $head, array $rows): never {
   export_send_csv($basename, $head, $rows);
 }
 
+/**
+ * Eine Zelle so entschärfen, dass die Tabellenkalkulation sie als Text nimmt.
+ *
+ * Beginnt ein Wert mit =, +, - oder @, hält Excel ihn für eine Formel und
+ * rechnet ihn beim Öffnen — und Formeln können mehr, als sie sollten. Was
+ * jemand als Beschreibung einer Buchung eingetippt hat, darf beim Empfänger
+ * der Datei nichts ausführen. Ein vorangestelltes Hochkomma ist die übliche
+ * Antwort darauf; die xlsx-Fassung braucht sie nicht, dort steht der Wert
+ * ausdrücklich als Text.
+ *
+ * Zahlen bleiben unangetastet — ein Minusbetrag ist keine Formel, und als
+ * Text wäre er in der Tabelle nicht mehr zu rechnen.
+ */
+function export_csv_cell(string $value): string {
+  if ($value === '' || is_numeric($value)) return $value;
+  return preg_match('~^[=+\-@\t\r]~', $value) ? "'" . $value : $value;
+}
+
 function export_send_csv(string $basename, array $head, array $rows): never {
   header('Content-Type: text/csv; charset=utf-8');
   header('Content-Disposition: attachment; filename="' . $basename . '.csv"');
   $out = fopen('php://output', 'w');
   fwrite($out, "\xEF\xBB\xBF");            // BOM, damit Excel UTF-8 erkennt
-  fputcsv($out, $head, ';', '"', '');
-  foreach ($rows as $row) fputcsv($out, $row, ';', '"', '');
+  fputcsv($out, array_map('export_csv_cell', $head), ';', '"', '');
+  foreach ($rows as $row) {
+    fputcsv($out, array_map(fn($v) => export_csv_cell((string) $v), $row), ';', '"', '');
+  }
   fclose($out);
   exit;
 }

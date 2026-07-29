@@ -82,6 +82,9 @@ $taxQuery = fn(array $over = []): string => '?' . http_build_query(
               <?= e($eq['kind'] === 'gwg'
                     ? t('taxr_kind_gwg')
                     : sprintf(t('taxr_kind_afa'), $eq['years'], $eq['first_year'], $eq['last_year'])) ?>
+              <?php if ($eq['disposed_year'] !== null && $eq['disposed_year'] <= $year): ?>
+                <div><?= e(sprintf(t('taxr_disposed'), $eq['disposed_year'])) ?></div>
+              <?php endif; ?>
             </td>
             <td style="text-align:right; white-space:nowrap"><strong><?= fmt_money($eq['this_year']) ?></strong></td>
             <td style="text-align:right; white-space:nowrap" class="muted"><?= fmt_money($eq['remaining']) ?></td>

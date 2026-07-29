@@ -161,5 +161,10 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','taxr_small','Regime agevolato'),
 ('it','help_taxr_what','Il riepilogo fiscale raccoglie un anno: entrate e uscite per categoria, le singole registrazioni dietro di esse e quanto degli acquisti ricade su quell''anno. Il foglio si stampa e, come tabella, va al commercialista.'),
 ('it','help_taxr_scope','Ognuno vi vede le proprie registrazioni private, quelle che appartengono solo a lui. Chi tiene la cassa può inoltre passare ai numeri della band. Le due viste non si contengono a vicenda e le registrazioni private degli altri non compaiono in nessuna delle due.'),
-('it','help_taxr_afa','L''acquisto di un apparecchio non sta tra le spese ma tra gli acquisti: fino alla soglia di valore modesto conta per intero nell''anno dell''acquisto, oltre il prezzo si distribuisce in modo uniforme sulla vita utile, a partire dal mese dell''acquisto. Altrimenti lo stesso acquisto peserebbe due volte sul risultato. Entrambi i valori sono nelle impostazioni e valgono per tutti gli apparecchi allo stesso modo; se la vita utile di un singolo apparecchio è diversa, il commercialista la ricalcola.')
+('it','help_taxr_afa','L''acquisto di un apparecchio non sta tra le spese ma tra gli acquisti: fino alla soglia di valore modesto conta per intero nell''anno dell''acquisto, oltre il prezzo si distribuisce in modo uniforme sulla vita utile, a partire dal mese dell''acquisto. Altrimenti lo stesso acquisto peserebbe due volte sul risultato. Entrambi i valori sono nelle impostazioni e valgono per tutti gli apparecchi allo stesso modo; se la vita utile di un singolo apparecchio è diversa, il commercialista la ricalcola.'),
+('en','taxr_disposed','Disposed of in %d, book value written off'),
+('fr','taxr_disposed','Cédé en %d, valeur restante amortie'),
+('es','taxr_disposed','Baja en %d, valor restante amortizado'),
+('nl','taxr_disposed','Afgestoten in %d, restwaarde afgeboekt'),
+('it','taxr_disposed','Ceduto nel %d, valore residuo ammortizzato')
 ON DUPLICATE KEY UPDATE value = value;

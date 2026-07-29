@@ -81,7 +81,9 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
             <td class="num"><?= fmt_money($eq['cents']) ?></td>
             <td class="muted"><?= e($eq['kind'] === 'gwg'
                   ? t('taxr_kind_gwg')
-                  : sprintf(t('taxr_kind_afa'), $eq['years'], $eq['first_year'], $eq['last_year'])) ?></td>
+                  : sprintf(t('taxr_kind_afa'), $eq['years'], $eq['first_year'], $eq['last_year'])) ?><?php
+              if ($eq['disposed_year'] !== null && $eq['disposed_year'] <= $year): ?><br><?=
+                e(sprintf(t('taxr_disposed'), $eq['disposed_year'])) ?><?php endif; ?></td>
             <td class="num"><?= fmt_money($eq['this_year']) ?></td>
             <td class="num muted"><?= fmt_money($eq['remaining']) ?></td>
           </tr>
