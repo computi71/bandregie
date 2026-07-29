@@ -507,3 +507,7 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .nav-group.has-active summary { color: var(--accent); }
 /* Die Links stehen im <details> und sind damit keine Flex-Kinder mehr */
 .site-header nav .nav-group a { display: block; padding-left: 1.5rem; }
+
+/* Der nachgeladene Bearbeiten-Block: bis er da ist, steht dort nur der Knopf,
+   der ohne JavaScript auf dieselbe Seite führt. */
+.eq-detail { margin-top: 0.6rem; }

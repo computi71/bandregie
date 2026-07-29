@@ -1281,6 +1281,27 @@ if (str_starts_with($path, '/intern')) {
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
     ]);
   }
+  // Der Bearbeiten-Block eines einzelnen Geräts. Die Liste holt ihn nach,
+  // sobald jemand ein Gerät aufklappt; ohne JavaScript ist dieselbe Adresse
+  // eine gewöhnliche Seite. Beides dieselbe Vorlage.
+  if (preg_match('~^/intern/equipment/(\d+)/detail$~', $path, $m) && $method === 'GET') {
+    $detailEq = row('SELECT e.*, u.name AS owner_name FROM equipment e
+                     LEFT JOIN users u ON u.id = e.owner_id WHERE e.id = ?', [$m[1]]);
+    if (!$detailEq) { http_response_code(404); exit('Nicht gefunden'); }
+    $detailFiles = [];
+    foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
+                   WHERE f.entity_type = 'equipment' AND f.entity_id = ?", [$detailEq['id']]) as $f) {
+      $detailFiles[$f['entity_id']][] = $f;
+    }
+    view(isset($_GET['teil']) ? 'intern/_equipment_detail_fragment' : 'intern/equipment_detail', [
+      'title' => $detailEq['name'],
+      'detailEq' => $detailEq,
+      'filesByEq' => $detailFiles,
+      // Für die Auswahl des übergeordneten Geräts und den Schleifenschutz
+      'items' => rows('SELECT id, name, parent_id FROM equipment ORDER BY name'),
+      'members' => rows('SELECT id, name FROM users ORDER BY name'),
+    ]);
+  }
   if ($path === '/intern/equipment' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
       $parentId = (int) ($_POST['parent_id'] ?? 0) ?: null;

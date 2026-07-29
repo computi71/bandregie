@@ -27,8 +27,11 @@
           <strong><?= e($child['name']) ?></strong>
           <button type="button" class="btn btn-tiny" data-eqclose aria-label="<?= e(t('close')) ?>">✕</button>
         </div>
-        <?php $formEq = $child; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>
-        <?php $attachFiles = $filesByEq[$child['id']] ?? []; $attachType = 'equipment'; $attachId = $child['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
+        <?php // Auch hier erst auf Verlangen: der Dialog eines Bestandteils
+              // enthielt dasselbe Formular noch einmal. ?>
+        <div class="eq-detail" data-eqdetail="/intern/equipment/<?= $child['id'] ?>/detail?teil=1">
+          <a class="btn btn-small" href="/intern/equipment/<?= $child['id'] ?>/detail">✏️ <?= e(t('edit')) ?></a>
+        </div>
       </dialog>
       <?php if ($subParts): ?>
         <?php eq_render_parts($subParts, $ctx, $depth + 1); ?>
