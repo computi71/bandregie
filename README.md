@@ -221,7 +221,7 @@ life, counted from the month of purchase, so a purchase never sits in the
 expenses as well. Both the line and the useful life are settings. Everyone
 gets their own private entries; whoever keeps the treasury can also switch to
 the band's figures. Neither view contains the other, and no member ever sees
-another's private purchases. The sheet prints, and it exports as a table.
+another's private purchases. The sheet prints, and it exports as a table — or as a package that carries the receipts with it: the attachments of that year's entries and the invoices of equipment still being written off, whose paper sits in the year of the purchase. An invoice covering several devices is enclosed once.
 
 Each value carries the date it was last confirmed. The system check says so
 once that date is more than a year old, and a new release may ship better
