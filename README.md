@@ -36,7 +36,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders and member deposits, equipment with recurring deadlines and an iCal calendar feed.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines and an iCal calendar feed.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -213,6 +213,15 @@ every band sits in Germany. The defaults are the German position as of July
 2026: **25.000 €** for the previous year and **100.000 €** for the current
 one, and **800 €** net as the line above which equipment is written off over
 its useful life rather than at once (§ 6 Abs. 2 EStG).
+
+Each year has an overview under *Treasury → Tax overview*: income and
+expenses by category with the entries behind them, and the purchases that
+belong in neither — a device above the low-value line spreads over its useful
+life, counted from the month of purchase, so a purchase never sits in the
+expenses as well. Both the line and the useful life are settings. Everyone
+gets their own private entries; whoever keeps the treasury can also switch to
+the band's figures. Neither view contains the other, and no member ever sees
+another's private purchases. The sheet prints, and it exports as a table.
 
 Each value carries the date it was last confirmed. The system check says so
 once that date is more than a year old, and a new release may ship better
