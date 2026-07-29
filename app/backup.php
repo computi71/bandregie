@@ -202,8 +202,17 @@ function backup_run(string $trigger = 'auto'): array {
     }
     gzwrite($gz, str_repeat("\0", 1024)); // tar endet mit zwei leeren Blöcken
     gzclose($gz);
-    rename($target . '.part', $target);
     @unlink($sqlFile);
+    // Versiegeln, bevor die Datei ihren endgültigen Namen bekommt: was unter
+    // dem Namen der Sicherung liegt, ist damit nie kurz der Klartext.
+    if (crypt_available()) {
+      if (!crypt_seal_file($target . '.part', $target)) {
+        throw new RuntimeException('Sicherung ließ sich nicht verschlüsseln');
+      }
+      @unlink($target . '.part');
+    } else {
+      rename($target . '.part', $target);
+    }
     @chmod($target, 0600);
     $notes = [];
     if ($skipped) $notes[] = count($skipped) . ' Datei(en) mit zu langem Pfad ausgelassen';
@@ -392,6 +401,22 @@ function backup_restore(string $archive): array {
     @rmdir($tmp);
     return ['ok' => false, 'message' => 'Archiv nicht lesbar', 'safety' => ''];
   }
+  // Eine versiegelte Sicherung braucht denselben Schlüssel wie beim Schreiben.
+  // Fehlt er oder ist es ein anderer, endet es hier — und nicht mitten im
+  // Einspielen mit halb ersetzter Datenbank.
+  if (crypt_is_sealed($source)) {
+    $opened = $tmp . '/klartext.tar.gz';
+    if (!crypt_open_file($source, $opened)) {
+      @unlink($source);
+      @rmdir($tmp);
+      return ['ok' => false, 'safety' => '',
+              'message' => crypt_available()
+                ? 'Die Sicherung lässt sich mit diesem Schlüssel nicht öffnen'
+                : 'Die Sicherung ist verschlüsselt, aber in config.php steht kein DATA_KEY'];
+    }
+    @unlink($source);
+    $source = $opened;
+  }
 
   $safety = backup_run('restore');
   $safetyName = $safety['filename'] ?? '';
@@ -442,6 +467,21 @@ function backup_restore(string $archive): array {
 // wenn die Seite selbst nicht mehr startet.
 if (PHP_SAPI === 'cli' && isset($argv[0]) && realpath($argv[0]) === realpath(__FILE__)) {
   require __DIR__ . '/bootstrap.php';
+  // Einen Schlüssel erzeugen. Er wird nur ausgegeben und nirgends abgelegt —
+  // eintragen muss ihn ein Mensch, und dabei merkt er sich, dass es ihn gibt.
+  if (($argv[1] ?? '') === 'key' || ($argv[1] ?? '') === 'schluessel') {
+    echo "Diese Zeile in app/config.php eintragen:\n\n";
+    echo "  'data_key' => '" . crypt_new_key() . "',\n\n";
+    echo "Danach werden Sicherungen und Anhänge verschlüsselt abgelegt.\n";
+    echo "Ohne diesen Schlüssel sind sie nicht mehr zu öffnen — aufbewahren\n";
+    echo "wie das Datenbankpasswort, und nicht in derselben Sicherung.\n";
+    exit(0);
+  }
+  if (($argv[1] ?? '') === 'selftest' || ($argv[1] ?? '') === 'pruefen') {
+    $res = crypt_selftest();
+    echo ($res['ok'] ? 'ok' : 'fehler') . ' ' . $res['message'] . PHP_EOL;
+    exit($res['ok'] ? 0 : 1);
+  }
   if (($argv[1] ?? '') === 'restore') {
     $file = $argv[2] ?? '';
     if ($file === '') { fwrite(STDERR, "Aufruf: php app/backup.php restore <archiv.tar.gz>\n"); exit(2); }

@@ -269,10 +269,41 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <p class="muted small">⏪ <?= e(t('bk_restore_hint')) ?></p>
   <p class="muted small"><?= e(t('bk_restore_cli')) ?> <code>php <?= e(BASE_DIR) ?>/app/backup.php restore &lt;archiv.tar.gz&gt;</code></p>
   <form method="post" action="/intern/backup/upload" enctype="multipart/form-data" class="comment-form"><?= csrf_field() ?>
-    <input type="file" name="archive" accept=".gz,application/gzip" required>
+    <input type="file" name="archive" accept=".gz,.enc,application/gzip" required>
     <button class="btn btn-small"><?= e(t('bk_upload')) ?></button>
   </form>
   <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
+</details>
+
+<?php // Verschlüsselung ruhender Daten. Die Seite sagt beides: was geschützt
+      // ist und was nicht — ein Halbsatz „verschlüsselt" ohne Grenze wäre eine
+      // Beruhigung und keine Auskunft. ?>
+<details class="card acc" name="setacc">
+  <summary>🔐 <?= e(t('set_crypt')) ?></summary>
+  <?php $cryptOn = crypt_available(); $cryptTest = $cryptOn ? crypt_selftest() : null; ?>
+  <p class="<?= $cryptOn ? 'muted' : 'warn' ?>">
+    <strong><?= e($cryptOn ? t('set_crypt_on') : t('set_crypt_off')) ?></strong>
+  </p>
+  <?php if ($cryptOn): ?>
+    <p class="muted small"><?= e(t('set_crypt_scope')) ?></p>
+    <p class="<?= $cryptTest['ok'] ? 'muted' : 'warn' ?> small">
+      <?= e(sprintf(t('set_crypt_test'), $cryptTest['message'])) ?>
+    </p>
+    <?php $sealCount = count(array_filter(glob(FILES_DIR . '/*') ?: [], fn($p) => is_file($p) && !crypt_is_sealed($p))); ?>
+    <?php if ($sealCount > 0): ?>
+      <p class="warn small"><?= e(sprintf(t('set_crypt_plain_files'), $sealCount)) ?></p>
+      <form method="post" action="/intern/dateien/versiegeln" class="inline"><?= csrf_field() ?>
+        <button class="btn btn-small">🔐 <?= e(t('set_crypt_seal_now')) ?></button>
+      </form>
+    <?php else: ?>
+      <p class="muted small"><?= e(t('set_crypt_files_done')) ?></p>
+    <?php endif; ?>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('set_crypt_how')) ?></p>
+    <p class="muted small"><code>php <?= e(BASE_DIR) ?>/app/backup.php key</code></p>
+    <p class="muted small">⚠ <?= e(t('set_crypt_lost')) ?></p>
+  <?php endif; ?>
+  <p class="muted small"><?= e(t('set_crypt_law')) ?></p>
 </details>
 
 <?php require_once BASE_DIR . '/app/steuer.php'; ?>

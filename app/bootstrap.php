@@ -32,6 +32,11 @@ if (!is_file($configFile)) {
 }
 $config = require $configFile;
 
+// Der Tresor kommt vor allem anderen: er hängt nur an der Konfiguration, und
+// ohne ihn wüsste weder die Sicherung noch die Dateiausgabe, ob verschlüsselt
+// abgelegt wird.
+require_once __DIR__ . '/tresor.php';
+
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
 // hilft dabei niemandem — die Meldung sagt, was zu tun ist, die Einzelheiten
@@ -461,6 +466,26 @@ const UI_STRINGS = [
   'fl_bg_set' => 'Foto als Hintergrund gesetzt.',
   'fl_period_invalid' => 'Bitte gültigen Zeitraum angeben.',
   'fl_file_too_big' => 'Datei zu groß (max. 20 MB).',
+  'fl_file_sealed' => 'Diese Datei ist verschlüsselt abgelegt und lässt sich mit dem eingetragenen Schlüssel nicht öffnen.',
+  'set_crypt' => 'Verschlüsselung ruhender Daten',
+  'set_crypt_on' => 'Eingeschaltet: Sicherungen und Anhänge liegen verschlüsselt.',
+  'set_crypt_off' => 'Ausgeschaltet: Sicherungen und Anhänge liegen im Klartext.',
+  'set_crypt_scope' => 'Verschlüsselt sind die Sicherungen und die Dateianhänge auf der Platte. Nicht verschlüsselt ist die laufende Datenbank — dort muss der Server rechnen und sortieren können — und nicht die Bilder unter /uploads, die der Webserver direkt ausliefert.',
+  'set_crypt_test' => 'Wirksamkeit geprüft: %s.',
+  'set_crypt_plain_files' => '%d Anhänge stammen aus der Zeit davor und liegen noch offen.',
+  'set_crypt_seal_now' => 'Jetzt nachverschlüsseln',
+  'set_crypt_files_done' => 'Alle Anhänge sind verschlüsselt.',
+  'set_crypt_how' => 'Einen Schlüssel erzeugen und als „data_key" in app/config.php eintragen:',
+  'set_crypt_lost' => 'Diesen Schlüssel aufbewahren wie das Datenbankpasswort — und nicht in derselben Sicherung. Ohne ihn ist keine verschlüsselte Sicherung mehr zu öffnen.',
+  'set_crypt_law' => 'Art. 32 DSGVO verlangt Maßnahmen nach dem Stand der Technik und nennt Verschlüsselung ausdrücklich; Buchstabe d verlangt außerdem, ihre Wirksamkeit regelmäßig zu überprüfen. Genau das tut die Zeile darüber: versiegeln, wieder öffnen, und prüfen, ob eine Veränderung auffällt.',
+  'sys_crypt_off' => 'kein Schlüssel eingetragen',
+  'sys_crypt_off_hint' => 'Sicherungen und Anhänge liegen im Klartext. Wer die Sicherung in die Hand bekommt — auf dem NAS, beim FTP-Ziel, in der Cloud —, liest die Kasse mit. Schlüssel erzeugen: php app/backup.php key',
+  'sys_crypt_broken' => 'Die Verschlüsselung ist eingeschaltet, aber die Prüfung schlägt fehl. Bis das geklärt ist, ist auf die Sicherungen kein Verlass.',
+  'sys_crypt_files' => 'Anhänge verschlüsselt',
+  'sys_crypt_files_hint' => 'In den Einstellungen unter „Verschlüsselung ruhender Daten" nachverschlüsseln.',
+  'fl_crypt_no_key' => 'Es ist kein Schlüssel eingetragen.',
+  'fl_crypt_sealed' => '%d Anhänge verschlüsselt.',
+  'fl_crypt_sealed_some' => '%d Anhänge verschlüsselt, %d fehlgeschlagen — Einzelheiten im Fehlerprotokoll.',
   'fl_dl_saved' => 'Download-Einstellungen gespeichert.',
   'fl_profile_saved' => 'Profil gespeichert.',
   'fl_email_taken' => 'Diese E-Mail ist schon vergeben.',

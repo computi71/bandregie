@@ -88,6 +88,28 @@ function system_checks(): array {
     $age === null || $age >= 8 * 86400 ? t('sys_no_backup_hint') : ''
   );
 
+  // Verschlüsselung ruhender Daten — und nicht nur, ob sie eingeschaltet ist,
+  // sondern ob sie trägt. Art. 32 Abs. 1 Buchst. d DSGVO verlangt die
+  // Überprüfung der Wirksamkeit, nicht die Absicht.
+  $cryptOn = crypt_available();
+  $cryptTest = $cryptOn ? crypt_selftest() : ['ok' => false, 'message' => ''];
+  $groups[t('sys_operation')][] = check_row(
+    t('set_crypt'),
+    $cryptOn ? ($cryptTest['ok'] ? 'ok' : 'fail') : 'warn',
+    $cryptOn ? $cryptTest['message'] : t('sys_crypt_off'),
+    $cryptOn ? ($cryptTest['ok'] ? '' : t('sys_crypt_broken')) : t('sys_crypt_off_hint')
+  );
+  if ($cryptOn) {
+    $plainFiles = count(array_filter(glob(FILES_DIR . '/*') ?: [],
+      fn($p) => is_file($p) && !crypt_is_sealed($p)));
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_crypt_files'),
+      $plainFiles === 0 ? 'ok' : 'warn',
+      $plainFiles === 0 ? t('sys_ok') : sprintf(t('set_crypt_plain_files'), $plainFiles),
+      $plainFiles === 0 ? '' : t('sys_crypt_files_hint')
+    );
+  }
+
   $cache = system_cache_header();
   $groups[t('sys_operation')][] = check_row(
     t('sys_cache'),

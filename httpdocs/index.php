@@ -904,6 +904,10 @@ if (str_starts_with($path, '/intern')) {
         $fileExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($orig, PATHINFO_EXTENSION)));
         $safe = 'datei_' . bin2hex(random_bytes(16)) . ($fileExt !== '' ? '.' . $fileExt : '');
         if (move_uploaded_file($tmp, FILES_DIR . '/' . $safe)) {
+          // Anhänge liegen hinter der Rechteprüfung, aber auf der Platte lagen
+          // sie im Klartext. Wer den Schlüssel gesetzt hat, bekommt sie
+          // versiegelt; ausgeliefert werden sie in file_serve() wieder offen.
+          if (crypt_available()) file_seal_at_rest(FILES_DIR . '/' . $safe);
           foreach ([$entityId, ...$alsoIds] as $target) {
             q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
               [$type, (int) $target, $safe, $orig, $_FILES['files']['size'][$i], $me['id']]);
@@ -1981,13 +1985,28 @@ if (str_starts_with($path, '/intern')) {
     flash(($run['status'] ?? '') === 'ok' ? t('fl_bk_done') : t('fl_bk_failed') . ' ' . ($run['message'] ?? ''));
     redirect('/intern/einstellungen');
   }
+  // Die Anhänge aus der Zeit vor dem Schlüssel nachträglich versiegeln. Kein
+  // Automatismus: bei vielen Dateien dauert es, und es soll jemand zusehen.
+  if ($path === '/intern/dateien/versiegeln' && $method === 'POST') {
+    require_admin();
+    if (!crypt_available()) {
+      flash(t('fl_crypt_no_key'));
+      redirect('/intern/einstellungen');
+    }
+    @set_time_limit(0);
+    $sealed = files_seal_all();
+    flash($sealed['failed'] > 0
+      ? sprintf(t('fl_crypt_sealed_some'), $sealed['done'], $sealed['failed'])
+      : sprintf(t('fl_crypt_sealed'), $sealed['done']));
+    redirect('/intern/einstellungen');
+  }
   // Ein Archiv von außen einspielen — für den Fall, dass der Server neu
   // aufgesetzt wurde und hier noch nichts liegt.
   if ($path === '/intern/backup/upload' && $method === 'POST') {
     require_admin();
     $up = $_FILES['archive'] ?? null;
     $name = basename((string) ($up['name'] ?? ''));
-    if (!$up || ($up['error'] ?? 1) !== UPLOAD_ERR_OK || !str_ends_with($name, '.tar.gz')) {
+    if (!$up || ($up['error'] ?? 1) !== UPLOAD_ERR_OK || !preg_match('~\.tar\.gz(\.enc)?$~', $name)) {
       flash(t('fl_bk_upload_invalid'));
       redirect('/intern/einstellungen');
     }
@@ -2205,6 +2224,21 @@ function file_serve(array $f): never {
   $disposition = in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'txt', 'mp3', 'wav'], true) ? 'inline' : 'attachment';
   header("Content-Type: $mime");
   header("Content-Disposition: $disposition; filename=\"" . rawurlencode($f['original_name']) . '"');
+  // Verschlüsselt abgelegte Anhänge werden hier geöffnet — nach der
+  // Rechteprüfung, die den Weg hierher freigegeben hat. Auf der Platte bleibt
+  // die Datei versiegelt; entschlüsselt existiert sie nur für diese Antwort.
+  if (crypt_is_sealed($abs)) {
+    $plain = tempnam(sys_get_temp_dir(), 'brf');
+    if (!crypt_open_file($abs, $plain)) {
+      @unlink($plain);
+      http_response_code(500);
+      exit(t('fl_file_sealed'));
+    }
+    header('Content-Length: ' . filesize($plain));
+    readfile($plain);
+    @unlink($plain);
+    exit;
+  }
   header('Content-Length: ' . filesize($abs));
   readfile($abs);
   exit;
