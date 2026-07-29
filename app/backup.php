@@ -13,6 +13,8 @@ declare(strict_types=1);
  * Direkt aufrufbar für echte Cronjobs:  php app/backup.php
  */
 
+require_once __DIR__ . '/tresor.php';
+
 const BACKUP_INTERVALS = ['daily' => 86400, 'weekly' => 604800];
 
 /**
@@ -183,9 +185,12 @@ function backup_run(string $trigger = 'auto'): array {
   // Genau das passiert beim Zurückspielen, wo die Sicherheitskopie sonst das
   // Archiv überschreibt, das gerade eingespielt werden soll.
   $stamp = date('Y-m-d-His');
-  $name = 'bandroadie-' . $stamp . '.tar.gz';
+  // Die Endung sagt, was drin ist. Wer die Datei in die Hand bekommt, soll
+  // nicht raten müssen, ob sie sich öffnen lässt.
+  $suffix = crypt_available() ? '.tar.gz.enc' : '.tar.gz';
+  $name = 'bandroadie-' . $stamp . $suffix;
   for ($n = 2; file_exists($dir . '/' . $name); $n++) {
-    $name = 'bandroadie-' . $stamp . '-' . $n . '.tar.gz';
+    $name = 'bandroadie-' . $stamp . '-' . $n . $suffix;
   }
   $target = $dir . '/' . $name;
   $sqlFile = $dir . '/.dump.sql';

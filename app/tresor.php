@@ -87,7 +87,10 @@ function crypt_seal_file(string $source, string $target): bool {
   if ($key === null) return false;
   $in = @fopen($source, 'rb');
   if (!$in) return false;
-  $tmp = $target . '.part';
+  // Der Zwischenname muss eindeutig sein: die Sicherung versiegelt aus einer
+  // Datei, die selbst auf .part endet, und ein fester Zwischenname wäre dann
+  // die Quelle — die beim Öffnen zum Schreiben verloren geht.
+  $tmp = $target . '.sealing-' . bin2hex(random_bytes(4));
   $out = @fopen($tmp, 'wb');
   if (!$out) { fclose($in); return false; }
 
@@ -124,7 +127,7 @@ function crypt_open_file(string $source, string $target): bool {
   $state = @sodium_crypto_secretstream_xchacha20poly1305_init_pull($header, $key);
   if ($state === false) { fclose($in); return false; }
 
-  $tmp = $target . '.part';
+  $tmp = $target . '.opening-' . bin2hex(random_bytes(4));
   $out = @fopen($tmp, 'wb');
   if (!$out) { fclose($in); return false; }
   $ok = true;
