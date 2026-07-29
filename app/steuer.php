@@ -415,12 +415,16 @@ function tax_report_receipts(array $report): array {
   $eqIds = array_filter(array_map('intval', array_column($report['equipment'], 'equipment_id')));
   if (!$financeIds && !$eqIds) return [];
 
-  // Damit ein Gerätename im Paket auftaucht und nicht nur eine Nummer
-  $eqNames = [];
-  foreach ($report['equipment'] as $eq) $eqNames[(int) $eq['equipment_id']] = $eq['name'];
-  $dates = [];
-  foreach ($report['entries'] as $en) $dates[(int) $en['id']] = $en['date'];
-  foreach ($report['equipment'] as $eq) $dates[(int) $eq['finance_id']] = $eq['date'];
+  // Datum und Bezeichnung je Art, damit im Paket nicht nur Nummern stehen:
+  // an einer Buchung hängt ihr eigenes Datum, an einem Gerät das des Kaufs.
+  $about = [];
+  foreach ($report['entries'] as $en) {
+    $about['finance'][(int) $en['id']] = ['date' => (string) $en['date'], 'label' => (string) $en['description']];
+  }
+  foreach ($report['equipment'] as $eq) {
+    $about['finance'][(int) $eq['finance_id']] = ['date' => (string) $eq['date'], 'label' => (string) $eq['name']];
+    $about['equipment'][(int) $eq['equipment_id']] = ['date' => (string) $eq['date'], 'label' => (string) $eq['name']];
+  }
 
   $where = []; $args = [];
   if ($financeIds) {
@@ -436,9 +440,8 @@ function tax_report_receipts(array $report): array {
   foreach (rows('SELECT * FROM files WHERE ' . implode(' OR ', $where) . ' ORDER BY id', $args) as $f) {
     if (isset($seen[$f['filename']])) continue;
     $seen[$f['filename']] = true;
-    $id = (int) $f['entity_id'];
-    $label = $f['entity_type'] === 'equipment' ? ($eqNames[$id] ?? '') : ($dates[$id] ?? '');
-    $out[] = ['name' => tax_receipt_name($label, $f, $dates[$id] ?? ''), 'file' => $f];
+    $meta = $about[$f['entity_type']][(int) $f['entity_id']] ?? ['date' => '', 'label' => ''];
+    $out[] = ['name' => tax_receipt_name($meta['label'], $f, $meta['date']), 'file' => $f];
   }
   return $out;
 }
