@@ -482,11 +482,23 @@ function tax_report_package(array $view, string $owner): ?string {
   $base = 'steuer-' . $view['year'] . '-' . $view['scope'];
   $zip->addFromString($base . '.' . $ext, $table);
   $zip->addFromString('hinweis.txt', tax_package_note($view, $owner));
+  // Ein versiegelt abgelegter Beleg muss hier geöffnet werden. Sonst bekäme
+  // die Steuerberatung einen Klumpen Bytes, den nur dieser Server lesen kann.
+  $opened = [];
   foreach (tax_report_receipts($view['report']) as $receipt) {
     $path = FILES_DIR . '/' . $receipt['file']['filename'];
-    if (is_file($path)) $zip->addFile($path, 'belege/' . $receipt['name']);
+    if (!is_file($path)) continue;
+    if (crypt_is_sealed($path)) {
+      $plain = tempnam(sys_get_temp_dir(), 'brb');
+      if (!crypt_open_file($path, $plain)) { @unlink($plain); continue; }
+      $opened[] = $plain;
+      $path = $plain;
+    }
+    $zip->addFile($path, 'belege/' . $receipt['name']);
   }
   $zip->close();
+  // Erst nach close(): vorher liest ZipArchive die Dateien noch.
+  foreach ($opened as $leftover) @unlink($leftover);
   return $tmp;
 }
 
