@@ -1,0 +1,48 @@
+// „Diesen Auftritt mitnehmen": holt Setlist, Noten, Rider und Patchliste in
+// den Zwischenspeicher, damit auf der Bühne nichts fehlt.
+//
+// Der Knopf ist im Quelltext versteckt und wird hier eingeschaltet — ohne
+// Service Worker hätte er keine Wirkung, und ein Knopf, der nichts tut, ist
+// schlimmer als keiner.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!('serviceWorker' in navigator)) return;
+
+  document.querySelectorAll('[data-offlinegig]').forEach(box => {
+    const knopf = box.querySelector('[data-offlinestart]');
+    const stand = box.querySelector('[data-offlinestate]');
+    if (!knopf || !stand) return;
+    box.hidden = false;
+
+    knopf.addEventListener('click', async () => {
+      knopf.disabled = true;
+      stand.textContent = ' ' + (box.dataset.offlinebusy || '…');
+      try {
+        const antwort = await fetch(box.dataset.offlinegig, { credentials: 'same-origin' });
+        if (!antwort.ok) throw new Error(String(antwort.status));
+        const daten = await antwort.json();
+        const sw = await navigator.serviceWorker.ready;
+        if (!sw.active) throw new Error('kein Service Worker');
+        sw.active.postMessage({ type: 'mitnehmen', urls: daten.urls || [] });
+      } catch (e) {
+        stand.textContent = ' ' + (box.dataset.offlinefailed || '');
+        knopf.disabled = false;
+      }
+    });
+  });
+
+  // Der Service Worker meldet, was er geholt hat.
+  navigator.serviceWorker.addEventListener('message', ev => {
+    const daten = ev.data || {};
+    if (daten.type !== 'mitgenommen') return;
+    document.querySelectorAll('[data-offlinegig]').forEach(box => {
+      const knopf = box.querySelector('[data-offlinestart]');
+      const stand = box.querySelector('[data-offlinestate]');
+      if (!knopf || !stand || !knopf.disabled) return;
+      const vorlage = daten.uebersprungen > 0
+        ? (box.dataset.offlinesome || '')
+        : (box.dataset.offlinedone || '');
+      stand.textContent = ' ' + vorlage.replace('%1', daten.geholt).replace('%2', daten.uebersprungen);
+      knopf.disabled = false;
+    });
+  });
+});

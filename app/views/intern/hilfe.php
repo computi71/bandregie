@@ -88,6 +88,7 @@
   <p class="muted"><?= e(t('app_install_hint')) ?></p>
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>
+  <p class="muted"><?= e(t('off_help')) ?></p>
   <p class="muted"><?= e(t('app_install_push')) ?></p>
 </details>
 

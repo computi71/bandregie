@@ -146,6 +146,17 @@ require BASE_DIR . '/app/views/_header.php';
 
     <?php $attachFiles = $filesByEvent[$ev['id']] ?? []; $attachType = 'event'; $attachId = $ev['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
 
+    <?php // Alles zu diesem Termin aufs Gerät holen — Setlist, Noten, Rider,
+          // Patchliste. Ohne JavaScript steht der Knopf nicht da: er hat ohne
+          // Service Worker keine Wirkung, und ein Knopf, der nichts tut, ist
+          // schlimmer als keiner. ?>
+    <p class="muted small" data-offlinegig="/intern/termine/<?= (int) $ev['id'] ?>/offline" hidden
+       data-offlinebusy="<?= e(t('off_busy')) ?>" data-offlinedone="<?= e(t('off_done')) ?>"
+       data-offlinesome="<?= e(t('off_some')) ?>" data-offlinefailed="<?= e(t('off_failed')) ?>">
+      <button type="button" class="btn btn-small" data-offlinestart>⭳ <?= e(t('off_take')) ?></button>
+      <span data-offlinestate></span>
+    </p>
+
     <details class="subsection">
       <summary>💬 <?= e(t('ev_comments')) ?> (<?= count($comments[$ev['id']] ?? []) ?>)</summary>
       <ul class="comment-list">
@@ -219,4 +230,5 @@ require BASE_DIR . '/app/views/_header.php';
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>
 <script src="<?= e(asset('/assets/eventfields.js')) ?>" defer></script>
+<script src="<?= e(asset('/assets/offline.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

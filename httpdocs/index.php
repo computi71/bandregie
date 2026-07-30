@@ -1824,6 +1824,46 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/kasse');
   }
 
+  // Was zu einem Auftritt gehört, als Liste von Adressen. Der Service Worker
+  // holt sie in den Zwischenspeicher, damit auf der Bühne nichts fehlt, was
+  // niemand vorher zufällig geöffnet hat.
+  //
+  // Ausgegeben wird, was diese Person auch sehen darf: die Sichtbarkeit des
+  // Termins entscheidet, und die Anhänge folgen ihren Gegenständen.
+  if (preg_match('~^/intern/termine/(\d+)/offline$~', $path, $m) && $method === 'GET') {
+    $offEv = row('SELECT * FROM events WHERE id = ?', [$m[1]]);
+    if (!$offEv || !may_see_event($me, (int) $offEv['id'])) { http_response_code(404); exit('{}'); }
+
+    $offUrls = ['/intern', '/intern/termine', '/intern/songs', '/intern/stagerider',
+                '/intern/stagerider/print', '/intern/kanaele'];
+    $offSongIds = [];
+    if ($offEv['setlist_id']) {
+      $offUrls[] = '/intern/setlists';
+      $offUrls[] = '/intern/setlists/' . (int) $offEv['setlist_id'];
+      $offUrls[] = '/intern/setlists/' . (int) $offEv['setlist_id'] . '/print';
+      $offSongIds = array_map('intval', array_column(
+        rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL',
+             [$offEv['setlist_id']]), 'song_id'));
+    }
+
+    // Anhänge: die des Termins, die der Setlist und die der Songs darin. Das
+    // sind die Noten — der Grund, warum das Ganze überhaupt nötig ist.
+    $offFiles = files_map('event', [(int) $offEv['id']]);
+    if ($offEv['setlist_id']) {
+      $offFiles += files_map('setlist', [(int) $offEv['setlist_id']]);
+    }
+    if ($offSongIds) $offFiles += files_map('song', $offSongIds);
+    foreach ($offFiles as $offList) {
+      foreach ($offList as $offFile) $offUrls[] = '/intern/datei/' . (int) $offFile['id'];
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    exit(json_encode([
+      'title' => $offEv['title'],
+      'urls' => array_values(array_unique($offUrls)),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+  }
+
   // ---------- Steuerübersicht ----------
   // Die eigenen Zahlen sieht jeder für sich, die der Band sieht die
   // Kassenführung. Ein fremder privater Kauf taucht in keiner der beiden auf.
