@@ -7,12 +7,15 @@
 // Zeile). Hier werden sie nur erkannt und hervorgehoben; der Text bleibt, wie
 // er eingetippt wurde, damit ihn auch ein Drucker und ein fremdes Programm
 // versteht.
-$zeilen = preg_split('~\R~', (string) ($song['lyrics'] ?? '')) ?: [];
+// Zeilen fürs Anzeigen strukturieren — dieselbe Erkennung wie in der
+// Bühnenansicht, damit beide nicht auseinanderlaufen.
+$zeilen = lyrics_lines($song['lyrics'] ?? '');
 ?>
 <div class="page-head">
   <h1>🎵 <?= e($song['title']) ?></h1>
   <div class="row-buttons">
     <a class="btn btn-ghost btn-small" href="/intern/songs">← <?= e(t('inav_songs')) ?></a>
+    <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/buehne" title="<?= e(t('stage_hint')) ?>">🎤 <?= e(t('stage_open')) ?></a>
     <a class="btn btn-ghost btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/edit">✏️ <?= e(t('song_edit_link')) ?></a>
   </div>
 </div>
@@ -30,16 +33,15 @@ $zeilen = preg_split('~\R~', (string) ($song['lyrics'] ?? '')) ?: [];
 
 <div class="card">
   <h2><?= e(t('song_lyrics')) ?></h2>
-  <?php if (trim(implode('', $zeilen)) === ''): ?>
+  <?php if (trim((string) ($song['lyrics'] ?? '')) === ''): ?>
     <p class="muted"><?= e(t('song_no_lyrics')) ?></p>
   <?php else: ?>
     <div class="lyrics">
-      <?php foreach ($zeilen as $zeile): ?>
-        <?php $marke = preg_match('~^\s*\[(.{1,40})\]\s*$~u', $zeile, $m); ?>
-        <?php if ($marke): ?>
-          <p class="lyrics-part"><?= e($m[1]) ?></p>
+      <?php foreach ($zeilen as $z): ?>
+        <?php if (isset($z['part'])): ?>
+          <p class="lyrics-part part-<?= e($z['cat']) ?>"><?= e($z['part']) ?></p>
         <?php else: ?>
-          <p class="lyrics-line<?= trim($zeile) === '' ? ' lyrics-gap' : '' ?>"><?= e($zeile) ?></p>
+          <p class="lyrics-line<?= trim($z['text']) === '' ? ' lyrics-gap' : '' ?>"><?= e($z['text']) ?></p>
         <?php endif; ?>
       <?php endforeach; ?>
     </div>

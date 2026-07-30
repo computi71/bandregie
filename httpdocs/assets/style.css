@@ -520,6 +520,42 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .lyrics-part { margin: 1.1rem 0 0.3rem; font-size: 0.78rem; font-weight: 700;
                text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 .lyrics-part:first-child { margin-top: 0; }
+
+/* Abschnitts-Farben: ein Blick findet über die Farbe die Stelle wieder. Gelten
+   auf der Leseseite wie auf der Bühne, damit beide dieselbe Sprache sprechen. */
+.part-verse  { color: #6ea8fe; }
+.part-chorus { color: #ff8fa3; }
+.part-bridge { color: #c58cff; }
+.part-solo   { color: #ffd166; }
+.part-intro  { color: #7ee0c0; }
+.part-outro  { color: #9aa0aa; }
+
+/* Bühne: der Liedtext im Vollbild, auf Armlänge lesbar, selbstlaufend. Bewusst
+   immer dunkel — eine Bühne ist dunkel, und der Kontrast muss stimmen, egal
+   welches Design sonst gewählt ist. */
+.buehne-body { margin: 0; background: #000; }
+.buehne { position: fixed; inset: 0; display: flex; flex-direction: column;
+          background: #000; color: #f4f4f4; }
+.buehne-bar { display: flex; align-items: center; gap: 0.6rem;
+              padding: 0.5rem 0.8rem; font-size: 0.9rem; color: #b9b9b9; }
+.buehne-title { font-weight: 700; color: #fff; }
+.buehne-pos { margin-left: auto; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.buehne-scroll { flex: 1; overflow-y: auto; padding: 6vh 6vw 40vh;
+                 -webkit-overflow-scrolling: touch; cursor: pointer; }
+.buehne-line { margin: 0; font-size: clamp(1.6rem, 6vw, 3rem); line-height: 1.35; }
+.buehne-gap { height: 1.4rem; margin: 0; }
+.buehne-part { margin: 1.6rem 0 0.5rem; font-size: 0.95rem; font-weight: 700;
+               text-transform: uppercase; letter-spacing: 0.1em; }
+.buehne-part:first-child { margin-top: 0; }
+.buehne-empty { opacity: 0.6; font-size: 1.4rem; }
+.buehne-controls { display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+                   padding: 0.6rem env(safe-area-inset-right, 0.8rem)
+                   calc(0.6rem + env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0.8rem); }
+.buehne-btn { min-width: 3rem; min-height: 3rem; font-size: 1.3rem; background: #1c1c1c;
+              color: #f4f4f4; border: 1px solid #333; border-radius: 10px; cursor: pointer;
+              text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.buehne-bar .buehne-btn { min-width: 2.2rem; min-height: 2.2rem; font-size: 1rem; }
+.buehne-speed { min-width: 2.5rem; text-align: center; color: #b9b9b9; font-variant-numeric: tabular-nums; }
 /* Hinweis auf einen Stand aus dem Zwischenspeicher: auffällig, aber nicht im Weg */
 .stale-banner { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border-radius: 6px;
                 background: rgba(200, 120, 40, 0.14); font-size: 0.9rem; }

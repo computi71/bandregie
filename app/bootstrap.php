@@ -668,6 +668,15 @@ Zeile zwei
   'song_lyrics_hint' => 'Abschnitte in eckige Klammern in eine eigene Zeile: [Strophe], [Refrain], [Bridge], [Solo]. Das genügt, damit sie später hervorgehoben werden können.',
   'song_read' => 'Text und Noten',
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
+  'stage_open' => 'Bühne',
+  'stage_hint' => 'Vollbild, großer Text, läuft von selbst',
+  'stage_play' => 'Start / Pause',
+  'stage_slower' => 'Langsamer',
+  'stage_faster' => 'Schneller',
+  'stage_prev' => 'Vorheriger Song',
+  'stage_next' => 'Nächster Song',
+  'stage_exit' => 'Schließen',
+  'stage_empty' => 'Kein Text für dieses Lied.',
   'song_edit_link' => 'Bearbeiten',
   'off_areas' => 'Offline dabeihaben',
   'off_areas_hint' => 'Was hier angehakt ist, liegt auf diesem Gerät und ist ohne Empfang da. Die Auswahl gilt für dich, nicht für die Band — jedes Gerät hat seine eigene.',
@@ -2131,6 +2140,41 @@ function price_to_cents(string $raw): ?int {
  * und nicht in einer Serverkonfiguration: Wer das Projekt woanders
  * installiert, hat diesen Vorteil ohne Zutun.
  */
+// Eine Abschnittsmarke ([Refrain]) auf eine Kategorie abbilden, damit ein Blick
+// die Stelle über die Farbe wiederfindet. Deutsch und Englisch, weil die
+// Konvention beides zulässt; Unbekanntes bleibt neutral ('other').
+function lyrics_category(string $label): string {
+  $l = mb_strtolower(trim($label));
+  $groups = [
+    'chorus' => ['refrain', 'chorus', 'hook'],
+    'verse'  => ['strophe', 'verse'],
+    'bridge' => ['bridge', 'brücke', 'bruecke'],
+    'solo'   => ['solo', 'instrumental'],
+    'intro'  => ['intro', 'einleitung'],
+    'outro'  => ['outro', 'ende', 'schluss', 'coda'],
+  ];
+  foreach ($groups as $cat => $words) {
+    foreach ($words as $w) if (str_contains($l, $w)) return $cat;
+  }
+  return 'other';
+}
+
+// Liedtext in Zeilen zerlegen und Abschnittsmarken erkennen. Der gespeicherte
+// Text bleibt unangetastet — hier wird nur fürs Anzeigen strukturiert, damit
+// Leseseite und Bühnenansicht dieselbe Erkennung nutzen und nicht auseinander-
+// laufen. Marke: ['part' => Beschriftung, 'cat' => Kategorie]; sonst ['text'].
+function lyrics_lines(?string $text): array {
+  $out = [];
+  foreach (preg_split('~\R~', (string) $text) ?: [] as $line) {
+    if (preg_match('~^\s*\[(.{1,40})\]\s*$~u', $line, $m)) {
+      $out[] = ['part' => $m[1], 'cat' => lyrics_category($m[1])];
+    } else {
+      $out[] = ['text' => $line];
+    }
+  }
+  return $out;
+}
+
 function asset(string $path): string {
   return $path . '?v=' . rawurlencode(BANDREGIE_VERSION);
 }
@@ -2472,6 +2516,7 @@ function offline_urls(array $user): array {
     foreach (rows("SELECT id FROM songs WHERE status <> 'archiv' ORDER BY title") as $song) {
       $songIds[] = (int) $song['id'];
       $urls[] = '/intern/songs/' . (int) $song['id'];
+      $urls[] = '/intern/songs/' . (int) $song['id'] . '/buehne';
     }
   }
 

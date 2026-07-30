@@ -621,6 +621,30 @@ if (str_starts_with($path, '/intern')) {
       'songFiles' => files_map('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? [],
     ]);
   }
+  // Bühne: der Liedtext im Vollbild, groß und selbstlaufend — das Handy als
+  // Notenständer. Optional ?sl= gibt die laufende Setlist mit, damit man ohne
+  // das Vollbild zu verlassen zum nächsten Lied springen kann (der Wechsel
+  // passiert im Browser, sonst bräche das Vollbild und der Offline-Stand).
+  if (preg_match('~^/intern/songs/(\d+)/buehne$~', $path, $m) && $method === 'GET') {
+    $songOne = row('SELECT id, title, lyrics FROM songs WHERE id = ?', [$m[1]]);
+    if (!$songOne) redirect('/intern/songs');
+    $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
+    $stage = [];
+    if ($slId) {
+      foreach (setlist_entries($slId) as $entry) {
+        if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
+        $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'], 'lines' => lyrics_lines($entry['lyrics'])];
+      }
+    }
+    if (!$stage) {
+      $stage[] = ['id' => (int) $songOne['id'], 'title' => $songOne['title'], 'lines' => lyrics_lines($songOne['lyrics'])];
+    }
+    view('intern/song_buehne', [
+      'title' => $songOne['title'],
+      'stageSongs' => $stage,
+      'startId' => (int) $songOne['id'],
+    ]);
+  }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit) redirect('/intern/songs');
