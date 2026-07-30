@@ -610,6 +610,17 @@ if (str_starts_with($path, '/intern')) {
     view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songList(), 'edit' => null,
       'ratings' => song_ratings($me['id'])]);
   }
+  // Ein Lied zum Lesen: Text, Tonart, Tempo, Noten. Das ist die Seite, die auf
+  // dem Notenständer liegt; geändert wird unter /edit.
+  if (preg_match('~^/intern/songs/(\d+)$~', $path, $m) && $method === 'GET') {
+    $songOne = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
+    if (!$songOne) redirect('/intern/songs');
+    view('intern/song', [
+      'title' => $songOne['title'],
+      'song' => $songOne,
+      'songFiles' => files_map('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? [],
+    ]);
+  }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit) redirect('/intern/songs');
@@ -623,13 +634,13 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/songs' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
-      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes) VALUES (?,?,?,?,?,?,?,?,?)', song_values());
+      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics) VALUES (?,?,?,?,?,?,?,?,?,?)', song_values());
     }
     redirect('/intern/songs');
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=? WHERE id=?', [...song_values(), $m[1]]);
+      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=? WHERE id=?', [...song_values(), $m[1]]);
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
       $played = row('SELECT 1 FROM setlist_songs ss JOIN events e ON e.setlist_id = ss.setlist_id
@@ -1844,6 +1855,8 @@ if (str_starts_with($path, '/intern')) {
       $offSongIds = array_map('intval', array_column(
         rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL',
              [$offEv['setlist_id']]), 'song_id'));
+      // Jedes Lied der Setlist mit seiner Leseseite: dort steht der Text.
+      foreach ($offSongIds as $offSong) $offUrls[] = '/intern/songs/' . $offSong;
     }
 
     // Anhänge: die des Termins, die der Setlist und die der Songs darin. Das
@@ -2329,8 +2342,11 @@ function song_values(): array {
   $parts = explode(':', $_POST['duration'] ?? '');
   $sec = count($parts) === 2 ? ((int) $parts[0]) * 60 + (int) $parts[1] : (int) ($parts[0] ?? 0) * 60;
   $status = array_key_exists($_POST['status'] ?? '', SONG_STATUS) ? $_POST['status'] : 'vorschlag';
+  // Der Liedtext kommt so an, wie er eingetippt wurde — Zeilenumbrüche sind
+  // in einem Liedtext die halbe Information.
   return [$_POST['title'] ?? '', $_POST['artist'] ?? '', $_POST['composer'] ?? '', $_POST['gema_werknr'] ?? '',
-          $_POST['song_key'] ?? '', $_POST['tempo'] ?? '', $sec, $status, $_POST['notes'] ?? ''];
+          $_POST['song_key'] ?? '', $_POST['tempo'] ?? '', $sec, $status, $_POST['notes'] ?? '',
+          $_POST['lyrics'] ?? ''];
 }
 // Vergangene Termine und dabei gespielte Setlists sind fixiert (Historie)
 function event_locked(int $eventId): bool {

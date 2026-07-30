@@ -19,6 +19,10 @@
       </select>
     </label>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('song_notes_ph')) ?>"><?= e($edit['notes'] ?? '') ?></textarea></label>
+    <label class="span2"><?= e(t('song_lyrics')) ?>
+      <textarea name="lyrics" rows="8" placeholder="<?= e(t('song_lyrics_ph')) ?>"><?= e($edit['lyrics'] ?? '') ?></textarea>
+      <span class="muted small"><?= e(t('song_lyrics_hint')) ?></span>
+    </label>
     <div class="span2 row-buttons">
       <button class="btn btn-primary"><?= e($edit ? t('save') : t('song_add')) ?></button>
       <?php if ($edit): ?><a class="btn btn-ghost" href="/intern/songs"><?= e(t('cancel')) ?></a><?php endif; ?>
@@ -36,7 +40,8 @@
     <tbody>
       <?php foreach ($songs as $song): ?>
         <tr class="<?= in_array($song['status'], ['archiv', 'abgewiesen'], true) ? 'muted' : '' ?>">
-          <td><strong><?= e($song['title']) ?></strong><?php if ($song['notes']): ?><div class="muted small"><?= e($song['notes']) ?></div><?php endif; ?></td>
+          <td><a href="/intern/songs/<?= (int) $song['id'] ?>"><strong><?= e($song['title']) ?></strong></a>
+            <?php if ($song['notes']): ?><div class="muted small"><?= e($song['notes']) ?></div><?php endif; ?></td>
           <td><?= e($song['artist'] ?: t('own_song')) ?></td>
           <td><?= e($song['song_key'] ?: '–') ?></td>
           <td><?= e($song['tempo'] ?: '–') ?></td>

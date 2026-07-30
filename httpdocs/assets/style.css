@@ -511,3 +511,12 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 /* Der nachgeladene Bearbeiten-Block: bis er da ist, steht dort nur der Knopf,
    der ohne JavaScript auf dieselbe Seite führt. */
 .eq-detail { margin-top: 0.6rem; }
+
+/* Liedtext: zum Lesen aus Armlänge, nicht zum Überfliegen. Die Abschnitte
+   heben sich ab, damit ein Blick die Stelle wiederfindet. */
+.lyrics { font-size: 1.15rem; line-height: 1.5; max-width: 34rem; }
+.lyrics-line { margin: 0; }
+.lyrics-gap { height: 0.7rem; }
+.lyrics-part { margin: 1.1rem 0 0.3rem; font-size: 0.78rem; font-weight: 700;
+               text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.lyrics-part:first-child { margin-top: 0; }

@@ -658,6 +658,17 @@ const UI_STRINGS = [
   'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandregie ein eigenes Symbol und startet ohne Adressleiste.',
   'app_install_offline' => 'Übersicht, Termine, Setlists und Songs bleiben auf dem Gerät und sind auch ohne Empfang da — auf Bühnen ist das oft der Fall. Beim Abmelden werden sie gelöscht, damit auf einem geteilten Handy niemand die Termine des Vorgängers findet.',
   'app_install_store' => 'Eine App aus dem App Store oder von Google Play gibt es nicht. Der Weg über den Browser leistet dasselbe — ohne Jahresgebühr, ohne Prüfverfahren bei jeder Änderung und ohne einen zweiten Programmstand, der gepflegt werden will.',
+  'song_lyrics' => 'Liedtext',
+  'song_lyrics_ph' => "[Strophe]
+Zeile eins
+Zeile zwei
+
+[Refrain]
+…",
+  'song_lyrics_hint' => 'Abschnitte in eckige Klammern in eine eigene Zeile: [Strophe], [Refrain], [Bridge], [Solo]. Das genügt, damit sie später hervorgehoben werden können.',
+  'song_read' => 'Text und Noten',
+  'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
+  'song_edit_link' => 'Bearbeiten',
   'off_take' => 'Diesen Termin mitnehmen',
   'off_busy' => 'wird geholt …',
   'off_done' => '%1 Seiten und Dateien liegen jetzt auf dem Gerät.',
@@ -1389,6 +1400,11 @@ if (!column_exists('users', 'stage_name')) {
 if (!column_exists('songs', 'composer')) {
   $db->exec("ALTER TABLE songs ADD COLUMN composer VARCHAR(255) NOT NULL DEFAULT '' AFTER artist,
              ADD COLUMN gema_werknr VARCHAR(50) NOT NULL DEFAULT '' AFTER composer");
+}
+// Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
+// offen"), der Text ist, was jemand beim Singen liest — und der wird lang.
+if (!column_exists('songs', 'lyrics')) {
+  $db->exec('ALTER TABLE songs ADD COLUMN lyrics MEDIUMTEXT NULL AFTER notes');
 }
 if (!column_exists('setlist_songs', 'id')) {
   $db->exec('ALTER TABLE setlist_songs DROP PRIMARY KEY,

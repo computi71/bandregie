@@ -43,6 +43,7 @@ const OFFLINE_PAGES = [
 ];
 const OFFLINE_PATTERNS = [
   /^\/intern\/setlists\/\d+(\/print)?$/,
+  /^\/intern\/songs\/\d+$/,
 ];
 
 // Anhänge: Noten, Verträge, Aufnahmen. Die Anwendung nimmt höchstens 20 MB je
