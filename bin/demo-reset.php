@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Setzt die öffentliche Demo auf den Auslieferungszustand zurück: Tabellen weg,
 // Uploads weg, Neuinstallation, Demoband, feste Kennwörter.
 //
-// Aufruf:   php bin/demo-reset.php [kennwort]
+// Aufruf:   php bin/demo-reset.php [kennwort] [-v]
 // Per cron: siehe bin/demo-reset.sh
 //
 // Es setzt ausschließlich die Installation zurück, zu der es gehört — kein
@@ -14,6 +14,11 @@ declare(strict_types=1);
 // 'is_demo' => true enthält; fehlt der Schalter, bricht es ab. Die Anwendung
 // liest den Schlüssel nirgends sonst — er steht nur da, um genau diese Frage
 // zu beantworten.
+//
+// Bei Erfolg sagt es nichts. Ein Auftrag, der stündlich meldet, dass alles in
+// Ordnung ist, erzieht seinen Empfänger dazu, die Meldung zu übersehen — und
+// dann fällt auch die auf, die etwas zu sagen hat, nicht mehr auf. Wer
+// zusehen will, ruft es mit -v auf.
 
 if (PHP_SAPI !== 'cli') {
   http_response_code(404);
@@ -21,7 +26,11 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $target = dirname(__DIR__);
-$password = $argv[1] ?? 'demo';
+
+$args = array_slice($argv, 1);
+$verbose = in_array('-v', $args, true) || in_array('--verbose', $args, true);
+$rest = array_values(array_filter($args, fn(string $a): bool => !str_starts_with($a, '-')));
+$password = $rest[0] ?? 'demo';
 
 $configFile = $target . '/app/config.php';
 if (!is_file($configFile)) {
@@ -89,21 +98,21 @@ foreach (['INITIAL-PASSWORD.txt', 'DEMO-LOGINS.txt'] as $name) {
 
 note('Fertig. Die Demo steht wieder auf Anfang.');
 
-// Der ganze Fortschritt geht auf die Fehlerausgabe, nicht auf die
-// Standardausgabe. Grund: sobald irgendetwas auf die Standardausgabe
-// geschrieben wurde, hält PHP die Kopfzeilen für gesendet — und die
-// Anwendung, die weiter unten eingebunden wird, setzt beim Start ihre
-// Sitzung und ihre Schutzkopfzeilen und würde das jedes Mal mit einem
-// Schwung Warnungen quittieren. In der Konsole und im cron-Protokoll
-// (2>&1) steht danach genau dasselbe wie vorher.
+// Fortschritt nur mit -v, und dann auf die Fehlerausgabe statt auf die
+// Standardausgabe. Grund für die Fehlerausgabe: sobald etwas auf der
+// Standardausgabe steht, hält PHP die Kopfzeilen für gesendet — und die
+// Anwendung, die weiter unten eingebunden wird, setzt beim Start ihre Sitzung
+// und ihre Schutzkopfzeilen und quittierte das mit einem Schwung Warnungen.
 function step(string $what): void
 {
-  fwrite(STDERR, "== $what\n");
+  global $verbose;
+  if ($verbose) fwrite(STDERR, "== $what\n");
 }
 
 function note(string $what): void
 {
-  fwrite(STDERR, "   $what\n");
+  global $verbose;
+  if ($verbose) fwrite(STDERR, "   $what\n");
 }
 
 function fail(string $message): never
