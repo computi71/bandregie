@@ -520,3 +520,6 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .lyrics-part { margin: 1.1rem 0 0.3rem; font-size: 0.78rem; font-weight: 700;
                text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 .lyrics-part:first-child { margin-top: 0; }
+/* Hinweis auf einen Stand aus dem Zwischenspeicher: auffällig, aber nicht im Weg */
+.stale-banner { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border-radius: 6px;
+                background: rgba(200, 120, 40, 0.14); font-size: 0.9rem; }

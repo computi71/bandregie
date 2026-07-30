@@ -46,3 +46,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// Aus dem Zwischenspeicher geliefert? Dann sagt die Seite, von wann sie ist.
+// Eine Setlist von gestern sieht sonst genauso aus wie die von heute — und auf
+// der Bühne ist das der Unterschied, der zählt.
+document.addEventListener('DOMContentLoaded', () => {
+  const marke = document.querySelector('[data-stale]');
+  if (!marke) return;
+  const wann = new Date(marke.dataset.stale);
+  if (isNaN(wann.getTime())) return;
+
+  const vorlage = document.body.dataset.staletpl || '';
+  if (vorlage === '') return;
+  const zeit = wann.toLocaleString(document.documentElement.lang || undefined,
+    { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  const banner = document.createElement('p');
+  banner.className = 'warn stale-banner';
+  banner.textContent = vorlage.replace('%1', zeit);
+  const ziel = document.querySelector('main') || document.body;
+  ziel.insertBefore(banner, ziel.firstChild);
+});

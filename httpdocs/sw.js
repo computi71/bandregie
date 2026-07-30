@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v2';
+const VERSION = 'bandregie-v3';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -81,18 +81,52 @@ async function hatPlatz() {
   }
 }
 
+/**
+ * Eine Antwort mit dem Zeitpunkt versehen, zu dem sie aufbewahrt wurde. Ohne
+ * ihn wüsste später niemand, wie alt das ist, was er ansieht — und eine
+ * Setlist von gestern sieht genauso aus wie die von heute.
+ */
+async function mitZeitstempel(response) {
+  const kopf = new Headers(response.headers);
+  kopf.set('X-Cached-At', new Date().toISOString());
+  return new Response(await response.blob(), {
+    status: response.status, statusText: response.statusText, headers: kopf,
+  });
+}
+
+/**
+ * Aus dem Zwischenspeicher gelieferte Seite kennzeichnen. Eingesetzt wird nur
+ * eine leere Marke mit dem Zeitpunkt; den Satz daraus baut die Seite selbst,
+ * denn nur sie kennt die Sprache.
+ */
+async function mitBanner(response) {
+  const typ = response.headers.get('Content-Type') || '';
+  const wann = response.headers.get('X-Cached-At');
+  if (!typ.includes('text/html') || !wann) return response;
+  const html = await response.text();
+  const marke = '<div data-stale="' + wann + '" hidden></div>';
+  const angereichert = html.includes('<body')
+    ? html.replace(/<body([^>]*)>/i, '<body$1>' + marke)
+    : marke + html;
+  return new Response(angereichert, {
+    status: response.status, statusText: response.statusText, headers: response.headers,
+  });
+}
+
 /** Seite: erst das Netz, dann der Zwischenspeicher. */
 async function seite(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const copy = response.clone();
-      caches.open(PAGE_CACHE).then(cache => cache.put(request, copy));
+      const kopie = await mitZeitstempel(response.clone());
+      caches.open(PAGE_CACHE).then(cache => cache.put(request, kopie));
     }
     return response;
   } catch (e) {
     const hit = await caches.match(request);
-    return hit || (await caches.match('/intern/termine')) || Response.error();
+    if (hit) return await mitBanner(hit);
+    const ersatz = await caches.match('/intern/termine');
+    return ersatz ? await mitBanner(ersatz) : Response.error();
   }
 }
 
@@ -166,7 +200,7 @@ self.addEventListener('message', event => {
         const response = await fetch(url.href, { credentials: 'same-origin' });
         if (!response.ok) { uebersprungen++; continue; }
         const cache = await caches.open(istDatei ? FILE_CACHE : PAGE_CACHE);
-        await cache.put(url.href, response);
+        await cache.put(url.href, istDatei ? response : await mitZeitstempel(response));
         geholt++;
       } catch (e) {
         uebersprungen++;

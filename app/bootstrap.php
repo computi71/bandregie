@@ -669,6 +669,7 @@ Zeile zwei
   'song_read' => 'Text und Noten',
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
   'song_edit_link' => 'Bearbeiten',
+  'off_stale' => '📴 Ohne Verbindung — dieser Stand ist von %1. Änderungen von danach fehlen.',
   'off_take' => 'Diesen Termin mitnehmen',
   'off_busy' => 'wird geholt …',
   'off_done' => '%1 Seiten und Dateien liegen jetzt auf dem Gerät.',
