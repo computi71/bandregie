@@ -1627,7 +1627,7 @@ function current_user(): ?array {
       // can_finance steht bewusst nicht mehr dabei: seit es Rechte je Bereich
       // gibt, sagt die Spalte nichts mehr aus. Sie bleibt nur für die einmalige
       // Übernahme beim Update stehen.
-      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, substitute_for FROM users WHERE id = ?', [$_SESSION['uid']]);
+      : row('SELECT id, name, stage_name, email, role, instrument, avatar_file, must_change_pw, substitute_for, offline_scope FROM users WHERE id = ?', [$_SESSION['uid']]);
   }
   return $user;
 }
