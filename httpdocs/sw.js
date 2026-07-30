@@ -178,6 +178,10 @@ self.addEventListener('message', event => {
       try { url = new URL(roh, self.location.origin); } catch (e) { continue; }
       if (url.origin !== self.location.origin) continue;
       const istDatei = FILE_PATTERN.test(url.pathname);
+      // Eine Datei, die schon daliegt, ist dieselbe Datei: ihr Name trägt
+      // einen Zufallsanteil. Beim regelmäßigen Abgleich wäre sie erneut zu
+      // laden reine Verschwendung.
+      if (istDatei && await caches.match(url.href)) { continue; }
       if (istDatei && !(await hatPlatz())) { uebersprungen++; continue; }
       try {
         const response = await fetch(url.href, { credentials: 'same-origin' });

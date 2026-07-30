@@ -108,3 +108,61 @@ document.addEventListener('DOMContentLoaded', () => {
     if (alt) alt.remove();
   });
 });
+
+// Im Hintergrund frisch halten: bei jedem Seitenaufruf nachsehen, was sich an
+// der gewählten Auswahl geändert hat — aber nur mit Verbindung, und nicht bei
+// jedem Klick. Wer zehnmal hintereinander eine Seite öffnet, soll nicht
+// zehnmal alles neu laden.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!('serviceWorker' in navigator)) return;
+
+  const ABSTAND = 10 * 60 * 1000;   // höchstens alle zehn Minuten
+  const SCHLUESSEL = 'bandregie-offline-sync';
+
+  const faellig = () => {
+    try {
+      const zuletzt = Number(localStorage.getItem(SCHLUESSEL) || 0);
+      return !zuletzt || Date.now() - zuletzt > ABSTAND;
+    } catch (e) {
+      return false;   // ohne localStorage lieber gar nicht als dauernd
+    }
+  };
+
+  const abgleichen = async () => {
+    if (!faellig()) return;
+    try {
+      const antwort = await fetch('/intern/offline/liste', { credentials: 'same-origin' });
+      if (!antwort.ok) return;
+      const daten = await antwort.json();
+      if (!Array.isArray(daten.urls) || daten.urls.length === 0) return;
+      const sw = await navigator.serviceWorker.ready;
+      if (!sw.active) return;
+      try { localStorage.setItem(SCHLUESSEL, String(Date.now())); } catch (e) { /* egal */ }
+      sw.active.postMessage({ type: 'mitnehmen', urls: daten.urls, still: true });
+    } catch (e) {
+      // Kein Netz, kein Problem: es bleibt, was da ist.
+    }
+  };
+
+  // Nicht sofort: erst soll die Seite fertig sein, die jemand sehen wollte.
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => abgleichen(), { timeout: 4000 });
+  } else {
+    setTimeout(abgleichen, 2000);
+  }
+});
+
+// Wie viel Platz belegt ist — im Profil neben der Auswahl.
+document.addEventListener('DOMContentLoaded', async () => {
+  const feld = document.querySelector('[data-offlineuse]');
+  if (!feld || !navigator.storage || !navigator.storage.estimate) return;
+  const vorlage = document.body.dataset.offlineusetpl || '';
+  if (vorlage === '') return;
+  try {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    const mb = z => (z / 1048576).toFixed(z > 10485760 ? 0 : 1) + ' MB';
+    feld.textContent = vorlage.replace('%1', mb(usage)).replace('%2', quota ? mb(quota) : '?');
+  } catch (e) {
+    // Ohne Auskunft schweigen statt schätzen
+  }
+});

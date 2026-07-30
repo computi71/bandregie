@@ -669,6 +669,17 @@ Zeile zwei
   'song_read' => 'Text und Noten',
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
   'song_edit_link' => 'Bearbeiten',
+  'off_areas' => 'Offline dabeihaben',
+  'off_areas_hint' => 'Was hier angehakt ist, liegt auf diesem Gerät und ist ohne Empfang da. Die Auswahl gilt für dich, nicht für die Band — jedes Gerät hat seine eigene.',
+  'off_areas_when' => 'Aktualisiert wird im Hintergrund, sobald du eine Seite öffnest und Empfang hast. Ohne Empfang passiert nichts, und es bleibt, was da ist.',
+  'off_area_termine' => 'Termine',
+  'off_area_setlists' => 'Setlists mit Druckfassung',
+  'off_area_songs' => 'Songs mit Liedtexten',
+  'off_area_noten' => 'Noten und Anhänge (braucht Platz)',
+  'off_area_rider' => 'Stagerider',
+  'off_area_kanaele' => 'Patchliste',
+  'off_use' => 'Belegt gerade %1 von %2.',
+  'fl_off_saved' => 'Offline-Auswahl gespeichert.',
   'off_stale' => '📴 Ohne Verbindung — dieser Stand ist von %1. Änderungen von danach fehlen.',
   'off_take' => 'Diesen Termin mitnehmen',
   'off_busy' => 'wird geholt …',
@@ -1402,8 +1413,22 @@ if (!column_exists('songs', 'composer')) {
   $db->exec("ALTER TABLE songs ADD COLUMN composer VARCHAR(255) NOT NULL DEFAULT '' AFTER artist,
              ADD COLUMN gema_werknr VARCHAR(50) NOT NULL DEFAULT '' AFTER composer");
 }
+/**
+ * Was offline vorgehalten werden kann. Je Mitglied wählbar — das Telefon ist
+ * persönlich, und wer nur singt, braucht die Patchliste nicht.
+ *
+ * 'noten' meint die Anhänge: Noten, Verträge, Aufnahmen. Sie sind das
+ * Schwergewicht und deshalb eine eigene Entscheidung.
+ */
+const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
+
 // Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
 // offen"), der Text ist, was jemand beim Singen liest — und der wird lang.
+// Welche Bereiche jemand offline dabeihaben will. Leer heißt: nichts von
+// selbst — der Knopf am Termin geht trotzdem.
+if (!column_exists('users', 'offline_scope')) {
+  $db->exec("ALTER TABLE users ADD COLUMN offline_scope VARCHAR(190) NOT NULL DEFAULT ''");
+}
 if (!column_exists('songs', 'lyrics')) {
   $db->exec('ALTER TABLE songs ADD COLUMN lyrics MEDIUMTEXT NULL AFTER notes');
 }
@@ -2404,6 +2429,75 @@ function eq_may_see_price(?array $eq, ?array $user): bool {
  */
 function is_substitute(?array $user): bool {
   return ($user['role'] ?? '') === 'ersatz' || !empty($user['substitute_for']);
+}
+
+/**
+ * Die Bereiche, die ein Mitglied offline dabeihaben will.
+ *
+ * @return string[]
+ */
+function offline_scope(?array $user): array {
+  $roh = explode(',', (string) ($user['offline_scope'] ?? ''));
+  return array_values(array_intersect(OFFLINE_AREAS, array_map('trim', $roh)));
+}
+
+/**
+ * Welche Adressen daraus folgen. Der Service Worker holt sie im Hintergrund;
+ * hier entsteht nur die Liste.
+ *
+ * @return string[]
+ */
+function offline_urls(array $user): array {
+  $bereiche = offline_scope($user);
+  if (!$bereiche) return [];
+
+  $urls = ['/intern'];
+  if (in_array('termine', $bereiche, true)) $urls[] = '/intern/termine';
+  if (in_array('rider', $bereiche, true)) {
+    $urls[] = '/intern/stagerider';
+    $urls[] = '/intern/stagerider/print';
+  }
+  if (in_array('kanaele', $bereiche, true)) $urls[] = '/intern/kanaele';
+
+  $songIds = [];
+  if (in_array('setlists', $bereiche, true)) {
+    $urls[] = '/intern/setlists';
+    foreach (rows('SELECT id FROM setlists ORDER BY id DESC LIMIT 50') as $sl) {
+      $urls[] = '/intern/setlists/' . (int) $sl['id'];
+      $urls[] = '/intern/setlists/' . (int) $sl['id'] . '/print';
+    }
+  }
+  if (in_array('songs', $bereiche, true)) {
+    $urls[] = '/intern/songs';
+    foreach (rows("SELECT id FROM songs WHERE status <> 'archiv' ORDER BY title") as $song) {
+      $songIds[] = (int) $song['id'];
+      $urls[] = '/intern/songs/' . (int) $song['id'];
+    }
+  }
+
+  // Anhänge nur, wenn ausdrücklich gewollt: das ist die Datenmenge.
+  if (in_array('noten', $bereiche, true)) {
+    $fuer = [];
+    if ($songIds) $fuer['song'] = $songIds;
+    if (in_array('setlists', $bereiche, true)) {
+      $fuer['setlist'] = array_map('intval', array_column(rows('SELECT id FROM setlists'), 'id'));
+    }
+    if (in_array('termine', $bereiche, true)) {
+      $fuer['event'] = array_map('intval', array_column(
+        rows('SELECT id FROM events WHERE date >= CURDATE() - INTERVAL 30 DAY'), 'id'));
+    }
+    // Direkt abgefragt und nicht über files_map(): das steht im Frontcontroller,
+    // und diese Datei soll auch von der Kommandozeile aus benutzbar bleiben.
+    foreach ($fuer as $art => $ids) {
+      if (!$ids) continue;
+      $marken = implode(',', array_fill(0, count($ids), '?'));
+      foreach (rows("SELECT id FROM files WHERE entity_type = ? AND entity_id IN ($marken)",
+                    [$art, ...$ids]) as $datei) {
+        $urls[] = '/intern/datei/' . (int) $datei['id'];
+      }
+    }
+  }
+  return array_values(array_unique($urls));
 }
 
 /**

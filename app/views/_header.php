@@ -52,7 +52,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
 </head>
 <?php // Die Vorlage für den Hinweis auf einen alten Stand reist mit der Seite in
       // den Zwischenspeicher — nur so kennt sie dort die Sprache. ?>
-<body data-staletpl="<?= e(t('off_stale')) ?>">
+<body data-staletpl="<?= e(t('off_stale')) ?>" data-offlineusetpl="<?= e(t('off_use')) ?>">
 <header class="site-header">
   <a class="brand" href="/">
     <?php if (!empty($settings['logo_file'])): ?>

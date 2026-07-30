@@ -1835,6 +1835,20 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/kasse');
   }
 
+  // Was diese Person offline dabeihaben will, als Liste von Adressen. Die
+  // Seite fragt sie im Hintergrund ab und gibt sie an den Service Worker.
+  if ($path === '/intern/offline/liste' && $method === 'GET') {
+    header('Content-Type: application/json; charset=utf-8');
+    exit(json_encode(['urls' => offline_urls($me)], JSON_UNESCAPED_SLASHES));
+  }
+  // Bereiche wählen. Steht im eigenen Profil, denn das Telefon ist persönlich.
+  if ($path === '/intern/offline/bereiche' && $method === 'POST') {
+    $gewaehlt = array_values(array_intersect(OFFLINE_AREAS, (array) ($_POST['areas'] ?? [])));
+    q('UPDATE users SET offline_scope = ? WHERE id = ?', [implode(',', $gewaehlt), $me['id']]);
+    flash(t('fl_off_saved'));
+    redirect('/intern/profil');
+  }
+
   // Was zu einem Auftritt gehört, als Liste von Adressen. Der Service Worker
   // holt sie in den Zwischenspeicher, damit auf der Bühne nichts fehlt, was
   // niemand vorher zufällig geöffnet hat.

@@ -37,4 +37,26 @@
   </form>
   <p class="muted small"><?= e(t('prof_pw_hint')) ?> <a href="/intern/mitglieder"><?= e(t('mem_title')) ?> →</a></p>
 </div>
+<?php // Offline: je Mitglied, denn das Telefon ist persönlich. Wer nur singt,
+      // braucht die Patchliste nicht — und Noten sind das Schwergewicht. ?>
+<details class="card acc" name="profilacc">
+  <summary>📴 <?= e(t('off_areas')) ?></summary>
+  <p class="muted small"><?= e(t('off_areas_hint')) ?></p>
+  <form method="post" action="/intern/offline/bereiche"><?= csrf_field() ?>
+    <?php $offMein = offline_scope($profile); ?>
+    <fieldset class="gear-picker">
+      <?php foreach (OFFLINE_AREAS as $offArea): ?>
+        <label class="checkbox">
+          <input type="checkbox" name="areas[]" value="<?= e($offArea) ?>"
+                 <?= in_array($offArea, $offMein, true) ? 'checked' : '' ?>>
+          <?= e(t('off_area_' . $offArea)) ?>
+        </label>
+      <?php endforeach; ?>
+    </fieldset>
+    <p class="muted small" data-offlineuse></p>
+    <button class="btn btn-primary btn-small"><?= e(t('save')) ?></button>
+  </form>
+  <p class="muted small"><?= e(t('off_areas_when')) ?></p>
+</details>
+
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
