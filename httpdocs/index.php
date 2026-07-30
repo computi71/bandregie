@@ -1889,8 +1889,13 @@ if (str_starts_with($path, '/intern')) {
       set_setting('public_limit_upcoming', (string) max(0, (int) ($_POST['public_limit_upcoming'] ?? 10)));
       set_setting('public_limit_past', (string) max(0, (int) ($_POST['public_limit_past'] ?? 5)));
       set_setting('public_embed_mode', ($_POST['public_embed_mode'] ?? '') === 'direct' ? 'direct' : 'consent');
-      set_setting('public_mode', ($_POST['public_mode'] ?? '') === 'redirect' ? 'redirect' : 'website');
-      if (($_POST['redirect_url'] ?? '') !== '') set_setting('redirect_url', trim($_POST['redirect_url']));
+      // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
+      // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse
+      // verwandeln — auf der Domain des Projekts, bis zum nächsten Zurücksetzen.
+      if (!is_demo()) {
+        set_setting('public_mode', ($_POST['public_mode'] ?? '') === 'redirect' ? 'redirect' : 'website');
+        if (($_POST['redirect_url'] ?? '') !== '') set_setting('redirect_url', trim($_POST['redirect_url']));
+      }
     }
     if (isset($_POST['_tax_form'])) {
       // Die Beträge kommen als Zahl mit Komma oder Punkt herein; price_to_cents
@@ -2024,6 +2029,10 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/einstellungen/backup-ziele' && $method === 'POST') {
     require_admin();
+    // Ein Zweitziel ist eine Adresse, an die dieser Server Dateien schickt.
+    // In einer Demo mit öffentlichen Zugangsdaten wäre das eine Einladung,
+    // sich ein Archiv auf den eigenen Server legen zu lassen.
+    deny_in_demo('/intern/einstellungen');
     set_setting('backup_ftp_enabled', isset($_POST['backup_ftp_enabled']) ? '1' : '0');
     foreach (['backup_ftp_host', 'backup_ftp_user', 'backup_ftp_dir'] as $k) {
       set_setting($k, trim($_POST[$k] ?? ''));
@@ -2047,12 +2056,17 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/backup/ftp-test' && $method === 'POST') {
     require_admin();
+    // Der Test baut eine Verbindung zu einem frei eingetippten Host auf. In
+    // einer Demo, deren Zugangsdaten öffentlich sind, wäre das ein Werkzeug
+    // für Fremde und keine Prüfung der eigenen Einrichtung.
+    deny_in_demo('/intern/einstellungen');
     $test = backup_ftp_test();
     flash(($test['ok'] ? '✔ ' : '⚠ ') . $test['message']);
     redirect('/intern/einstellungen');
   }
   if ($path === '/intern/backup/run' && $method === 'POST') {
     require_admin();
+    deny_in_demo('/intern/einstellungen');
     $run = backup_run('manuell');
     flash(($run['status'] ?? '') === 'ok' ? t('fl_bk_done') : t('fl_bk_failed') . ' ' . ($run['message'] ?? ''));
     redirect('/intern/einstellungen');
@@ -2076,6 +2090,10 @@ if (str_starts_with($path, '/intern')) {
   // aufgesetzt wurde und hier noch nichts liegt.
   if ($path === '/intern/backup/upload' && $method === 'POST') {
     require_admin();
+    // Ein hochgeladenes Archiv wird beim Zurückspielen ausgeführt: sein SQL
+    // läuft Anweisung für Anweisung. Zusammen mit öffentlichen Zugangsdaten
+    // wäre das fremdes SQL auf dieser Datenbank.
+    deny_in_demo('/intern/einstellungen');
     $up = $_FILES['archive'] ?? null;
     $name = basename((string) ($up['name'] ?? ''));
     if (!$up || ($up['error'] ?? 1) !== UPLOAD_ERR_OK || !preg_match('~\.tar\.gz(\.enc)?$~', $name)) {
@@ -2092,6 +2110,8 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/backup/(\d+)/restore$~', $path, $m) && $method === 'POST') {
     require_admin();
+    // Siehe oben: Zurückspielen ersetzt Datenbank und Dateien.
+    deny_in_demo('/intern/einstellungen');
     $run = row('SELECT * FROM backup_runs WHERE id = ?', [$m[1]]);
     $file = $run && $run['filename'] !== '' ? backup_dir() . '/' . basename($run['filename']) : '';
     if (!$file || !is_file($file)) {
