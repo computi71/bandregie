@@ -35,6 +35,9 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <script src="<?= e(asset('/assets/lightbox.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/nav.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/accordion.js')) ?>" defer></script>
+  <?php // Der Hinweis auf einen Stand aus dem Zwischenspeicher gehört auf jede
+        // Seite, die offline erscheinen kann — nicht nur auf die Terminliste. ?>
+  <script src="<?= e(asset('/assets/offline.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/datepicker.js')) ?>" defer></script>
   <?php if (!empty($settings['background_file'])): ?>
     <style>
