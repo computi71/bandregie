@@ -677,6 +677,14 @@ Zeile zwei
   'stage_next' => 'Nächster Song',
   'stage_exit' => 'Schließen',
   'stage_empty' => 'Kein Text für dieses Lied.',
+  'stage_chords' => 'Noten',
+  'song_chords' => 'Notizzettel (Akkorde)',
+  'song_chords_ph' => "[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nText der ersten Zeile …",
+  'song_chords_hint' => 'Für Akkorde und Notizen, wie man sie von Hand aufschreibt. Feste Zeichenbreite: Was untereinander steht, bleibt untereinander. Abschnitte wie beim Text in eckige Klammern.',
+  'song_chords_none' => 'Für dieses Lied ist kein Notizzettel angelegt.',
+  'song_lyrics_bulk' => 'Texte einpflegen',
+  'song_lyrics_bulk_hint' => 'Hier lassen sich die Liedtexte mehrerer Songs auf einmal einfügen. Abschnitte in eckigen Klammern ([Refrain]) werden auf der Bühne farbig hervorgehoben.',
+  'song_lyrics_bulk_saved' => 'Liedtexte gespeichert.',
   'song_edit_link' => 'Bearbeiten',
   'off_areas' => 'Offline dabeihaben',
   'off_areas_hint' => 'Was hier angehakt ist, liegt auf diesem Gerät und ist ohne Empfang da. Die Auswahl gilt für dich, nicht für die Band — jedes Gerät hat seine eigene.',
@@ -1440,6 +1448,12 @@ if (!column_exists('users', 'offline_scope')) {
 }
 if (!column_exists('songs', 'lyrics')) {
   $db->exec('ALTER TABLE songs ADD COLUMN lyrics MEDIUMTEXT NULL AFTER notes');
+}
+// Der Notizzettel: Akkorde und Handschrift-Notizen, wie sie ein Gitarrist
+// aufschreibt. Getrennt vom Liedtext, weil er in fester Zeichenbreite gelesen
+// wird — was untereinander steht (Akkord über der Silbe), bleibt untereinander.
+if (!column_exists('songs', 'chords')) {
+  $db->exec('ALTER TABLE songs ADD COLUMN chords MEDIUMTEXT NULL AFTER lyrics');
 }
 if (!column_exists('setlist_songs', 'id')) {
   $db->exec('ALTER TABLE setlist_songs DROP PRIMARY KEY,
@@ -2517,6 +2531,7 @@ function offline_urls(array $user): array {
       $songIds[] = (int) $song['id'];
       $urls[] = '/intern/songs/' . (int) $song['id'];
       $urls[] = '/intern/songs/' . (int) $song['id'] . '/buehne';
+      $urls[] = '/intern/songs/' . (int) $song['id'] . '/noten';
     }
   }
 

@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v4';
+const VERSION = 'bandregie-v5';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -45,7 +45,7 @@ const OFFLINE_PAGES = [
 const OFFLINE_PATTERNS = [
   /^\/intern\/setlists\/\d+(\/print)?$/,
   /^\/intern\/songs\/\d+$/,
-  /^\/intern\/songs\/\d+\/buehne$/,
+  /^\/intern\/songs\/\d+\/(buehne|noten)$/,
 ];
 
 // Anhänge: Noten, Verträge, Aufnahmen. Die Anwendung nimmt höchstens 20 MB je

@@ -645,6 +645,44 @@ if (str_starts_with($path, '/intern')) {
       'startId' => (int) $songOne['id'],
     ]);
   }
+  // Noten: derselbe Vollbild-Modus, aber der Notizzettel (Akkorde) in fester
+  // Zeichenbreite, damit Akkorde über den Silben stehen bleiben.
+  if (preg_match('~^/intern/songs/(\d+)/noten$~', $path, $m) && $method === 'GET') {
+    $songOne = row('SELECT id, title, chords FROM songs WHERE id = ?', [$m[1]]);
+    if (!$songOne) redirect('/intern/songs');
+    $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
+    $stage = [];
+    if ($slId) {
+      foreach (setlist_entries($slId) as $entry) {
+        if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
+        $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'], 'lines' => lyrics_lines($entry['chords'])];
+      }
+    }
+    if (!$stage) {
+      $stage[] = ['id' => (int) $songOne['id'], 'title' => $songOne['title'], 'lines' => lyrics_lines($songOne['chords'])];
+    }
+    view('intern/song_buehne', [
+      'title' => $songOne['title'],
+      'stageSongs' => $stage,
+      'startId' => (int) $songOne['id'],
+      'mono' => true,
+    ]);
+  }
+  // Texte einpflegen: mehrere Liedtexte auf einmal. Bewusst als eigene Seite —
+  // hier fügt die Band ihre Texte ein, das Werkzeug schreibt keine.
+  if ($path === '/intern/songs/lyrics' && $method === 'GET') {
+    view('intern/songs_lyrics', [
+      'title' => t('song_lyrics_bulk'),
+      'songs' => rows("SELECT id, title, artist, lyrics FROM songs WHERE status <> 'archiv' ORDER BY title"),
+    ]);
+  }
+  if ($path === '/intern/songs/lyrics' && $method === 'POST') {
+    foreach (($_POST['lyrics'] ?? []) as $id => $text) {
+      q('UPDATE songs SET lyrics = ? WHERE id = ?', [(string) $text, (int) $id]);
+    }
+    flash(t('song_lyrics_bulk_saved'));
+    redirect('/intern/songs/lyrics');
+  }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit) redirect('/intern/songs');
@@ -658,13 +696,13 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/songs' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
-      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics) VALUES (?,?,?,?,?,?,?,?,?,?)', song_values());
+      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics, chords) VALUES (?,?,?,?,?,?,?,?,?,?,?)', song_values());
     }
     redirect('/intern/songs');
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=? WHERE id=?', [...song_values(), $m[1]]);
+      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, chords=? WHERE id=?', [...song_values(), $m[1]]);
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
       $played = row('SELECT 1 FROM setlist_songs ss JOIN events e ON e.setlist_id = ss.setlist_id
@@ -2384,7 +2422,7 @@ function song_values(): array {
   // in einem Liedtext die halbe Information.
   return [$_POST['title'] ?? '', $_POST['artist'] ?? '', $_POST['composer'] ?? '', $_POST['gema_werknr'] ?? '',
           $_POST['song_key'] ?? '', $_POST['tempo'] ?? '', $sec, $status, $_POST['notes'] ?? '',
-          $_POST['lyrics'] ?? ''];
+          $_POST['lyrics'] ?? '', $_POST['chords'] ?? ''];
 }
 // Vergangene Termine und dabei gespielte Setlists sind fixiert (Historie)
 function event_locked(int $eventId): bool {

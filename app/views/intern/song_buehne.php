@@ -22,7 +22,7 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
   <script src="<?= e(asset('/assets/buehne.js')) ?>" defer></script>
 </head>
 <body class="buehne-body">
-<div class="buehne" id="buehne"
+<div class="buehne<?= ($mono ?? false) ? ' is-mono' : '' ?>" id="buehne"
      data-songs="<?= e($json) ?>"
      data-start="<?= (int) $startId ?>"
      data-empty="<?= e(t('stage_empty')) ?>">

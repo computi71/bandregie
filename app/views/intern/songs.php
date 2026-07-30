@@ -1,5 +1,6 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('songs_title')) ?></h1>
+<p><a class="btn btn-ghost btn-small" href="/intern/songs/lyrics">📝 <?= e(t('song_lyrics_bulk')) ?></a></p>
 
 <details class="card collapsible" <?= $edit || !$songs ? 'open' : '' ?>>
   <summary><?= $edit ? '✏️ „' . e($edit['title']) . '" ' . e(t('song_edit_suffix')) : '➕ ' . e(t('song_new')) ?></summary>
@@ -22,6 +23,10 @@
     <label class="span2"><?= e(t('song_lyrics')) ?>
       <textarea name="lyrics" rows="8" placeholder="<?= e(t('song_lyrics_ph')) ?>"><?= e($edit['lyrics'] ?? '') ?></textarea>
       <span class="muted small"><?= e(t('song_lyrics_hint')) ?></span>
+    </label>
+    <label class="span2"><?= e(t('song_chords')) ?>
+      <textarea name="chords" rows="8" class="mono" placeholder="<?= e(t('song_chords_ph')) ?>"><?= e($edit['chords'] ?? '') ?></textarea>
+      <span class="muted small"><?= e(t('song_chords_hint')) ?></span>
     </label>
     <div class="span2 row-buttons">
       <button class="btn btn-primary"><?= e($edit ? t('save') : t('song_add')) ?></button>

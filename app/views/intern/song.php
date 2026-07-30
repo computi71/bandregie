@@ -16,6 +16,7 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
   <div class="row-buttons">
     <a class="btn btn-ghost btn-small" href="/intern/songs">← <?= e(t('inav_songs')) ?></a>
     <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/buehne" title="<?= e(t('stage_hint')) ?>">🎤 <?= e(t('stage_open')) ?></a>
+    <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/noten" title="<?= e(t('song_chords')) ?>">🎸 <?= e(t('stage_chords')) ?></a>
     <a class="btn btn-ghost btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/edit">✏️ <?= e(t('song_edit_link')) ?></a>
   </div>
 </div>
@@ -47,6 +48,13 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
     </div>
   <?php endif; ?>
 </div>
+
+<?php if (trim((string) ($song['chords'] ?? '')) !== ''): ?>
+  <div class="card">
+    <h2>🎸 <?= e(t('song_chords')) ?></h2>
+    <pre class="chords"><?= e($song['chords']) ?></pre>
+  </div>
+<?php endif; ?>
 
 <?php // Die Noten hängen als Anhang am Lied. Hier nur zum Ansehen — hochladen
       // gehört zum Bearbeiten. ?>
