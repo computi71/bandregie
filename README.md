@@ -36,7 +36,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines, an invoice that can cover several devices at once, and an iCal calendar feed.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle and live-play counters; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines, an invoice that can cover several devices at once, an iCal calendar feed, and a stage-ready offline mode: one button on an event puts its setlist, the sheet music of its songs, the rider and the patch list on the phone.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
