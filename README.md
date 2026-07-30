@@ -339,6 +339,13 @@ plesk ext git --deploy -domain YOUR-DOMAIN -name bandregie
 Database changes run on the next page view either way; there is no migration
 step to remember.
 
+**Staged rollout.** With more than one installation, update in stages instead of
+all at once: a staging copy first, confirm it works, and only then the instance
+that holds real data — so untested code never reaches it. Whichever way you
+deploy, never let it overwrite `data/` or `app/config.php`, and on Plesk leave
+"remove files that are not in the repository" off: a stray tick there is the one
+thing that can delete a band's uploads. Take a backup before each production step.
+
 ### Development
 
 For quick local work PHP's built-in server is enough — it needs no web server
