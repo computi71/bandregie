@@ -112,6 +112,115 @@ function demo_install_rows(): void {
   ]);
 
   // --- Songs (frei erfundene Titel, damit keine echten Rechte berührt werden)
+  // Ein paar bekommen frei erfundene Beispieltexte und einen Notizzettel — kein
+  // fremder Songtext, alles Platzhalter —, damit Teleprompter, Abschnitts-Farben
+  // und die Akkord-Ansicht (feste Zeichenbreite) sofort etwas zeigen. Die
+  // Notdocs stehen bündig links, damit die Akkorde über den Silben bleiben.
+  $demoLyrics = [
+    'Summer Rain' => <<<'TXT'
+[Strophe]
+Grey clouds gather over the town
+The first drops fall on empty streets
+We take the long way, umbrella down
+And count the puddles under our feet
+
+[Refrain]
+Summer rain, let it pour
+Wash the dust from every door
+Summer rain, fall on me
+This is where I want to be
+
+[Strophe]
+The neon flickers, taxis hiss
+A busker plays beneath the eaves
+We share a laugh, we share a wish
+And dance the way the weather leaves
+
+[Bridge]
+And when it clears, the sky turns gold
+We're soaked right through, but we don't mind
+
+[Solo]
+
+[Refrain]
+Summer rain, fall on me
+This is where I want to be
+
+[Outro]
+Let it pour, let it pour
+TXT,
+    'Neon Light' => <<<'TXT'
+[Strophe]
+City hums a lower key
+Signs are buzzing, half asleep
+We walk where no one else will be
+Promises we mean to keep
+
+[Refrain]
+Neon light, neon light
+Colour up the empty night
+Neon light, burning slow
+Show us all the way to go
+
+[Bridge]
+Turn it down, turn it low
+Let the quiet have its show
+
+[Refrain]
+Neon light, burning slow
+Show us all the way to go
+TXT,
+    'Last Train' => <<<'TXT'
+[Strophe]
+Platform empty, midnight cold
+One more coffee, one more mile
+The last train's here, the story's told
+We ride it home in single file
+
+[Refrain]
+Last train, take me on
+Before the night is gone
+Last train, one more time
+Down the old familiar line
+TXT,
+  ];
+  $demoChords = [
+    'Summer Rain' => <<<'TXT'
+[Intro]
+G  D  Em  C
+
+[Strophe]
+G                 D
+Grey clouds gather over the town
+Em                 C
+The first drops fall on empty streets
+
+[Refrain]
+C         G        D
+Summer rain, let it pour
+C         G           D
+Wash the dust from every door
+
+[Bridge]
+Em  C  G  D    (quiet, 2x)
+
+[Solo]
+G  D  Em  C    (over the verse)
+TXT,
+    'Neon Light' => <<<'TXT'
+[Strophe]
+Am        F
+City hums a lower key
+C         G
+Signs are buzzing, half asleep
+
+[Refrain]
+F      C      G
+Neon light, neon light
+F      C          G
+Colour up the empty night
+TXT,
+  ];
   $songs = [];
   foreach ([
     ['Summer Rain', 'Own composition', 'G', '128 BPM', 214, 'aktiv'],
@@ -129,6 +238,8 @@ function demo_install_rows(): void {
       'title' => $title, 'artist' => $artist, 'song_key' => $key,
       'tempo' => $tempo, 'duration_sec' => $sec, 'status' => $status,
       'notes' => '',
+      'lyrics' => $demoLyrics[$title] ?? '',
+      'chords' => $demoChords[$title] ?? '',
     ]);
   }
 
