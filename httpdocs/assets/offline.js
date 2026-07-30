@@ -50,20 +50,43 @@ document.addEventListener('DOMContentLoaded', () => {
 // Aus dem Zwischenspeicher geliefert? Dann sagt die Seite, von wann sie ist.
 // Eine Setlist von gestern sieht sonst genauso aus wie die von heute — und auf
 // der Bühne ist das der Unterschied, der zählt.
+//
+// Gefragt wird der Zwischenspeicher direkt: dort steht am Eintrag, wann er
+// hineingelegt wurde. Der Service Worker muss dafür nichts in die Seite
+// schreiben.
 document.addEventListener('DOMContentLoaded', () => {
-  const marke = document.querySelector('[data-stale]');
-  if (!marke) return;
-  const wann = new Date(marke.dataset.stale);
-  if (isNaN(wann.getTime())) return;
-
   const vorlage = document.body.dataset.staletpl || '';
-  if (vorlage === '') return;
-  const zeit = wann.toLocaleString(document.documentElement.lang || undefined,
-    { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (vorlage === '' || !('caches' in window)) return;
 
-  const banner = document.createElement('p');
-  banner.className = 'warn stale-banner';
-  banner.textContent = vorlage.replace('%1', zeit);
-  const ziel = document.querySelector('main') || document.body;
-  ziel.insertBefore(banner, ziel.firstChild);
+  const zeigen = async () => {
+    if (navigator.onLine) return;
+    if (document.querySelector('.stale-banner')) return;
+    let wann = null;
+    try {
+      const treffer = await caches.match(location.href);
+      if (!treffer) return;
+      const kopf = treffer.headers.get('X-Cached-At');
+      if (!kopf) return;
+      wann = new Date(kopf);
+    } catch (e) {
+      return;
+    }
+    if (!wann || isNaN(wann.getTime())) return;
+
+    const zeit = wann.toLocaleString(document.documentElement.lang || undefined,
+      { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const banner = document.createElement('p');
+    banner.className = 'warn stale-banner';
+    banner.textContent = vorlage.replace('%1', zeit);
+    const ziel = document.querySelector('main') || document.body;
+    ziel.insertBefore(banner, ziel.firstChild);
+  };
+
+  zeigen();
+  // Wer unterwegs den Empfang verliert, sieht ihn ab dann auch.
+  window.addEventListener('offline', zeigen);
+  window.addEventListener('online', () => {
+    const alt = document.querySelector('.stale-banner');
+    if (alt) alt.remove();
+  });
 });

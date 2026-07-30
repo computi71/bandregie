@@ -94,25 +94,6 @@ async function mitZeitstempel(response) {
   });
 }
 
-/**
- * Aus dem Zwischenspeicher gelieferte Seite kennzeichnen. Eingesetzt wird nur
- * eine leere Marke mit dem Zeitpunkt; den Satz daraus baut die Seite selbst,
- * denn nur sie kennt die Sprache.
- */
-async function mitBanner(response) {
-  const typ = response.headers.get('Content-Type') || '';
-  const wann = response.headers.get('X-Cached-At');
-  if (!typ.includes('text/html') || !wann) return response;
-  const html = await response.text();
-  const marke = '<div data-stale="' + wann + '" hidden></div>';
-  const angereichert = html.includes('<body')
-    ? html.replace(/<body([^>]*)>/i, '<body$1>' + marke)
-    : marke + html;
-  return new Response(angereichert, {
-    status: response.status, statusText: response.statusText, headers: response.headers,
-  });
-}
-
 /** Seite: erst das Netz, dann der Zwischenspeicher. */
 async function seite(request) {
   try {
@@ -123,10 +104,12 @@ async function seite(request) {
     }
     return response;
   } catch (e) {
+    // Von wann der Stand ist, steht im Kopf der aufbewahrten Antwort. Die
+    // Seite liest ihn selbst aus dem Zwischenspeicher — eine Antwort hier neu
+    // zu verpacken hieße, sich mit Content-Encoding anzulegen, und dafür ist
+    // ein Hinweistext kein Grund.
     const hit = await caches.match(request);
-    if (hit) return await mitBanner(hit);
-    const ersatz = await caches.match('/intern/termine');
-    return ersatz ? await mitBanner(ersatz) : Response.error();
+    return hit || (await caches.match('/intern/termine')) || Response.error();
   }
 }
 
