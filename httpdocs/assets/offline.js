@@ -58,9 +58,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const vorlage = document.body.dataset.staletpl || '';
   if (vorlage === '' || !('caches' in window)) return;
 
+  // navigator.onLine taugt nicht: es meldet „online", sobald ein WLAN
+  // verbunden ist — auch das der Halle, hinter dem eine Anmeldeseite steht und
+  // sonst nichts. Also wird nachgesehen, statt gefragt: eine winzige Anfrage,
+  // die ohne Netz scheitert.
+  const erreichbar = async () => {
+    const abbruch = new AbortController();
+    const zeit = setTimeout(() => abbruch.abort(), 2500);
+    try {
+      await fetch('/assets/app/icon-192.png?probe=' + Date.now(),
+        { method: 'HEAD', cache: 'no-store', signal: abbruch.signal });
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      clearTimeout(zeit);
+    }
+  };
+
   const zeigen = async () => {
-    if (navigator.onLine) return;
     if (document.querySelector('.stale-banner')) return;
+    if (await erreichbar()) return;
     let wann = null;
     try {
       const treffer = await caches.match(location.href);
