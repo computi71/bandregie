@@ -85,6 +85,11 @@ function backup_keep(): int {
  * einer Stunde — sonst dreht ein kaputter Lauf endlos im Kreis.
  */
 function backup_due(): bool {
+  // Eine Demo wird stündlich verworfen und neu aufgebaut — sie hat nichts zu
+  // sichern. Und was nicht geschrieben wird, kann auch niemand herunterladen:
+  // die automatische Sicherung läuft im Seitenaufruf und ginge an jeder
+  // Sperre auf einer Route vorbei.
+  if (is_demo()) return false;
   if (setting('backup_enabled') !== '1') return false;
   $every = BACKUP_INTERVALS[setting('backup_interval') ?: 'daily'] ?? 86400;
   $ok = row("SELECT created_at FROM backup_runs WHERE status = 'ok' ORDER BY id DESC LIMIT 1");

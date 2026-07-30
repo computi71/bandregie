@@ -2125,6 +2125,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/backup/(\d+)/(download|delete)$~', $path, $m)) {
     require_admin();
+    // Ein Archiv ist die ganze Installation in einer Datei. Aus einer Demo,
+    // deren Zugangsdaten öffentlich sind, geht sie nicht hinaus.
+    deny_in_demo('/intern/einstellungen');
     $run = row('SELECT * FROM backup_runs WHERE id = ?', [$m[1]]);
     $file = $run && $run['filename'] !== '' ? backup_dir() . '/' . basename($run['filename']) : '';
     if ($m[2] === 'download' && $method === 'GET' && $file && is_file($file)) {
