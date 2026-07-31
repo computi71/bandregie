@@ -84,6 +84,9 @@ function demo_light_rows(): void {
     'address' => "3 Hall Lane\n12345 Sampleton",
     'contact_name' => 'Ms Sommer', 'contact_email' => 'buehne@example.com', 'contact_phone' => '0123 456789',
     'notes' => 'Stage 8 × 6 m, power 2 × 32 A, parking behind the hall.',
+    // Feste Beispiel-Koordinaten (kein Geocoding-Abruf): so ist die punktgenaue
+    // Navigation auch mit den Beispieldaten sichtbar.
+    'lat' => '52.374500', 'lng' => '9.738600',
   ]);
 
   $lyrics = [
@@ -154,6 +157,8 @@ function demoband_rows(): void {
   }
 
   // --- Veranstaltungsorte
+  // Feste Beispiel-Koordinaten (kein Geocoding-Abruf): so zeigt die Demo auch
+  // die punktgenaue Navigation und die GPS-Zuordnung von Fotos zu Terminen.
   $venue1 = demo_insert('venues', [
     'name' => 'Sampleton Town Hall', 'city' => 'Sampleton',
     'address' => "3 Hall Lane
@@ -161,6 +166,7 @@ function demoband_rows(): void {
     'contact_name' => 'Ms Sommer', 'contact_email' => 'buehne@example.com',
     'contact_phone' => '0123 456789',
     'notes' => 'Stage 8 × 6 m, power 2 × 32 A, parking right behind the hall.',
+    'lat' => '52.374500', 'lng' => '9.738600',
   ]);
   $venue2 = demo_insert('venues', [
     'name' => 'Exampleton Barn', 'city' => 'Exampleton',
@@ -169,6 +175,7 @@ function demoband_rows(): void {
     'contact_name' => 'Mr Winter', 'contact_email' => 'scheune@example.com',
     'contact_phone' => '0123 987654',
     'notes' => 'Small stage, house PA available. Access along the field track.',
+    'lat' => '52.520000', 'lng' => '13.405000',
   ]);
 
   // --- Songs (frei erfundene Titel, damit keine echten Rechte berührt werden)
