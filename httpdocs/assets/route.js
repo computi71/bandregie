@@ -76,19 +76,40 @@
   function showChooser(d) { if (!pop) build(); dest = d; pop.hidden = false; }
 
   links.forEach((a) => {
+    // Lange drücken → Auswahl erneut, zum Wechseln. iOS Safari feuert bei
+    // Touch-Langdruck kein contextmenu — deshalb ein eigener Timer; das
+    // contextmenu bleibt für Trackpad/Maus (iPad, Desktop-Safari) bestehen.
+    let holdTimer = 0;
+    let held = false;
+    a.addEventListener('touchstart', () => {
+      held = false;
+      holdTimer = window.setTimeout(() => { held = true; showChooser(a.dataset.navi); }, 500);
+    }, { passive: true });
+    a.addEventListener('touchmove', () => clearTimeout(holdTimer), { passive: true });
+    ['touchend', 'touchcancel'].forEach((ev) => a.addEventListener(ev, (e) => {
+      clearTimeout(holdTimer);
+      // Nach einem Langdruck darf der nachlaufende Klick nicht auch noch
+      // navigieren — die Auswahl ist ja schon offen.
+      if (held && e.cancelable) e.preventDefault();
+    }));
     a.addEventListener('click', (e) => {
       if (!a.dataset.navi) return;
       e.preventDefault();
+      if (held) { held = false; return; }
       dest = a.dataset.navi;
       const app = appByName(getPref());
       if (app) window.location.href = app[1](enc(dest)); // gemerkte App direkt
       else showChooser(dest);                             // erste Wahl treffen
     });
-    // Lange drücken (bzw. Rechtsklick) → Auswahl erneut, zum Wechseln.
     a.addEventListener('contextmenu', (e) => {
       if (!a.dataset.navi) return;
       e.preventDefault();
       showChooser(a.dataset.navi);
     });
+  });
+
+  // Escape schließt die Auswahl — für Tastatur und Bluetooth-Pedale.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && pop && !pop.hidden) pop.hidden = true;
   });
 })();
