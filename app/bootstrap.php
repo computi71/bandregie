@@ -708,6 +708,7 @@ Zeile zwei
   'fl_oauth_taken' => 'Diese Anmeldung ist schon mit einem anderen Konto verknüpft.',
   'fl_oauth_no_email' => 'Der Anbieter hat keine bestätigte E-Mail-Adresse geliefert.',
   'photo_no_event' => 'kein Termin',
+  'photo_exif_hint' => 'Für die Termin-Zuordnung Originale direkt vom Gerät hochladen — über Messenger oder soziale Netze geteilte Kopien verlieren Aufnahmedatum und GPS.',
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
   'geo_search' => 'Adresse suchen',

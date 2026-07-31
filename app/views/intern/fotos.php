@@ -6,6 +6,9 @@
     <label><?= e(t('photos_upload_lbl')) ?><input type="file" name="photos[]" accept="image/*" multiple required></label>
     <label><?= e(t('photos_caption')) ?><input name="caption" placeholder="<?= e(t('optional')) ?>"></label>
     <label class="checkbox span2"><input type="checkbox" name="is_public" value="1"> <?= e(t('photos_public_now')) ?></label>
+    <?php // Warum manche Fotos keinen Termin-Vorschlag bekommen: Messenger und
+          // soziale Netze entfernen die EXIF-Daten beim Teilen (#143). ?>
+    <p class="muted small span2">💡 <?= e(t('photo_exif_hint')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('upload')) ?></button>
   </form>
 </div>
