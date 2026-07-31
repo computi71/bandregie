@@ -13,6 +13,8 @@
   const speedEl = root.querySelector('.buehne-speed');
   const playBtn = root.querySelector('.buehne-play');
   const musSel = root.querySelector('.buehne-musician');
+  const tempoPop = root.querySelector('.buehne-tempo');
+  const bpmInput = root.querySelector('.buehne-bpm');
   const isMono = root.classList.contains('is-mono');
 
   let index = songs.findIndex((s) => s.id === Number(root.dataset.start));
@@ -126,9 +128,18 @@
   }
 
   function toggle() { setRunning(!running); }
-  function showSpeed() { if (speedEl) speedEl.textContent = Math.round(bpm) + ' BPM'; }
+  function showSpeed() {
+    const t = Math.round(bpm);
+    if (speedEl) speedEl.textContent = t + ' BPM';
+    // Das Eingabefeld nur nachziehen, wenn gerade niemand darin tippt.
+    if (bpmInput && document.activeElement !== bpmInput) bpmInput.value = t;
+  }
   function faster() { bpm = Math.min(260, bpm + 2); showSpeed(); }
   function slower() { bpm = Math.max(30, bpm - 2); showSpeed(); }
+
+  // Tempo-Popup: öffnen, schließen, und die getippte Zahl übernehmen.
+  function openTempo() { if (tempoPop) { tempoPop.hidden = false; showSpeed(); } }
+  function closeTempo() { if (tempoPop) tempoPop.hidden = true; }
 
   // Tempo eintippen: die Abstände zwischen den Taps mitteln. Eine lange Pause
   // (über 2 s) beginnt eine neue Zählung.
@@ -178,8 +189,27 @@
       else if (act === 'tap') tap();
       else if (act === 'next') go(1);
       else if (act === 'prev') go(-1);
+      else if (act === 'tempo') openTempo();
+      else if (act === 'tempo-close') closeTempo();
     });
   });
+
+  if (tempoPop && bpmInput) {
+    // Hintergrund (außerhalb der Karte) antippen schließt das Popup.
+    tempoPop.addEventListener('click', (e) => { if (e.target === tempoPop) closeTempo(); });
+    // Getippte Zahl sofort übernehmen (im gültigen Bereich), beim Verlassen
+    // fehlende/außerhalb liegende Werte auf die Grenzen ziehen.
+    bpmInput.addEventListener('input', () => {
+      const v = parseInt(bpmInput.value, 10);
+      if (!isNaN(v) && v >= 30 && v <= 260) { bpm = v; if (speedEl) speedEl.textContent = v + ' BPM'; }
+    });
+    bpmInput.addEventListener('change', () => {
+      let v = parseInt(bpmInput.value, 10);
+      if (isNaN(v)) v = Math.round(bpm);
+      bpm = Math.max(30, Math.min(260, v));
+      showSpeed();
+    });
+  }
 
   if (musSel) {
     musSel.addEventListener('change', () => {

@@ -36,15 +36,29 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 
   <div class="buehne-controls">
     <?php // Schließen gehört zu den unteren Knöpfen: am iPhone ist die obere
-          // Leiste unter der Safari-/Notch-Zone nicht bedienbar. ?>
+          // Leiste unter der Safari-/Notch-Zone nicht bedienbar. Das Tempo (−, Zahl,
+          // +, Tippen) steckt im Popup, damit die Leiste nicht überläuft. ?>
     <a class="buehne-btn" href="/intern/songs/<?= (int) $startId ?>" title="<?= e(t('stage_exit')) ?>" aria-label="<?= e(t('stage_exit')) ?>">✕</a>
-    <button type="button" class="buehne-btn" data-act="slower" title="<?= e(t('stage_slower')) ?>" aria-label="<?= e(t('stage_slower')) ?>">–</button>
-    <span class="buehne-speed" aria-hidden="true"></span>
-    <button type="button" class="buehne-btn" data-act="faster" title="<?= e(t('stage_faster')) ?>" aria-label="<?= e(t('stage_faster')) ?>">+</button>
-    <button type="button" class="buehne-btn" data-act="tap" title="<?= e(t('stage_tap')) ?>" aria-label="<?= e(t('stage_tap')) ?>">👆</button>
     <button type="button" class="buehne-btn" data-act="prev" title="<?= e(t('stage_prev')) ?>" aria-label="<?= e(t('stage_prev')) ?>">◀</button>
     <button type="button" class="buehne-btn buehne-play" data-act="play" title="<?= e(t('stage_play')) ?>" aria-label="<?= e(t('stage_play')) ?>">▶</button>
     <button type="button" class="buehne-btn" data-act="next" title="<?= e(t('stage_next')) ?>" aria-label="<?= e(t('stage_next')) ?>">▶▶</button>
+    <button type="button" class="buehne-btn buehne-tempo-btn" data-act="tempo" title="<?= e(t('stage_tempo')) ?>" aria-label="<?= e(t('stage_tempo')) ?>"><span class="buehne-speed" aria-hidden="true"></span></button>
+  </div>
+
+  <?php // Tempo-Popup: die BPM-Zahl direkt eintippbar, dazu −/+ und Tempo-Tippen,
+        // mit Luft dazwischen. Der Hintergrund schließt beim Antippen. ?>
+  <div class="buehne-tempo" hidden role="dialog" aria-label="<?= e(t('stage_tempo')) ?>">
+    <div class="buehne-tempo-card">
+      <div class="buehne-tempo-set">
+        <button type="button" class="buehne-btn" data-act="slower" aria-label="<?= e(t('stage_slower')) ?>">–</button>
+        <input class="buehne-bpm" type="number" inputmode="numeric" min="30" max="260" step="1" aria-label="<?= e(t('stage_tempo')) ?> (BPM)">
+        <span class="buehne-bpm-unit">BPM</span>
+        <button type="button" class="buehne-btn" data-act="faster" aria-label="<?= e(t('stage_faster')) ?>">+</button>
+      </div>
+      <button type="button" class="buehne-btn buehne-tap" data-act="tap">👆 <?= e(t('stage_tap')) ?></button>
+      <p class="buehne-tempo-hint"><?= e(t('stage_bpm_hint')) ?></p>
+      <button type="button" class="buehne-btn buehne-tempo-done" data-act="tempo-close"><?= e(t('stage_done')) ?></button>
+    </div>
   </div>
 </div>
 </body>
