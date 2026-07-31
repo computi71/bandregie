@@ -673,6 +673,7 @@ Zeile zwei
   'stage_play' => 'Start / Pause',
   'stage_slower' => 'Langsamer',
   'stage_faster' => 'Schneller',
+  'stage_tap' => 'Tempo tippen',
   'stage_prev' => 'Vorheriger Song',
   'stage_next' => 'Nächster Song',
   'stage_exit' => 'Schließen',

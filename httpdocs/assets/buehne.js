@@ -130,6 +130,20 @@
   function faster() { bpm = Math.min(260, bpm + 2); showSpeed(); }
   function slower() { bpm = Math.max(30, bpm - 2); showSpeed(); }
 
+  // Tempo eintippen: die Abstände zwischen den Taps mitteln. Eine lange Pause
+  // (über 2 s) beginnt eine neue Zählung.
+  let tapTimes = [];
+  function tap() {
+    const now = performance.now();
+    if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+    tapTimes.push(now);
+    if (tapTimes.length > 6) tapTimes.shift();
+    if (tapTimes.length >= 2) {
+      const b = Math.round(60000 / ((tapTimes[tapTimes.length - 1] - tapTimes[0]) / (tapTimes.length - 1)));
+      if (b >= 30 && b <= 260) { bpm = b; showSpeed(); }
+    }
+  }
+
   function go(delta) {
     const next = index + delta;
     if (next < 0 || next >= songs.length) return;
@@ -161,6 +175,7 @@
       if (act === 'play') toggle();
       else if (act === 'faster') faster();
       else if (act === 'slower') slower();
+      else if (act === 'tap') tap();
       else if (act === 'next') go(1);
       else if (act === 'prev') go(-1);
     });

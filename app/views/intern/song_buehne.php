@@ -41,6 +41,7 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     <button type="button" class="buehne-btn" data-act="slower" title="<?= e(t('stage_slower')) ?>" aria-label="<?= e(t('stage_slower')) ?>">–</button>
     <span class="buehne-speed" aria-hidden="true"></span>
     <button type="button" class="buehne-btn" data-act="faster" title="<?= e(t('stage_faster')) ?>" aria-label="<?= e(t('stage_faster')) ?>">+</button>
+    <button type="button" class="buehne-btn" data-act="tap" title="<?= e(t('stage_tap')) ?>" aria-label="<?= e(t('stage_tap')) ?>">👆</button>
     <button type="button" class="buehne-btn" data-act="prev" title="<?= e(t('stage_prev')) ?>" aria-label="<?= e(t('stage_prev')) ?>">◀</button>
     <button type="button" class="buehne-btn buehne-play" data-act="play" title="<?= e(t('stage_play')) ?>" aria-label="<?= e(t('stage_play')) ?>">▶</button>
     <button type="button" class="buehne-btn" data-act="next" title="<?= e(t('stage_next')) ?>" aria-label="<?= e(t('stage_next')) ?>">▶▶</button>

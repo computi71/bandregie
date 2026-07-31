@@ -32,4 +32,22 @@
       if (ta && pre) { ta.value = pre.textContent; ta.focus(); }
     });
   });
+
+  // Tempo eintippen: neben dem Tempo-Feld den Takt tippen, die Abstände werden
+  // gemittelt und als BPM ins Feld geschrieben. Lange Pause = neue Zählung.
+  document.querySelectorAll('button[data-taptempo]').forEach((btn) => {
+    const input = document.querySelector('input[name="' + btn.dataset.taptempo + '"]');
+    if (!input) return;
+    let taps = [];
+    btn.addEventListener('click', () => {
+      const now = performance.now();
+      if (taps.length && now - taps[taps.length - 1] > 2000) taps = [];
+      taps.push(now);
+      if (taps.length > 6) taps.shift();
+      if (taps.length >= 2) {
+        const bpm = Math.round(60000 / ((taps[taps.length - 1] - taps[0]) / (taps.length - 1)));
+        if (bpm >= 30 && bpm <= 260) input.value = bpm + ' BPM';
+      }
+    });
+  });
 })();
