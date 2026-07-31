@@ -536,8 +536,9 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .buehne-body { margin: 0; background: #000; }
 .buehne { position: fixed; inset: 0; display: flex; flex-direction: column;
           background: #000; color: #f4f4f4; }
-.buehne-bar { display: flex; align-items: center; gap: 0.6rem;
-              padding: 0.5rem 0.8rem; font-size: 0.9rem; color: #b9b9b9; }
+.buehne-bar { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: #b9b9b9;
+              /* unter Notch/Status-Bar schieben, sonst liegt die Leiste am iPhone darunter */
+              padding: calc(0.5rem + env(safe-area-inset-top, 0)) 0.8rem 0.5rem; }
 .buehne-title { font-weight: 700; color: #fff; }
 .buehne-pos { margin-left: auto; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .buehne-musician { background: #1c1c1c; color: #f4f4f4; border: 1px solid #333; border-radius: 8px;

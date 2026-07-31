@@ -27,7 +27,6 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
      data-start="<?= (int) $startId ?>"
      data-empty="<?= e(t('stage_empty')) ?>">
   <header class="buehne-bar">
-    <a class="buehne-btn" href="/intern/songs/<?= (int) $startId ?>" title="<?= e(t('stage_exit')) ?>" aria-label="<?= e(t('stage_exit')) ?>">✕</a>
     <span class="buehne-title"></span>
     <?php if ($mono ?? false): ?><select class="buehne-musician" aria-label="<?= e(t('stage_chords')) ?>"></select><?php endif; ?>
     <span class="buehne-pos"></span>
@@ -36,6 +35,9 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
   <div class="buehne-scroll" role="button" tabindex="0" aria-label="<?= e(t('stage_play')) ?>"></div>
 
   <div class="buehne-controls">
+    <?php // Schließen gehört zu den unteren Knöpfen: am iPhone ist die obere
+          // Leiste unter der Safari-/Notch-Zone nicht bedienbar. ?>
+    <a class="buehne-btn" href="/intern/songs/<?= (int) $startId ?>" title="<?= e(t('stage_exit')) ?>" aria-label="<?= e(t('stage_exit')) ?>">✕</a>
     <button type="button" class="buehne-btn" data-act="slower" title="<?= e(t('stage_slower')) ?>" aria-label="<?= e(t('stage_slower')) ?>">–</button>
     <span class="buehne-speed" aria-hidden="true"></span>
     <button type="button" class="buehne-btn" data-act="faster" title="<?= e(t('stage_faster')) ?>" aria-label="<?= e(t('stage_faster')) ?>">+</button>
