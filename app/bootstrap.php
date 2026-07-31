@@ -2281,7 +2281,7 @@ function venue_navi(array $v): string {
 // (Dienst weg, Timeout) ergeben eine leere Liste — die Oberfläche meldet dann
 // „keine Treffer". Aufgerufen nur, wenn die Band Geocoding erlaubt hat.
 function geocode_search(string $q): array {
-  $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=3&q=' . rawurlencode($q);
+  $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=3&q=' . rawurlencode($q);
   $ctx = stream_context_create(['http' => [
     'method' => 'GET',
     'header' => 'User-Agent: Bandregie/' . BANDREGIE_VERSION . " (self-hosted band tool)\r\nAccept: application/json\r\n",
@@ -2294,7 +2294,20 @@ function geocode_search(string $q): array {
   $out = [];
   foreach ($data as $r) {
     if (!isset($r['lat'], $r['lon'], $r['display_name'])) continue;
-    $out[] = ['name' => (string) $r['display_name'], 'lat' => (string) $r['lat'], 'lng' => (string) $r['lon']];
+    // Aus den Bestandteilen eine saubere Adresse bauen (Straße Hausnummer /
+    // PLZ Ort), damit ein Treffer auch die Adress- und Stadt-Felder füllen kann,
+    // wenn nur der Name eingegeben war. Ohne Bestandteile bleibt der Anzeigename.
+    $a = is_array($r['address'] ?? null) ? $r['address'] : [];
+    $city = (string) ($a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? '');
+    $street = trim(($a['road'] ?? '') . ' ' . ($a['house_number'] ?? ''));
+    $addr = trim($street . "\n" . trim(($a['postcode'] ?? '') . ' ' . $city));
+    $out[] = [
+      'name' => (string) $r['display_name'],
+      'address' => $addr !== '' ? $addr : (string) $r['display_name'],
+      'city' => $city,
+      'lat' => (string) $r['lat'],
+      'lng' => (string) $r['lon'],
+    ];
   }
   return $out;
 }

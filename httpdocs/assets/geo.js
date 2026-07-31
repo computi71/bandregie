@@ -33,10 +33,16 @@
         b.className = 'btn btn-ghost btn-small geo-hit';
         b.textContent = hit.name;
         b.addEventListener('click', () => {
-          const lat = form.querySelector('[name="lat"]');
-          const lng = form.querySelector('[name="lng"]');
-          if (lat) lat.value = hit.lat;
-          if (lng) lng.value = hit.lng;
+          // Der gewählte Treffer füllt Adresse, Stadt und Koordinaten — so wird
+          // aus einem bloßen Namen ein vollständiger Ort.
+          const set = (name, v) => {
+            const el = form.querySelector('[name="' + name + '"]');
+            if (el && v) el.value = v;
+          };
+          set('address', hit.address);
+          set('city', hit.city);
+          set('lat', hit.lat);
+          set('lng', hit.lng);
           results.textContent = '✓ ' + hit.name;
         });
         results.appendChild(b);
