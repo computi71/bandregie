@@ -26,9 +26,10 @@
       <?php if ($v['contact_email']): ?><a class="muted" href="mailto:<?= e($v['contact_email']) ?>">✉ <?= e($v['contact_email']) ?></a><?php endif; ?>
     </div>
     <?php if ($v['address']): ?><p class="prewrap muted small"><?= e($v['address']) ?></p><?php endif; ?>
-    <?php // Navi-Link: öffnet nur die Karten-App am Handy, die App ruft nichts ab. ?>
-    <?php $navi = venue_navi($v); ?>
-    <?php if ($navi): ?><p><a class="btn btn-ghost btn-small" href="<?= e($navi) ?>" target="_blank" rel="noopener">🧭 <?= e(t('geo_navigate')) ?></a></p><?php endif; ?>
+    <?php // Navi-Link: am Handy öffnet route.js die native Karten-App (Apple Karten
+          // bzw. die eingestellte Android-App), am Desktop den Web-Link. ?>
+    <?php $naviDest = venue_dest($v); ?>
+    <?php if ($naviDest !== ''): ?><p><a class="btn btn-ghost btn-small navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener">🧭 <?= e(t('geo_navigate')) ?></a></p><?php endif; ?>
     <?php if ($v['notes']): ?><p class="prewrap muted"><?= e($v['notes']) ?></p><?php endif; ?>
     <?php $venueEvents = $eventsByVenue[$v['id']] ?? []; ?>
     <?php if ($venueEvents): ?>

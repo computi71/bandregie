@@ -2270,24 +2270,25 @@ function song_chords_set(int $songId, int $meId, string $content): void {
   }
 }
 
-// Ein Maps-Link, der beim Tippen die Navi-App am Handy öffnet — die Anwendung
-// selbst ruft nichts ab, es ist nur ein Link. Leere Angabe → leerer String
-// (dann zeigt die Ansicht keinen Knopf). Zeilenumbrüche der Adresse werden zu
-// Kommas, damit die Zieladresse in einer Zeile steht.
-function maps_link(string ...$parts): string {
+// Das Navigationsziel als Text: mit gespeicherten Koordinaten punktgenau
+// ("lat,lng"), sonst Name/Adresse/Stadt in einer Zeile (Zeilenumbrüche → Komma).
+// Leer, wenn nichts bekannt ist — dann zeigt die Ansicht keinen Knopf.
+function navi_dest(string ...$parts): string {
   $clean = array_filter(array_map(
     fn(string $p): string => trim(str_replace(["\r\n", "\n"], ', ', $p)), $parts));
-  $query = implode(', ', $clean);
-  return $query === '' ? '' : 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($query);
+  return implode(', ', $clean);
+}
+function venue_dest(array $v): string {
+  if (!empty($v['lat']) && !empty($v['lng'])) return $v['lat'] . ',' . $v['lng'];
+  return navi_dest($v['name'] ?? '', $v['address'] ?? '', $v['city'] ?? '');
 }
 
-// Navi-Ziel eines Orts: mit gespeicherten Koordinaten punktgenau, sonst über
-// die Adresse. Beides nur ein Link — die App ruft dabei nichts ab.
-function venue_navi(array $v): string {
-  if (!empty($v['lat']) && !empty($v['lng'])) {
-    return 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($v['lat'] . ',' . $v['lng']);
-  }
-  return maps_link($v['name'] ?? '', $v['address'] ?? '', $v['city'] ?? '');
+// Web-Fallback für den Navi-Link (Desktop und ohne JavaScript): OpenStreetMap
+// zeigt den Ort — bewusst nicht Google. Auf dem Handy ersetzt route.js den Link
+// durch die native Karten-App: iPhone → Apple Karten, Android → die als Standard
+// eingestellte App (geo:). Die Anwendung selbst ruft dabei nichts ab.
+function navi_web(string $dest): string {
+  return $dest === '' ? '' : 'https://www.openstreetmap.org/search?query=' . rawurlencode($dest);
 }
 
 // Adresse → Treffer mit Koordinaten, über OpenStreetMap/Nominatim. Eine Anfrage
