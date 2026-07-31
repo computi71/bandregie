@@ -740,6 +740,7 @@ Zeile zwei
   'set_geocoding' => 'Adress-Suche über OpenStreetMap erlauben',
   'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
   'set_push' => 'Mitteilungen aufs Gerät erlauben',
+  'fl_push_setting_saved' => 'Einstellung für Mitteilungen gespeichert.',
   'set_push_hint' => 'Aus: es gibt keine Mitteilungen, und der Bereich im Profil erscheint nicht. An: Mitglieder können je Thema und Gerät selbst entscheiden. Die Zustellung läuft über den Dienst des jeweiligen Browserherstellers; der Inhalt ist dabei verschlüsselt.',
   'set_geocoding_hint' => 'Aus: keine Verbindung nach außen, nur adress-basierte Navigation. An: beim „Adresse suchen" wird die Adresse einmal an OpenStreetMap gesendet, um Koordinaten zu holen — für punktgenaue Navigation und die Foto-Ort-Zuordnung.',
   'stage_prev' => 'Vorheriger Song',

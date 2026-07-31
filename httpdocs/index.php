@@ -2248,6 +2248,16 @@ if (str_starts_with($path, '/intern')) {
   // Anmelde-Anbieter (#97): IDs offen, Geheimnisse nur bei neuer Eingabe —
   // ein leeres Feld heißt "behalten", nie "löschen". Versiegelt abgelegt,
   // wenn ein Schlüssel liegt (wie das FTP-Passwort der Sicherung).
+  // Mitteilungen für die ganze Installation freischalten oder stilllegen.
+  if ($path === '/intern/einstellungen/push' && $method === 'POST') {
+    require_admin();
+    // In der Demo unverändert: dort löste sonst ein Besucher echten Push-Verkehr
+    // dieses Servers an Google, Apple und Mozilla aus.
+    deny_in_demo('/intern/einstellungen');
+    set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
+    flash(t('fl_push_setting_saved'));
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/oauth' && $method === 'POST') {
     require_admin();
     // In der Demo ist jeder Besucher Admin, und die Zugangsdaten stehen
@@ -2296,9 +2306,6 @@ if (str_starts_with($path, '/intern')) {
       // Servers — nicht die des Besuchers, der den Schalter umlegt.
       if (!is_demo()) {
         set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
-        // Auch der Push-Kanal bleibt in der Demo, wie er ist: dort löste jeder
-        // Besucher sonst echten Verkehr dieses Servers nach außen aus.
-        set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
       }
       // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
       // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse

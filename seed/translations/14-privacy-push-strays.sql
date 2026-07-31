@@ -73,4 +73,9 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('it','set_favicon_hint','Questa icona appare nella scheda del browser e nella schermata Home del telefono. Per la scheda bastano 64 pixel, per il riquadro sul telefono no — 512×512 è la misura sicura.'),
 ('it','set_favicon_small','Questa immagine è %d×%d. Nella scheda del browser non si nota, nella schermata Home del telefono sì: lì il riquadro viene disegnato tra 192 e 512 pixel, e un''immagine piccola non si può ingrandire. Un PNG quadrato di 512×512 la riempie.'),
 ('it','fl_demo_in_use','I dati di esempio esistono solo finché l''installazione è ancora vuota.'),
-('it','set_demo_in_use','Questa installazione è in uso — contiene membri o date vostri. Per questo i dati di esempio non vengono più offerti; si mescolerebbero ai vostri.');
+('it','set_demo_in_use','Questa installazione è in uso — contiene membri o date vostri. Per questo i dati di esempio non vengono più offerti; si mescolerebbero ai vostri.'),
+('en','fl_push_setting_saved','Notification setting saved.'),
+('nl','fl_push_setting_saved','Instelling voor meldingen opgeslagen.'),
+('fr','fl_push_setting_saved','Réglage des notifications enregistré.'),
+('es','fl_push_setting_saved','Ajuste de avisos guardado.'),
+('it','fl_push_setting_saved','Impostazione delle notifiche salvata.');
