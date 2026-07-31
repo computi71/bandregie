@@ -168,6 +168,11 @@
   // Bluetooth-Umblätterer und Fußpedale schicken Pfeil- und Bild-Tasten; wer
   // darauf reagiert, unterstützt sie ohne weiteren Code.
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && tempoPop && !tempoPop.hidden) { closeTempo(); return; }
+    // Tasteneingaben in Feldern (BPM-Zahl, Musiker-Wahl) gehören dem Feld —
+    // sonst verstellt ein getipptes "+" nebenbei das Tempo oder ein
+    // Leerzeichen startet den Lauf.
+    if (e.target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
     switch (e.key) {
       case ' ': case 'Enter': e.preventDefault(); toggle(); break;
       case 'ArrowUp': case 'PageUp': e.preventDefault(); stage.scrollTop -= 60; break;
