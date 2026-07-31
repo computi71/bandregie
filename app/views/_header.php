@@ -30,6 +30,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="<?= e($settings['band_name']) ?>">
   <link rel="apple-touch-icon" href="<?= e(app_icon(192)) ?>">
+  <?php // Neu benannte Datei, die auch ein festhängender Service Worker frisch aus
+        // dem Netz holt: sie stößt ein SW-Update an, damit installierte Apps sich
+        // selbst erneuern, statt dass jemand Website-Daten löschen muss. ?>
+  <script src="<?= e(asset('/assets/swkick.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/app.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/lightbox.js')) ?>" defer></script>
