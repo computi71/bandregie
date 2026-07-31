@@ -2360,6 +2360,26 @@ function geo_distance_km(float $lat1, float $lng1, float $lat2, float $lng2): fl
   $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
   return 6371 * 2 * asin(min(1.0, sqrt($a)));
 }
+// Der vorgeschlagene Termin für ein Foto: der am Aufnahmetag. Gibt es mehrere am
+// selben Tag und hat das Foto GPS, gewinnt der mit dem nächstgelegenen Ort.
+// Immer nur ein Vorschlag — zugeordnet wird erst auf Klick.
+function photo_suggest_event(array $photo, array $events): ?array {
+  $date = substr((string) ($photo['taken_at'] ?? ''), 0, 10);
+  if ($date === '') return null;
+  $sameDay = array_values(array_filter($events, fn($e) => substr((string) $e['date'], 0, 10) === $date));
+  if (!$sameDay) return null;
+  if (count($sameDay) === 1) return $sameDay[0];
+  if ($photo['lat'] !== null && $photo['lng'] !== null) {
+    $best = null; $bestDist = INF;
+    foreach ($sameDay as $e) {
+      if ($e['lat'] === null || $e['lng'] === null) continue;
+      $d = geo_distance_km((float) $photo['lat'], (float) $photo['lng'], (float) $e['lat'], (float) $e['lng']);
+      if ($d < $bestDist) { $bestDist = $d; $best = $e; }
+    }
+    if ($best) return $best;
+  }
+  return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
+}
 
 function asset(string $path): string {
   return $path . '?v=' . rawurlencode(BANDREGIE_VERSION);

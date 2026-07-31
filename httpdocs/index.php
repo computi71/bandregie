@@ -2469,26 +2469,6 @@ function event_locked(int $eventId): bool {
 function setlist_locked(int $setlistId): bool {
   return (bool) row('SELECT 1 FROM events WHERE setlist_id = ? AND date < ? LIMIT 1', [$setlistId, date('Y-m-d')]);
 }
-// Der vorgeschlagene Termin für ein Foto: der am Aufnahmetag. Gibt es mehrere am
-// selben Tag und hat das Foto GPS, gewinnt der mit dem nächstgelegenen Ort.
-// Immer nur ein Vorschlag — zugeordnet wird erst auf Klick.
-function photo_suggest_event(array $photo, array $events): ?array {
-  $date = substr((string) ($photo['taken_at'] ?? ''), 0, 10);
-  if ($date === '') return null;
-  $sameDay = array_values(array_filter($events, fn($e) => substr((string) $e['date'], 0, 10) === $date));
-  if (!$sameDay) return null;
-  if (count($sameDay) === 1) return $sameDay[0];
-  if ($photo['lat'] !== null && $photo['lng'] !== null) {
-    $best = null; $bestDist = INF;
-    foreach ($sameDay as $e) {
-      if ($e['lat'] === null || $e['lng'] === null) continue;
-      $d = geo_distance_km((float) $photo['lat'], (float) $photo['lng'], (float) $e['lat'], (float) $e['lng']);
-      if ($d < $bestDist) { $bestDist = $d; $best = $e; }
-    }
-    if ($best) return $best;
-  }
-  return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
-}
 function venue_values(): array {
   // Koordinaten kommen aus der Adress-Suche (versteckte Felder). Nur echte
   // Zahlen übernehmen, sonst leer — nichts Getipptes landet ungeprüft in der DB.
