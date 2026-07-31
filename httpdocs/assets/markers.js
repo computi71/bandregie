@@ -21,4 +21,15 @@
       });
     });
   });
+
+  // „In meine kopieren": den Notizzettel eines anderen Musikers ins eigene Feld
+  // übernehmen — client-seitig, gespeichert wird mit dem normalen Speichern.
+  document.querySelectorAll('button[data-copy-into]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const ta = document.querySelector('textarea[name="' + btn.dataset.copyInto + '"]');
+      const details = btn.closest('details');
+      const pre = details ? details.querySelector('pre[data-chords]') : null;
+      if (ta && pre) { ta.value = pre.textContent; ta.focus(); }
+    });
+  });
 })();

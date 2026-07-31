@@ -239,9 +239,14 @@ TXT,
       'tempo' => $tempo, 'duration_sec' => $sec, 'status' => $status,
       'notes' => '',
       'lyrics' => $demoLyrics[$title] ?? '',
-      'chords' => $demoChords[$title] ?? '',
     ]);
   }
+
+  // Notizzettel sind musikerspezifisch — ein paar Demo-Einträge, damit der
+  // Teleprompter das Umschalten zwischen Musikern zeigt (Summer Rain hat zwei).
+  demo_insert('song_chords', ['song_id' => $songs[0], 'user_id' => $members[0], 'content' => $demoChords['Summer Rain']]);
+  demo_insert('song_chords', ['song_id' => $songs[1], 'user_id' => $members[0], 'content' => $demoChords['Neon Light']]);
+  demo_insert('song_chords', ['song_id' => $songs[0], 'user_id' => $members[1], 'content' => "[Intro]\nEm  C  G  D\n\n[Refrain]\nandere Lage:\nC  G  D  Em"]);
 
   // --- Setlists: eine gespielte (wird durch den vergangenen Gig fixiert)
   //     und eine für den nächsten Auftritt, mit Pause und Zugabe

@@ -49,11 +49,14 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
   <?php endif; ?>
 </div>
 
-<?php if (trim((string) ($song['chords'] ?? '')) !== ''): ?>
+<?php if (trim((string) ($myChords ?? '')) !== ''): ?>
   <div class="card">
     <h2>🎸 <?= e(t('song_chords')) ?></h2>
-    <pre class="chords"><?= e($song['chords']) ?></pre>
+    <pre class="chords"><?= e($myChords) ?></pre>
   </div>
+<?php endif; ?>
+<?php if (($otherChordsCount ?? 0) > 0): ?>
+  <p class="muted small">🎸 <?= e(t('song_chords_more')) ?></p>
 <?php endif; ?>
 
 <?php // Die Noten hängen als Anhang am Lied. Hier nur zum Ansehen — hochladen

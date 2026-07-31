@@ -12,6 +12,8 @@
   const posEl = root.querySelector('.buehne-pos');
   const speedEl = root.querySelector('.buehne-speed');
   const playBtn = root.querySelector('.buehne-play');
+  const musSel = root.querySelector('.buehne-musician');
+  const isMono = root.classList.contains('is-mono');
 
   let index = songs.findIndex((s) => s.id === Number(root.dataset.start));
   if (index < 0) index = 0;
@@ -32,16 +34,12 @@
     return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
 
-  function render() {
-    const song = songs[index];
-    titleEl.textContent = song.title;
-    posEl.textContent = songs.length > 1 ? index + 1 + ' / ' + songs.length : '';
-    if (song.bpm) bpm = song.bpm; // pro Lied das gespeicherte Tempo übernehmen
-    if (!song.lines.length) {
+  function renderLines(lines) {
+    if (!lines || !lines.length) {
       stage.innerHTML = '<p class="buehne-empty">' + escapeHtml(root.dataset.empty || '') + '</p>';
     } else {
       let html = '';
-      for (const line of song.lines) {
+      for (const line of lines) {
         if (line.part !== undefined) {
           html += '<p class="buehne-part part-' + line.cat + '">' + escapeHtml(line.part) + '</p>';
         } else if (line.text.trim() === '') {
@@ -54,6 +52,29 @@
     }
     stage.scrollTop = 0;
     carry = 0;
+  }
+
+  // Noten-Modus: die Musiker mit Noten ins Dropdown, den eigenen vorwählen. Wer
+  // selbst nichts hinterlegt hat, sieht erst etwas, wenn er aktiv einen Kollegen
+  // wählt; Musiker ohne Noten erscheinen gar nicht.
+  function renderMusicians(song) {
+    const ms = song.musicians || [];
+    if (!ms.length) { if (musSel) musSel.style.display = 'none'; renderLines([]); return; }
+    if (musSel) musSel.style.display = '';
+    const def = ms.findIndex((m) => m.me);
+    let opts = ms.map((m, i) => '<option value="' + i + '">' + escapeHtml(m.name) + '</option>').join('');
+    if (def < 0) opts = '<option value="-1">—</option>' + opts;
+    if (musSel) { musSel.innerHTML = opts; musSel.value = String(def); }
+    renderLines(def >= 0 ? ms[def].lines : []);
+  }
+
+  function render() {
+    const song = songs[index];
+    titleEl.textContent = song.title;
+    posEl.textContent = songs.length > 1 ? index + 1 + ' / ' + songs.length : '';
+    if (song.bpm) bpm = song.bpm; // pro Lied das gespeicherte Tempo übernehmen
+    if (isMono) renderMusicians(song);
+    else renderLines(song.lines);
     showSpeed();
   }
 
@@ -144,6 +165,14 @@
       else if (act === 'prev') go(-1);
     });
   });
+
+  if (musSel) {
+    musSel.addEventListener('change', () => {
+      const song = songs[index];
+      const i = Number(musSel.value);
+      renderLines(i >= 0 && song.musicians ? song.musicians[i].lines : []);
+    });
+  }
 
   render();
   showSpeed();

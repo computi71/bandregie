@@ -29,6 +29,7 @@ $json = json_encode($stageSongs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
   <header class="buehne-bar">
     <a class="buehne-btn" href="/intern/songs/<?= (int) $startId ?>" title="<?= e(t('stage_exit')) ?>" aria-label="<?= e(t('stage_exit')) ?>">✕</a>
     <span class="buehne-title"></span>
+    <?php if ($mono ?? false): ?><select class="buehne-musician" aria-label="<?= e(t('stage_chords')) ?>"></select><?php endif; ?>
     <span class="buehne-pos"></span>
   </header>
 

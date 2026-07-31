@@ -27,9 +27,21 @@
     </label>
     <label class="span2"><?= e(t('song_chords')) ?>
       <?php $markerTarget = 'chords'; require BASE_DIR . '/app/views/intern/_markers.php'; ?>
-      <textarea name="chords" rows="8" class="mono" placeholder="<?= e(t('song_chords_ph')) ?>"><?= e($edit['chords'] ?? '') ?></textarea>
+      <textarea name="chords" rows="8" class="mono" placeholder="<?= e(t('song_chords_ph')) ?>"><?= e($myChords ?? '') ?></textarea>
       <span class="muted small"><?= e(t('song_chords_hint')) ?></span>
     </label>
+    <?php if (!empty($otherChords)): ?>
+      <div class="span2">
+        <div class="muted small"><?= e(t('song_chords_others')) ?></div>
+        <?php foreach ($otherChords as $oc): ?>
+          <details class="card">
+            <summary><?= e($oc['name']) ?></summary>
+            <pre class="chords" data-chords><?= e($oc['content']) ?></pre>
+            <button type="button" class="btn btn-ghost btn-small" data-copy-into="chords"><?= e(t('song_chords_copy')) ?></button>
+          </details>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
     <div class="span2 row-buttons">
       <button class="btn btn-primary"><?= e($edit ? t('save') : t('song_add')) ?></button>
       <?php if ($edit): ?><a class="btn btn-ghost" href="/intern/songs"><?= e(t('cancel')) ?></a><?php endif; ?>

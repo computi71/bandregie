@@ -678,7 +678,10 @@ Zeile zwei
   'stage_exit' => 'Schließen',
   'stage_empty' => 'Kein Text für dieses Lied.',
   'stage_chords' => 'Noten',
-  'song_chords' => 'Notizzettel (Akkorde)',
+  'song_chords' => 'Mein Notizzettel (Akkorde)',
+  'song_chords_others' => 'Notizzettel anderer Musiker',
+  'song_chords_copy' => 'In meine kopieren',
+  'song_chords_more' => 'Weitere Musiker haben Noten — im Teleprompter über das Dropdown umschaltbar.',
   'song_chords_ph' => "[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nText der ersten Zeile …",
   'song_chords_hint' => 'Für Akkorde und Notizen, wie man sie von Hand aufschreibt. Feste Zeichenbreite: Was untereinander steht, bleibt untereinander. Abschnitte wie beim Text in eckige Klammern.',
   'song_chords_none' => 'Für dieses Lied ist kein Notizzettel angelegt.',
@@ -1455,6 +1458,26 @@ if (!column_exists('songs', 'lyrics')) {
 if (!column_exists('songs', 'chords')) {
   $db->exec('ALTER TABLE songs ADD COLUMN chords MEDIUMTEXT NULL AFTER lyrics');
 }
+// Notizzettel sind musikerspezifisch: je Song und Mitglied ein eigener. Der
+// alte gemeinsame songs.chords bleibt als Spalte erhalten (Sicherheit), wird
+// aber nicht mehr geschrieben; sein Inhalt wandert einmalig zum Admin, damit
+// nichts verloren geht.
+$db->exec('CREATE TABLE IF NOT EXISTS song_chords (
+    song_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content MEDIUMTEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (song_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+if (setting('chords_migrated') !== '1') {
+  $migAdmin = row("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+  if ($migAdmin) {
+    q('INSERT IGNORE INTO song_chords (song_id, user_id, content)
+       SELECT id, ?, chords FROM songs WHERE chords IS NOT NULL AND TRIM(chords) <> ?',
+      [$migAdmin['id'], '']);
+  }
+  set_setting('chords_migrated', '1');
+}
 if (!column_exists('setlist_songs', 'id')) {
   $db->exec('ALTER TABLE setlist_songs DROP PRIMARY KEY,
              ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY FIRST,
@@ -2193,6 +2216,29 @@ function lyrics_lines(?string $text): array {
 // keine dransteht — dann bleibt die Bühne bei ihrer Vorgabe.
 function song_bpm(?string $tempo): int {
   return preg_match('~\d{2,3}~', (string) $tempo, $m) ? (int) $m[0] : 0;
+}
+
+// Alle nicht-leeren Notizzettel zu einem Song, mit Musikernamen; der eigene
+// zuerst. 'mine' markiert den eigenen Eintrag.
+function song_chords_all(int $songId, int $meId): array {
+  return rows('SELECT sc.user_id, sc.content, u.name, (sc.user_id = ?) AS mine
+               FROM song_chords sc JOIN users u ON u.id = sc.user_id
+               WHERE sc.song_id = ? AND TRIM(sc.content) <> ?
+               ORDER BY mine DESC, u.name', [$meId, $songId, '']);
+}
+function song_chords_mine(int $songId, int $meId): string {
+  $r = row('SELECT content FROM song_chords WHERE song_id = ? AND user_id = ?', [$songId, $meId]);
+  return $r['content'] ?? '';
+}
+// Den eigenen Notizzettel setzen — leer heißt löschen, damit kein leerer
+// Eintrag im Musiker-Dropdown auftaucht.
+function song_chords_set(int $songId, int $meId, string $content): void {
+  if (trim($content) === '') {
+    q('DELETE FROM song_chords WHERE song_id = ? AND user_id = ?', [$songId, $meId]);
+  } else {
+    q('INSERT INTO song_chords (song_id, user_id, content) VALUES (?,?,?)
+       ON DUPLICATE KEY UPDATE content = VALUES(content)', [$songId, $meId, $content]);
+  }
 }
 
 function asset(string $path): string {
