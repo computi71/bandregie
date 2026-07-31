@@ -119,6 +119,13 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
+    # The service worker carries no version in its address and must always be
+    # revalidated. If it were long-cached, an installed web app (iPhone home
+    # screen) would never see new releases and stay on the old version forever.
+    location = /sw.js {
+        add_header Cache-Control "no-cache, max-age=0, must-revalidate";
+    }
+
     # Never expose version control or Apache leftovers
     location ~ /\.(ht|git) { deny all; }
 }

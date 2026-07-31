@@ -33,6 +33,21 @@ RewriteRule ^ index.php [QSA,L]
   ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
 
+# Ausnahme: der Service Worker trägt KEINE Version in der Adresse und ist die
+# einzige Datei, die der Browser immer neu prüfen muss. Bekäme er auch das
+# Ein-Jahr-immutable von oben, sähe eine als App installierte Seite (iPhone
+# Home-Screen) neue Fassungen nie und bliebe für immer auf dem alten Stand.
+# Muss NACH den Regeln oben stehen, damit dieses Cache-Control gewinnt.
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+    Header unset Expires
+  </IfModule>
+  <IfModule mod_expires.c>
+    ExpiresActive Off
+  </IfModule>
+</Files>
+
 # Versionsverwaltung und Editorreste gehören nicht ins Netz
 <FilesMatch "^\.(git|env|htaccess)|~$">
   Require all denied
