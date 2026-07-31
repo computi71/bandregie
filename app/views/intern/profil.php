@@ -75,7 +75,12 @@
           <button class="btn btn-tiny btn-ghost"><?= e(t('prof_identity_unlink')) ?></button>
         </form>
       <?php else: ?>
-        <a class="btn btn-tiny" href="/auth/<?= e($key) ?>?link=1"><?= e(t('prof_identity_link')) ?></a>
+        <?php // Verknüpfen per POST mit Token: als Verweis ließe es sich von
+              // fremden Seiten aus auslösen. ?>
+        <form class="inline" method="post" action="/auth/<?= e($key) ?>"><?= csrf_field() ?>
+          <input type="hidden" name="link" value="1">
+          <button class="btn btn-tiny"><?= e(t('prof_identity_link')) ?></button>
+        </form>
       <?php endif; ?>
     </div>
   <?php endforeach; ?>

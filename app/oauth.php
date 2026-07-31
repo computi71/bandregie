@@ -40,12 +40,23 @@ function oauth_enabled(): array {
   return array_filter(oauth_providers(), fn(array $p): bool => $p['ready']);
 }
 
-/** Ein Geheimnis aus den Einstellungen, entsiegelt falls verschlüsselt abgelegt. */
+/**
+ * Ein Geheimnis aus den Einstellungen, entsiegelt falls verschlüsselt abgelegt.
+ *
+ * Lässt sich ein versiegelter Wert NICHT öffnen (Schlüssel rotiert, beim Umzug
+ * vergessen, libsodium fehlt), gilt er als nicht vorhanden. Der Geheimtext
+ * zurückzugeben wäre das Gegenteil von sicher: er ginge als „client_secret"
+ * hinaus zum Anbieter, und der Anbieter erschiene weiter als eingerichtet,
+ * obwohl keine Anmeldung mehr gelingen kann.
+ */
 function oauth_secret(string $key): string {
   $raw = setting($key);
   if ($raw === '') return '';
-  $open = function_exists('crypt_open') ? crypt_open($raw) : null;
-  return $open !== null ? $open : $raw;
+  if (function_exists('crypt_looks_sealed') && crypt_looks_sealed($raw)) {
+    $open = crypt_open($raw);
+    return $open ?? '';
+  }
+  return $raw;
 }
 
 /** Wohin der Anbieter zurückleitet — je Anbieter fest, aus der festen Adresse. */
@@ -55,11 +66,28 @@ function oauth_redirect_uri(string $provider): string {
 
 // ---------- Signierter Zustand (statt Session, siehe Kopfkommentar) ----------
 
+/**
+ * Der Schlüssel, mit dem Zustände signiert werden. Wer ihn kennt, kann jeden
+ * Zustand fälschen — auch einen Verknüpfungs-Zustand auf das Administrator-
+ * Konto, und hätte damit einen Weg hinein. Er gehört deshalb NICHT im Klartext
+ * in die Datenbank, wo ihn jeder Abzug mitnimmt.
+ *
+ * Erste Wahl ist daher die Ableitung aus dem Schlüssel der Installation
+ * (app/config.php, liegt außerhalb der Datenbank). Fehlt der, bleibt ein
+ * versiegelt abgelegter Zufallswert — versiegeln kann die Anwendung ohne
+ * data_key allerdings auch nicht, dann ist es ein Klartextwert wie bisher.
+ * Das ist der ehrliche Kompromiss: ohne Schlüssel gibt es kein Geheimnis,
+ * das ein Datenbankabzug nicht mitnimmt.
+ */
 function oauth_state_secret(): string {
-  $s = setting('oauth_state_secret');
+  $config = @require BASE_DIR . '/app/config.php';
+  $dataKey = is_array($config) ? trim((string) ($config['data_key'] ?? '')) : '';
+  if ($dataKey !== '') return hash_hmac('sha256', 'oauth-state', $dataKey);
+  $s = oauth_secret('oauth_state_secret');
   if ($s === '') {
     $s = bin2hex(random_bytes(32));
-    set_setting('oauth_state_secret', $s);
+    set_setting('oauth_state_secret', function_exists('crypt_available') && crypt_available()
+      ? (string) crypt_seal($s) : $s);
   }
   return $s;
 }
@@ -84,12 +112,19 @@ function oauth_b64_decode(string $s): string {
  * Cross-Site-POST, ein Lax-Cookie reiste dabei nicht mit. Das Cookie taugt
  * für nichts anderes — es ist ein Zufallswert mit zehn Minuten Laufzeit.
  */
+// Der Name trägt bewusst __Host-: dieses Präfix verbietet dem Browser ein
+// Domain-Attribut, also kann keine Nachbar-Subdomain ein gleichnamiges Cookie
+// unterschieben und die Bindung damit auf einen fremden Wert setzen.
+const OAUTH_BIND_COOKIE = '__Host-oauth_bind';
+
 function oauth_bind_cookie(): string {
   $nonce = bin2hex(random_bytes(16));
-  setcookie('oauth_bind', $nonce, [
+  setcookie(OAUTH_BIND_COOKIE, $nonce, [
     'expires' => time() + 600, 'path' => '/', 'secure' => true,
     'httponly' => true, 'samesite' => 'None',
   ]);
+  // Wo eine Sitzung läuft (Verknüpfen), zählt sie als zweiter Zeuge.
+  if (session_status() === PHP_SESSION_ACTIVE) $_SESSION['oauth_bind'] = $nonce;
   return $nonce;
 }
 
@@ -112,15 +147,22 @@ function oauth_state_check(string $state, string $provider): ?array {
   $data = json_decode(oauth_b64_decode($parts[0]), true);
   if (!is_array($data) || ($data['p'] ?? '') !== $provider) return null;
   if (time() - (int) ($data['t'] ?? 0) > 600) return null;
-  $bind = (string) ($_COOKIE['oauth_bind'] ?? '');
+  $bind = (string) ($_COOKIE[OAUTH_BIND_COOKIE] ?? '');
   if ($bind === '' || !hash_equals((string) ($data['b'] ?? ''), hash('sha256', $bind))) return null;
-  return ['mode' => (string) ($data['m'] ?? ''), 'uid' => (int) ($data['u'] ?? 0)];
+  // Lief eine Sitzung, muss sie denselben Wert bezeugen — ein untergeschobenes
+  // Cookie allein genügt dann nicht.
+  if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['oauth_bind'])
+      && !hash_equals((string) $_SESSION['oauth_bind'], $bind)) return null;
+  $mode = (string) ($data['m'] ?? '');
+  if (!in_array($mode, ['login', 'link'], true)) return null;
+  return ['mode' => $mode, 'uid' => (int) ($data['u'] ?? 0)];
 }
 
 /** Nach dem Rückweg hat die Bindung ihren Zweck erfüllt. */
 function oauth_bind_clear(): void {
-  setcookie('oauth_bind', '', ['expires' => time() - 3600, 'path' => '/',
+  setcookie(OAUTH_BIND_COOKIE, '', ['expires' => time() - 3600, 'path' => '/',
     'secure' => true, 'httponly' => true, 'samesite' => 'None']);
+  unset($_SESSION['oauth_bind']);
 }
 
 // ---------- Der Weg zum Anbieter ----------
@@ -163,6 +205,16 @@ function oauth_http(string $url, ?array $post = null): ?array {
     'timeout' => 10,
     // Fehlerantworten mitlesen: der Grund einer Ablehnung steht im JSON-Körper.
     'ignore_errors' => true,
+    // Keine Weiterleitungen: die ganze Sicherheit dieses Wegs beruht darauf,
+    // dass die Antwort wirklich vom Token-Endpunkt des Anbieters kommt (nur
+    // deshalb darf die Signatur des id_token ungeprüft bleiben). Eine
+    // Weiterleitung würde diese Gewissheit aus der Hand geben.
+    'follow_location' => 0,
+    'max_redirects' => 0,
+  ], 'ssl' => [
+    // Ausdrücklich, statt auf Voreinstellungen zu vertrauen: fällt die Prüfung
+    // des Zertifikats weg, fällt die Grundlage der Annahme oben mit.
+    'verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false,
   ]]);
   $raw = @file_get_contents($url, false, $ctx);
   if ($raw === false) return null;
@@ -195,7 +247,12 @@ function oauth_id_token_claims(string $jwt, string $issuerHost, string $clientId
  * je Anfrage frisch gebaut, damit nie ein abgelaufenes herumliegt.
  */
 function apple_client_secret(): string {
-  $key = openssl_pkey_get_private(oauth_secret('oauth_apple_key'));
+  $pem = oauth_secret('oauth_apple_key');
+  // Nur echtes Schlüsselmaterial, keine Verweise: openssl_pkey_get_private()
+  // löst auch "file://…" auf und würde dann mit einer beliebigen Datei des
+  // Servers signieren, ohne dass je ein Schlüssel eingetragen worden wäre.
+  if (!str_starts_with(ltrim($pem), '-----BEGIN')) return '';
+  $key = openssl_pkey_get_private($pem);
   if ($key === false) return '';
   $header = oauth_b64(json_encode(['alg' => 'ES256', 'kid' => setting('oauth_apple_key_id')]));
   $claims = oauth_b64(json_encode([
@@ -215,12 +272,18 @@ function oauth_ecdsa_der_to_raw(string $der): string {
   $pos = 0;
   $len = strlen($der);
   if ($len < 8 || ord($der[$pos++]) !== 0x30) return '';
-  if (ord($der[$pos]) & 0x80) $pos++; // lange Längenform überspringen
+  // Nur die Kurzform: eine ES256-Signatur ist immer kürzer als 128 Byte. Alles
+  // andere ist kein P-256-DER — dann lieber abbrechen als raten.
+  if (ord($der[$pos]) & 0x80) return '';
   $pos++;
   $out = '';
   for ($i = 0; $i < 2; $i++) {
-    if ($pos >= $len || ord($der[$pos++]) !== 0x02) return '';
+    if ($pos + 2 > $len || ord($der[$pos++]) !== 0x02) return '';
     $l = ord($der[$pos++]);
+    // Abgeschnittenes DER darf keine formal gültige, inhaltlich falsche
+    // Signatur ergeben: substr() würde stillschweigend kürzen und das Ergebnis
+    // anschließend links mit Nullen aufgefüllt.
+    if ($l === 0 || $pos + $l > $len) return '';
     $val = substr($der, $pos, $l);
     $pos += $l;
     $val = ltrim($val, "\x00");
