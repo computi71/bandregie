@@ -71,14 +71,39 @@ function oauth_b64_decode(string $s): string {
   return (string) base64_decode(strtr($s, '-_', '+/'));
 }
 
+/**
+ * Der Browser, der den Weg begonnen hat, bekommt eine kurzlebige Kennung als
+ * Cookie; ihr Abdruck reist im Zustand mit. Erst beide zusammen gelten.
+ *
+ * Ohne diese Bindung wäre eine abgefangene Rückweg-Adresse in JEDEM Browser
+ * gültig: wer seinen eigenen Anmeldeweg beginnt und dem Opfer die Rückweg-
+ * Adresse unterschiebt, meldet es im eigenen Konto an (Login-CSRF) — und
+ * bekommt zu sehen, was das Opfer dort dann tut.
+ *
+ * SameSite=None ist hier nötig und kein Versehen: Apples Antwort kommt als
+ * Cross-Site-POST, ein Lax-Cookie reiste dabei nicht mit. Das Cookie taugt
+ * für nichts anderes — es ist ein Zufallswert mit zehn Minuten Laufzeit.
+ */
+function oauth_bind_cookie(): string {
+  $nonce = bin2hex(random_bytes(16));
+  setcookie('oauth_bind', $nonce, [
+    'expires' => time() + 600, 'path' => '/', 'secure' => true,
+    'httponly' => true, 'samesite' => 'None',
+  ]);
+  return $nonce;
+}
+
 /** $mode 'login' oder 'link'; bei 'link' trägt der Zustand das Mitglied. */
 function oauth_state_make(string $provider, string $mode, int $uid = 0): string {
   $body = oauth_b64(json_encode(['p' => $provider, 'm' => $mode, 'u' => $uid,
-                                 't' => time(), 'n' => bin2hex(random_bytes(8))]));
+                                 't' => time(), 'b' => hash('sha256', oauth_bind_cookie())]));
   return $body . '.' . oauth_b64(hash_hmac('sha256', $body, oauth_state_secret(), true));
 }
 
-/** Gültig nur mit intakter Signatur, passendem Anbieter und binnen 10 Minuten. */
+/**
+ * Gültig nur mit intakter Signatur, passendem Anbieter, binnen 10 Minuten und
+ * im selben Browser (Abdruck des Bindungs-Cookies).
+ */
 function oauth_state_check(string $state, string $provider): ?array {
   $parts = explode('.', $state);
   if (count($parts) !== 2) return null;
@@ -87,7 +112,15 @@ function oauth_state_check(string $state, string $provider): ?array {
   $data = json_decode(oauth_b64_decode($parts[0]), true);
   if (!is_array($data) || ($data['p'] ?? '') !== $provider) return null;
   if (time() - (int) ($data['t'] ?? 0) > 600) return null;
+  $bind = (string) ($_COOKIE['oauth_bind'] ?? '');
+  if ($bind === '' || !hash_equals((string) ($data['b'] ?? ''), hash('sha256', $bind))) return null;
   return ['mode' => (string) ($data['m'] ?? ''), 'uid' => (int) ($data['u'] ?? 0)];
+}
+
+/** Nach dem Rückweg hat die Bindung ihren Zweck erfüllt. */
+function oauth_bind_clear(): void {
+  setcookie('oauth_bind', '', ['expires' => time() - 3600, 'path' => '/',
+    'secure' => true, 'httponly' => true, 'samesite' => 'None']);
 }
 
 // ---------- Der Weg zum Anbieter ----------

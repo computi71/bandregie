@@ -321,18 +321,22 @@ if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
   $in = $method === 'POST' ? $_POST : $_GET;
   $st = oauth_state_check((string) ($in['state'] ?? ''), $prov);
   $code = (string) ($in['code'] ?? '');
+  // Die Bindung hat ihren Zweck getan — sie gilt nur für diesen einen Rückweg.
+  oauth_bind_clear();
   if (empty(oauth_enabled()[$prov]) || !$st || $code === '') {
     flash(t('fl_oauth_failed'));
     redirect('/login');
   }
-  // Gegen Durchprobieren: gleiche Bremse wie beim Passwort-Login, je Anbieter.
-  if (throttle_blocked('oauth', $prov)) {
+  // Gegen Durchprobieren: gleiche Bremse wie beim Passwort-Login. throttle_key()
+  // nimmt die IP von sich aus mit, hier genügt also der Anbieter als Kennung.
+  $oauthKey = $prov;
+  if (throttle_blocked('oauth', $oauthKey)) {
     flash(t('fl_throttled'));
     redirect('/login');
   }
   $identity = oauth_identity($prov, $code);
   if (is_string($identity)) {
-    throttle_note('oauth', $prov);
+    throttle_note('oauth', $oauthKey);
     flash(t($identity));
     redirect($st['mode'] === 'link' ? '/intern/profil' : '/login');
   }
@@ -362,11 +366,11 @@ if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
     }
   }
   if (!$u) {
-    throttle_note('oauth', $prov);
+    throttle_note('oauth', $oauthKey);
     flash(t('fl_oauth_no_member'));
     redirect('/login');
   }
-  throttle_clear('oauth', $prov);
+  throttle_clear('oauth', $oauthKey);
   session_regenerate_id(true);
   $_SESSION['uid'] = $u['id'];
   if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
@@ -1218,23 +1222,29 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/profil');
   }
   if ($path === '/intern/push/subscribe' && $method === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
     $endpoint = trim((string) ($_POST['endpoint'] ?? ''));
     $p256dh = trim((string) ($_POST['p256dh'] ?? ''));
     $auth = trim((string) ($_POST['auth'] ?? ''));
-    // Nur echte HTTPS-Endpunkte und vollständige Schlüssel — der Browser
-    // liefert beides, aber die Route verlässt sich nicht darauf.
-    if (str_starts_with($endpoint, 'https://') && $p256dh !== '' && $auth !== '') {
+    // Nur die echten Push-Dienste als Ziel, und nur Schlüssel in der Form, die
+    // der Standard vorschreibt (65 bzw. 16 Bytes, url-sicheres Base64). Der
+    // Browser liefert beides korrekt — die Route verlässt sich nicht darauf.
+    $keyOk = strlen(oauth_b64_decode($p256dh)) === 65 && strlen(oauth_b64_decode($auth)) === 16;
+    if (push_endpoint_ok($endpoint) && $keyOk) {
       q('INSERT INTO push_subscriptions (user_id, endpoint_hash, endpoint, p256dh, auth)
          VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id),
          p256dh = VALUES(p256dh), auth = VALUES(auth)',
         [$me['id'], hash('sha256', $endpoint), $endpoint, $p256dh, $auth]);
+      exit('{"ok":true}');
     }
-    exit('{}');
+    http_response_code(400);
+    exit('{"ok":false}');
   }
   if ($path === '/intern/push/unsubscribe' && $method === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
     q('DELETE FROM push_subscriptions WHERE endpoint_hash = ? AND user_id = ?',
       [hash('sha256', trim((string) ($_POST['endpoint'] ?? ''))), $me['id']]);
-    exit('{}');
+    exit('{"ok":true}');
   }
   // Verknüpfte Anmeldung trennen — nur die eigene; die Route entscheidet.
   if (preg_match('~^/intern/profil/identity/(apple|google|facebook)/delete$~', $path, $m) && $method === 'POST') {
