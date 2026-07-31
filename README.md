@@ -202,6 +202,17 @@ Member invitations and password resets use PHP's `mail()`. The host must be
 able to deliver mail for your domain; send from an address on that domain
 (the app uses `no-reply@<your-domain>`) so SPF checks pass.
 
+### Push notifications (optional)
+
+Members can subscribe to push notifications for new events, new comments
+and availability changes — opt-in per member with a per-topic switch, and
+enabled per device from the profile. Works on Android and, for the
+installed home-screen app, on iOS 16.4+. The VAPID key pair is generated
+server-side on first use (stored sealed when an encryption key is
+configured); no third-party service and no library involved — messages are
+encrypted per RFC 8291 and sent directly to the browser vendors' push
+endpoints. Browsers without push support simply never see the buttons.
+
 ### Sign in with Apple, Google or Facebook (optional)
 
 Members can sign in through an existing account instead of the e-mail

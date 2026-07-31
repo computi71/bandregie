@@ -39,6 +39,9 @@ require_once __DIR__ . '/tresor.php';
 // Anmeldung über Apple/Google/Facebook: Login-Seite, Profil und Einstellungen
 // fragen die Anbieter-Konfiguration ab — deshalb gehört das Modul hierher.
 require_once __DIR__ . '/oauth.php';
+// Web-Push: Profil (Themen, Geräte-Abo) und mehrere Schreib-Routen lösen
+// Mitteilungen aus — auch dieses Modul ist überall im Spiel.
+require_once __DIR__ . '/push.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -707,6 +710,21 @@ Zeile zwei
   'fl_oauth_no_member' => 'Kein Mitglied mit dieser E-Mail-Adresse. Der Zugang wird von der Bandverwaltung angelegt — aus einer Anmeldung entsteht kein Konto.',
   'fl_oauth_taken' => 'Diese Anmeldung ist schon mit einem anderen Konto verknüpft.',
   'fl_oauth_no_email' => 'Der Anbieter hat keine bestätigte E-Mail-Adresse geliefert.',
+  'prof_push' => 'Mitteilungen',
+  'prof_push_hint' => 'Push aufs Handy für das, was dich interessiert — je Thema wählbar. Aktiviert wird je Gerät. Ohne Browser-Unterstützung bleibt alles wie bisher.',
+  'push_topic_events' => 'Neue Termine',
+  'push_topic_comments' => 'Neue Kommentare',
+  'push_topic_attendance' => 'Zusagen und Absagen',
+  'prof_push_enable' => 'Auf diesem Gerät aktivieren',
+  'prof_push_disable' => 'Auf diesem Gerät abschalten',
+  'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
+  'prof_push_denied' => 'Der Browser blockiert Mitteilungen für diese Seite — in den Browser-Einstellungen freigeben.',
+  'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
+  'push_ev_title' => 'Neuer Termin',
+  'push_comment_title' => 'Neuer Kommentar',
+  'push_att_yes' => '%1 hat für „%2" zugesagt',
+  'push_att_no' => '%1 hat für „%2" abgesagt',
+  'push_att_maybe' => '%1 hat für „%2" mit Vielleicht geantwortet',
   'photo_no_event' => 'kein Termin',
   'photo_exif_hint' => 'Für die Termin-Zuordnung Originale direkt vom Gerät hochladen — über Messenger oder soziale Netze geteilte Kopien verlieren Aufnahmedatum und GPS.',
   'photo_assign' => 'Zuordnen',
@@ -1410,6 +1428,21 @@ if (!column_exists('photos', 'event_id')) {
 if (!column_exists('users', 'pref_lang')) {
   $db->exec("ALTER TABLE users ADD COLUMN pref_lang VARCHAR(5) NOT NULL DEFAULT 'de'");
 }
+// Web-Push (#24): ein Abo je Gerät; die Themen-Auswahl liegt am Mitglied
+// (users.push_topics), nicht am Gerät. Der Endpunkt kann lang sein — für die
+// Eindeutigkeit steht sein Hash, nicht er selbst, im Schlüssel.
+$db->exec('CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    endpoint_hash CHAR(64) NOT NULL UNIQUE,
+    endpoint TEXT NOT NULL,
+    p256dh VARCHAR(120) NOT NULL,
+    auth VARCHAR(30) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+if (!column_exists('users', 'push_topics')) {
+  $db->exec("ALTER TABLE users ADD COLUMN push_topics VARCHAR(190) NOT NULL DEFAULT ''");
+}
 // Anmeldungen über Apple/Google/Facebook (#97): je Mitglied und Anbieter eine
 // Verknüpfung. Der 'subject' ist die stabile Kennung des Anbieters — E-Mail-
 // Adressen können dort wechseln, die Kennung nicht.
@@ -1512,6 +1545,9 @@ if (!column_exists('songs', 'composer')) {
  * Schwergewicht und deshalb eine eigene Entscheidung.
  */
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
+
+// Worüber Push-Mitteilungen sprechen können — je Mitglied wählbar, Opt-in.
+const PUSH_TOPICS = ['events', 'comments', 'attendance'];
 
 // Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
 // offen"), der Text ist, was jemand beim Singen liest — und der wird lang.

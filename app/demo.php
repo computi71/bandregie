@@ -748,6 +748,8 @@ function demo_remove(): void {
     q('DELETE FROM permissions WHERE user_id = ?', [$userId]);
     q('DELETE FROM song_chords WHERE user_id = ?', [$userId]);
     q('DELETE FROM song_ratings WHERE user_id = ?', [$userId]);
+    q('DELETE FROM user_identities WHERE user_id = ?', [$userId]);
+    q('DELETE FROM push_subscriptions WHERE user_id = ?', [$userId]);
     q('DELETE FROM substitute_requests WHERE user_id = ?', [$userId]);
     q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
     q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);

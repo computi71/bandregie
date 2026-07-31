@@ -595,6 +595,14 @@ if (str_starts_with($path, '/intern')) {
                              pa_source, light_source)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
       save_event_gear((int) $db->lastInsertId());
+      // Mitteilung an alle, die neue Termine abonniert haben (#24).
+      $pushTitle = (string) $_POST['title'];
+      $pushDate = (string) $_POST['date'];
+      push_notify('events', (int) $me['id'], fn(string $lang): array => [
+        'title' => push_t($lang, 'push_ev_title'),
+        'body' => $pushTitle . ' · ' . fmt_date($pushDate),
+        'url' => '/intern/termine',
+      ]);
     } else {
       flash(t('fl_title_date_required'));
     }
@@ -628,6 +636,16 @@ if (str_starts_with($path, '/intern')) {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
       q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)
          ON DUPLICATE KEY UPDATE status = VALUES(status)', [$id, $me['id'], $status]);
+      // Mitteilung an die Zusagen-Abonnenten — wer plant, will das sofort wissen (#24).
+      $pushEv = row('SELECT title FROM events WHERE id = ?', [$id]);
+      $pushWho = (string) $me['name'];
+      $pushEvTitle = (string) ($pushEv['title'] ?? '');
+      $pushKey = 'push_att_' . $status;
+      push_notify('attendance', (int) $me['id'], fn(string $lang): array => [
+        'title' => str_replace(['%1', '%2'], [$pushWho, $pushEvTitle], push_t($lang, $pushKey)),
+        'body' => '',
+        'url' => '/intern/termine',
+      ]);
       // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
       // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
       // für dieselbe Lücke weiter.
@@ -639,7 +657,19 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'kommentar') {
       $text = trim($_POST['text'] ?? '');
-      if ($text !== '') q('INSERT INTO comments (event_id, user_id, text) VALUES (?,?,?)', [$id, $me['id'], $text]);
+      if ($text !== '') {
+        q('INSERT INTO comments (event_id, user_id, text) VALUES (?,?,?)', [$id, $me['id'], $text]);
+        // Mitteilung an die Kommentar-Abonnenten: wer schreibt was, wozu (#24).
+        $pushEv = row('SELECT title FROM events WHERE id = ?', [$id]);
+        $pushWho = (string) $me['name'];
+        // Lange Kommentare kappen — die Mitteilung ist der Anriss, nicht der Text.
+        $pushText = mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
+        push_notify('comments', (int) $me['id'], fn(string $lang): array => [
+          'title' => push_t($lang, 'push_comment_title') . ' · ' . ($pushEv['title'] ?? ''),
+          'body' => $pushWho . ': ' . $pushText,
+          'url' => '/intern/termine',
+        ]);
+      }
       back('/intern/termine');
     }
   }
@@ -1179,6 +1209,33 @@ if (str_starts_with($path, '/intern')) {
       'profile' => row('SELECT * FROM users WHERE id = ?', [$me['id']]),
       'identities' => $myIdentities]);
   }
+  // Push (#24): Themen-Auswahl (kontoweit) und Geräte-Abos. Ein Abo gehört
+  // dem, der es angelegt hat — abmelden kann es nur derselbe.
+  if ($path === '/intern/profil/push-topics' && $method === 'POST') {
+    $gewaehlt = array_values(array_intersect(PUSH_TOPICS, (array) ($_POST['topics'] ?? [])));
+    q('UPDATE users SET push_topics = ? WHERE id = ?', [implode(',', $gewaehlt), $me['id']]);
+    flash(t('fl_push_saved'));
+    redirect('/intern/profil');
+  }
+  if ($path === '/intern/push/subscribe' && $method === 'POST') {
+    $endpoint = trim((string) ($_POST['endpoint'] ?? ''));
+    $p256dh = trim((string) ($_POST['p256dh'] ?? ''));
+    $auth = trim((string) ($_POST['auth'] ?? ''));
+    // Nur echte HTTPS-Endpunkte und vollständige Schlüssel — der Browser
+    // liefert beides, aber die Route verlässt sich nicht darauf.
+    if (str_starts_with($endpoint, 'https://') && $p256dh !== '' && $auth !== '') {
+      q('INSERT INTO push_subscriptions (user_id, endpoint_hash, endpoint, p256dh, auth)
+         VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id),
+         p256dh = VALUES(p256dh), auth = VALUES(auth)',
+        [$me['id'], hash('sha256', $endpoint), $endpoint, $p256dh, $auth]);
+    }
+    exit('{}');
+  }
+  if ($path === '/intern/push/unsubscribe' && $method === 'POST') {
+    q('DELETE FROM push_subscriptions WHERE endpoint_hash = ? AND user_id = ?',
+      [hash('sha256', trim((string) ($_POST['endpoint'] ?? ''))), $me['id']]);
+    exit('{}');
+  }
   // Verknüpfte Anmeldung trennen — nur die eigene; die Route entscheidet.
   if (preg_match('~^/intern/profil/identity/(apple|google|facebook)/delete$~', $path, $m) && $method === 'POST') {
     q('DELETE FROM user_identities WHERE user_id = ? AND provider = ?', [$me['id'], $m[1]]);
@@ -1441,6 +1498,8 @@ if (str_starts_with($path, '/intern')) {
       } else {
         q('DELETE FROM users WHERE id = ?', [$id]);
         q('DELETE FROM song_chords WHERE user_id = ?', [$id]);
+        q('DELETE FROM user_identities WHERE user_id = ?', [$id]);
+        q('DELETE FROM push_subscriptions WHERE user_id = ?', [$id]);
       }
       redirect('/intern/mitglieder');
     }

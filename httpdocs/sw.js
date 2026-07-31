@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v9';
+const VERSION = 'bandregie-v10';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -184,6 +184,33 @@ self.addEventListener('fetch', event => {
   const istSeite = OFFLINE_PAGES.includes(url.pathname)
     || OFFLINE_PATTERNS.some(p => p.test(url.pathname));
   if (istSeite) event.respondWith(seite(request));
+});
+
+// Push-Mitteilungen (#24): der Server schickt Titel, Text und Ziel-Adresse als
+// JSON. Anzeigen ist Pflicht (userVisibleOnly) — eine leere Nachricht wäre ein
+// Vertrauensbruch gegenüber dem Browser, also gibt es notfalls den Bandnamen.
+self.addEventListener('push', event => {
+  let daten = {};
+  try { daten = event.data ? event.data.json() : {}; } catch (e) { /* kein JSON: Standardtext */ }
+  event.waitUntil(self.registration.showNotification(daten.title || 'Bandregie', {
+    body: daten.body || '',
+    icon: '/assets/app/icon-192.png',
+    badge: '/assets/app/icon-192.png',
+    data: { url: daten.url || '/intern' },
+  }));
+});
+
+// Tippen auf die Mitteilung: ein offenes Fenster wiederverwenden, sonst eines
+// öffnen — niemand will fünf Tabs derselben Terminliste.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/intern';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const client of list) {
+      if ('focus' in client) { client.navigate(url); return client.focus(); }
+    }
+    return clients.openWindow(url);
+  }));
 });
 
 // Auf Verlangen mitnehmen: die Seite schickt eine Liste von Adressen, der

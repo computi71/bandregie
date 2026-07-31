@@ -82,4 +82,34 @@
 </details>
 <?php endif; ?>
 
+<?php // Push-Mitteilungen (#24): Themen gelten kontoweit, das Abo je Gerät.
+      // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —
+      // stiller Rückfall statt Knopf ins Leere. ?>
+<?php if (push_available()): ?>
+<details class="card acc" name="profilacc" data-push
+         data-push-key="<?= e(push_public_key()) ?>" data-push-token="<?= e(csrf_token()) ?>">
+  <summary>🔔 <?= e(t('prof_push')) ?></summary>
+  <p class="muted small"><?= e(t('prof_push_hint')) ?></p>
+  <form method="post" action="/intern/profil/push-topics"><?= csrf_field() ?>
+    <?php $meineThemen = array_filter(explode(',', (string) ($profile['push_topics'] ?? ''))); ?>
+    <fieldset class="gear-picker">
+      <?php foreach (PUSH_TOPICS as $pushTopic): ?>
+        <label class="checkbox">
+          <input type="checkbox" name="topics[]" value="<?= e($pushTopic) ?>"
+                 <?= in_array($pushTopic, $meineThemen, true) ? 'checked' : '' ?>>
+          <?= e(t('push_topic_' . $pushTopic)) ?>
+        </label>
+      <?php endforeach; ?>
+    </fieldset>
+    <button class="btn btn-primary btn-small"><?= e(t('save')) ?></button>
+  </form>
+  <div class="row-buttons" style="margin-top:0.6rem">
+    <button type="button" class="btn btn-small" data-push-enable hidden><?= e(t('prof_push_enable')) ?></button>
+    <button type="button" class="btn btn-ghost btn-small" data-push-disable hidden><?= e(t('prof_push_disable')) ?></button>
+  </div>
+  <p class="muted small" data-push-ios hidden>📲 <?= e(t('prof_push_ios')) ?></p>
+  <p class="warn" data-push-denied hidden><?= e(t('prof_push_denied')) ?></p>
+</details>
+<?php endif; ?>
+
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

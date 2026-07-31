@@ -42,6 +42,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <script src="<?= e(asset('/assets/markers.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/geo.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/route.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/push.js')) ?>" defer></script>
   <?php // Der Hinweis auf einen Stand aus dem Zwischenspeicher gehört auf jede
         // Seite, die offline erscheinen kann — nicht nur auf die Terminliste. ?>
   <script src="<?= e(asset('/assets/offline.js')) ?>" defer></script>
