@@ -532,7 +532,7 @@ TXT,
   demo_install_topics($members);
   demo_install_orders($members);
   demo_install_substitute($members, $evNext, $pw);
-  demo_install_photo($members[0]);
+  demo_install_photo($members[0], $evPast);
   demo_write_logins($logins);
 }
 
@@ -628,14 +628,14 @@ function demo_install_substitute(array $members, int $eventId, callable $pw): vo
 }
 
 /** Ein Foto in der Galerie — dasselbe mitgelieferte Bild, öffentlich gestellt. */
-function demo_install_photo(int $uploader): void {
+function demo_install_photo(int $uploader, int $eventId): void {
   $source = BASE_DIR . '/seed/demo/stage-crowd.jpg';
   if (!is_file($source)) return;
   $name = 'foto_demo_' . bin2hex(random_bytes(8)) . '.jpg';
   if (!@copy($source, UPLOADS_DIR . '/' . $name)) return;
   demo_insert('photos', [
     'filename' => $name, 'caption' => 'Summer Festival Sampleton', 'is_public' => 1,
-    'uploaded_by' => $uploader,
+    'uploaded_by' => $uploader, 'event_id' => $eventId,
   ]);
 }
 

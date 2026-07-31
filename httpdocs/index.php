@@ -857,8 +857,23 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Fotos ----------
   if ($path === '/intern/fotos' && $method === 'GET') {
-    view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => rows(
-      'SELECT p.*, u.name AS uploader FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by ORDER BY p.created_at DESC')]);
+    $photos = rows('SELECT p.*, u.name AS uploader, e.title AS event_title
+                    FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
+                    LEFT JOIN events e ON e.id = p.event_id ORDER BY p.created_at DESC');
+    $photoEvents = rows('SELECT e.id, e.title, e.date, v.lat, v.lng FROM events e
+                         LEFT JOIN venues v ON v.id = e.venue_id ORDER BY e.date DESC');
+    // Vorschlag je unzugeordnetem Foto mit Aufnahmedatum: der Termin an dem Tag,
+    // bei mehreren am selben Tag der mit dem nächstgelegenen Ort (Foto-GPS).
+    foreach ($photos as &$ph) {
+      $ph['suggested'] = (!$ph['event_id'] && $ph['taken_at']) ? photo_suggest_event($ph, $photoEvents) : null;
+    }
+    unset($ph);
+    view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents]);
+  }
+  if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {
+    $eid = (int) ($_POST['event_id'] ?? 0);
+    q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
+    redirect('/intern/fotos');
   }
   if ($path === '/intern/fotos' && $method === 'POST') {
     foreach ($_FILES['photos']['tmp_name'] ?? [] as $i => $tmp) {
@@ -873,8 +888,12 @@ if (str_starts_with($path, '/intern')) {
       $photoExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($_FILES['photos']['name'][$i], PATHINFO_EXTENSION) ?: 'jpg'));
       $safe = 'foto_' . bin2hex(random_bytes(16)) . '.' . $photoExt;
       if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $safe)) {
-        q('INSERT INTO photos (filename, caption, is_public, uploaded_by) VALUES (?,?,?,?)',
-          [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id']]);
+        // Aufnahmedatum und GPS aus den EXIF-Daten mitnehmen — für den Vorschlag,
+        // welchem Termin das Foto gehört. Zugeordnet wird nie automatisch.
+        $exif = photo_exif(UPLOADS_DIR . '/' . $safe);
+        q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng) VALUES (?,?,?,?,?,?,?)',
+          [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
+           $exif['taken_at'], $exif['lat'], $exif['lng']]);
       }
     }
     redirect('/intern/fotos');
@@ -2449,6 +2468,26 @@ function event_locked(int $eventId): bool {
 }
 function setlist_locked(int $setlistId): bool {
   return (bool) row('SELECT 1 FROM events WHERE setlist_id = ? AND date < ? LIMIT 1', [$setlistId, date('Y-m-d')]);
+}
+// Der vorgeschlagene Termin für ein Foto: der am Aufnahmetag. Gibt es mehrere am
+// selben Tag und hat das Foto GPS, gewinnt der mit dem nächstgelegenen Ort.
+// Immer nur ein Vorschlag — zugeordnet wird erst auf Klick.
+function photo_suggest_event(array $photo, array $events): ?array {
+  $date = substr((string) ($photo['taken_at'] ?? ''), 0, 10);
+  if ($date === '') return null;
+  $sameDay = array_values(array_filter($events, fn($e) => substr((string) $e['date'], 0, 10) === $date));
+  if (!$sameDay) return null;
+  if (count($sameDay) === 1) return $sameDay[0];
+  if ($photo['lat'] !== null && $photo['lng'] !== null) {
+    $best = null; $bestDist = INF;
+    foreach ($sameDay as $e) {
+      if ($e['lat'] === null || $e['lng'] === null) continue;
+      $d = geo_distance_km((float) $photo['lat'], (float) $photo['lng'], (float) $e['lat'], (float) $e['lng']);
+      if ($d < $bestDist) { $bestDist = $d; $best = $e; }
+    }
+    if ($best) return $best;
+  }
+  return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
 }
 function venue_values(): array {
   // Koordinaten kommen aus der Adress-Suche (versteckte Felder). Nur echte

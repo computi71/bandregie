@@ -675,6 +675,9 @@ Zeile zwei
   'stage_faster' => 'Schneller',
   'stage_tap' => 'Tempo tippen',
   'geo_navigate' => 'Navi',
+  'photo_no_event' => 'kein Termin',
+  'photo_assign' => 'Zuordnen',
+  'photo_suggested' => 'Vorschlag aus Datum/GPS',
   'geo_search' => 'Adresse suchen',
   'geo_searching' => 'Suche …',
   'geo_no_results' => 'Keine Treffer.',
@@ -1362,6 +1365,13 @@ if (!column_exists('events', 'venue_id')) {
 // solange die Band das Geocoding nicht aktiviert.
 if (!column_exists('venues', 'lat')) {
   $db->exec('ALTER TABLE venues ADD COLUMN lat DECIMAL(9,6) NULL, ADD COLUMN lng DECIMAL(9,6) NULL');
+}
+// Fotos an Termine hängen: Aufnahmedatum und GPS aus den EXIF-Daten, plus die
+// zugeordnete Event-ID. Alles optional — ohne EXIF bleibt das Foto unzugeordnet.
+if (!column_exists('photos', 'event_id')) {
+  $db->exec('ALTER TABLE photos ADD COLUMN event_id INT NULL,
+             ADD COLUMN taken_at DATETIME NULL,
+             ADD COLUMN lat DECIMAL(9,6) NULL, ADD COLUMN lng DECIMAL(9,6) NULL');
 }
 if (!column_exists('users', 'pref_lang')) {
   $db->exec("ALTER TABLE users ADD COLUMN pref_lang VARCHAR(5) NOT NULL DEFAULT 'de'");
@@ -2310,6 +2320,45 @@ function geocode_search(string $q): array {
     ];
   }
   return $out;
+}
+
+// EXIF eines Bildes: Aufnahmedatum und GPS, falls vorhanden. Ohne (kein JPEG,
+// keine Daten) kommt Leeres zurück — dann bleibt das Foto unzugeordnet.
+function photo_exif(string $path): array {
+  $out = ['taken_at' => null, 'lat' => null, 'lng' => null];
+  if (!function_exists('exif_read_data')) return $out;
+  $ex = @exif_read_data($path);
+  if (!is_array($ex)) return $out;
+  $dt = (string) ($ex['DateTimeOriginal'] ?? $ex['DateTime'] ?? '');
+  if (preg_match('~^(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})~', $dt, $m)) {
+    $out['taken_at'] = "$m[1]-$m[2]-$m[3] $m[4]";
+  }
+  if (isset($ex['GPSLatitude'], $ex['GPSLongitude'], $ex['GPSLatitudeRef'], $ex['GPSLongitudeRef'])) {
+    $out['lat'] = gps_decimal($ex['GPSLatitude'], (string) $ex['GPSLatitudeRef']);
+    $out['lng'] = gps_decimal($ex['GPSLongitude'], (string) $ex['GPSLongitudeRef']);
+  }
+  return $out;
+}
+// EXIF-GPS (Grad/Minute/Sekunde als Brüche + N/S/E/W) in Dezimalgrad.
+function gps_decimal($coord, string $ref): ?float {
+  if (!is_array($coord) || count($coord) < 3) return null;
+  $frac = function ($v): float {
+    if (is_string($v) && str_contains($v, '/')) {
+      [$n, $d] = array_pad(explode('/', $v), 2, '1');
+      return (float) $d === 0.0 ? 0.0 : (float) $n / (float) $d;
+    }
+    return (float) $v;
+  };
+  $dec = $frac($coord[0]) + $frac($coord[1]) / 60 + $frac($coord[2]) / 3600;
+  return in_array(strtoupper($ref), ['S', 'W'], true) ? -$dec : $dec;
+}
+// Grobe Entfernung zweier Punkte in Kilometern (Haversine) — reicht, um bei
+// mehreren Events am selben Tag den nächstgelegenen Ort zu bestimmen.
+function geo_distance_km(float $lat1, float $lng1, float $lat2, float $lng2): float {
+  $dLat = deg2rad($lat2 - $lat1);
+  $dLng = deg2rad($lng2 - $lng1);
+  $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+  return 6371 * 2 * asin(min(1.0, sqrt($a)));
 }
 
 function asset(string $path): string {

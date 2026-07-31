@@ -27,6 +27,20 @@
           <?php endif; ?>
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         </div>
+        <?php // Termin-Zuordnung: der Vorschlag (Aufnahmedatum, bei mehreren am
+              // Tag der nächste Ort per GPS) ist vorgewählt — zugeordnet wird
+              // aber erst auf Klick, nie automatisch. ?>
+        <form class="inline photo-event" method="post" action="/intern/fotos/<?= $photo['id'] ?>/event"><?= csrf_field() ?>📅
+          <select name="event_id">
+            <option value="">– <?= e(t('photo_no_event')) ?> –</option>
+            <?php foreach ($events as $ev): ?>
+              <?php $sel = $photo['event_id'] ? (int) $photo['event_id'] === (int) $ev['id'] : (($photo['suggested']['id'] ?? null) == $ev['id']); ?>
+              <option value="<?= $ev['id'] ?>" <?= $sel ? 'selected' : '' ?>><?= fmt_date($ev['date']) ?> · <?= e($ev['title']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <button class="btn btn-tiny"><?= e($photo['event_id'] ? t('save') : t('photo_assign')) ?></button>
+          <?php if (!$photo['event_id'] && !empty($photo['suggested'])): ?><span class="muted small">💡 <?= e(t('photo_suggested')) ?></span><?php endif; ?>
+        </form>
       </figcaption>
     </figure>
   <?php endforeach; ?>
