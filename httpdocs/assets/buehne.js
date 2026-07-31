@@ -221,6 +221,9 @@
       const song = songs[index];
       const i = Number(musSel.value);
       renderLines(i >= 0 && song.musicians ? song.musicians[i].lines : []);
+      // Fokus abgeben: sonst behält das Dropdown die Pfeiltasten, und der
+      // nächste Tritt aufs Pedal blättert den Musiker statt den Text.
+      musSel.blur();
     });
   }
 

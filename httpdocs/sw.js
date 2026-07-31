@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v10';
+const VERSION = 'bandregie-v11';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -59,7 +59,10 @@ const STORAGE_SHARE = 0.5;
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
-      .then(cache => cache.addAll(STATIC_FILES))
+      // cache: 'reload' erzwingt frische Fassungen: die query-losen Adressen
+      // liegen wegen der Ein-Jahr-Regel im HTTP-Cache, und ohne dies legte eine
+      // neue Fassung des Service Workers jahrealte Dateien in ihren Vorrat.
+      .then(cache => cache.addAll(STATIC_FILES.map(u => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -161,14 +164,17 @@ self.addEventListener('fetch', event => {
         // würde sonst kleben, bis die nächste SW-Version den Cache erneuert.
         if (response.ok) {
           const copy = response.clone();
-          caches.open(STATIC_CACHE).then(async cache => {
-            // Alte Fassungen desselben Pfads (anderes ?v=) mitnehmen: sonst
-            // sammelt sich mit jedem Release eine weitere Kopie an, bis zum
-            // nächsten SW-Versionssprung. Eine Fassung je Pfad genügt — die
-            // Offline-Suche gleicht ohnehin per ignoreSearch ab.
-            await cache.delete(request, { ignoreSearch: true });
+          // Erst ablegen, dann die anderen Fassungen desselben Pfads räumen —
+          // niemals umgekehrt: zwischen Löschen und Ablegen darf der Browser den
+          // Service Worker beenden, und dann stünde für dieses Asset gar nichts
+          // mehr im Zwischenspeicher. Die Bühne wäre offline ohne ihr Skript.
+          // waitUntil hält den Worker so lange am Leben, bis beides durch ist.
+          event.waitUntil(caches.open(STATIC_CACHE).then(async cache => {
             await cache.put(request, copy);
-          });
+            for (const alt of await cache.keys(request, { ignoreSearch: true })) {
+              if (alt.url !== request.url) await cache.delete(alt);
+            }
+          }));
         }
         return response;
       }).catch(() => caches.match(request, { ignoreSearch: true })))
@@ -207,7 +213,12 @@ self.addEventListener('notificationclick', event => {
   const url = (event.notification.data && event.notification.data.url) || '/intern';
   event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const client of list) {
-      if ('focus' in client) { client.navigate(url); return client.focus(); }
+      if (!('focus' in client)) continue;
+      // navigate() weist Fenster ab, die dieser Worker nicht kontrolliert (nach
+      // einem harten Neuladen etwa) — dann lieber ein neues öffnen, statt nur
+      // ein Fenster nach vorn zu holen, das weiter die alte Seite zeigt.
+      return client.navigate(url).then(() => client.focus())
+        .catch(() => clients.openWindow(url));
     }
     return clients.openWindow(url);
   }));

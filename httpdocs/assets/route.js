@@ -82,6 +82,7 @@
     let holdTimer = 0;
     let held = false;
     a.addEventListener('touchstart', () => {
+      if (!a.dataset.navi) return;
       held = false;
       holdTimer = window.setTimeout(() => { held = true; showChooser(a.dataset.navi); }, 500);
     }, { passive: true });
@@ -91,6 +92,9 @@
       // Nach einem Langdruck darf der nachlaufende Klick nicht auch noch
       // navigieren — die Auswahl ist ja schon offen.
       if (held && e.cancelable) e.preventDefault();
+      // Danach zurücksetzen, sonst verschluckt der Zustand einen späteren
+      // Klick mit Maus oder Trackpad, der ohne touchstart kommt.
+      if (held) setTimeout(() => { held = false; }, 0);
     }));
     a.addEventListener('click', (e) => {
       if (!a.dataset.navi) return;
