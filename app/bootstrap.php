@@ -36,6 +36,9 @@ $config = require $configFile;
 // ohne ihn wüsste weder die Sicherung noch die Dateiausgabe, ob verschlüsselt
 // abgelegt wird.
 require_once __DIR__ . '/tresor.php';
+// Anmeldung über Apple/Google/Facebook: Login-Seite, Profil und Einstellungen
+// fragen die Anbieter-Konfiguration ab — deshalb gehört das Modul hierher.
+require_once __DIR__ . '/oauth.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -680,6 +683,30 @@ Zeile zwei
   'geo_navigate' => 'Navi',
   'navi_pick' => 'Womit navigieren?',
   'navi_pick_hint' => 'Zum Wechseln das Navi-Symbol lang drücken.',
+  'login_or' => 'oder',
+  'login_with' => 'Mit %1 anmelden',
+  'set_oauth' => 'Anmeldung über Apple, Google oder Facebook',
+  'set_oauth_hint' => 'Jeder Anbieter bleibt aus, bis seine Zugangsdaten eingetragen sind — ohne Eintrag erscheint kein Knopf und nichts ruft hinaus. Mitglieder melden sich weiterhin auch mit E-Mail und Passwort an; ein Konto entsteht aus so einer Anmeldung nie.',
+  'set_oauth_redirect' => 'Weiterleitungs-Adresse (beim Anbieter eintragen)',
+  'set_oauth_client_id' => 'Client-ID',
+  'set_oauth_secret' => 'Client-Secret',
+  'set_oauth_secret_set' => 'gespeichert — leer lassen zum Behalten',
+  'set_oauth_apple_team' => 'Team-ID',
+  'set_oauth_apple_keyid' => 'Schlüssel-ID (Key ID)',
+  'set_oauth_apple_key' => 'Privater Schlüssel (Inhalt der .p8-Datei)',
+  'set_oauth_site_url' => 'Vorher die feste Adresse der Installation eintragen — die Weiterleitungs-Adressen bauen darauf auf.',
+  'fl_oauth_saved' => 'Anmelde-Anbieter gespeichert.',
+  'prof_identities' => 'Verknüpfte Anmeldungen',
+  'prof_identities_hint' => 'Einmal verknüpft, geht die Anmeldung auch ohne Passwort. Das Passwort bleibt bestehen und funktioniert weiter.',
+  'prof_identity_link' => 'Verknüpfen',
+  'prof_identity_unlink' => 'Trennen',
+  'prof_identity_as' => 'verknüpft als %1',
+  'fl_oauth_linked' => 'Anmeldung verknüpft.',
+  'fl_oauth_unlinked' => 'Verknüpfung getrennt.',
+  'fl_oauth_failed' => 'Anmeldung über den Anbieter fehlgeschlagen.',
+  'fl_oauth_no_member' => 'Kein Mitglied mit dieser E-Mail-Adresse. Der Zugang wird von der Bandverwaltung angelegt — aus einer Anmeldung entsteht kein Konto.',
+  'fl_oauth_taken' => 'Diese Anmeldung ist schon mit einem anderen Konto verknüpft.',
+  'fl_oauth_no_email' => 'Der Anbieter hat keine bestätigte E-Mail-Adresse geliefert.',
   'photo_no_event' => 'kein Termin',
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
@@ -1382,6 +1409,18 @@ if (!column_exists('photos', 'event_id')) {
 if (!column_exists('users', 'pref_lang')) {
   $db->exec("ALTER TABLE users ADD COLUMN pref_lang VARCHAR(5) NOT NULL DEFAULT 'de'");
 }
+// Anmeldungen über Apple/Google/Facebook (#97): je Mitglied und Anbieter eine
+// Verknüpfung. Der 'subject' ist die stabile Kennung des Anbieters — E-Mail-
+// Adressen können dort wechseln, die Kennung nicht.
+$db->exec('CREATE TABLE IF NOT EXISTS user_identities (
+    provider VARCHAR(20) NOT NULL,
+    subject VARCHAR(190) NOT NULL,
+    user_id INT NOT NULL,
+    email VARCHAR(190) NOT NULL DEFAULT \'\',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (provider, subject),
+    UNIQUE KEY uniq_user_provider (user_id, provider)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 if (!column_exists('users', 'must_change_pw')) {
   $db->exec("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
 }

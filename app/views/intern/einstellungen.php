@@ -425,4 +425,46 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
   <?php endif; ?>
 </details>
 
+<?php // Anmeldung über Apple/Google/Facebook (#97): je Anbieter Zugangsdaten,
+      // Geheimnisse werden nie zurückgeschrieben (nur "gespeichert" angezeigt).
+      // Die Weiterleitungs-Adresse steht dabei — die trägt man beim Anbieter ein. ?>
+<details class="card acc" name="setacc">
+  <summary>🔑 <?= e(t('set_oauth')) ?></summary>
+  <p class="muted small"><?= e(t('set_oauth_hint')) ?></p>
+  <?php if (setting('site_url') === ''): ?>
+    <p class="warn">⚠ <?= e(t('set_oauth_site_url')) ?></p>
+  <?php endif; ?>
+  <form method="post" action="/intern/einstellungen/oauth" class="stack"><?= csrf_field() ?>
+    <?php foreach (oauth_providers() as $oaKey => $oaProv): ?>
+      <details class="subsection" <?= $oaProv['ready'] ? 'open' : '' ?>>
+        <summary><?= e($oaProv['name']) ?><?= $oaProv['ready'] ? ' ✓' : '' ?></summary>
+        <div class="form-grid">
+          <label><?= e(t('set_oauth_client_id')) ?>
+            <input name="oauth_<?= e($oaKey) ?>_client_id" value="<?= e(setting('oauth_' . $oaKey . '_client_id')) ?>" autocomplete="off">
+          </label>
+          <?php if ($oaKey === 'apple'): ?>
+            <label><?= e(t('set_oauth_apple_team')) ?>
+              <input name="oauth_apple_team_id" value="<?= e(setting('oauth_apple_team_id')) ?>" autocomplete="off">
+            </label>
+            <label><?= e(t('set_oauth_apple_keyid')) ?>
+              <input name="oauth_apple_key_id" value="<?= e(setting('oauth_apple_key_id')) ?>" autocomplete="off">
+            </label>
+            <label class="span2"><?= e(t('set_oauth_apple_key')) ?>
+              <textarea name="oauth_apple_key" rows="3" class="mono" autocomplete="off"
+                        placeholder="<?= oauth_secret('oauth_apple_key') !== '' ? e(t('set_oauth_secret_set')) : '-----BEGIN PRIVATE KEY-----' ?>"></textarea>
+            </label>
+          <?php else: ?>
+            <label><?= e(t('set_oauth_secret')) ?>
+              <input type="password" name="oauth_<?= e($oaKey) ?>_secret" autocomplete="new-password"
+                     placeholder="<?= oauth_secret('oauth_' . $oaKey . '_secret') !== '' ? e(t('set_oauth_secret_set')) : '' ?>">
+            </label>
+          <?php endif; ?>
+          <p class="muted small span2"><?= e(t('set_oauth_redirect')) ?>: <code><?= e(oauth_redirect_uri($oaKey)) ?></code></p>
+        </div>
+      </details>
+    <?php endforeach; ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

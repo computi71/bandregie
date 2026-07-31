@@ -47,7 +47,12 @@ if ($method === 'POST' && $_POST === [] && $_FILES === []
 // Jede schreibende Anfrage braucht das Token aus dem Formular. Ohne gültiges
 // Token wird nichts ausgeführt — fremde Seiten können so keine Aktionen im
 // Namen eines angemeldeten Mitglieds auslösen.
-if ($method === 'POST' && !csrf_valid()) {
+//
+// Einzige Ausnahme: Apples Login-Antwort kommt konstruktionsbedingt als
+// Cross-Site-POST (form_post) und kann unser Formular-Token nicht tragen.
+// Dort übernimmt der signierte, ablaufende state die CSRF-Rolle — geprüft
+// wird er im Handler, ausgelöst wird ohne ihn nichts.
+if ($method === 'POST' && !csrf_valid() && $path !== '/auth/apple/callback') {
   flash(t('fl_csrf'));
   back('/');
 }
@@ -293,6 +298,79 @@ if ($path === '/login') {
 if ($path === '/logout' && $method === 'POST') {
   session_destroy();
   redirect('/');
+}
+
+// ---------- Anmeldung über Apple/Google/Facebook (#97) ----------
+// Hinweg: baut den signierten state und schickt zum Anbieter. Angemeldete
+// verknüpfen (?link=1) ihr eigenes Konto; alle anderen wollen sich anmelden.
+if (preg_match('~^/auth/(apple|google|facebook)$~', $path, $m) && $method === 'GET') {
+  $prov = $m[1];
+  if (empty(oauth_enabled()[$prov])) redirect('/login');
+  $linker = isset($_GET['link']) ? current_user() : null;
+  $state = $linker
+    ? oauth_state_make($prov, 'link', (int) $linker['id'])
+    : oauth_state_make($prov, 'login');
+  redirect(oauth_authorize_url($prov, $state));
+}
+// Rückweg: Apple liefert per POST (form_post), Google und Facebook per GET.
+// Der state ist Pflicht und trägt Modus und ggf. Mitglied — ohne gültigen
+// state passiert nichts, egal was sonst in der Anfrage steht.
+if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
+    && ($method === 'GET' || ($method === 'POST' && $m[1] === 'apple'))) {
+  $prov = $m[1];
+  $in = $method === 'POST' ? $_POST : $_GET;
+  $st = oauth_state_check((string) ($in['state'] ?? ''), $prov);
+  $code = (string) ($in['code'] ?? '');
+  if (empty(oauth_enabled()[$prov]) || !$st || $code === '') {
+    flash(t('fl_oauth_failed'));
+    redirect('/login');
+  }
+  // Gegen Durchprobieren: gleiche Bremse wie beim Passwort-Login, je Anbieter.
+  if (throttle_blocked('oauth', $prov)) {
+    flash(t('fl_throttled'));
+    redirect('/login');
+  }
+  $identity = oauth_identity($prov, $code);
+  if (is_string($identity)) {
+    throttle_note('oauth', $prov);
+    flash(t($identity));
+    redirect($st['mode'] === 'link' ? '/intern/profil' : '/login');
+  }
+  $known = row('SELECT user_id FROM user_identities WHERE provider = ? AND subject = ?',
+               [$prov, $identity['subject']]);
+  if ($st['mode'] === 'link') {
+    // Verknüpfen: nur mit dem Mitglied aus dem signierten state — und nie eine
+    // Anmeldung, die schon jemand anderem gehört.
+    if ($known && (int) $known['user_id'] !== $st['uid']) {
+      flash(t('fl_oauth_taken'));
+    } else {
+      q('INSERT IGNORE INTO user_identities (provider, subject, user_id, email) VALUES (?,?,?,?)',
+        [$prov, $identity['subject'], $st['uid'], $identity['email']]);
+      flash(t('fl_oauth_linked'));
+    }
+    redirect('/intern/profil');
+  }
+  // Anmelden: über die Verknüpfung, sonst über die BESTÄTIGTE E-Mail eines
+  // bestehenden Mitglieds (die Anmeldung wird dann gleich verknüpft). Wer
+  // beides nicht hat, ist kein Mitglied — ein Konto entsteht hier nie.
+  $u = $known ? row('SELECT * FROM users WHERE id = ?', [(int) $known['user_id']]) : null;
+  if (!$u) {
+    $u = row('SELECT * FROM users WHERE email = ?', [$identity['email']]);
+    if ($u) {
+      q('INSERT IGNORE INTO user_identities (provider, subject, user_id, email) VALUES (?,?,?,?)',
+        [$prov, $identity['subject'], (int) $u['id'], $identity['email']]);
+    }
+  }
+  if (!$u) {
+    throttle_note('oauth', $prov);
+    flash(t('fl_oauth_no_member'));
+    redirect('/login');
+  }
+  throttle_clear('oauth', $prov);
+  session_regenerate_id(true);
+  $_SESSION['uid'] = $u['id'];
+  if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
+  redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
 }
 
 // Passwort vergessen: Link per E-Mail anfordern (ohne Konto-Enumeration)
@@ -1090,7 +1168,19 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Eigenes Profil ----------
   if ($path === '/intern/profil' && $method === 'GET') {
-    view('intern/profil', ['title' => t('mem_my_profile'), 'profile' => row('SELECT * FROM users WHERE id = ?', [$me['id']])]);
+    $myIdentities = [];
+    foreach (rows('SELECT provider, email FROM user_identities WHERE user_id = ?', [$me['id']]) as $ident) {
+      $myIdentities[$ident['provider']] = $ident['email'];
+    }
+    view('intern/profil', ['title' => t('mem_my_profile'),
+      'profile' => row('SELECT * FROM users WHERE id = ?', [$me['id']]),
+      'identities' => $myIdentities]);
+  }
+  // Verknüpfte Anmeldung trennen — nur die eigene; die Route entscheidet.
+  if (preg_match('~^/intern/profil/identity/(apple|google|facebook)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM user_identities WHERE user_id = ? AND provider = ?', [$me['id'], $m[1]]);
+    flash(t('fl_oauth_unlinked'));
+    redirect('/intern/profil');
   }
   if ($path === '/intern/profil' && $method === 'POST') {
     if (display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']) !== '' && ($_POST['email'] ?? '') !== '') {
@@ -2038,6 +2128,23 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Einstellungen ----------
+  // Anmelde-Anbieter (#97): IDs offen, Geheimnisse nur bei neuer Eingabe —
+  // ein leeres Feld heißt "behalten", nie "löschen". Versiegelt abgelegt,
+  // wenn ein Schlüssel liegt (wie das FTP-Passwort der Sicherung).
+  if ($path === '/intern/einstellungen/oauth' && $method === 'POST') {
+    require_admin();
+    $sealed = fn(string $v): string => crypt_available() ? (string) crypt_seal($v) : $v;
+    foreach (['google', 'apple', 'facebook'] as $oaProv) {
+      set_setting('oauth_' . $oaProv . '_client_id', trim($_POST['oauth_' . $oaProv . '_client_id'] ?? ''));
+    }
+    set_setting('oauth_apple_team_id', trim($_POST['oauth_apple_team_id'] ?? ''));
+    set_setting('oauth_apple_key_id', trim($_POST['oauth_apple_key_id'] ?? ''));
+    foreach (['oauth_google_secret', 'oauth_facebook_secret', 'oauth_apple_key'] as $oaSecret) {
+      if (trim($_POST[$oaSecret] ?? '') !== '') set_setting($oaSecret, $sealed(trim($_POST[$oaSecret])));
+    }
+    flash(t('fl_oauth_saved'));
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen' && $method === 'GET') {
     require_admin();
     // Alle Inhalts-Übersetzungen aller Sprachen: [lang][tkey] => value

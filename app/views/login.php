@@ -8,6 +8,16 @@
     <label><?= e(t('login_password')) ?><input type="password" name="password" required></label>
     <button class="btn btn-primary"><?= e(t('login_submit')) ?></button>
   </form>
+  <?php // Anmeldung über Anbieter: nur die konfigurierten erscheinen — eine
+        // Band ohne diese Anbindung sieht hier gar nichts (#97). ?>
+  <?php if ($oauthProviders = oauth_enabled()): ?>
+    <p class="muted small center" style="margin-top:0.8rem"><?= e(t('login_or')) ?></p>
+    <div class="stack">
+      <?php foreach ($oauthProviders as $key => $p): ?>
+        <a class="btn btn-ghost" href="/auth/<?= e($key) ?>"><?= e(str_replace('%1', $p['name'], t('login_with'))) ?></a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
   <?php // In der Demo führt der Weg nirgendwohin: die Anwendung verschickt
         // dort keine Post, und die Zugangsdaten stehen ohnehin öffentlich. ?>
   <?php if (!is_demo()): ?>

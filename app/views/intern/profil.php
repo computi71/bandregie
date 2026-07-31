@@ -59,4 +59,27 @@
   <p class="muted small"><?= e(t('off_areas_when')) ?></p>
 </details>
 
+<?php // Anmeldung über Anbieter (#97): nur zeigen, wenn welche konfiguriert
+      // sind — sonst gäbe es hier Knöpfe ins Leere. Verknüpfen führt über den
+      // Anbieter (mit ?link=1 im signierten state), Trennen ist ein POST. ?>
+<?php if ($oauthProviders = oauth_enabled()): ?>
+<details class="card acc" name="profilacc">
+  <summary>🔑 <?= e(t('prof_identities')) ?></summary>
+  <p class="muted small"><?= e(t('prof_identities_hint')) ?></p>
+  <?php foreach ($oauthProviders as $key => $p): ?>
+    <div class="row-buttons" style="margin-bottom:0.4rem">
+      <strong><?= e($p['name']) ?></strong>
+      <?php if (isset($identities[$key])): ?>
+        <span class="muted small"><?= e(str_replace('%1', $identities[$key], t('prof_identity_as'))) ?></span>
+        <form class="inline" method="post" action="/intern/profil/identity/<?= e($key) ?>/delete"><?= csrf_field() ?>
+          <button class="btn btn-tiny btn-ghost"><?= e(t('prof_identity_unlink')) ?></button>
+        </form>
+      <?php else: ?>
+        <a class="btn btn-tiny" href="/auth/<?= e($key) ?>?link=1"><?= e(t('prof_identity_link')) ?></a>
+      <?php endif; ?>
+    </div>
+  <?php endforeach; ?>
+</details>
+<?php endif; ?>
+
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
