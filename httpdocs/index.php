@@ -1316,6 +1316,7 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_no_self_delete'));
       } else {
         q('DELETE FROM users WHERE id = ?', [$id]);
+        q('DELETE FROM song_chords WHERE user_id = ?', [$id]);
       }
       redirect('/intern/mitglieder');
     }

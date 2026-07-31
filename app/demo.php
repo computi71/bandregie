@@ -244,9 +244,12 @@ TXT,
 
   // Notizzettel sind musikerspezifisch — ein paar Demo-Einträge, damit der
   // Teleprompter das Umschalten zwischen Musikern zeigt (Summer Rain hat zwei).
-  demo_insert('song_chords', ['song_id' => $songs[0], 'user_id' => $members[0], 'content' => $demoChords['Summer Rain']]);
-  demo_insert('song_chords', ['song_id' => $songs[1], 'user_id' => $members[0], 'content' => $demoChords['Neon Light']]);
-  demo_insert('song_chords', ['song_id' => $songs[0], 'user_id' => $members[1], 'content' => "[Intro]\nEm  C  G  D\n\n[Refrain]\nandere Lage:\nC  G  D  Em"]);
+  // song_chords hat keinen Auto-Increment-Schlüssel — deshalb roh per q() und
+  // nicht über demo_insert(): sonst versuchte der Teardown ein DELETE … WHERE id
+  // und bräche ab. Aufräumen erledigt demo_remove über die Demo-Nutzer.
+  q('INSERT INTO song_chords (song_id, user_id, content) VALUES (?,?,?)', [$songs[0], $members[0], $demoChords['Summer Rain']]);
+  q('INSERT INTO song_chords (song_id, user_id, content) VALUES (?,?,?)', [$songs[1], $members[0], $demoChords['Neon Light']]);
+  q('INSERT INTO song_chords (song_id, user_id, content) VALUES (?,?,?)', [$songs[0], $members[1], "[Intro]\nEm  C  G  D\n\n[Refrain]\nandere Lage:\nC  G  D  Em"]);
 
   // --- Setlists: eine gespielte (wird durch den vergangenen Gig fixiert)
   //     und eine für den nächsten Auftritt, mit Pause und Zugabe
@@ -662,6 +665,7 @@ function demo_remove(): void {
   foreach ($byTable['users'] ?? [] as $userId) {
     q('DELETE FROM attendance WHERE user_id = ?', [$userId]);
     q('DELETE FROM permissions WHERE user_id = ?', [$userId]);
+    q('DELETE FROM song_chords WHERE user_id = ?', [$userId]);
     q('DELETE FROM substitute_requests WHERE user_id = ?', [$userId]);
     q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
     q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
