@@ -14,6 +14,27 @@ function push_available(): bool {
     && in_array('aes-128-gcm', openssl_get_cipher_methods(), true);
 }
 
+/**
+ * Nur die Push-Dienste der Browserhersteller sind erlaubte Ziele. Der Endpunkt
+ * kommt vom Browser des Mitglieds — aber der Server ruft ihn später auf, und
+ * eine frei wählbare Adresse machte ihn zum Werkzeug gegen das eigene Netz
+ * (interne Dienste, Cloud-Metadaten). Geprüft beim Anlegen UND beim Versand:
+ * ein Abo, das schon in der Datenbank liegt, ist damit noch nicht vertraut.
+ */
+function push_endpoint_ok(string $endpoint): bool {
+  if (!str_starts_with($endpoint, 'https://')) return false;
+  $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
+  if ($host === '' || parse_url($endpoint, PHP_URL_PORT) !== null) return false;
+  $erlaubt = [
+    'fcm.googleapis.com',                       // Chrome, Edge, Android
+    'web.push.apple.com',                       // Safari, iOS
+    'updates.push.services.mozilla.com',        // Firefox
+  ];
+  if (in_array($host, $erlaubt, true)) return true;
+  // Windows/Edge-Alt: wns2-*.notify.windows.com — nur echte Unterdomänen.
+  return str_ends_with($host, '.notify.windows.com');
+}
+
 // ---------- Schlüssel ----------
 
 /** Der rohe öffentliche Punkt (04‖x‖y) eines EC-Schlüssels. */
@@ -35,11 +56,8 @@ function push_pem_from_raw(string $raw): string {
 
 /** VAPID-Schlüsselpaar: einmalig erzeugt, privat versiegelt abgelegt. */
 function push_keys(): array {
-  $pem = setting('push_vapid_key');
-  if ($pem !== '') {
-    $open = function_exists('crypt_open') ? crypt_open($pem) : null;
-    $pem = $open !== null ? $open : $pem;
-  }
+  // Entsiegeln erledigt oauth_secret() — eine Stelle für dieselbe Sache.
+  $pem = oauth_secret('push_vapid_key');
   if ($pem === '') {
     $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
     if ($key === false) return ['pem' => '', 'public' => ''];
@@ -113,6 +131,12 @@ function push_encrypt(string $payload, string $p256dh, string $auth, ?string $ep
 
 /** Schickt eine Nachricht an ein Abo; bei 404/410 ist das Abo tot → löschen. */
 function push_send_one(array $sub, string $json): bool {
+  // Auch gespeicherte Abos werden hier noch geprüft: was in der Datenbank
+  // steht, ist damit nicht automatisch ein erlaubtes Ziel.
+  if (!push_endpoint_ok((string) $sub['endpoint'])) {
+    q('DELETE FROM push_subscriptions WHERE id = ?', [(int) $sub['id']]);
+    return false;
+  }
   $body = push_encrypt($json, $sub['p256dh'], $sub['auth']);
   $vapid = push_vapid_auth($sub['endpoint']);
   if ($body === null || $vapid === '') return false;
@@ -123,6 +147,9 @@ function push_send_one(array $sub, string $json): bool {
     'content' => $body,
     'timeout' => 10,
     'ignore_errors' => true,
+    // Ein Push-Dienst hat keinen Grund umzuleiten; wohin, entscheidet sonst er.
+    'follow_location' => 0,
+    'max_redirects' => 0,
   ]]);
   @file_get_contents($sub['endpoint'], false, $ctx);
   $status = 0;
