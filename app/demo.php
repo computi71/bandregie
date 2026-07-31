@@ -743,19 +743,10 @@ function demo_remove(): void {
     q('DELETE FROM event_equipment WHERE event_id = ?', [$eventId]);
     q('UPDATE finances SET event_id = NULL WHERE event_id = ?', [$eventId]);
   }
+  // Dieselbe Aufräumliste wie beim Löschen eines echten Mitglieds — sie wohnt
+  // in user_purge(), damit nicht zwei Listen auseinanderlaufen.
   foreach ($byTable['users'] ?? [] as $userId) {
-    q('DELETE FROM attendance WHERE user_id = ?', [$userId]);
-    q('DELETE FROM permissions WHERE user_id = ?', [$userId]);
-    q('DELETE FROM song_chords WHERE user_id = ?', [$userId]);
-    q('DELETE FROM song_ratings WHERE user_id = ?', [$userId]);
-    q('DELETE FROM user_identities WHERE user_id = ?', [$userId]);
-    q('DELETE FROM push_subscriptions WHERE user_id = ?', [$userId]);
-    q('DELETE FROM substitute_requests WHERE user_id = ?', [$userId]);
-    q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
-    q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
-    q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);
-    q('UPDATE events SET responsible_id = NULL WHERE responsible_id = ?', [$userId]);
-    q('UPDATE finances SET member_id = NULL WHERE member_id = ?', [$userId]);
+    user_purge((int) $userId);
   }
   foreach ($byTable['setlists'] ?? [] as $setlistId) {
     q('UPDATE events SET setlist_id = NULL WHERE setlist_id = ?', [$setlistId]);

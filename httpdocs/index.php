@@ -357,8 +357,13 @@ if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
     // Anmeldung, die schon jemand anderem gehört.
     if ($known && (int) $known['user_id'] !== $st['uid']) {
       flash(t('fl_oauth_taken'));
+    } elseif (!row('SELECT 1 FROM users WHERE id = ?', [$st['uid']])) {
+      // Wurde das Mitglied während des Vorgangs gelöscht, entstünde eine
+      // Verknüpfung auf eine Nummer, die ein künftiges Mitglied erben könnte.
+      flash(t('fl_oauth_failed'));
     } else {
-      q('INSERT IGNORE INTO user_identities (provider, subject, user_id, email) VALUES (?,?,?,?)',
+      q('INSERT INTO user_identities (provider, subject, user_id, email) VALUES (?,?,?,?)
+         ON DUPLICATE KEY UPDATE email = VALUES(email)',
         [$prov, $identity['subject'], $st['uid'], $identity['email']]);
       flash(t('fl_oauth_linked'));
     }
@@ -368,7 +373,13 @@ if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
   // bestehenden Mitglieds (die Anmeldung wird dann gleich verknüpft). Wer
   // beides nicht hat, ist kein Mitglied — ein Konto entsteht hier nie.
   $u = $known ? row('SELECT * FROM users WHERE id = ?', [(int) $known['user_id']]) : null;
-  if (!$u) {
+  // Der E-Mail-Abgleich taugt nur für Adressen, die die Band selbst kennt und
+  // erreichen kann. Apples Relay-Adresse ist keine solche: Apple gibt sie neu
+  // aus, wenn jemand die App trennt und sich erneut anmeldet, und ein Passwort
+  // zurücksetzen ließe sich darüber nie. Für schon verknüpfte Anmeldungen (oben)
+  // bleibt sie in Ordnung — dort trägt die Kennung, nicht die Adresse.
+  $istRelay = str_ends_with($identity['email'], '@privaterelay.appleid.com');
+  if (!$u && !$istRelay) {
     $u = row('SELECT * FROM users WHERE email = ?', [$identity['email']]);
     if ($u) {
       q('INSERT IGNORE INTO user_identities (provider, subject, user_id, email) VALUES (?,?,?,?)',
@@ -1021,6 +1032,11 @@ if (str_starts_with($path, '/intern')) {
         // Aufnahmedatum und GPS aus den EXIF-Daten mitnehmen — für den Vorschlag,
         // welchem Termin das Foto gehört. Zugeordnet wird nie automatisch.
         $exif = photo_exif(UPLOADS_DIR . '/' . $safe);
+        // Erst auslesen, dann aus der Datei entfernen: die Angaben stehen ab
+        // jetzt in der Datenbank und sind nur intern sichtbar. In der Datei
+        // gingen sie mit jedem öffentlichen Foto mit hinaus — und ein
+        // Proberaum ist oft eine Privatadresse.
+        photo_strip_exif(UPLOADS_DIR . '/' . $safe);
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng) VALUES (?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
            $exif['taken_at'], $exif['lat'], $exif['lng']]);
@@ -1036,6 +1052,9 @@ if (str_starts_with($path, '/intern')) {
       $ext = strtolower(pathinfo($p['filename'], PATHINFO_EXTENSION) ?: 'jpg');
       $name = 'background_' . time() . '.' . $ext;
       if (copy(UPLOADS_DIR . '/' . $p['filename'], UPLOADS_DIR . '/' . $name)) {
+        // Der Hintergrund ist immer öffentlich sichtbar — Aufnahmedaten haben
+        // in der Kopie also erst recht nichts zu suchen.
+        photo_strip_exif(UPLOADS_DIR . '/' . $name);
         $old = setting('background_file');
         if ($old) @unlink(UPLOADS_DIR . '/' . $old);
         set_setting('background_file', $name);
@@ -1532,10 +1551,10 @@ if (str_starts_with($path, '/intern')) {
       if ((int) $id === (int) $me['id']) {
         flash(t('fl_no_self_delete'));
       } else {
+        // Erst alles daneben, dann das Mitglied selbst — user_purge() ist die
+        // eine Stelle, die weiß, was gelöscht und was nur entkoppelt wird.
+        user_purge((int) $id);
         q('DELETE FROM users WHERE id = ?', [$id]);
-        q('DELETE FROM song_chords WHERE user_id = ?', [$id]);
-        q('DELETE FROM user_identities WHERE user_id = ?', [$id]);
-        q('DELETE FROM push_subscriptions WHERE user_id = ?', [$id]);
       }
       redirect('/intern/mitglieder');
     }
@@ -2277,6 +2296,9 @@ if (str_starts_with($path, '/intern')) {
       // Servers — nicht die des Besuchers, der den Schalter umlegt.
       if (!is_demo()) {
         set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
+        // Auch der Push-Kanal bleibt in der Demo, wie er ist: dort löste jeder
+        // Besucher sonst echten Verkehr dieses Servers nach außen aus.
+        set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
       }
       // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
       // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse
@@ -2563,6 +2585,8 @@ if (str_starts_with($path, '/intern')) {
       $ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION) ?: 'png');
       $name = $field . '_' . time() . '.' . preg_replace('~[^a-z0-9]~', '', $ext);
       if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $name)) {
+        // Logo, Hintergrund und Favicon stehen auf der öffentlichen Seite.
+        photo_strip_exif(UPLOADS_DIR . '/' . $name);
         $old = setting($key);
         if ($old) @unlink(UPLOADS_DIR . '/' . $old);
         set_setting($key, $name);

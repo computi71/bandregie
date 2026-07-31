@@ -202,11 +202,39 @@ Member invitations and password resets use PHP's `mail()`. The host must be
 able to deliver mail for your domain; send from an address on that domain
 (the app uses `no-reply@<your-domain>`) so SPF checks pass.
 
-### Push notifications (optional)
+### Address search, navigation and photo metadata
 
-Members can subscribe to push notifications for new events, new comments
-and availability changes — opt-in per member with a per-topic switch, and
-enabled per device from the profile. Works on Android and, for the
+**Address search** is off by default. When switched on in the settings, looking
+up an address sends it once — from the server, not the browser — to
+OpenStreetMap's Nominatim to fetch coordinates, so navigation can be precise.
+The app honours Nominatim's usage policy: one request per click (no typeahead),
+with a proper User-Agent. Without the switch nothing leaves the server.
+
+**Navigation** opens the device's own maps app: `geo:` on Android (the user's
+configured default), a small chooser on iPhone (Apple Maps, Google Maps, Waze,
+OpenStreetMap — iOS does not expose the system default to web pages), and an
+OpenStreetMap link on the desktop. The app fetches nothing; the destination
+goes to whichever app the member picks, under that vendor's terms.
+
+**Photo metadata**: on upload the capture date and GPS coordinates are read
+from the file (needs the `exif` extension — the system check says so if it is
+missing) and stored in the database for suggesting which event a photo belongs
+to. The metadata is then **removed from the stored file**, so coordinates —
+a rehearsal room is often somebody's home — do not travel with a published
+photo. Only originals straight from a device carry metadata at all; copies
+shared through messengers or social platforms have already lost it.
+
+**Privacy policy**: the shipped template covers every one of these processing
+activities, including the optional ones, with bracket placeholders to fill in.
+If you add an outgoing service, add its paragraph in the same change.
+
+### Push notifications (optional, off by default)
+
+Push is off until an administrator enables it in the settings. Once on,
+members can subscribe to notifications for new events, new comments and
+availability changes — per member with a per-topic switch, and enabled per
+device from the profile. Recipients only ever get notifications for events
+they may see in the member area. Works on Android and, for the
 installed home-screen app, on iOS 16.4+. The VAPID key pair is generated
 server-side on first use (stored sealed when an encryption key is
 configured); no third-party service and no library involved — messages are

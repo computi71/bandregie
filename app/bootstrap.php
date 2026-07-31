@@ -555,6 +555,8 @@ const UI_STRINGS = [
   'sys_opt_ftp' => 'Ohne FTP fällt der zweite Sicherungsort weg; die Sicherung bleibt dann nur hier liegen.',
   'sys_opt_zip' => 'Nicht zwingend: Sicherungen werden als tar.gz geschrieben, das geht auch ohne.',
   'sys_opt_openssl' => 'Nötig für verschlüsselte Verbindungen beim Versand und beim FTP-Ziel.',
+  'sys_opt_exif' => 'Ohne EXIF-Erweiterung liest die Anwendung kein Aufnahmedatum aus Fotos — der Vorschlag, zu welchem Termin ein Foto gehört, bleibt dann leer.',
+  'sys_opt_push' => 'Nötig für Mitteilungen aufs Gerät (Push). Fehlt eine der Voraussetzungen, erscheint der Bereich im Profil gar nicht.',
   'sys_https' => 'Verschlüsselte Verbindung',
   'sys_no_https' => 'aus', 'sys_no_https_hint' => 'Ohne HTTPS gehen Passwörter im Klartext über die Leitung, und die App lässt sich nicht auf dem Handy installieren.',
   'sys_site_url_empty' => 'nicht gesetzt',
@@ -736,6 +738,9 @@ Zeile zwei
   'geo_off_label' => 'deaktiviert',
   'geo_off_hint' => 'Adress-Suche ist deaktiviert. In den Einstellungen aktivierbar — beim Suchen wird die Adresse dann einmal an OpenStreetMap gesendet.',
   'set_geocoding' => 'Adress-Suche über OpenStreetMap erlauben',
+  'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
+  'set_push' => 'Mitteilungen aufs Gerät erlauben',
+  'set_push_hint' => 'Aus: es gibt keine Mitteilungen, und der Bereich im Profil erscheint nicht. An: Mitglieder können je Thema und Gerät selbst entscheiden. Die Zustellung läuft über den Dienst des jeweiligen Browserherstellers; der Inhalt ist dabei verschlüsselt.',
   'set_geocoding_hint' => 'Aus: keine Verbindung nach außen, nur adress-basierte Navigation. An: beim „Adresse suchen" wird die Adresse einmal an OpenStreetMap gesendet, um Koordinaten zu holen — für punktgenaue Navigation und die Foto-Ort-Zuordnung.',
   'stage_prev' => 'Vorheriger Song',
   'stage_next' => 'Nächster Song',
@@ -771,7 +776,7 @@ Zeile zwei
   'off_some' => '%1 geholt, %2 nicht — vermutlich ist der Speicher knapp.',
   'off_failed' => 'Hat nicht geklappt. Mit Empfang noch einmal versuchen.',
   'off_help' => 'Auf einem Termin steht „Diesen Termin mitnehmen": damit holt das Gerät die Setlist mit ihren Noten, den Rider und die Patchliste. Danach ist alles davon ohne Empfang da — auch, was du vorher nie geöffnet hast. Beim Abmelden wird es wieder gelöscht.',
-  'app_install_push' => 'Benachrichtigungen gibt es noch nicht: Wer wissen will, ob ein Termin dazugekommen ist oder jemand abgesagt hat, muss Bandregie öffnen. Geplant sind sie.',
+  'app_install_push' => 'Mitteilungen aufs Gerät gibt es im Profil: dort wählst du, worüber du Bescheid bekommen willst — neue Termine, neue Kommentare, Zu- und Absagen — und schaltest sie je Gerät ein. Am iPhone geht das nur für die installierte App.',
   'stage_plot' => 'Bühnenplan', 'stage_back' => 'hinten', 'stage_front' => 'vorne (Publikum)',
   'stage_empty' => 'Noch nichts aufgestellt.',
   'stage_add' => 'Aufstellen', 'stage_kind' => 'Was', 'stage_label' => 'Beschriftung',
@@ -1638,10 +1643,15 @@ $defaults = [
   // eingetragen schützt sie Links in E-Mails vor einem gefälschten Host.
   'site_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
+  // Mitteilungen aufs Gerät: aus, bis die Band es will. Die Zustellung läuft
+  // über die Dienste der Browserhersteller — das ist Kommunikation nach außen.
+  'push_enabled' => '0',
   // Einmal am Tag nachsehen, ob es eine neue Fassung gibt. Gefragt wird nach
-  // einer Versionsnummer, gesendet wird nichts über die Installation. Wer das
-  // nicht will, schaltet es in den Einstellungen ab.
-  'update_check' => '1', 'update_checked_at' => '0', 'update_latest' => '',
+  // einer Versionsnummer, gesendet wird nichts über die Installation.
+  // Aus, wie jede Kommunikation nach außen: die Prüfung fragt GitHub, und das
+  // ist eine Entscheidung der Band, keine Voreinstellung. Einschaltbar in den
+  // Einstellungen — bestehende Installationen behalten ihren Wert.
+  'update_check' => '0', 'update_checked_at' => '0', 'update_latest' => '',
   // Steuerliche Werte. Voreinstellung ist der deutsche Stand vom Juli 2026;
   // sie stehen hier, damit eine Band sie ändern kann, wenn der Gesetzgeber
   // sie ändert oder die Band anderswo sitzt. Aus ist die Grenzwarnung, bis
@@ -1731,6 +1741,17 @@ $seedFiles = glob(BASE_DIR . '/seed/translations/*.sql') ?: [];
 $seedStamp = '';
 foreach ($seedFiles as $seedFile) $seedStamp .= basename($seedFile) . ':' . filesize($seedFile) . '|';
 $seedStamp = sha1($seedStamp);
+// Der Hilfetext zu den Mitteilungen sagte, es gebe sie noch nicht — seit v1.147
+// gibt es sie. Ein Seed ergänzt nur Fehlendes und käme an einen bestehenden
+// Eintrag nicht heran, deshalb hier gezielt: geändert wird ausschließlich, wo
+// noch der alte Wortlaut steht, damit von Hand gepflegte Fassungen bleiben.
+if (setting('push_help_fixed') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'app_install_push'
+     AND (value LIKE '%noch nicht%' OR value LIKE '%do not exist yet%'
+          OR value LIKE '%n\\'existent pas encore%' OR value LIKE '%todavía no existen%'
+          OR value LIKE '%zijn er nog niet%' OR value LIKE '%non ci sono ancora%')");
+  set_setting('push_help_fixed', '1');
+}
 if (setting('translations_seed') !== $seedStamp) {
   foreach ($seedFiles as $seedFile) {
     try {
@@ -2494,6 +2515,44 @@ function may_see_upload(?array $user, string $name): bool {
  * bisher aber die Originale — bei hundert Fotos ein Vielfaches der nötigen
  * Datenmenge. Fehlt die Bildbibliothek, gibt es eben das Original.
  */
+/**
+ * Entfernt die Aufnahmedaten aus einer Bilddatei, indem sie neu geschrieben
+ * wird — dabei bleibt keine EXIF-Zeile übrig.
+ *
+ * Das ist kein Selbstzweck: Ein Proberaum ist oft eine Privatwohnung, und die
+ * Koordinaten daraus gingen mit jedem öffentlichen Foto mit hinaus, dazu
+ * Kameraseriennummer und Besitzername. Für die Zuordnung zu einem Termin
+ * brauchen wir sie nicht in der Datei — sie stehen längst in der Datenbank.
+ *
+ * Fehlt die Bildbibliothek, bleibt die Datei wie sie ist; dann melden wir das
+ * ehrlich zurück, statt Sicherheit vorzutäuschen.
+ */
+function photo_strip_exif(string $path): bool {
+  if (!is_file($path) || !function_exists('imagecreatetruecolor')) return false;
+  $info = @getimagesize($path);
+  if (!$info) return false;
+  $img = match ($info['mime']) {
+    'image/jpeg' => @imagecreatefromjpeg($path),
+    'image/png'  => @imagecreatefrompng($path),
+    'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+    // GIF trägt keine EXIF-Daten; neu schreiben würde nur Qualität kosten.
+    default      => false,
+  };
+  if (!$img) return false;
+  // In eine Nachbardatei schreiben und erst dann ersetzen: bricht es ab, bleibt
+  // das Original stehen, statt halb geschrieben zu sein.
+  $tmp = $path . '.strip';
+  $ok = match ($info['mime']) {
+    'image/jpeg' => imagejpeg($img, $tmp, 92),
+    'image/png'  => imagepng($img, $tmp),
+    'image/webp' => imagewebp($img, $tmp, 92),
+    default      => false,
+  };
+  imagedestroy($img);
+  if (!$ok || !is_file($tmp)) { @unlink($tmp); return false; }
+  return @rename($tmp, $path);
+}
+
 function thumb_file(string $name, int $width = 480): ?string {
   $source = UPLOADS_DIR . '/' . $name;
   if (!is_file($source) || !function_exists('imagecreatetruecolor')) return null;
@@ -2763,6 +2822,38 @@ function eq_may_see_price(?array $eq, ?array $user): bool {
  */
 function is_substitute(?array $user): bool {
   return ($user['role'] ?? '') === 'ersatz' || !empty($user['substitute_for']);
+}
+
+/**
+ * Alle Spuren eines Mitglieds außerhalb der Mitgliederliste beseitigen.
+ *
+ * Zwei Sorten Daten, zwei Behandlungen — und die Grenze ist bewusst gezogen:
+ *   * Was nur diese Person betrifft (Rückmeldungen, Abwesenheiten mit ihren
+ *     Notizen, Rechte, Bewertungen, Notizzettel, Anmeldungen, Geräte,
+ *     Ersatzanfragen), wird gelöscht.
+ *   * Was zur Geschichte der Band gehört (Kommentare, Aufgaben, Kassenbuch,
+ *     Verantwortlichkeiten, Inventar), verliert nur die Zuordnung. Ein
+ *     Kassenbuch, aus dem Zeilen verschwinden, stimmt nicht mehr — und
+ *     steuerlich relevante Einträge dürfen gar nicht weg. Anonymisieren
+ *     erfüllt das Auskunfts- und Löschverlangen, ohne die Bücher zu zerreißen.
+ *
+ * Das Mitglied selbst löscht der Aufrufer — hier geht es um alles daneben.
+ */
+function user_purge(int $userId): void {
+  foreach (['attendance', 'permissions', 'song_chords', 'song_ratings',
+            'user_identities', 'push_subscriptions', 'substitute_requests',
+            'absences'] as $table) {
+    q("DELETE FROM $table WHERE user_id = ?", [$userId]);
+  }
+  q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
+  q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
+  q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);
+  q('UPDATE events SET responsible_id = NULL WHERE responsible_id = ?', [$userId]);
+  q('UPDATE finances SET member_id = NULL WHERE member_id = ?', [$userId]);
+  q('UPDATE photos SET uploaded_by = NULL WHERE uploaded_by = ?', [$userId]);
+  // Wer als Ersatz einem ausgeschiedenen Mitglied zugeordnet war, hängt sonst
+  // an einer Nummer, die es nicht mehr gibt.
+  q('UPDATE users SET substitute_for = NULL WHERE substitute_for = ?', [$userId]);
 }
 
 /**

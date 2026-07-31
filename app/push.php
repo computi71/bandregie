@@ -9,9 +9,20 @@
 // über Apple im Haus (oauth.php). Alles Nötige bringt PHP selbst mit:
 // openssl_pkey_derive (ECDH), hash_hkdf und AES-128-GCM.
 
-function push_available(): bool {
+/** Kann diese Installation überhaupt Push? (Voraussetzungen von PHP) */
+function push_supported(): bool {
   return function_exists('openssl_pkey_derive') && function_exists('hash_hkdf')
     && in_array('aes-128-gcm', openssl_get_cipher_methods(), true);
+}
+
+/**
+ * Ist Push nutzbar? Zusätzlich zum Können auch das Wollen: ein Schalter für die
+ * ganze Installation, wie beim Geocoding. Ohne ihn ließe sich der Kanal nicht an
+ * einer Stelle stilllegen, wenn eine Band ihn grundsätzlich nicht möchte.
+ * Standardmäßig aus — wie jede Kommunikation nach außen.
+ */
+function push_available(): bool {
+  return push_supported() && setting('push_enabled') === '1';
 }
 
 /**

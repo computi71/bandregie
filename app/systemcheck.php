@@ -49,6 +49,10 @@ function system_checks(): array {
     'ftp'   => [t('sys_opt_ftp'), function_exists('ftp_connect')],
     'zip'   => [t('sys_opt_zip'), class_exists('ZipArchive')],
     'openssl' => [t('sys_opt_openssl'), extension_loaded('openssl')],
+    // Beide Funktionen verschwinden lautlos, wenn ihre Voraussetzung fehlt —
+    // deshalb gehören sie hierher, mit Klartext, was dann nicht geht.
+    'exif'  => [t('sys_opt_exif'), function_exists('exif_read_data')],
+    'push'  => [t('sys_opt_push'), push_supported()],
   ] as $ext => [$why, $has]) {
     $groups[t('sys_optional')][] = check_row($ext, $has ? 'ok' : 'warn', $has ? t('sys_ok') : t('sys_missing'), $why);
   }
