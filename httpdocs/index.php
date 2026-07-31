@@ -950,6 +950,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {
     $eid = (int) ($_POST['event_id'] ?? 0);
+    // Nur echte Termine zuordnen — was im Formular steht, entscheidet nicht.
+    // Eine unbekannte ID gilt als "kein Termin".
+    if ($eid && !row('SELECT 1 FROM events WHERE id = ?', [$eid])) $eid = 0;
     q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
     redirect('/intern/fotos');
   }
