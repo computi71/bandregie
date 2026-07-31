@@ -1968,8 +1968,15 @@ if (str_starts_with($path, '/intern')) {
       $offSongIds = array_map('intval', array_column(
         rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL',
              [$offEv['setlist_id']]), 'song_id'));
-      // Jedes Lied der Setlist mit seiner Leseseite: dort steht der Text.
-      foreach ($offSongIds as $offSong) $offUrls[] = '/intern/songs/' . $offSong;
+      // Jedes Lied der Setlist mit Leseseite und Bühne/Noten — Letztere mit der
+      // Setlist im Rücken (?sl), damit auf der Bühne durchgeblättert werden kann.
+      // Ohne diese URLs käme der Teleprompter offline gar nicht erst hoch.
+      $offSl = (int) $offEv['setlist_id'];
+      foreach ($offSongIds as $offSong) {
+        $offUrls[] = '/intern/songs/' . $offSong;
+        $offUrls[] = '/intern/songs/' . $offSong . '/buehne?sl=' . $offSl;
+        $offUrls[] = '/intern/songs/' . $offSong . '/noten?sl=' . $offSl;
+      }
     }
 
     // Anhänge: die des Termins, die der Setlist und die der Songs darin. Das

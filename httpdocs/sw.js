@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v5';
+const VERSION = 'bandregie-v6';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -110,7 +110,11 @@ async function seite(request) {
     // Seite liest ihn selbst aus dem Zwischenspeicher — eine Antwort hier neu
     // zu verpacken hieße, sich mit Content-Encoding anzulegen, und dafür ist
     // ein Hinweistext kein Grund.
-    const hit = await caches.match(request);
+    // Query-String tolerant abgleichen: die Bühne wird aus einer Setlist als
+    // …/buehne?sl=7 geöffnet, vorgehalten wird oft nur …/buehne. Sonst landete
+    // man offline auf der Termin-Liste statt beim Liedtext.
+    const hit = await caches.match(request)
+      || await caches.match(request, { ignoreSearch: true });
     return hit || (await caches.match('/intern/termine')) || Response.error();
   }
 }
@@ -145,8 +149,11 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   if (STATIC_FILES.includes(url.pathname) || url.pathname.startsWith('/assets/')) {
+    // ignoreSearch, weil die Skripte mit ?v=<Version> geladen werden (Cache-
+    // Bruch bei neuen Fassungen). Vorgehalten liegen sie ohne diesen Anhang —
+    // ohne ignoreSearch lüde die Bühne ihr eigenes Skript offline nicht.
     event.respondWith(
-      caches.match(request).then(hit => hit || fetch(request).then(response => {
+      caches.match(request, { ignoreSearch: true }).then(hit => hit || fetch(request).then(response => {
         const copy = response.clone();
         caches.open(STATIC_CACHE).then(cache => cache.put(request, copy));
         return response;
