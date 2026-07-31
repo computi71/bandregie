@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v7';
+const VERSION = 'bandregie-v8';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -149,15 +149,18 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   if (STATIC_FILES.includes(url.pathname) || url.pathname.startsWith('/assets/')) {
-    // ignoreSearch, weil die Skripte mit ?v=<Version> geladen werden (Cache-
-    // Bruch bei neuen Fassungen). Vorgehalten liegen sie ohne diesen Anhang —
-    // ohne ignoreSearch lüde die Bühne ihr eigenes Skript offline nicht.
+    // Assets tragen ?v=<Version> und sind damit unveränderlich: exakt zuerst aus
+    // dem Zwischenspeicher, sonst frisch aus dem Netz — so kommt eine neue Fassung
+    // sofort an. NUR wenn das Netz fehlt, per ignoreSearch auf die vorgehaltene
+    // (query-lose) Fassung zurückfallen, damit die Bühne offline ihr Skript findet.
+    // (Ohne diese Trennung liefe ignoreSearch auch online und hielte alte Assets
+    // fest — der Grund, warum neue Stylesheets nicht ankamen.)
     event.respondWith(
-      caches.match(request, { ignoreSearch: true }).then(hit => hit || fetch(request).then(response => {
+      caches.match(request).then(hit => hit || fetch(request).then(response => {
         const copy = response.clone();
         caches.open(STATIC_CACHE).then(cache => cache.put(request, copy));
         return response;
-      }))
+      }).catch(() => caches.match(request, { ignoreSearch: true })))
     );
     return;
   }
