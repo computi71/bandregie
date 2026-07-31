@@ -2,7 +2,6 @@
 -- additions and the nine keys that had been missed (EN/NL/FR/ES/IT).
 -- INSERT IGNORE: von Hand gepflegte Übersetzungen einer Band bleiben unberührt.
 SET NAMES utf8mb4;
-
 INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('en','set_privacy_note','Enabling this brings the matching paragraph of the privacy policy into play — please check that it is there.'),
 ('en','set_push','Allow notifications to devices'),
@@ -73,7 +72,6 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('it','set_favicon_hint','Questa icona appare nella scheda del browser e nella schermata Home del telefono. Per la scheda bastano 64 pixel, per il riquadro sul telefono no — 512×512 è la misura sicura.'),
 ('it','set_favicon_small','Questa immagine è %d×%d. Nella scheda del browser non si nota, nella schermata Home del telefono sì: lì il riquadro viene disegnato tra 192 e 512 pixel, e un''immagine piccola non si può ingrandire. Un PNG quadrato di 512×512 la riempie.'),
 ('it','fl_demo_in_use','I dati di esempio esistono solo finché l''installazione è ancora vuota.'),
-('it','set_demo_in_use','Questa installazione è in uso — contiene membri o date vostri. Per questo i dati di esempio non vengono più offerti,
 ('en','set_extern','Outgoing connections'),
 ('en','set_extern_hint','Everything this installation can do towards the outside is collected here — each of it switchable on its own. What is off does not connect.'),
 ('en','fl_extern_saved','Outgoing connections saved.'),
@@ -88,4 +86,5 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('es','fl_extern_saved','Conexiones hacia fuera guardadas.'),
 ('it','set_extern','Connessioni verso l''esterno'),
 ('it','set_extern_hint','Tutto ciò che questa installazione può fare verso l''esterno è raccolto qui, e ogni voce si disattiva separatamente. Ciò che è spento non si collega.'),
-('it','fl_extern_saved','Connessioni verso l''esterno salvate.');
+('it','fl_extern_saved','Connessioni verso l''esterno salvate.'),
+('it','set_demo_in_use','Questa installazione è in uso — contiene membri o date vostri. Per questo i dati di esempio non vengono più offerti; si mescolerebbero ai vostri.');
