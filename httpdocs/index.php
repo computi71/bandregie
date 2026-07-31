@@ -678,7 +678,8 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/songs/lyrics' && $method === 'POST') {
     foreach (($_POST['lyrics'] ?? []) as $id => $text) {
-      q('UPDATE songs SET lyrics = ? WHERE id = ?', [(string) $text, (int) $id]);
+      if (!is_string($text)) continue; // verschachtelte Eingaben ignorieren, nicht als "Array" speichern
+      q('UPDATE songs SET lyrics = ? WHERE id = ?', [$text, (int) $id]);
     }
     flash(t('song_lyrics_bulk_saved'));
     redirect('/intern/songs/lyrics');

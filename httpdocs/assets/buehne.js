@@ -72,7 +72,7 @@
     const song = songs[index];
     titleEl.textContent = song.title;
     posEl.textContent = songs.length > 1 ? index + 1 + ' / ' + songs.length : '';
-    if (song.bpm) bpm = song.bpm; // pro Lied das gespeicherte Tempo übernehmen
+    bpm = song.bpm || DEFAULT_BPM; // pro Lied das gespeicherte Tempo, sonst zurück auf Standard
     if (isMono) renderMusicians(song);
     else renderLines(song.lines);
     showSpeed();
