@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v8';
+const VERSION = 'bandregie-v9';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -157,8 +157,19 @@ self.addEventListener('fetch', event => {
     // fest — der Grund, warum neue Stylesheets nicht ankamen.)
     event.respondWith(
       caches.match(request).then(hit => hit || fetch(request).then(response => {
-        const copy = response.clone();
-        caches.open(STATIC_CACHE).then(cache => cache.put(request, copy));
+        // Nur gelungene Antworten aufbewahren — ein flüchtiger Fehler (404/500)
+        // würde sonst kleben, bis die nächste SW-Version den Cache erneuert.
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(STATIC_CACHE).then(async cache => {
+            // Alte Fassungen desselben Pfads (anderes ?v=) mitnehmen: sonst
+            // sammelt sich mit jedem Release eine weitere Kopie an, bis zum
+            // nächsten SW-Versionssprung. Eine Fassung je Pfad genügt — die
+            // Offline-Suche gleicht ohnehin per ignoreSearch ab.
+            await cache.delete(request, { ignoreSearch: true });
+            await cache.put(request, copy);
+          });
+        }
         return response;
       }).catch(() => caches.match(request, { ignoreSearch: true })))
     );
