@@ -1438,7 +1438,8 @@ $db->exec('CREATE TABLE IF NOT EXISTS push_subscriptions (
     endpoint TEXT NOT NULL,
     p256dh VARCHAR(120) NOT NULL,
     auth VARCHAR(30) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY user_id (user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 if (!column_exists('users', 'push_topics')) {
   $db->exec("ALTER TABLE users ADD COLUMN push_topics VARCHAR(190) NOT NULL DEFAULT ''");

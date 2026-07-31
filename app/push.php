@@ -104,6 +104,9 @@ function push_encrypt(string $payload, string $p256dh, string $auth, ?string $ep
   $uaPub = oauth_b64_decode($p256dh);
   $authSecret = oauth_b64_decode($auth);
   if (strlen($uaPub) !== 65 || strlen($authSecret) !== 16) return null;
+  // Ein einzelner Datensatz von 4096 Bytes, abzüglich Prüfsumme und Trenner —
+  // mehr passt nicht hinein, und ein zu großer würde erst beim Dienst auffallen.
+  if (strlen($payload) > 4078) return null;
   if ($ephemeralPem === null) {
     $eph = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
     if ($eph === false) return null;
@@ -156,7 +159,11 @@ function push_send_one(array $sub, string $json): bool {
   foreach ($http_response_header ?? [] as $h) {
     if (preg_match('~^HTTP/\S+\s+(\d{3})~', $h, $m)) $status = (int) $m[1];
   }
-  if ($status === 404 || $status === 410) {
+  // Dauerhafte Ablehnungen wegräumen, nicht nur „weg" (404/410): ein Abo, das
+  // der Dienst nicht mehr annimmt (falscher Schlüssel, ungültiger Pfad, zu
+  // groß), würde sonst bei jeder Mitteilung erneut angefragt — und jede Anfrage
+  // kostet bis zu zehn Sekunden Wartezeit.
+  if (in_array($status, [400, 401, 403, 404, 410, 413], true)) {
     q('DELETE FROM push_subscriptions WHERE id = ?', [(int) $sub['id']]);
     return false;
   }
@@ -176,22 +183,36 @@ function push_t(string $lang, string $key): string {
  * Mitteilung an alle Mitglieder mit dem Thema — außer den Auslösenden selbst.
  * $build baut die Nachricht je Sprache: fn(string $lang): array{title,body,url}.
  *
+ * $eventId bindet die Mitteilung an einen Termin: Wer den Termin im Bandbereich
+ * nicht sehen darf, darf ihn auch nicht als Mitteilung bekommen. Ersatzleute
+ * sehen nur die Termine, für die sie angefragt wurden — eine Mitteilung mit
+ * Termintitel und Kommentar-Anriss wäre sonst genau die Umgehung der
+ * Sichtbarkeit, die die Listen sorgfältig einhalten.
+ *
  * Gesendet wird erst NACH der Antwort (fastcgi_finish_request): niemand wartet
  * beim Speichern eines Kommentars auf die Push-Dienste von Google und Apple.
  */
-function push_notify(string $topic, int $exceptUserId, callable $build): void {
+function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0): void {
   if (!push_available()) return;
-  $subs = rows("SELECT s.id, s.endpoint, s.p256dh, s.auth, u.pref_lang
+  $subs = rows("SELECT s.id, s.endpoint, s.p256dh, s.auth,
+                       u.id AS user_id, u.role, u.substitute_for, u.pref_lang
                 FROM push_subscriptions s JOIN users u ON u.id = s.user_id
                 WHERE u.id <> ? AND FIND_IN_SET(?, u.push_topics)", [$exceptUserId, $topic]);
+  if ($eventId) {
+    $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_event($s, $eventId)));
+  }
   if (!$subs) return;
-  register_shutdown_function(function () use ($subs, $build): void {
+  register_shutdown_function(function () use ($subs, $topic, $build): void {
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
     $byLang = [];
+    $failed = 0;
     foreach ($subs as $sub) {
       $lang = array_key_exists($sub['pref_lang'] ?? '', LANGS) ? $sub['pref_lang'] : 'de';
       $byLang[$lang] ??= json_encode($build($lang), JSON_UNESCAPED_UNICODE);
-      push_send_one($sub, $byLang[$lang]);
+      if (!push_send_one($sub, $byLang[$lang])) $failed++;
     }
+    // Einmal je Vorgang vermerken, nicht je Abo: „warum kam nichts an?" ist
+    // sonst nicht zu beantworten, und eine Zeile je Gerät flutet das Log.
+    if ($failed) error_log("Bandregie: Push '$topic' — $failed von " . count($subs) . ' nicht zugestellt');
   });
 }

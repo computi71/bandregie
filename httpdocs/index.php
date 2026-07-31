@@ -303,10 +303,18 @@ if ($path === '/logout' && $method === 'POST') {
 // ---------- Anmeldung über Apple/Google/Facebook (#97) ----------
 // Hinweg: baut den signierten state und schickt zum Anbieter. Angemeldete
 // verknüpfen (?link=1) ihr eigenes Konto; alle anderen wollen sich anmelden.
-if (preg_match('~^/auth/(apple|google|facebook)$~', $path, $m) && $method === 'GET') {
+if (preg_match('~^/auth/(apple|google|facebook)$~', $path, $m)
+    && ($method === 'GET' || $method === 'POST')) {
   $prov = $m[1];
   if (empty(oauth_enabled()[$prov])) redirect('/login');
-  $linker = isset($_GET['link']) ? current_user() : null;
+  // Verknüpfen ändert etwas und kommt deshalb nur per POST mit Token: als GET
+  // ließe es sich einem angemeldeten Mitglied von einer Fremdseite aus
+  // unterschieben (ein <img> genügte), und es hätte danach eine fremde
+  // Anmeldung an seinem Konto, ohne es zu merken.
+  $wantLink = $method === 'POST' && isset($_POST['link']);
+  if ($method === 'POST' && !$wantLink) redirect('/login');
+  $linker = $wantLink ? current_user() : null;
+  if ($wantLink && !$linker) redirect('/login');
   $state = $linker
     ? oauth_state_make($prov, 'link', (int) $linker['id'])
     : oauth_state_make($prov, 'login');
@@ -321,8 +329,10 @@ if (preg_match('~^/auth/(apple|google|facebook)/callback$~', $path, $m)
   $in = $method === 'POST' ? $_POST : $_GET;
   $st = oauth_state_check((string) ($in['state'] ?? ''), $prov);
   $code = (string) ($in['code'] ?? '');
-  // Die Bindung hat ihren Zweck getan — sie gilt nur für diesen einen Rückweg.
-  oauth_bind_clear();
+  // Die Bindung erst löschen, wenn der Rückweg wirklich zu einem Vorgang
+  // gehört: unbedingtes Löschen ließe sich von einer Fremdseite aus aufrufen
+  // und würde damit jede gerade laufende Anmeldung ins Leere laufen lassen.
+  if ($st) oauth_bind_clear();
   if (empty(oauth_enabled()[$prov]) || !$st || $code === '') {
     flash(t('fl_oauth_failed'));
     redirect('/login');
@@ -598,15 +608,17 @@ if (str_starts_with($path, '/intern')) {
                              public_title, public_link, public_info, venue_id,
                              pa_source, light_source)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
-      save_event_gear((int) $db->lastInsertId());
-      // Mitteilung an alle, die neue Termine abonniert haben (#24).
+      $newEventId = (int) $db->lastInsertId();
+      save_event_gear($newEventId);
+      // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
+      // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
       $pushDate = (string) $_POST['date'];
       push_notify('events', (int) $me['id'], fn(string $lang): array => [
         'title' => push_t($lang, 'push_ev_title'),
         'body' => $pushTitle . ' · ' . fmt_date($pushDate),
         'url' => '/intern/termine',
-      ]);
+      ], $newEventId);
     } else {
       flash(t('fl_title_date_required'));
     }
@@ -634,6 +646,9 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
       q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
       q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
+      // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
+      // den es nicht mehr gibt.
+      q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
       redirect('/intern/termine');
     }
     if ($action === 'zusage') {
@@ -649,7 +664,7 @@ if (str_starts_with($path, '/intern')) {
         'title' => str_replace(['%1', '%2'], [$pushWho, $pushEvTitle], push_t($lang, $pushKey)),
         'body' => '',
         'url' => '/intern/termine',
-      ]);
+      ], (int) $id);
       // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
       // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
       // für dieselbe Lücke weiter.
@@ -672,7 +687,7 @@ if (str_starts_with($path, '/intern')) {
           'title' => push_t($lang, 'push_comment_title') . ' · ' . ($pushEv['title'] ?? ''),
           'body' => $pushWho . ': ' . $pushText,
           'url' => '/intern/termine',
-        ]);
+        ], (int) $id);
       }
       back('/intern/termine');
     }
@@ -1223,6 +1238,10 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/push/subscribe' && $method === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
+    // Nicht in der Demo: sonst meldet ein Besucher sein Gerät an, und jeder
+    // weitere Besucher löst mit einem Kommentar echten Push-Verkehr dieses
+    // Servers an Google, Apple und Mozilla aus.
+    if (is_demo()) { http_response_code(403); exit('{"ok":false}'); }
     $endpoint = trim((string) ($_POST['endpoint'] ?? ''));
     $p256dh = trim((string) ($_POST['p256dh'] ?? ''));
     $auth = trim((string) ($_POST['auth'] ?? ''));
@@ -1235,6 +1254,13 @@ if (str_starts_with($path, '/intern')) {
          VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id),
          p256dh = VALUES(p256dh), auth = VALUES(auth)',
         [$me['id'], hash('sha256', $endpoint), $endpoint, $p256dh, $auth]);
+      // Geräte je Mitglied begrenzen: Der Endpunkt-Pfad ist frei wählbar, also
+      // ließen sich sonst beliebig viele Abos anlegen — und jede Mitteilung
+      // müsste sie alle der Reihe nach anfragen. Das älteste weicht.
+      q('DELETE FROM push_subscriptions WHERE user_id = ? AND id NOT IN
+         (SELECT id FROM (SELECT id FROM push_subscriptions WHERE user_id = ?
+                          ORDER BY id DESC LIMIT 10) AS keep)',
+        [$me['id'], $me['id']]);
       exit('{"ok":true}');
     }
     http_response_code(400);
@@ -2205,6 +2231,11 @@ if (str_starts_with($path, '/intern')) {
   // wenn ein Schlüssel liegt (wie das FTP-Passwort der Sicherung).
   if ($path === '/intern/einstellungen/oauth' && $method === 'POST') {
     require_admin();
+    // In der Demo ist jeder Besucher Admin, und die Zugangsdaten stehen
+    // öffentlich. Ohne diese Sperre könnte jemand seine eigene Anbieter-App
+    // eintragen: die Login-Seite der Demo führte dann auf der Domain des
+    // Projekts zur Zustimmungsseite eines Fremden.
+    deny_in_demo('/intern/einstellungen');
     $sealed = fn(string $v): string => crypt_available() ? (string) crypt_seal($v) : $v;
     foreach (['google', 'apple', 'facebook'] as $oaProv) {
       set_setting('oauth_' . $oaProv . '_client_id', trim($_POST['oauth_' . $oaProv . '_client_id'] ?? ''));
@@ -2241,7 +2272,12 @@ if (str_starts_with($path, '/intern')) {
       set_setting('public_limit_upcoming', (string) max(0, (int) ($_POST['public_limit_upcoming'] ?? 10)));
       set_setting('public_limit_past', (string) max(0, (int) ($_POST['public_limit_past'] ?? 5)));
       set_setting('public_embed_mode', ($_POST['public_embed_mode'] ?? '') === 'direct' ? 'direct' : 'consent');
-      set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
+      // Nicht in der Demo umschaltbar: die Adress-Suche fragt serverseitig
+      // OpenStreetMap, und die Nutzungsrichtlinie trifft die Adresse dieses
+      // Servers — nicht die des Besuchers, der den Schalter umlegt.
+      if (!is_demo()) {
+        set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
+      }
       // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
       // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse
       // verwandeln — auf der Domain des Projekts, bis zum nächsten Zurücksetzen.
