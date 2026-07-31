@@ -75,7 +75,10 @@ require $target . '/app/bootstrap.php';
 require $target . '/app/demo.php';
 
 step('Demoband einspielen');
-demo_install();
+// Die Website-Demo bekommt die volle erfundene Band (mit Mitgliedern) — das ist
+// die is_demo-only Variante. Normale Installationen nutzen demo_install() und
+// bekommen nur schlanke, mitgliederfreie Beispieldaten.
+demo_install_demoband();
 
 step('Kennwörter setzen');
 // Die Demodaten vergeben Zufallskennwörter und schreiben sie in eine Datei.

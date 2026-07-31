@@ -47,13 +47,26 @@ function demo_insert(string $table, array $data): int {
   return demo_track($table, (int) $db->lastInsertId());
 }
 
+// Normale Installation: schlanke, mitgliederfreie Beispieldaten. Zeigt Songs,
+// Setlist und einen Auftritt, ohne fremde Bandmitglieder in die echten Daten zu
+// mischen. Rein additiv/getrackt — demo_remove() nimmt es sauber wieder mit.
 function demo_install(): void {
+  demo_run('demo_light_rows');
+}
+
+// Website-Demo (is_demo): die erfundene Band mit ihren Mitgliedern. Nur der
+// Demo-Reset ruft das; eine normale Installation sieht es nie.
+function demo_install_demoband(): void {
+  demo_run('demoband_rows');
+}
+
+// Alles oder nichts — bricht etwas ab, bleibt keine halbe Demo zurück.
+function demo_run(callable $seed): void {
   global $db;
   if (demo_installed()) return;
-  // Alles oder nichts — bricht etwas ab, bleibt keine halbe Demoband zurück.
   $db->beginTransaction();
   try {
-    demo_install_rows();
+    $seed();
     $db->commit();
   } catch (Throwable $e) {
     $db->rollBack();
@@ -61,7 +74,54 @@ function demo_install(): void {
   }
 }
 
-function demo_install_rows(): void {
+function demo_light_rows(): void {
+  // Ein Ort, drei Songs mit Text, eine Setlist, ein anstehender Auftritt —
+  // keine erfundenen Personen, keine Zusage-Umfragen.
+  $d = fn(string $rel): string => date('Y-m-d', strtotime($rel));
+
+  $venue = demo_insert('venues', [
+    'name' => 'Sampleton Town Hall', 'city' => 'Sampleton',
+    'address' => "3 Hall Lane\n12345 Sampleton",
+    'contact_name' => 'Ms Sommer', 'contact_email' => 'buehne@example.com', 'contact_phone' => '0123 456789',
+    'notes' => 'Stage 8 × 6 m, power 2 × 32 A, parking behind the hall.',
+  ]);
+
+  $lyrics = [
+    'Summer Rain' => "[Strophe]\nGrey clouds gather over the town\nThe first drops fall on empty streets\n\n[Refrain]\nSummer rain, let it pour\nWash the dust from every door",
+    'Neon Light' => "[Strophe]\nCity hums a lower key\nSigns are buzzing, half asleep\n\n[Refrain]\nNeon light, neon light\nColour up the empty night",
+    'Last Train' => "[Strophe]\nPlatform empty, midnight cold\nOne more coffee, one more mile\n\n[Refrain]\nLast train, take me on\nBefore the night is gone",
+  ];
+  $songs = [];
+  foreach ([
+    ['Summer Rain', 'G', '128 BPM', 214],
+    ['Neon Light', 'Am', '140 BPM', 186],
+    ['Last Train', 'D', '96 BPM', 245],
+  ] as [$title, $key, $tempo, $sec]) {
+    $songs[] = demo_insert('songs', [
+      'title' => $title, 'artist' => 'Own composition', 'song_key' => $key,
+      'tempo' => $tempo, 'duration_sec' => $sec, 'status' => 'aktiv', 'notes' => '',
+      'lyrics' => $lyrics[$title],
+    ]);
+  }
+
+  $sl = demo_insert('setlists', ['name' => 'Example set', 'notes' => 'A short running order to try the stage view.']);
+  $pos = 1;
+  foreach ($songs as $sid) {
+    demo_insert('setlist_songs', ['setlist_id' => $sl, 'song_id' => $sid, 'is_break' => 0, 'position' => $pos++]);
+  }
+
+  demo_insert('events', [
+    'type' => 'gig', 'title' => 'Example gig at the town hall', 'date' => $d('+4 weeks'),
+    'time' => '20:00', 'time_meet' => '18:00', 'time_end' => '23:00',
+    'venue_id' => $venue, 'location' => '', 'notes' => 'An example event, so a gig has something to show.',
+    // Intern: auf einem echten System soll kein Beispiel-Gig auf der
+    // öffentlichen Bandseite auftauchen.
+    'is_public' => 0, 'setlist_id' => $sl, 'status' => 'bestaetigt',
+    'fee' => '750 €', 'invoice_no' => '', 'public_title' => '', 'public_link' => '', 'public_info' => '',
+  ]);
+}
+
+function demoband_rows(): void {
   $d = fn(string $mod): string => date('Y-m-d', strtotime($mod));
 
   // --- Mitglieder. Zufallspasswörter, aber gemerkt: ohne sie sieht man die
@@ -453,6 +513,20 @@ TXT,
     q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$evNext, $gearId]);
   }
 
+  // Song-Bewertungen: ein paar Sterne der Mitglieder, damit die Bewertungs-
+  // ansicht etwas zeigt. song_ratings hat keinen Auto-Schlüssel → roh; das
+  // Aufräumen läuft in demo_remove über die Mitglieder.
+  foreach ([[$songs[0], $members[0], 5], [$songs[0], $members[1], 4],
+            [$songs[1], $members[2], 4], [$songs[2], $members[0], 3]] as [$sid, $uid, $stars]) {
+    q('INSERT IGNORE INTO song_ratings (song_id, user_id, rating) VALUES (?,?,?)', [$sid, $uid, $stars]);
+  }
+
+  // Equipment an den nächsten Gig hängen (welche Kiste mitkommt). Ebenfalls ohne
+  // Auto-Schlüssel → roh; demo_remove löscht es über den Demo-Termin.
+  foreach ([$eqPa, $eqCase, $eqRack] as $eid) {
+    q('INSERT IGNORE INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$evNext, $eid]);
+  }
+
   demo_install_background();
   demo_install_stage_plot($members);
   demo_install_topics($members);
@@ -666,6 +740,7 @@ function demo_remove(): void {
     q('DELETE FROM attendance WHERE user_id = ?', [$userId]);
     q('DELETE FROM permissions WHERE user_id = ?', [$userId]);
     q('DELETE FROM song_chords WHERE user_id = ?', [$userId]);
+    q('DELETE FROM song_ratings WHERE user_id = ?', [$userId]);
     q('DELETE FROM substitute_requests WHERE user_id = ?', [$userId]);
     q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
     q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
