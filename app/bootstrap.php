@@ -674,6 +674,7 @@ Zeile zwei
   'stage_slower' => 'Langsamer',
   'stage_faster' => 'Schneller',
   'stage_tap' => 'Tempo tippen',
+  'geo_navigate' => 'Navi',
   'stage_prev' => 'Vorheriger Song',
   'stage_next' => 'Nächster Song',
   'stage_exit' => 'Schließen',
@@ -2240,6 +2241,17 @@ function song_chords_set(int $songId, int $meId, string $content): void {
     q('INSERT INTO song_chords (song_id, user_id, content) VALUES (?,?,?)
        ON DUPLICATE KEY UPDATE content = VALUES(content)', [$songId, $meId, $content]);
   }
+}
+
+// Ein Maps-Link, der beim Tippen die Navi-App am Handy öffnet — die Anwendung
+// selbst ruft nichts ab, es ist nur ein Link. Leere Angabe → leerer String
+// (dann zeigt die Ansicht keinen Knopf). Zeilenumbrüche der Adresse werden zu
+// Kommas, damit die Zieladresse in einer Zeile steht.
+function maps_link(string ...$parts): string {
+  $clean = array_filter(array_map(
+    fn(string $p): string => trim(str_replace(["\r\n", "\n"], ', ', $p)), $parts));
+  $query = implode(', ', $clean);
+  return $query === '' ? '' : 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($query);
 }
 
 function asset(string $path): string {

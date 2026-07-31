@@ -60,6 +60,9 @@ require BASE_DIR . '/app/views/_header.php';
       <strong><?= e($ev['title']) ?></strong>
       <?php if ($venue): ?><span class="muted">📍 <?= e($venue['name']) ?><?= $venue['city'] ? ', ' . e($venue['city']) : '' ?></span>
       <?php elseif ($ev['location']): ?><span class="muted">📍 <?= e($ev['location']) ?></span><?php endif; ?>
+      <?php // Navi-Link zum Ort (öffnet nur die Karten-App, kein Abruf aus der App). ?>
+      <?php $navi = $venue ? maps_link($venue['name'], $venue['address'], $venue['city']) : maps_link($ev['location']); ?>
+      <?php if ($navi): ?><a class="badge link" href="<?= e($navi) ?>" target="_blank" rel="noopener" title="<?= e(t('geo_navigate')) ?>">🧭</a><?php endif; ?>
       <?php if ($ev['is_public']): ?><span class="badge public"><?= e(t('ev_public_badge')) ?></span><?php endif; ?>
       <?php if ($ev['setlist_id']): ?><a class="badge link" href="/intern/setlists/<?= $ev['setlist_id'] ?>"><?= e(t('ev_setlist')) ?></a><?php endif; ?>
     </div>

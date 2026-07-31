@@ -25,6 +25,9 @@
       <?php if ($v['contact_email']): ?><a class="muted" href="mailto:<?= e($v['contact_email']) ?>">✉ <?= e($v['contact_email']) ?></a><?php endif; ?>
     </div>
     <?php if ($v['address']): ?><p class="prewrap muted small"><?= e($v['address']) ?></p><?php endif; ?>
+    <?php // Navi-Link: öffnet nur die Karten-App am Handy, die App ruft nichts ab. ?>
+    <?php $navi = maps_link($v['name'], $v['address'], $v['city']); ?>
+    <?php if ($navi): ?><p><a class="btn btn-ghost btn-small" href="<?= e($navi) ?>" target="_blank" rel="noopener">🧭 <?= e(t('geo_navigate')) ?></a></p><?php endif; ?>
     <?php if ($v['notes']): ?><p class="prewrap muted"><?= e($v['notes']) ?></p><?php endif; ?>
     <?php $venueEvents = $eventsByVenue[$v['id']] ?? []; ?>
     <?php if ($venueEvents): ?>
