@@ -90,9 +90,6 @@ $privacyDefault = "Datenschutzerklärung\n\n"
         <option value="direct" <?= ($settings['public_embed_mode'] ?? '') === 'direct' ? 'selected' : '' ?>><?= e(t('set_embed_direct')) ?></option>
       </select>
     </label>
-    <label class="checkbox span2"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
-    <p class="span2 muted small"><?= e(t('set_geocoding_hint')) ?></p>
-    <p class="span2 muted small">📄 <?= e(t('set_privacy_note')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
 </details>
@@ -446,17 +443,20 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <?php endif; ?>
 </details>
 
-<?php // Mitteilungen: eigener Abschnitt, nicht bei der öffentlichen Seite —
-      // dort sucht ihn niemand, und mit der öffentlichen Seite hat er nichts zu
-      // tun. Solange der Schalter aus ist, erscheint auch im Profil nichts. ?>
+<?php // Alles, was die Anwendung nach außen tun kann, an einer Stelle — und
+      // nicht verstreut zwischen Einstellungen, mit denen es nichts zu tun hat.
+      // Wer wissen will, was diese Installation verlässt, schaut hierher. ?>
 <details class="card acc" name="setacc">
-  <summary>🔔 <?= e(t('set_push')) ?></summary>
-  <form method="post" action="/intern/einstellungen/push" class="stack"><?= csrf_field() ?>
-    <label class="checkbox"><input type="checkbox" name="push_enabled" value="1" <?= setting('push_enabled') === '1' ? 'checked' : '' ?>> <?= e(t('set_push')) ?></label>
+  <summary>🌐 <?= e(t('set_extern')) ?></summary>
+  <p class="muted small"><?= e(t('set_extern_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/extern" class="stack"><?= csrf_field() ?>
+    <label class="checkbox"><input type="checkbox" name="push_enabled" value="1" <?= setting('push_enabled') === '1' ? 'checked' : '' ?>> 🔔 <?= e(t('set_push')) ?></label>
     <p class="muted small"><?= e(t('set_push_hint')) ?></p>
-    <?php if (!push_supported()): ?>
-      <p class="warn">⚠ <?= e(t('sys_opt_push')) ?></p>
-    <?php endif; ?>
+    <?php if (!push_supported()): ?><p class="warn">⚠ <?= e(t('sys_opt_push')) ?></p><?php endif; ?>
+
+    <label class="checkbox"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
+    <p class="muted small"><?= e(t('set_geocoding_hint')) ?></p>
+
     <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>
     <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>

@@ -2150,7 +2150,10 @@ if (str_starts_with($path, '/intern')) {
   // Bereiche wählen. Steht im eigenen Profil, denn das Telefon ist persönlich.
   if ($path === '/intern/offline/bereiche' && $method === 'POST') {
     $gewaehlt = array_values(array_intersect(OFFLINE_AREAS, (array) ($_POST['areas'] ?? [])));
-    q('UPDATE users SET offline_scope = ? WHERE id = ?', [implode(',', $gewaehlt), $me['id']]);
+    // Alles abgewählt wird als solches gespeichert und nicht als „nichts
+    // eingestellt" — sonst käme beim nächsten Laden wieder alles zurück.
+    q('UPDATE users SET offline_scope = ? WHERE id = ?',
+      [$gewaehlt ? implode(',', $gewaehlt) : OFFLINE_NICHTS, $me['id']]);
     flash(t('fl_off_saved'));
     redirect('/intern/profil');
   }
@@ -2248,14 +2251,15 @@ if (str_starts_with($path, '/intern')) {
   // Anmelde-Anbieter (#97): IDs offen, Geheimnisse nur bei neuer Eingabe —
   // ein leeres Feld heißt "behalten", nie "löschen". Versiegelt abgelegt,
   // wenn ein Schlüssel liegt (wie das FTP-Passwort der Sicherung).
-  // Mitteilungen für die ganze Installation freischalten oder stilllegen.
-  if ($path === '/intern/einstellungen/push' && $method === 'POST') {
+  // Was die Anwendung nach außen tun darf — beides an einer Stelle.
+  if ($path === '/intern/einstellungen/extern' && $method === 'POST') {
     require_admin();
-    // In der Demo unverändert: dort löste sonst ein Besucher echten Push-Verkehr
-    // dieses Servers an Google, Apple und Mozilla aus.
+    // In der Demo unverändert: dort löste sonst ein Besucher echten Verkehr
+    // dieses Servers an Google, Apple, Mozilla oder OpenStreetMap aus.
     deny_in_demo('/intern/einstellungen');
     set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
-    flash(t('fl_push_setting_saved'));
+    set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
+    flash(t('fl_extern_saved'));
     redirect('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen/oauth' && $method === 'POST') {

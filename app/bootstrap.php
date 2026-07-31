@@ -740,7 +740,9 @@ Zeile zwei
   'set_geocoding' => 'Adress-Suche über OpenStreetMap erlauben',
   'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
   'set_push' => 'Mitteilungen aufs Gerät erlauben',
-  'fl_push_setting_saved' => 'Einstellung für Mitteilungen gespeichert.',
+  'set_extern' => 'Verbindungen nach außen',
+  'set_extern_hint' => 'Alles, was diese Installation nach außen tun kann, steht hier zusammen — abschaltbar, jedes für sich. Ist etwas aus, findet die Verbindung nicht statt.',
+  'fl_extern_saved' => 'Verbindungen nach außen gespeichert.',
   'set_push_hint' => 'Aus: es gibt keine Mitteilungen, und der Bereich im Profil erscheint nicht. An: Mitglieder können je Thema und Gerät selbst entscheiden. Die Zustellung läuft über den Dienst des jeweiligen Browserherstellers; der Inhalt ist dabei verschlüsselt.',
   'set_geocoding_hint' => 'Aus: keine Verbindung nach außen, nur adress-basierte Navigation. An: beim „Adresse suchen" wird die Adresse einmal an OpenStreetMap gesendet, um Koordinaten zu holen — für punktgenaue Navigation und die Foto-Ort-Zuordnung.',
   'stage_prev' => 'Vorheriger Song',
@@ -1644,9 +1646,11 @@ $defaults = [
   // eingetragen schützt sie Links in E-Mails vor einem gefälschten Host.
   'site_url' => '',
   'enabled_langs' => 'de,en,nl,fr,es,it',
-  // Mitteilungen aufs Gerät: aus, bis die Band es will. Die Zustellung läuft
-  // über die Dienste der Browserhersteller — das ist Kommunikation nach außen.
-  'push_enabled' => '0',
+  // Mitteilungen aufs Gerät: an, aber abwählbar. Ein Push entsteht erst, wenn
+  // ein Mitglied im Profil ein Thema wählt UND sein Gerät anmeldet — der
+  // Browser fragt dabei selbst um Erlaubnis. Dieser Schalter macht die Funktion
+  // also nur verfügbar; von allein geht nichts hinaus.
+  'push_enabled' => '1',
   // Einmal am Tag nachsehen, ob es eine neue Fassung gibt. Gefragt wird nach
   // einer Versionsnummer, gesendet wird nichts über die Installation.
   // Aus, wie jede Kommunikation nach außen: die Prüfung fragt GitHub, und das
@@ -2862,9 +2866,26 @@ function user_purge(int $userId): void {
  *
  * @return string[]
  */
+/**
+ * Was ein Mitglied offline dabeihat — Abwahl statt Anwahl.
+ *
+ * Leer heißt „noch nie etwas eingestellt": dann ist alles dabei. Auf der Bühne
+ * gibt es kein Netz, und wer dort merkt, dass er nichts mitgenommen hat, kann
+ * es nicht mehr nachholen. Der Vorrat muss also da sein, ohne dass jemand
+ * vorher daran gedacht hat; wie viel Platz er belegen darf, begrenzt ohnehin
+ * der Service Worker.
+ *
+ * Wer bewusst nichts will, wählt alles ab — das speichert '-' und ist etwas
+ * anderes als „noch nie gewählt". Ohne diese Unterscheidung bekäme genau die
+ * Person alles zurück, die es abbestellt hat.
+ */
+const OFFLINE_NICHTS = '-';
+
 function offline_scope(?array $user): array {
-  $roh = explode(',', (string) ($user['offline_scope'] ?? ''));
-  return array_values(array_intersect(OFFLINE_AREAS, array_map('trim', $roh)));
+  $roh = trim((string) ($user['offline_scope'] ?? ''));
+  if ($roh === '') return OFFLINE_AREAS;
+  if ($roh === OFFLINE_NICHTS) return [];
+  return array_values(array_intersect(OFFLINE_AREAS, array_map('trim', explode(',', $roh))));
 }
 
 /**
