@@ -675,6 +675,13 @@ Zeile zwei
   'stage_faster' => 'Schneller',
   'stage_tap' => 'Tempo tippen',
   'geo_navigate' => 'Navi',
+  'geo_search' => 'Adresse suchen',
+  'geo_searching' => 'Suche …',
+  'geo_no_results' => 'Keine Treffer.',
+  'geo_attribution' => '© OpenStreetMap-Mitwirkende',
+  'geo_off_hint' => 'Adress-Suche nutzt OpenStreetMap (externer Dienst) — aus Datenschutz standardmäßig aus, in den Einstellungen aktivierbar.',
+  'set_geocoding' => 'Adress-Suche über OpenStreetMap erlauben',
+  'set_geocoding_hint' => 'Aus: keine Verbindung nach außen, nur adress-basierte Navigation. An: beim „Adresse suchen" wird die Adresse einmal an OpenStreetMap gesendet, um Koordinaten zu holen — für punktgenaue Navigation und die Foto-Ort-Zuordnung.',
   'stage_prev' => 'Vorheriger Song',
   'stage_next' => 'Nächster Song',
   'stage_exit' => 'Schließen',
@@ -1349,6 +1356,12 @@ function column_exists(string $table, string $column): bool {
 }
 if (!column_exists('events', 'venue_id')) {
   $db->exec('ALTER TABLE events ADD COLUMN venue_id INT NULL AFTER location');
+}
+// Koordinaten des Veranstaltungsorts (per Geocoding gefüllt, optional): für
+// punktgenaue Navigation und später die Foto-Ort-Zuordnung. Bleiben leer,
+// solange die Band das Geocoding nicht aktiviert.
+if (!column_exists('venues', 'lat')) {
+  $db->exec('ALTER TABLE venues ADD COLUMN lat DECIMAL(9,6) NULL, ADD COLUMN lng DECIMAL(9,6) NULL');
 }
 if (!column_exists('users', 'pref_lang')) {
   $db->exec("ALTER TABLE users ADD COLUMN pref_lang VARCHAR(5) NOT NULL DEFAULT 'de'");
@@ -2252,6 +2265,38 @@ function maps_link(string ...$parts): string {
     fn(string $p): string => trim(str_replace(["\r\n", "\n"], ', ', $p)), $parts));
   $query = implode(', ', $clean);
   return $query === '' ? '' : 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($query);
+}
+
+// Navi-Ziel eines Orts: mit gespeicherten Koordinaten punktgenau, sonst über
+// die Adresse. Beides nur ein Link — die App ruft dabei nichts ab.
+function venue_navi(array $v): string {
+  if (!empty($v['lat']) && !empty($v['lng'])) {
+    return 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($v['lat'] . ',' . $v['lng']);
+  }
+  return maps_link($v['name'] ?? '', $v['address'] ?? '', $v['city'] ?? '');
+}
+
+// Adresse → Treffer mit Koordinaten, über OpenStreetMap/Nominatim. Eine Anfrage
+// je Aufruf, mit User-Agent, wie es die Nominatim-Richtlinie verlangt. Fehler
+// (Dienst weg, Timeout) ergeben eine leere Liste — die Oberfläche meldet dann
+// „keine Treffer". Aufgerufen nur, wenn die Band Geocoding erlaubt hat.
+function geocode_search(string $q): array {
+  $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=3&q=' . rawurlencode($q);
+  $ctx = stream_context_create(['http' => [
+    'method' => 'GET',
+    'header' => 'User-Agent: Bandregie/' . BANDREGIE_VERSION . " (self-hosted band tool)\r\nAccept: application/json\r\n",
+    'timeout' => 8,
+  ]]);
+  $raw = @file_get_contents($url, false, $ctx);
+  if ($raw === false) return [];
+  $data = json_decode($raw, true);
+  if (!is_array($data)) return [];
+  $out = [];
+  foreach ($data as $r) {
+    if (!isset($r['lat'], $r['lon'], $r['display_name'])) continue;
+    $out[] = ['name' => (string) $r['display_name'], 'lat' => (string) $r['lat'], 'lng' => (string) $r['lon']];
+  }
+  return $out;
 }
 
 function asset(string $path): string {

@@ -928,18 +928,29 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/orte' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
-      q('INSERT INTO venues (name, city, address, notes, contact_name, contact_email, contact_phone) VALUES (?,?,?,?,?,?,?)', venue_values());
+      q('INSERT INTO venues (name, city, address, notes, contact_name, contact_email, contact_phone, lat, lng) VALUES (?,?,?,?,?,?,?,?,?)', venue_values());
     }
     redirect('/intern/orte');
   }
   if (preg_match('~^/intern/orte/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE venues SET name=?, city=?, address=?, notes=?, contact_name=?, contact_email=?, contact_phone=? WHERE id=?', [...venue_values(), $m[1]]);
+      q('UPDATE venues SET name=?, city=?, address=?, notes=?, contact_name=?, contact_email=?, contact_phone=?, lat=?, lng=? WHERE id=?', [...venue_values(), $m[1]]);
     } else {
       q('DELETE FROM venues WHERE id = ?', [$m[1]]);
       q('UPDATE events SET venue_id = NULL WHERE venue_id = ?', [$m[1]]);
     }
     redirect('/intern/orte');
+  }
+  // Adress-Suche (Geocoding): fragt OpenStreetMap serverseitig — aber nur, wenn
+  // die Band es in den Einstellungen erlaubt hat. Der Browser ruft nur diesen
+  // eigenen Endpunkt (die CSP lässt keinen Fremd-Abruf zu); nach außen geht es
+  // hier auf dem Server, eine Anfrage je Aufruf (kein Typeahead).
+  if ($path === '/intern/geo/suggest' && $method === 'GET') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (setting('geocoding_enabled') !== '1') { echo json_encode(['off' => true, 'results' => []]); exit; }
+    $qStr = trim((string) ($_GET['q'] ?? ''));
+    echo json_encode(['results' => mb_strlen($qStr) >= 3 ? geocode_search($qStr) : []]);
+    exit;
   }
 
   // ---------- Abwesenheiten ----------
@@ -2025,6 +2036,7 @@ if (str_starts_with($path, '/intern')) {
       set_setting('public_limit_upcoming', (string) max(0, (int) ($_POST['public_limit_upcoming'] ?? 10)));
       set_setting('public_limit_past', (string) max(0, (int) ($_POST['public_limit_past'] ?? 5)));
       set_setting('public_embed_mode', ($_POST['public_embed_mode'] ?? '') === 'direct' ? 'direct' : 'consent');
+      set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
       // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
       // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse
       // verwandeln — auf der Domain des Projekts, bis zum nächsten Zurücksetzen.
@@ -2439,9 +2451,14 @@ function setlist_locked(int $setlistId): bool {
   return (bool) row('SELECT 1 FROM events WHERE setlist_id = ? AND date < ? LIMIT 1', [$setlistId, date('Y-m-d')]);
 }
 function venue_values(): array {
+  // Koordinaten kommen aus der Adress-Suche (versteckte Felder). Nur echte
+  // Zahlen übernehmen, sonst leer — nichts Getipptes landet ungeprüft in der DB.
+  $lat = is_numeric($_POST['lat'] ?? '') ? (string) $_POST['lat'] : null;
+  $lng = is_numeric($_POST['lng'] ?? '') ? (string) $_POST['lng'] : null;
   return [
     $_POST['name'] ?? '', $_POST['city'] ?? '', $_POST['address'] ?? '', $_POST['notes'] ?? '',
     $_POST['contact_name'] ?? '', $_POST['contact_email'] ?? '', $_POST['contact_phone'] ?? '',
+    $lat, $lng,
   ];
 }
 function setlist_entries(int $setlistId): array {

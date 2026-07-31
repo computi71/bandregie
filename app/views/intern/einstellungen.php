@@ -70,6 +70,8 @@ $privacyDefault = "Datenschutzerklärung\n\n1. Verantwortlicher\nVerantwortlich 
         <option value="direct" <?= ($settings['public_embed_mode'] ?? '') === 'direct' ? 'selected' : '' ?>><?= e(t('set_embed_direct')) ?></option>
       </select>
     </label>
+    <label class="checkbox span2"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
+    <p class="span2 muted small"><?= e(t('set_geocoding_hint')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
 </details>

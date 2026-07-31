@@ -570,6 +570,10 @@ textarea.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
 /* Abschnittsmarken zum Einklicken über einem Textfeld — die immer gleichen
    Klammern als kleine Knöpfe, statt sie jedes Mal zu tippen. */
 .marker-bar { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0; }
+/* Adress-Suche (Geocoding): Knopf + Treffer unter dem Adressfeld. */
+.geo-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.geo-results { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.geo-hit { text-align: left; }
 /* Hinweis auf einen Stand aus dem Zwischenspeicher: auffällig, aber nicht im Weg */
 .stale-banner { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border-radius: 6px;
                 background: rgba(200, 120, 40, 0.14); font-size: 0.9rem; }
