@@ -2189,6 +2189,12 @@ function lyrics_lines(?string $text): array {
   return $out;
 }
 
+// Aus dem frei getippten Tempo-Feld (z. B. "128 BPM") die Zahl ziehen. 0, wenn
+// keine dransteht — dann bleibt die Bühne bei ihrer Vorgabe.
+function song_bpm(?string $tempo): int {
+  return preg_match('~\d{2,3}~', (string) $tempo, $m) ? (int) $m[0] : 0;
+}
+
 function asset(string $path): string {
   return $path . '?v=' . rawurlencode(BANDREGIE_VERSION);
 }

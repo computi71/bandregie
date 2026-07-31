@@ -21,10 +21,12 @@
     </label>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('song_notes_ph')) ?>"><?= e($edit['notes'] ?? '') ?></textarea></label>
     <label class="span2"><?= e(t('song_lyrics')) ?>
+      <?php $markerTarget = 'lyrics'; require BASE_DIR . '/app/views/intern/_markers.php'; ?>
       <textarea name="lyrics" rows="8" placeholder="<?= e(t('song_lyrics_ph')) ?>"><?= e($edit['lyrics'] ?? '') ?></textarea>
       <span class="muted small"><?= e(t('song_lyrics_hint')) ?></span>
     </label>
     <label class="span2"><?= e(t('song_chords')) ?>
+      <?php $markerTarget = 'chords'; require BASE_DIR . '/app/views/intern/_markers.php'; ?>
       <textarea name="chords" rows="8" class="mono" placeholder="<?= e(t('song_chords_ph')) ?>"><?= e($edit['chords'] ?? '') ?></textarea>
       <span class="muted small"><?= e(t('song_chords_hint')) ?></span>
     </label>

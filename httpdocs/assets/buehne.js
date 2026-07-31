@@ -16,9 +16,13 @@
   let index = songs.findIndex((s) => s.id === Number(root.dataset.start));
   if (index < 0) index = 0;
 
-  // Geschwindigkeit in Pixeln je Sekunde. Ein Wert, der mitten im Lied
-  // erreichbar bleibt — keine Einstellung, die man zwischen den Liedern aufruft.
-  let speed = 28;
+  // Tempo als BPM — die Zahl, die die Band ohnehin im Kopf hat. Pro Lied aus dem
+  // gespeicherten Tempo vorbelegt (song.bpm); daraus wird die Scroll-
+  // Geschwindigkeit gerechnet. Mitten im Lied erreichbar, keine Einstellung für
+  // zwischendurch.
+  const DEFAULT_BPM = 100;
+  const PX_PER_BPM = 0.25; // grobe Kopplung: 120 BPM ≈ 30 px/s, live feinjustierbar
+  let bpm = DEFAULT_BPM;
   let running = false;
   let last = 0;
   let carry = 0; // Rest unter einem ganzen Pixel, damit langsames Scrollen gleichmäßig bleibt
@@ -32,6 +36,7 @@
     const song = songs[index];
     titleEl.textContent = song.title;
     posEl.textContent = songs.length > 1 ? index + 1 + ' / ' + songs.length : '';
+    if (song.bpm) bpm = song.bpm; // pro Lied das gespeicherte Tempo übernehmen
     if (!song.lines.length) {
       stage.innerHTML = '<p class="buehne-empty">' + escapeHtml(root.dataset.empty || '') + '</p>';
     } else {
@@ -49,11 +54,12 @@
     }
     stage.scrollTop = 0;
     carry = 0;
+    showSpeed();
   }
 
   function frame(now) {
     if (running && last) {
-      carry += (speed * (now - last)) / 1000;
+      carry += (bpm * PX_PER_BPM * (now - last)) / 1000;
       const step = Math.floor(carry);
       if (step >= 1) {
         stage.scrollTop += step;
@@ -99,9 +105,9 @@
   }
 
   function toggle() { setRunning(!running); }
-  function showSpeed() { if (speedEl) speedEl.textContent = Math.round(speed); }
-  function faster() { speed = Math.min(200, speed + 6); showSpeed(); }
-  function slower() { speed = Math.max(4, speed - 6); showSpeed(); }
+  function showSpeed() { if (speedEl) speedEl.textContent = Math.round(bpm) + ' BPM'; }
+  function faster() { bpm = Math.min(260, bpm + 2); showSpeed(); }
+  function slower() { bpm = Math.max(30, bpm - 2); showSpeed(); }
 
   function go(delta) {
     const next = index + delta;
