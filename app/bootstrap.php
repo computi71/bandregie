@@ -678,6 +678,7 @@ Zeile zwei
   'stage_bpm_hint' => 'Zahl direkt eintippen oder mit − / + und Tippen einstellen.',
   'stage_done' => 'Fertig',
   'geo_navigate' => 'Navi',
+  'navi_pick' => 'Womit navigieren?',
   'photo_no_event' => 'kein Termin',
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
