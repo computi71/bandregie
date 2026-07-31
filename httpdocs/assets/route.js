@@ -35,6 +35,13 @@
     ['OpenStreetMap', (d) => 'https://www.openstreetmap.org/search?query=' + d],
   ];
 
+  // Die einmal gewählte App merken (pro Gerät), dann beim nächsten Mal direkt
+  // öffnen. Lange auf das 🧭 drücken öffnet die Auswahl wieder zum Wechseln.
+  const KEY = 'bandregie-maps-app';
+  const getPref = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+  const setPref = (n) => { try { localStorage.setItem(KEY, n); } catch (e) { /* egal */ } };
+  const appByName = (n) => APPS.find((a) => a[0] === n);
+
   let pop = null, dest = '';
   function build() {
     pop = document.createElement('div');
@@ -51,20 +58,37 @@
       b.type = 'button';
       b.className = 'btn maps-pick-btn';
       b.textContent = name;
-      b.addEventListener('click', () => { pop.hidden = true; window.location.href = make(enc(dest)); });
+      b.addEventListener('click', () => {
+        setPref(name); // Wahl merken → nächstes Mal ohne Nachfrage
+        pop.hidden = true;
+        window.location.href = make(enc(dest));
+      });
       card.appendChild(b);
     });
+    const hint = document.createElement('p');
+    hint.className = 'maps-pick-hint';
+    hint.textContent = document.body.dataset.naviPickHint || '';
+    card.appendChild(hint);
     pop.appendChild(card);
-    // Hintergrund antippen schließt.
     pop.addEventListener('click', (e) => { if (e.target === pop) pop.hidden = true; });
     document.body.appendChild(pop);
   }
+  function showChooser(d) { if (!pop) build(); dest = d; pop.hidden = false; }
 
-  links.forEach((a) => a.addEventListener('click', (e) => {
-    if (!a.dataset.navi) return;
-    e.preventDefault();
-    if (!pop) build();
-    dest = a.dataset.navi;
-    pop.hidden = false;
-  }));
+  links.forEach((a) => {
+    a.addEventListener('click', (e) => {
+      if (!a.dataset.navi) return;
+      e.preventDefault();
+      dest = a.dataset.navi;
+      const app = appByName(getPref());
+      if (app) window.location.href = app[1](enc(dest)); // gemerkte App direkt
+      else showChooser(dest);                             // erste Wahl treffen
+    });
+    // Lange drücken (bzw. Rechtsklick) → Auswahl erneut, zum Wechseln.
+    a.addEventListener('contextmenu', (e) => {
+      if (!a.dataset.navi) return;
+      e.preventDefault();
+      showChooser(a.dataset.navi);
+    });
+  });
 })();

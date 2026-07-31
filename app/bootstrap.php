@@ -679,6 +679,7 @@ Zeile zwei
   'stage_done' => 'Fertig',
   'geo_navigate' => 'Navi',
   'navi_pick' => 'Womit navigieren?',
+  'navi_pick_hint' => 'Zum Wechseln das Navi-Symbol lang drücken.',
   'photo_no_event' => 'kein Termin',
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
