@@ -29,7 +29,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','taxr_small_off','not in use'),
 ('en','taxr_gross_hint','The amounts stand as they were booked. The treasury does not separate VAT — anyone outside the small-business rule works with net amounts and has to keep that in mind.'),
 ('en','set_tax_afa_years','Useful life (years)'),
-('en','set_tax_afa_hint','A purchase above the threshold is spread over this many years. The official German table says seven years for speakers and nine for whole PA systems — what applies to a particular device is for a tax advisor to say.'),
 
 ('fr','taxr_title','Aperçu fiscal'),
 ('fr','taxr_intro','Ce qui s''est accumulé sur une année, préparé pour la déclaration — à imprimer ou sous forme de tableau pour le cabinet comptable.'),
@@ -57,7 +56,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','taxr_small_off','non utilisé'),
 ('fr','taxr_gross_hint','Les montants figurent tels qu''ils ont été inscrits. La caisse ne sépare pas la TVA — qui ne relève pas du régime des petites entreprises compte en net et doit y penser.'),
 ('fr','set_tax_afa_years','Durée d''utilisation (années)'),
-('fr','set_tax_afa_hint','Un achat au-dessus du seuil se répartit sur ce nombre d''années. La table officielle allemande indique sept ans pour les enceintes et neuf pour une sonorisation complète — ce qui vaut pour un appareil précis, c''est au cabinet comptable de le dire.'),
 
 ('es','taxr_title','Resumen fiscal'),
 ('es','taxr_intro','Lo que se ha juntado en un año, preparado para la declaración: para imprimir o como tabla para la asesoría.'),
@@ -85,7 +83,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','taxr_small_off','sin usar'),
 ('es','taxr_gross_hint','Los importes están tal como se anotaron. La caja no separa el IVA: quien no esté en el régimen de pequeña empresa calcula en neto y debe tenerlo en cuenta.'),
 ('es','set_tax_afa_years','Vida útil (años)'),
-('es','set_tax_afa_hint','Una compra por encima del límite se reparte en tantos años. La tabla oficial alemana indica siete años para altavoces y nueve para equipos de PA completos; lo que vale para un aparato concreto lo dice la asesoría.'),
 
 ('nl','taxr_title','Belastingoverzicht'),
 ('nl','taxr_intro','Wat er in een jaar is samengekomen, klaar voor de aangifte — om te printen of als tabel voor de boekhouder.'),
@@ -113,7 +110,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','taxr_small_off','niet in gebruik'),
 ('nl','taxr_gross_hint','De bedragen staan zoals ze zijn geboekt. De kas splitst de btw niet af — wie niet onder de kleineondernemersregeling valt rekent netto en moet daaraan denken.'),
 ('nl','set_tax_afa_years','Gebruiksduur (jaren)'),
-('nl','set_tax_afa_hint','Een aankoop boven de grens verdeelt zich over zoveel jaren. De officiële Duitse tabel noemt zeven jaar voor luidsprekers en negen voor complete PA-installaties — wat voor een bepaald apparaat geldt, zegt de boekhouder.'),
 
 ('it','taxr_title','Riepilogo fiscale'),
 ('it','taxr_intro','Quello che si è accumulato in un anno, pronto per la dichiarazione: da stampare o come tabella per il commercialista.'),
@@ -141,7 +137,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','taxr_small_off','non in uso'),
 ('it','taxr_gross_hint','Gli importi sono come sono stati registrati. La cassa non separa l''IVA: chi non rientra nel regime agevolato calcola al netto e deve tenerne conto.'),
 ('it','set_tax_afa_years','Vita utile (anni)'),
-('it','set_tax_afa_hint','Un acquisto sopra la soglia si distribuisce su questo numero di anni. La tabella ufficiale tedesca indica sette anni per i diffusori e nove per gli impianti PA completi; che cosa valga per un singolo apparecchio lo dice il commercialista.'),
 ('en','taxr_small','Small-business rule'),
 ('en','help_taxr_what','The tax overview sums up a year: income and expenses by category, the individual entries behind them, and what the purchases contribute to this year. The sheet can be printed, and as a table it goes to a tax advisor.'),
 ('en','help_taxr_scope','Everyone sees their own private entries there — the ones that belong to them alone. Whoever keeps the treasury can additionally switch to the band''s figures. The two views do not contain one another, and another member''s private entries appear in neither.'),

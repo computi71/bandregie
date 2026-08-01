@@ -45,6 +45,10 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
     <?php // Textfeld statt type="number", sonst geht das Komma verloren.
           // Angezeigt wird deshalb auch in der Schreibweise des Landes. ?>
     <label><?= e(t('eq_price')) ?><input name="price" inputmode="decimal" placeholder="0,00" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, ',', '.')) : '' ?>" <?= $eqLock ?>></label>
+    <label class="span2"><?= e(t('eq_afa_years')) ?>
+      <input name="afa_years" inputmode="numeric" placeholder="<?= (int) tax_afa_years_for($formEq['category']) ?>" value="<?= $formEq['afa_years'] !== null ? (int) $formEq['afa_years'] : '' ?>" <?= $eqLock ?>>
+      <span class="muted small"><?= e(t('eq_afa_hint')) ?></span>
+    </label>
   <?php else: ?>
     <p class="muted small span2">🔒 <?= e(t('eq_price_hidden')) ?></p>
   <?php endif; ?>

@@ -42,6 +42,10 @@ require_once __DIR__ . '/oauth.php';
 // Web-Push: Profil (Themen, Geräte-Abo) und mehrere Schreib-Routen lösen
 // Mitteilungen aus — auch dieses Modul ist überall im Spiel.
 require_once __DIR__ . '/push.php';
+// Steuerliche Werte: seit die Nutzungsdauer am einzelnen Gerät steht, fragen
+// auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
+// Steuerseite, die das Modul früher allein geladen hat.
+require_once __DIR__ . '/steuer.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -117,7 +121,7 @@ const UI_STRINGS = [
   'tax_state_next_year' => 'Der Umsatz liegt über der Vorjahresgrenze. Für dieses Jahr ändert das nichts — die Befreiung endet aber zum 1. Januar von selbst, unabhängig davon, wie das nächste Jahr läuft. Ab dann gehört Umsatzsteuer auf jede Rechnung.',
   'tax_state_over_this' => 'Die Grenze für das laufende Jahr ist überschritten. Die Befreiung endet damit — sprecht mit eurer Steuerberatung, bevor die nächste Rechnung rausgeht.',
   'tax_state_over_prev' => 'Der Umsatz des Vorjahres lag über der Grenze. Für dieses Jahr gilt die Befreiung damit nicht mehr.',
-  'tax_counts_hint' => 'Gezählt werden alle Einnahmen der Band außer den Einzahlungen der Mitglieder — die sind Beiträge und kein Verkauf. Private Buchungen bleiben außen vor.',
+  'tax_counts_hint' => 'Gezählt werden alle Einnahmen der Band außer den Einzahlungen der Mitglieder — die sind Beiträge und kein Verkauf. Private Buchungen bleiben außen vor. Auch der Verkauf eines Geräts zählt nicht mit: Umsätze mit Anlagevermögen bleiben nach § 19 Abs. 2 Satz 2 UStG außer Ansatz. Erkannt wird das an der Verbindung zum Gerät — wer Technik vermietet, nimmt Umsatz ein und bucht deshalb ohne Gerätebezug.',
   'tax_gbr_hint' => 'Gerechnet wird mit dem Umsatz der Band als Ganzes. Das passt, wenn ihr gemeinsam auftretet und abrechnet — der Regelfall. Stellt jedes Mitglied eigene Rechnungen, zählt stattdessen jeder für sich, und diese Zahl sagt darüber nichts.',
   'tax_no_advice' => 'Eine Rechenhilfe, keine Steuerberatung — und nichts davon ist rechtsverbindlich. Was am Ende erklärt wird, verantworten die Band und ihre Steuerberatung, nicht dieses Programm. Die Grenzen stehen in den Einstellungen und lassen sich ändern.',
   'set_tax' => 'Steuerliche Werte',
@@ -126,9 +130,16 @@ const UI_STRINGS = [
   'set_tax_small_hint' => 'Erst damit rechnet die Kasse mit und warnt an der Grenze.',
   'set_tax_prev' => 'Grenze Vorjahr (€)', 'set_tax_this' => 'Grenze laufendes Jahr (€)',
   'set_tax_gwg' => 'Grenze geringwertige Wirtschaftsgüter (€, netto)',
-  'set_tax_gwg_hint' => 'Bis zu diesem Betrag ist ein Gerät im Jahr des Kaufs abgeschrieben, darüber über seine Nutzungsdauer.',
+  'set_tax_gwg_hint' => 'Bis zu diesem Betrag ist ein Gerät im Jahr des Kaufs abgeschrieben, darüber über seine Nutzungsdauer. Die Grenze ist netto zu prüfen — bei 19 % sind das 952 € brutto.',
   'set_tax_afa_years' => 'Nutzungsdauer (Jahre)',
-  'set_tax_afa_hint' => 'Über so viele Jahre verteilt sich ein Kauf oberhalb der Grenze. Die amtliche Tabelle nennt für Lautsprecher sieben Jahre, für ganze Beschallungsanlagen neun — was für ein einzelnes Gerät gilt, weiß die Steuerberatung.',
+  'set_tax_afa_hint' => 'Gilt für Geräte ohne eigene Angabe und ohne Voreinstellung ihrer Art.',
+  'set_tax_gross' => 'Kaufpreise werden brutto erfasst',
+  'set_tax_gross_hint' => 'Für die GWG-Grenze rechnet die Kasse dann auf netto herunter. Angesetzt wird weiter der bezahlte Betrag: Ohne Vorsteuerabzug gehört die Umsatzsteuer zu den Anschaffungskosten (§ 9b Abs. 1 EStG).',
+  'set_tax_vat_rate' => 'Umsatzsteuersatz für diese Umrechnung (%)',
+  'set_tax_afa_cats' => 'Nutzungsdauer je Geräteart (Jahre)',
+  'set_tax_afa_cats_hint' => 'Aus der amtlichen AfA-Tabelle „AV": Lautsprecher und Verstärker sieben Jahre, Mischpulte und Mikrofone als Audiogeräte ebenfalls sieben, ganze Beschallungsanlagen neun, Transportbehälter zehn, Anhänger elf. Für Licht führt die AV-Tabelle nichts Passendes; fünf Jahre stehen in der Branchentabelle für Fernsehen, Film und Hörfunk. Instrumente stehen in keiner allgemeinen Tabelle mehr — dort zählt die Angabe am Gerät.',
+  'eq_afa_years' => 'Nutzungsdauer (Jahre)',
+  'eq_afa_hint' => 'Leer heißt: der Wert für diese Geräteart. Ein Flügel hält länger als eine Snare, deshalb steht er hier einzeln.',
   'set_tax_checked' => 'Werte zuletzt geprüft am',
   'set_tax_source' => 'Stand Juli 2026, Deutschland: § 19 UStG 25.000 € Vorjahr und 100.000 € laufendes Jahr, § 6 Abs. 2 EStG 800 € netto.',
   'taxr_title' => 'Steuerübersicht',
@@ -169,7 +180,7 @@ const UI_STRINGS = [
   'help_tax_counts' => 'Als Umsatz zählen Gagen, Merch und verkauftes Equipment. Einzahlungen der Mitglieder zählen nicht — das sind Beiträge und kein Verkauf. Private Buchungen bleiben ohnehin außen vor.',
   'help_tax_over' => 'Die Grenze für das laufende Jahr ist eine harte Decke: Schon der Umsatz, mit dem sie überschritten wird, ist steuerpflichtig. Die Kasse meldet sich deshalb ab vier Fünfteln der Grenze — nicht erst, wenn es zu spät ist. Wer die Regelung verliert, versteuert Auftritte ermäßigt und Merch zum vollen Satz; was das für euch heißt, klärt ihr besser vorher als hinterher.',
   'help_tax_next_year' => 'Der wahrscheinlichere Fall ist der leisere: Bleibt der Umsatz zwischen den beiden Grenzen, ändert sich dieses Jahr nichts — die Befreiung endet aber zum 1. Januar des Folgejahres, automatisch und ohne Bescheid. Wie hoch der Umsatz im neuen Jahr wird, spielt dann keine Rolle mehr. Wer davon erst beim Steuerbescheid erfährt, hat ein Jahr lang Rechnungen ohne Umsatzsteuer geschrieben, die er nachversteuern muss.',
-  'help_tax_gwg' => 'Für Geräte gilt eine zweite Grenze: Bis zu diesem Betrag netto ist ein Kauf im Jahr der Anschaffung abgeschrieben, darüber verteilt über die Nutzungsdauer. Für Lautsprecher setzt die amtliche Tabelle sieben Jahre an, für ganze Beschallungsanlagen neun.',
+  'help_tax_gwg' => 'Für Geräte gilt eine zweite Grenze: Bis zu diesem Betrag ist ein Kauf im Jahr der Anschaffung abgeschrieben, darüber verteilt über die Nutzungsdauer. Geprüft wird netto, und zwar auch dann, wenn die Band als Kleinunternehmerin gar keine Vorsteuer ziehen darf — bei 19 % ist ein Kauf also bis 952 € brutto sofort weg. Angesetzt wird trotzdem der bezahlte Betrag, weil die Umsatzsteuer ohne Vorsteuerabzug zu den Anschaffungskosten gehört. Wie lange sich ein teureres Gerät verteilt, steht bei der Geräteart und lässt sich am einzelnen Gerät überschreiben: Lautsprecher, Verstärker, Mischpulte und Mikrofone sieben Jahre, komplette Beschallungsanlagen neun, Licht fünf, Transportbehälter zehn. Instrumente stehen in keiner allgemeinen Tabelle mehr — Klaviere zehn und Flügel fünfzehn Jahre nach der Tabelle fürs Gastgewerbe, Gitarren und Schlagzeuge in der Praxis fünf bis zehn.',
   'help_tax_sources' => 'Woher die Zahlen stammen',
   'help_tax_checked' => 'Zuletzt geprüft am %s. Ratgeberseiten hinken hier oft hinterher — die Gesetzestexte sind die verlässliche Quelle.',
   'help_tax_src_ustg' => '— die Umsatzgrenzen der Kleinunternehmerregelung',
@@ -1500,6 +1511,10 @@ foreach ([
   'slot'          => "VARCHAR(60) NOT NULL DEFAULT ''",
   'purchased_on'  => 'DATE NULL',
   'price_cents'   => 'INT NULL',
+  // Nutzungsdauer dieses Geräts. NULL heißt: die Voreinstellung seiner Art
+  // gilt — eine Snare und ein Flügel teilen die Kategorie, aber nicht die
+  // Lebensdauer.
+  'afa_years'     => 'INT NULL',
 ] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
@@ -1717,6 +1732,17 @@ $defaults = [
   'tax_limit_prev_year' => '25000',
   'tax_limit_this_year' => '100000',
   'tax_gwg_limit' => '800',
+  // Die GWG-Grenze ist netto zu prüfen, auch ohne Vorsteuerabzug. Erfasst wird
+  // in der Kasse aber, was tatsächlich bezahlt wurde — für eine Band unter der
+  // Kleinunternehmerregelung also brutto. Wer netto erfasst, stellt das um.
+  'tax_prices_gross' => '1',
+  'tax_vat_rate' => '19',
+  // Nutzungsdauer je Geräteart; woher die Zahlen kommen, steht bei
+  // TAX_AFA_BY_CATEGORY.
+  'tax_afa_instrument' => '7',
+  'tax_afa_pa' => '7',
+  'tax_afa_licht' => '5',
+  'tax_afa_transport' => '10',
   'tax_values_checked' => '2026-07-28',
   // Bagatellgrenze der Abfärberegelung: beides muss halten.
   'tax_commercial_share' => '3', 'tax_commercial_abs' => '24500',
@@ -1831,6 +1857,15 @@ if (setting('push_help_fixed') !== '1') {
           OR value LIKE '%n\\'existent pas encore%' OR value LIKE '%todavía no existen%'
           OR value LIKE '%zijn er nog niet%' OR value LIKE '%non ci sono ancora%')");
   set_setting('push_help_fixed', '1');
+}
+// Vier Texte zur Steuer sagten die halbe Wahrheit: die GWG-Grenze gilt netto,
+// auch ohne Vorsteuerabzug, die Nutzungsdauer steht jetzt je Geräteart, und der
+// Verkauf eines Geräts zählt nach § 19 Abs. 2 Satz 2 UStG nicht zum Umsatz. Ein
+// Seed ergänzt nur Fehlendes und käme an die alten Fassungen nicht heran.
+if (setting('tax_texts_2026_08') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN
+     ('set_tax_gwg_hint','set_tax_afa_hint','help_tax_gwg','tax_counts_hint')");
+  set_setting('tax_texts_2026_08', '1');
 }
 if (setting('translations_seed') !== $seedStamp) {
   foreach ($seedFiles as $seedFile) {

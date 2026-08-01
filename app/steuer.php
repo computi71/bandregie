@@ -39,8 +39,18 @@ const TAX_RESULT_EXCLUDES = ['einlage', 'ausschuettung'];
  */
 function tax_turnover(int $year): int {
   $marks = implode(',', array_fill(0, count(TAX_TURNOVER_EXCLUDES), '?'));
+  // Der Verkauf eines Geräts zählt nicht mit: § 19 Abs. 2 Satz 2 UStG nimmt die
+  // Umsätze mit Wirtschaftsgütern des Anlagevermögens ausdrücklich aus der
+  // Ermittlung des Gesamtumsatzes heraus. Sonst schöbe der Verkauf der alten
+  // Anlage die Band an eine Grenze, die sie gar nicht erreicht hat.
+  //
+  // Woran das zu erkennen ist: an der Verbindung zum Gerät. Eine Einnahme, die
+  // an einem Gerät hängt, ist im Datenmodell dessen Abgang — tax_disposals()
+  // beendet daran die Abschreibung. Wer Technik vermietet, nimmt dagegen
+  // Umsatz ein und bucht ohne Gerätebezug; der Hilfetext sagt das.
   $row = row("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM finances
               WHERE type = 'einnahme' AND private_for IS NULL
+                AND equipment_id IS NULL
                 AND YEAR(date) = ? AND category NOT IN ($marks)",
              [$year, ...TAX_TURNOVER_EXCLUDES]);
   return (int) ($row['total'] ?? 0);
@@ -151,9 +161,75 @@ function tax_gwg_limit_cents(): int {
   return (int) round((float) setting('tax_gwg_limit', '800') * 100);
 }
 
+/**
+ * Der Betrag, an dem die GWG-Grenze zu messen ist.
+ *
+ * Die Grenze ist ein Nettobetrag — § 6 Abs. 2 EStG stellt auf die
+ * „Anschaffungs- oder Herstellungskosten, vermindert um einen darin enthaltenen
+ * Vorsteuerbetrag" ab, und das gilt nach R 9b Abs. 2 EStR auch dann, wenn die
+ * Vorsteuer gar nicht abziehbar ist. Genau der Fall einer Band unter der
+ * Kleinunternehmerregelung: Vorsteuer ziehen darf sie nicht (§ 15 Abs. 2 Satz 1
+ * Nr. 1 UStG), gemessen wird aber trotzdem netto. Bei 19 % heißt das: bis 952 €
+ * brutto ist der Kauf im Jahr der Anschaffung abgeschrieben.
+ *
+ * Angesetzt wird anschließend der Bruttobetrag, denn die nicht abziehbare
+ * Umsatzsteuer gehört nach § 9b Abs. 1 EStG zu den Anschaffungskosten. Diese
+ * Funktion rechnet deshalb ausschließlich für den Vergleich mit der Grenze um,
+ * nicht für die Abschreibung selbst.
+ */
+function tax_net_cents(int $cents): int {
+  if (setting('tax_prices_gross', '1') !== '1') return $cents;
+  $rate = (float) setting('tax_vat_rate', '19');
+  if ($rate <= 0) return $cents;
+  return (int) round($cents / (1 + $rate / 100));
+}
+
 /** Voreingestellte Nutzungsdauer in Jahren, über die sich ein Kauf verteilt. */
 function tax_afa_years(): int {
   return max(1, (int) setting('tax_afa_years', '7'));
+}
+
+/**
+ * Nutzungsdauer je Geräteart, in Jahren. Eine Zahl für alles passt nicht: ein
+ * Mischpult, ein Funkmikrofon, ein Anhänger und ein Flügel halten
+ * unterschiedlich lange, und eine Band hat von allem etwas.
+ *
+ * Die Werte stammen aus der AfA-Tabelle „AV" des BMF — Lautsprecher und
+ * Verstärker sieben Jahre, Foto-, Film-, Video- und Audiogeräte (darunter
+ * Mischpult und Mikrofon) sieben, Beschallungsanlagen neun,
+ * Transportcontainer zehn. Für Licht führt die AV-Tabelle nichts Passendes;
+ * fünf Jahre stehen in der Branchentabelle für Fernsehen, Film und Hörfunk
+ * (Scheinwerfer, Geräte für Beleuchtungseffekte).
+ *
+ * Instrumente stehen in keiner allgemeinen Tabelle mehr. Die Dauer muss zu Art
+ * und Wert passen — Klaviere zehn und Flügel fünfzehn Jahre nach der Tabelle
+ * fürs Gastgewerbe, Gitarren und Schlagzeuge in der Praxis fünf bis zehn.
+ * Deshalb ist hier der Wert am Gerät wichtiger als die Voreinstellung.
+ */
+const TAX_AFA_BY_CATEGORY = ['instrument' => 7, 'pa' => 7, 'licht' => 5, 'transport' => 10];
+
+/**
+ * Nutzungsdauer aus einem Formularfeld. Leer heißt „die Voreinstellung gilt",
+ * und Unsinn heißt dasselbe — eine Null oder ein Wort darf nicht dazu führen,
+ * dass ein Kauf gar nicht mehr abgeschrieben wird.
+ */
+function tax_afa_years_input(?string $raw): ?int {
+  $raw = trim((string) $raw);
+  if ($raw === '') return null;
+  $y = (int) $raw;
+  return $y >= 1 && $y <= 50 ? $y : null;
+}
+
+/**
+ * Nutzungsdauer für ein bestimmtes Gerät: der Wert am Gerät geht vor, dann die
+ * Voreinstellung seiner Art, zuletzt die allgemeine.
+ */
+function tax_afa_years_for(?string $category, ?int $itemYears = null): int {
+  if ($itemYears !== null && $itemYears >= 1) return min(50, $itemYears);
+  if ($category !== null && isset(TAX_AFA_BY_CATEGORY[$category])) {
+    return max(1, (int) setting('tax_afa_' . $category, (string) TAX_AFA_BY_CATEGORY[$category]));
+  }
+  return tax_afa_years();
 }
 
 /**
@@ -174,21 +250,23 @@ function tax_afa_years(): int {
  * stünde zusätzlich als Einnahme im selben Bericht.
  *
  * @param string|null $disposedOn Datum des Abgangs, falls verkauft
+ * @param int|null    $years     Nutzungsdauer des Geräts; null: Voreinstellung
  * @return array{kind: string, this_year: int, remaining: int, first_year: int,
  *               last_year: int, years: int, disposed_year: int|null}|null
  *               null: kein brauchbares Datum
  */
-function tax_depreciation(int $cents, ?string $purchasedOn, int $year, ?string $disposedOn = null): ?array {
+function tax_depreciation(int $cents, ?string $purchasedOn, int $year, ?string $disposedOn = null,
+                          ?int $years = null): ?array {
   $ts = $purchasedOn ? strtotime($purchasedOn) : false;
   if ($cents <= 0 || $ts === false) return null;
 
   $buyYear = (int) date('Y', $ts);
   $buyMonth = (int) date('n', $ts);
-  $years = tax_afa_years();
+  $years = $years !== null && $years >= 1 ? min(50, $years) : tax_afa_years();
   $goneTs = $disposedOn ? strtotime($disposedOn) : false;
   $goneYear = $goneTs === false ? null : (int) date('Y', $goneTs);
 
-  if ($cents <= tax_gwg_limit_cents()) {
+  if (tax_net_cents($cents) <= tax_gwg_limit_cents()) {
     return [
       'kind' => 'gwg', 'years' => 1,
       'this_year' => $year === $buyYear ? $cents : 0,
@@ -278,7 +356,8 @@ function tax_report(int $year, ?int $memberId): array {
 
   // Käufe früherer Jahre schreiben weiter ab — deshalb alle bis Silvester,
   // nicht nur die des Jahres.
-  $purchases = rows("SELECT f.*, eq.name AS equipment_name
+  $purchases = rows("SELECT f.*, eq.name AS equipment_name, eq.category AS equipment_category,
+                            eq.afa_years AS equipment_afa_years
                      FROM finances f
                      LEFT JOIN equipment eq ON eq.id = f.equipment_id
                      WHERE $scope AND f.equipment_id IS NOT NULL AND f.type = 'ausgabe'
@@ -290,7 +369,10 @@ function tax_report(int $year, ?int $memberId): array {
   $equipment = []; $sumAfa = 0;
   foreach ($purchases as $p) {
     $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $year,
-                            $goneOn[(int) $p['equipment_id']] ?? null);
+                            $goneOn[(int) $p['equipment_id']] ?? null,
+                            tax_afa_years_for($p['equipment_category'] ?? null,
+                                              $p['equipment_afa_years'] === null
+                                                ? null : (int) $p['equipment_afa_years']));
     if ($dep === null || ($dep['this_year'] === 0 && $dep['first_year'] !== $year)) continue;
     $equipment[] = [
       'name' => $p['equipment_name'] ?? $p['description'],
@@ -350,10 +432,17 @@ function tax_report_years(?int $memberId): array {
   // aber nicht: für ein Jahr, das noch läuft, gibt es nichts zu erklären.
   $now = (int) date('Y');
   $goneOn = tax_disposals($memberId);
-  foreach (rows("SELECT amount_cents, date, equipment_id FROM finances
-                 WHERE $scope AND equipment_id IS NOT NULL AND type = 'ausgabe'", $args) as $p) {
+  foreach (rows("SELECT f.amount_cents, f.date, f.equipment_id,
+                        eq.category AS equipment_category, eq.afa_years AS equipment_afa_years
+                 FROM finances f
+                 LEFT JOIN equipment eq ON eq.id = f.equipment_id
+                 WHERE " . str_replace('private_for', 'f.private_for', $scope) . "
+                   AND f.equipment_id IS NOT NULL AND f.type = 'ausgabe'", $args) as $p) {
     $dep = tax_depreciation((int) $p['amount_cents'], $p['date'], $now,
-                            $goneOn[(int) $p['equipment_id']] ?? null);
+                            $goneOn[(int) $p['equipment_id']] ?? null,
+                            tax_afa_years_for($p['equipment_category'] ?? null,
+                                              $p['equipment_afa_years'] === null
+                                                ? null : (int) $p['equipment_afa_years']));
     if (!$dep) continue;
     for ($y = $dep['first_year']; $y <= min($dep['last_year'], $now); $y++) $years[] = $y;
   }

@@ -1701,7 +1701,7 @@ if (str_starts_with($path, '/intern')) {
       $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
       $name  = trim($_POST['name']);
       for ($i = 1; $i <= $count; $i++) {
-        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents) VALUES (?,?,?,?,?,?,?,?,?,?)', [
+        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
           $count > 1 ? $name . ' #' . $i : $name,
           array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
           $ownerId,
@@ -1712,6 +1712,7 @@ if (str_starts_with($path, '/intern')) {
           trim($_POST['slot'] ?? ''),
           trim($_POST['purchased_on'] ?? '') ?: null,
           price_to_cents((string) ($_POST['price'] ?? '')),
+          tax_afa_years_input($_POST['afa_years'] ?? null),
         ]);
       }
       flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
@@ -1775,11 +1776,11 @@ if (str_starts_with($path, '/intern')) {
     $baseSlot = eq_strip_quantity((string) $eq['slot']);
     q('UPDATE equipment SET name = ?, slot = ? WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
     for ($i = 2; $i <= $count; $i++) {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents)
-         VALUES (?,?,?,?,?,?,?,?,?,?)', [
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
         $baseName . ' #' . $i, $eq['category'], $eq['owner_id'], $eq['location'],
         $eq['is_standard'], $eq['notes'], $eq['parent_id'], $baseSlot,
-        $eq['purchased_on'], $eq['price_cents'],
+        $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'],
       ]);
     }
     flash(sprintf(t('fl_eq_split'), $count));
@@ -1810,7 +1811,7 @@ if (str_starts_with($path, '/intern')) {
         ? ((int) ($_POST['owner_id'] ?? 0) ?: null)
         : ($eqBefore['owner_id'] !== null ? (int) $eqBefore['owner_id'] : null);
       [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=? WHERE id=?', [
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         $ownerId,
@@ -1821,6 +1822,9 @@ if (str_starts_with($path, '/intern')) {
         trim($_POST['slot'] ?? ''),
         $mayOwn ? (trim($_POST['purchased_on'] ?? '') ?: null) : $eqBefore['purchased_on'],
         $mayOwn ? price_to_cents((string) ($_POST['price'] ?? '')) : $eqBefore['price_cents'],
+        // Die Nutzungsdauer steht hinter derselben Schranke wie der Preis: wer
+        // ihn nicht sehen darf, ändert auch nichts an der Abschreibung.
+        $mayOwn ? tax_afa_years_input($_POST['afa_years'] ?? null) : $eqBefore['afa_years'],
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit —
@@ -2360,14 +2364,17 @@ if (str_starts_with($path, '/intern')) {
       // Die Beträge kommen als Zahl mit Komma oder Punkt herein; price_to_cents
       // kennt beides, gespeichert wird wieder in Euro.
       foreach (['tax_limit_prev_year', 'tax_limit_this_year', 'tax_gwg_limit',
-                'tax_commercial_share', 'tax_commercial_abs'] as $taxKey) {
+                'tax_commercial_share', 'tax_commercial_abs', 'tax_vat_rate'] as $taxKey) {
         $cents = price_to_cents((string) ($_POST[$taxKey] ?? ''));
         if ($cents !== null && $cents >= 0) set_setting($taxKey, (string) round($cents / 100, 2));
       }
       // Die Nutzungsdauer ist eine Anzahl Jahre, kein Betrag. Null Jahre gibt
       // es nicht — dann bliebe ein Kauf für immer stehen.
-      $afaYears = (int) ($_POST['tax_afa_years'] ?? 0);
-      if ($afaYears >= 1 && $afaYears <= 50) set_setting('tax_afa_years', (string) $afaYears);
+      foreach (['tax_afa_years', ...array_map(fn($c) => 'tax_afa_' . $c, array_keys(TAX_AFA_BY_CATEGORY))] as $afaKey) {
+        $afaYears = (int) ($_POST[$afaKey] ?? 0);
+        if ($afaYears >= 1 && $afaYears <= 50) set_setting($afaKey, (string) $afaYears);
+      }
+      set_setting('tax_prices_gross', isset($_POST['tax_prices_gross']) ? '1' : '0');
       set_setting('tax_small_business', isset($_POST['tax_small_business']) ? '1' : '0');
       $taxDate = trim($_POST['tax_values_checked'] ?? '');
       set_setting('tax_values_checked', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxDate) ? $taxDate : date('Y-m-d'));

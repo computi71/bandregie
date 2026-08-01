@@ -351,9 +351,22 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">
       <span class="muted small"><?= e(t('set_tax_gwg_hint')) ?></span>
     </label>
+    <label class="checkbox span2">
+      <input type="checkbox" name="tax_prices_gross" value="1" <?= setting('tax_prices_gross', '1') === '1' ? 'checked' : '' ?>>
+      <?= e(t('set_tax_gross')) ?>
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_gross_hint')) ?></p>
+    <label><?= e(t('set_tax_vat_rate')) ?><input name="tax_vat_rate" inputmode="decimal" value="<?= e(setting('tax_vat_rate', '19')) ?>"></label>
     <label><?= e(t('set_tax_afa_years')) ?><input name="tax_afa_years" inputmode="numeric" value="<?= e(setting('tax_afa_years', '7')) ?>">
       <span class="muted small"><?= e(t('set_tax_afa_hint')) ?></span>
     </label>
+    <p class="span2"><strong><?= e(t('set_tax_afa_cats')) ?></strong></p>
+    <?php foreach (TAX_AFA_BY_CATEGORY as $afaCat => $afaDefault): ?>
+      <label><?= e(eq_category_label($afaCat)) ?>
+        <input name="tax_afa_<?= e($afaCat) ?>" inputmode="numeric" value="<?= e(setting('tax_afa_' . $afaCat, (string) $afaDefault)) ?>">
+      </label>
+    <?php endforeach; ?>
+    <p class="muted small span2"><?= e(t('set_tax_afa_cats_hint')) ?></p>
     <label><?= e(t('set_tax_comm_share')) ?><input name="tax_commercial_share" inputmode="decimal" value="<?= e(setting('tax_commercial_share', '3')) ?>"></label>
     <label><?= e(t('set_tax_comm_abs')) ?><input name="tax_commercial_abs" inputmode="decimal" value="<?= e(setting('tax_commercial_abs', '24500')) ?>"></label>
     <p class="muted small span2"><?= e(t('set_tax_comm_hint')) ?></p>
