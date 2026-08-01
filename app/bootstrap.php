@@ -36,9 +36,6 @@ $config = require $configFile;
 // ohne ihn wüsste weder die Sicherung noch die Dateiausgabe, ob verschlüsselt
 // abgelegt wird.
 require_once __DIR__ . '/tresor.php';
-// Anmeldung über Apple/Google/Facebook: Login-Seite, Profil und Einstellungen
-// fragen die Anbieter-Konfiguration ab — deshalb gehört das Modul hierher.
-require_once __DIR__ . '/oauth.php';
 // Web-Push: Profil (Themen, Geräte-Abo) und mehrere Schreib-Routen lösen
 // Mitteilungen aus — auch dieses Modul ist überall im Spiel.
 require_once __DIR__ . '/push.php';
@@ -715,30 +712,6 @@ Zeile zwei
   'geo_navigate' => 'Navi',
   'navi_pick' => 'Womit navigieren?',
   'navi_pick_hint' => 'Zum Wechseln das Navi-Symbol lang drücken.',
-  'login_or' => 'oder',
-  'login_with' => 'Mit %1 anmelden',
-  'set_oauth' => 'Anmeldung über Apple, Google oder Facebook',
-  'set_oauth_hint' => 'Jeder Anbieter bleibt aus, bis seine Zugangsdaten eingetragen sind — ohne Eintrag erscheint kein Knopf und nichts ruft hinaus. Mitglieder melden sich weiterhin auch mit E-Mail und Passwort an; ein Konto entsteht aus so einer Anmeldung nie.',
-  'set_oauth_redirect' => 'Weiterleitungs-Adresse (beim Anbieter eintragen)',
-  'set_oauth_client_id' => 'Client-ID',
-  'set_oauth_secret' => 'Client-Secret',
-  'set_oauth_secret_set' => 'gespeichert — leer lassen zum Behalten',
-  'set_oauth_apple_team' => 'Team-ID',
-  'set_oauth_apple_keyid' => 'Schlüssel-ID (Key ID)',
-  'set_oauth_apple_key' => 'Privater Schlüssel (Inhalt der .p8-Datei)',
-  'set_oauth_site_url' => 'Vorher die feste Adresse der Installation eintragen — die Weiterleitungs-Adressen bauen darauf auf.',
-  'fl_oauth_saved' => 'Anmelde-Anbieter gespeichert.',
-  'prof_identities' => 'Verknüpfte Anmeldungen',
-  'prof_identities_hint' => 'Einmal verknüpft, geht die Anmeldung auch ohne Passwort. Das Passwort bleibt bestehen und funktioniert weiter.',
-  'prof_identity_link' => 'Verknüpfen',
-  'prof_identity_unlink' => 'Trennen',
-  'prof_identity_as' => 'verknüpft als %1',
-  'fl_oauth_linked' => 'Anmeldung verknüpft.',
-  'fl_oauth_unlinked' => 'Verknüpfung getrennt.',
-  'fl_oauth_failed' => 'Anmeldung über den Anbieter fehlgeschlagen.',
-  'fl_oauth_no_member' => 'Kein Mitglied mit dieser E-Mail-Adresse. Der Zugang wird von der Bandverwaltung angelegt — aus einer Anmeldung entsteht kein Konto.',
-  'fl_oauth_taken' => 'Diese Anmeldung ist schon mit einem anderen Konto verknüpft.',
-  'fl_oauth_no_email' => 'Der Anbieter hat keine bestätigte E-Mail-Adresse geliefert.',
   'prof_push' => 'Mitteilungen',
   'prof_push_hint' => 'Push aufs Handy für das, was dich interessiert — je Thema wählbar. Aktiviert wird je Gerät. Ohne Browser-Unterstützung bleibt alles wie bisher.',
   'push_topic_events' => 'Neue Termine',
@@ -768,8 +741,6 @@ Zeile zwei
   'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
   'set_push' => 'Mitteilungen aufs Gerät erlauben',
   'fl_fee_unclear' => 'Die Gage steht als Text da und lässt sich nicht eindeutig als Betrag lesen — bitte von Hand buchen.',
-  'help_login_title' => 'Anmelden ohne Passwort',
-  'help_login' => 'Hat die Bandverwaltung einen Anbieter eingerichtet, kannst du dich statt mit Passwort über dein bestehendes Konto bei Apple, Google oder Facebook anmelden. Verknüpfen und wieder trennen kannst du das jederzeit im Profil unter „Verknüpfte Anmeldungen“. Dein Passwort bleibt daneben bestehen und funktioniert weiter — ist ein Anbieter einmal nicht erreichbar, kommst du trotzdem herein. Ein Konto entsteht dabei nie von allein: Die Anmeldung findet nur ein Mitglied, das schon angelegt ist und dieselbe, beim Anbieter bestätigte E-Mail-Adresse hat.',
   'taxr_neutral' => 'Einlagen und Ausschüttungen (nicht im Ergebnis)',
   'taxr_neutral_hint' => 'Geld zwischen Band und Mitgliedern ist kein Betriebsergebnis: Eine Einlage ist kein Gewinn, eine Ausschüttung keine Betriebsausgabe. Beides steht unten in der Liste, zählt hier oben aber nicht mit.',
   'set_extern' => 'Verbindungen nach außen',
@@ -1499,18 +1470,21 @@ $db->exec('CREATE TABLE IF NOT EXISTS push_subscriptions (
 if (!column_exists('users', 'push_topics')) {
   $db->exec("ALTER TABLE users ADD COLUMN push_topics VARCHAR(190) NOT NULL DEFAULT ''");
 }
-// Anmeldungen über Apple/Google/Facebook (#97): je Mitglied und Anbieter eine
-// Verknüpfung. Der 'subject' ist die stabile Kennung des Anbieters — E-Mail-
-// Adressen können dort wechseln, die Kennung nicht.
-$db->exec('CREATE TABLE IF NOT EXISTS user_identities (
-    provider VARCHAR(20) NOT NULL,
-    subject VARCHAR(190) NOT NULL,
-    user_id INT NOT NULL,
-    email VARCHAR(190) NOT NULL DEFAULT \'\',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (provider, subject),
-    UNIQUE KEY uniq_user_provider (user_id, provider)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+// Die Anmeldung über Apple, Google und Facebook ist entfallen (#167). Die
+// Verknüpfungstabelle geht mit: Sie hielt Kennungen dieser Anbieter, und ohne
+// die Anmeldung wäre das eine Datensammlung ohne Zweck. Die Zugangsdaten der
+// Anbieter verschwinden ebenfalls — ein vergessenes Client-Secret in der
+// Datenbank ist ein Geheimnis, das niemandem mehr nützt und trotzdem gilt.
+if (setting('login_providers_removed') !== '1') {
+  $db->exec('DROP TABLE IF EXISTS user_identities');
+  q("DELETE FROM settings WHERE `key` LIKE 'oauth_%'");
+  // Die Übersetzungen dazu wären sonst Karteileichen: Schlüssel, die kein
+  // Text mehr abruft, aber jede Sprachliste weiter aufblähen.
+  q("DELETE FROM translations WHERE tkey LIKE 'set_oauth%' OR tkey LIKE 'fl_oauth%'
+       OR tkey LIKE 'prof_identit%' OR tkey IN
+       ('help_login','help_login_title','login_or','login_with','prof_identity_as')");
+  set_setting('login_providers_removed', '1');
+}
 if (!column_exists('users', 'must_change_pw')) {
   $db->exec("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
 }
@@ -3068,7 +3042,7 @@ function open_items_count(array $user): int {
  */
 function user_purge(int $userId): void {
   foreach (['attendance', 'permissions', 'song_chords', 'song_ratings',
-            'user_identities', 'push_subscriptions', 'substitute_requests',
+            'push_subscriptions', 'substitute_requests',
             'absences'] as $table) {
     q("DELETE FROM $table WHERE user_id = ?", [$userId]);
   }

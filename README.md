@@ -247,24 +247,6 @@ configured); no third-party service and no library involved — messages are
 encrypted per RFC 8291 and sent directly to the browser vendors' push
 endpoints. Browsers without push support simply never see the buttons.
 
-### Sign in with Apple, Google or Facebook (optional)
-
-Members can sign in through an existing account instead of the e-mail
-password. Every provider is **off** until an administrator enters its
-credentials in the settings — without them no button appears and nothing
-phones home. Matching is strict: a sign-in either uses an existing link or
-the provider's **verified** e-mail address of an existing member; an account
-is never created from a sign-in alone. The e-mail password always keeps
-working, so nobody is locked out when a provider is unreachable.
-
-Setup per provider: create an OAuth client in the provider's console, enter
-the redirect address shown in the settings (`/auth/<provider>/callback`,
-built from the fixed site address), and paste the client ID and secret.
-Apple needs the Service ID, Team ID, Key ID and the `.p8` private key —
-the short-lived client secret JWT is generated from it on each request.
-Facebook only hands out e-mail addresses after its app review. Secrets are
-stored sealed when an encryption key is configured.
-
 ### Backups
 
 Back up the database and the `data/` folder. Updating the code never touches

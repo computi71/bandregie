@@ -7,9 +7,9 @@ $txtVal = fn(string $lang, string $key): string => $lang === 'de' ? ($settings[$
 $impressumDefault = "Angaben gemäß § 5 DDG\n\n" . $settings['band_name'] . "\n[Straße Hausnummer]\n[PLZ Ort]\n\nKontakt:\nE-Mail: " . ($settings['contact_email'] ?: '[E-Mail-Adresse]') . "\nTelefon: [Telefonnummer]\n\nInhaltlich verantwortlich (§ 18 Abs. 2 MStV):\n" . $settings['band_name'] . ", Anschrift wie oben\n\nTechnische Umsetzung, Administration & Webspace:\nMichael Rothe\nc/o COCENTER\nKoppoldstr. 1\n86551 Aichach";
 // Vorlage für die Datenschutzerklärung. Sie deckt alle Verarbeitungen ab, die
 // die Anwendung überhaupt vornehmen kann — auch die optionalen. Die Abschnitte
-// zu Adress-Suche, Mitteilungen und Anmeldung über Anbieter sind als „nur wenn
-// aktiviert" gekennzeichnet: so muss niemand nachtragen, wer einen Schalter
-// umlegt, und wer ihn nicht nutzt, kann den Absatz streichen.
+// zu Adress-Suche und Sicherungen sind als „nur wenn aktiviert" gekennzeichnet:
+// so muss niemand nachtragen, wer einen Schalter umlegt, und wer ihn nicht
+// nutzt, kann den Absatz streichen.
 // Wird ein Datenfluss nach außen ergänzt, gehört er hierher — im selben Commit.
 $privacyDefault = "Datenschutzerklärung\n\n"
   . "1. Verantwortlicher\nVerantwortlich für die Datenverarbeitung auf dieser Website:\n"
@@ -17,16 +17,15 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   . ($settings['contact_email'] ?: '[E-Mail-Adresse]') . "\n\n"
   . "2. Hosting und Server-Logfiles\nBeim Aufruf dieser Website verarbeitet unser Server automatisch Informationen (sog. Server-Logfiles: IP-Adresse, Datum und Uhrzeit, aufgerufene Seite, Browsertyp), die dein Browser übermittelt. Diese Daten dienen der Sicherstellung eines störungsfreien Betriebs (Art. 6 Abs. 1 lit. f DSGVO) und werden nach [Speicherdauer] gelöscht.\n"
   . "Server-Infrastruktur: [Name und Anschrift des Hosters]\nTechnischer Ansprechpartner: Michael Rothe, c/o COCENTER, Koppoldstr. 1, 86551 Aichach\n\n"
-  . "3. Cookies und lokale Speicherung\nFür den passwortgeschützten Bandbereich setzen wir ein technisch notwendiges Session-Cookie. Beim Anmelden über einen externen Anbieter (siehe Nr. 7) kommt für höchstens zehn Minuten ein weiteres notwendiges Cookie hinzu, das den Anmeldevorgang an deinen Browser bindet. Im lokalen Speicher deines Browsers merkt sich die Anwendung technische Angaben, etwa die von dir gewählte Karten-App und Kopien von Seiten für die Offline-Nutzung. Alles davon ist für den Betrieb erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG); es findet keine Analyse und keine Werbung statt.\n\n"
+  . "3. Cookies und lokale Speicherung\nFür den passwortgeschützten Bandbereich setzen wir ein technisch notwendiges Session-Cookie. Im lokalen Speicher deines Browsers merkt sich die Anwendung technische Angaben, etwa die von dir gewählte Karten-App und Kopien von Seiten für die Offline-Nutzung. Alles davon ist für den Betrieb erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG); es findet keine Analyse und keine Werbung statt.\n\n"
   . "4. Bandbereich für Mitglieder\nIm internen Bereich verarbeiten wir die Daten der Bandmitglieder: Name, E-Mail-Adresse, Rolle und Instrument, freiwillige Angaben wie Foto und Künstlername, Rückmeldungen zu Terminen, Abwesenheiten, Kommentare, Aufgaben sowie Angaben zur Bandkasse. Zweck ist die Organisation der Band, Rechtsgrundlage ist die Erfüllung des Mitgliedschaftsverhältnisses bzw. unser berechtigtes Interesse an einer geordneten Zusammenarbeit (Art. 6 Abs. 1 lit. b und f DSGVO). Die Daten werden gelöscht, wenn sie für diesen Zweck nicht mehr gebraucht werden; Angaben mit steuerlicher Bedeutung bewahren wir für die gesetzlichen Fristen auf.\n\n"
   . "5. Fotos und Aufnahmedaten\nHochgeladene Fotos speichern wir auf unserem Server. Aus den Bilddateien lesen wir, sofern vorhanden, Aufnahmedatum und Aufnahmeort aus, um ein Foto einem Termin zuordnen zu können; diese Angaben sind nur im internen Bereich sichtbar. Aus veröffentlichten Fotos entfernen wir die Aufnahmedaten, bevor sie ausgeliefert werden. Wer auf einem Foto zu erkennen ist und die Veröffentlichung nicht möchte, kann sie jederzeit widersprechen — wir nehmen das Foto dann herunter.\n\n"
   . "6. Adress-Suche über OpenStreetMap (nur wenn aktiviert)\nWenn wir diese Funktion einschalten, wird beim Suchen einer Adresse die eingegebene Adresse einmalig von unserem Server an den Dienst Nominatim der OpenStreetMap Foundation (Vereinigtes Königreich) übermittelt, um die Koordinaten zu erhalten. Dein Browser nimmt daran nicht teil; deine IP-Adresse wird dabei nicht übermittelt. Zweck ist eine punktgenaue Navigation zu Veranstaltungsorten (Art. 6 Abs. 1 lit. f DSGVO). Ohne diese Funktion findet keine solche Übermittlung statt.\n\n"
-  . "7. Anmeldung über Apple, Google oder Facebook (nur wenn aktiviert)\nMitglieder können sich statt mit einem Passwort über ein bestehendes Konto anmelden. Nutzt ein Mitglied diesen Weg, erfährt der jeweilige Anbieter — Apple Inc., Google Ireland Ltd. oder Meta Platforms Ireland Ltd. — dass eine Anmeldung bei uns erfolgt, und übermittelt uns eine Kennung sowie die bei ihm bestätigte E-Mail-Adresse; beides speichern wir zur Zuordnung zum Mitgliedskonto. Rechtsgrundlage ist die Einwilligung durch die Nutzung dieses Wegs (Art. 6 Abs. 1 lit. a DSGVO); die Anmeldung mit Passwort bleibt jederzeit möglich, und die Verknüpfung lässt sich im Profil wieder trennen.\n\n"
-  . "8. Mitteilungen auf das Gerät\nMitglieder können Mitteilungen zu Terminen, Kommentaren und Rückmeldungen abonnieren. Dafür stellt der Browser eine Geräte-Adresse beim Zustelldienst seines Herstellers bereit — je nach Browser Google Ireland Ltd., Apple Inc., Mozilla Corporation oder Microsoft Ireland Operations Ltd. — die wir speichern, um Mitteilungen dorthin zu senden. Der Inhalt ist so verschlüsselt, dass nur das Gerät ihn lesen kann; dem Zustelldienst sind Zeitpunkt und Empfängergerät gleichwohl bekannt. Rechtsgrundlage ist die Einwilligung (Art. 6 Abs. 1 lit. a DSGVO); sie lässt sich im Profil jederzeit widerrufen, die Geräte-Adresse wird dann gelöscht. Zu jeder Mitteilung ermitteln wir außerdem, wie viel für dich gerade offen ist — deine noch nicht erledigten Aufgaben und die kommenden Termine, zu denen deine Rückmeldung fehlt. Diese Zahl reist verschlüsselt mit und erscheint als Marke am App-Symbol; sie liegt auf deinem Gerät und wird beim Öffnen der Anwendung aktualisiert. Eine Auswertung über die Zeit entsteht daraus nicht: gespeichert ist immer nur der aktuelle Stand, und gezählt wird ausschließlich, was du ohnehin sehen darfst.\n\n"
-  . "9. Navigation zu Veranstaltungsorten\nTippt ein Mitglied im internen Bereich auf das Navi-Symbol, öffnet sich die Karten-App des Geräts mit dem Ziel. Die Anwendung ruft dabei selbst nichts ab; die Zieladresse verarbeitet ab diesem Moment der Anbieter der gewählten Karten-App nach dessen eigenen Bestimmungen.\n\n"
-  . "10. Eingebettete Inhalte\nAuf der öffentlichen Seite können Inhalte Dritter eingebunden sein (z. B. Videos oder Musikdienste). Diese werden erst nach deiner ausdrücklichen Zustimmung geladen; vorher werden keine Daten an den jeweiligen Anbieter übermittelt.\n\n"
-  . "11. Sicherungen (nur wenn eingerichtet)\nWir sichern Datenbank und hochgeladene Dateien regelmäßig; die Sicherung liegt zunächst auf demselben Server. Ist zusätzlich ein auswärtiges Ziel eingerichtet, wird sie dorthin übertragen: [Name und Anschrift des Ziels]. Sie enthält alle oben genannten Daten. Ist ein Verschlüsselungsschlüssel gesetzt, verlässt sie den Server nur verschlüsselt und lässt sich ohne diesen Schlüssel nirgends öffnen. Rechtsgrundlage ist unser berechtigtes Interesse an einem wiederherstellbaren Betrieb (Art. 6 Abs. 1 lit. f DSGVO); alte Sicherungen werden nach der eingestellten Aufbewahrungszahl gelöscht.\n\n"
-  . "12. Deine Rechte\nDu hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch (Art. 15–21 DSGVO) sowie Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO). Eine erteilte Einwilligung kannst du jederzeit widerrufen.";
+  . "7. Mitteilungen auf das Gerät\nMitglieder können Mitteilungen zu Terminen, Kommentaren und Rückmeldungen abonnieren. Dafür stellt der Browser eine Geräte-Adresse beim Zustelldienst seines Herstellers bereit — je nach Browser Google Ireland Ltd., Apple Inc., Mozilla Corporation oder Microsoft Ireland Operations Ltd. — die wir speichern, um Mitteilungen dorthin zu senden. Der Inhalt ist so verschlüsselt, dass nur das Gerät ihn lesen kann; dem Zustelldienst sind Zeitpunkt und Empfängergerät gleichwohl bekannt. Rechtsgrundlage ist die Einwilligung (Art. 6 Abs. 1 lit. a DSGVO); sie lässt sich im Profil jederzeit widerrufen, die Geräte-Adresse wird dann gelöscht. Zu jeder Mitteilung ermitteln wir außerdem, wie viel für dich gerade offen ist — deine noch nicht erledigten Aufgaben und die kommenden Termine, zu denen deine Rückmeldung fehlt. Diese Zahl reist verschlüsselt mit und erscheint als Marke am App-Symbol; sie liegt auf deinem Gerät und wird beim Öffnen der Anwendung aktualisiert. Eine Auswertung über die Zeit entsteht daraus nicht: gespeichert ist immer nur der aktuelle Stand, und gezählt wird ausschließlich, was du ohnehin sehen darfst.\n\n"
+  . "8. Navigation zu Veranstaltungsorten\nTippt ein Mitglied im internen Bereich auf das Navi-Symbol, öffnet sich die Karten-App des Geräts mit dem Ziel. Die Anwendung ruft dabei selbst nichts ab; die Zieladresse verarbeitet ab diesem Moment der Anbieter der gewählten Karten-App nach dessen eigenen Bestimmungen.\n\n"
+  . "9. Eingebettete Inhalte\nAuf der öffentlichen Seite können Inhalte Dritter eingebunden sein (z. B. Videos oder Musikdienste). Diese werden erst nach deiner ausdrücklichen Zustimmung geladen; vorher werden keine Daten an den jeweiligen Anbieter übermittelt.\n\n"
+  . "10. Sicherungen (nur wenn eingerichtet)\nWir sichern Datenbank und hochgeladene Dateien regelmäßig; die Sicherung liegt zunächst auf demselben Server. Ist zusätzlich ein auswärtiges Ziel eingerichtet, wird sie dorthin übertragen: [Name und Anschrift des Ziels]. Sie enthält alle oben genannten Daten. Ist ein Verschlüsselungsschlüssel gesetzt, verlässt sie den Server nur verschlüsselt und lässt sich ohne diesen Schlüssel nirgends öffnen. Rechtsgrundlage ist unser berechtigtes Interesse an einem wiederherstellbaren Betrieb (Art. 6 Abs. 1 lit. f DSGVO); alte Sicherungen werden nach der eingestellten Aufbewahrungszahl gelöscht.\n\n"
+  . "11. Deine Rechte\nDu hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch (Art. 15–21 DSGVO) sowie Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO). Eine erteilte Einwilligung kannst du jederzeit widerrufen.";
 ?>
 <h1><?= e(t('inav_einstellungen')) ?></h1>
 
@@ -475,48 +474,6 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
 </details>
-
-<?php // Anmeldung über Apple/Google/Facebook (#97): je Anbieter Zugangsdaten,
-      // Geheimnisse werden nie zurückgeschrieben (nur "gespeichert" angezeigt).
-      // Die Weiterleitungs-Adresse steht dabei — die trägt man beim Anbieter ein. ?>
-<details class="card acc" name="setacc">
-  <summary>🔑 <?= e(t('set_oauth')) ?></summary>
-  <p class="muted small"><?= e(t('set_oauth_hint')) ?></p>
-  <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>
-  <?php if (setting('site_url') === ''): ?>
-    <p class="warn">⚠ <?= e(t('set_oauth_site_url')) ?></p>
-  <?php endif; ?>
-  <form method="post" action="/intern/einstellungen/oauth" class="stack"><?= csrf_field() ?>
-    <?php foreach (oauth_providers() as $oaKey => $oaProv): ?>
-      <details class="subsection" <?= $oaProv['ready'] ? 'open' : '' ?>>
-        <summary><?= e($oaProv['name']) ?><?= $oaProv['ready'] ? ' ✓' : '' ?></summary>
-        <div class="form-grid">
-          <label><?= e(t('set_oauth_client_id')) ?>
-            <input name="oauth_<?= e($oaKey) ?>_client_id" value="<?= e(setting('oauth_' . $oaKey . '_client_id')) ?>" autocomplete="off">
-          </label>
-          <?php if ($oaKey === 'apple'): ?>
-            <label><?= e(t('set_oauth_apple_team')) ?>
-              <input name="oauth_apple_team_id" value="<?= e(setting('oauth_apple_team_id')) ?>" autocomplete="off">
-            </label>
-            <label><?= e(t('set_oauth_apple_keyid')) ?>
-              <input name="oauth_apple_key_id" value="<?= e(setting('oauth_apple_key_id')) ?>" autocomplete="off">
-            </label>
-            <label class="span2"><?= e(t('set_oauth_apple_key')) ?>
-              <textarea name="oauth_apple_key" rows="3" class="mono" autocomplete="off"
-                        placeholder="<?= oauth_secret('oauth_apple_key') !== '' ? e(t('set_oauth_secret_set')) : '-----BEGIN PRIVATE KEY-----' ?>"></textarea>
-            </label>
-          <?php else: ?>
-            <label><?= e(t('set_oauth_secret')) ?>
-              <input type="password" name="oauth_<?= e($oaKey) ?>_secret" autocomplete="new-password"
-                     placeholder="<?= oauth_secret('oauth_' . $oaKey . '_secret') !== '' ? e(t('set_oauth_secret_set')) : '' ?>">
-            </label>
-          <?php endif; ?>
-          <p class="muted small span2"><?= e(t('set_oauth_redirect')) ?>: <code><?= e(oauth_redirect_uri($oaKey)) ?></code></p>
-        </div>
-      </details>
-    <?php endforeach; ?>
-    <button class="btn btn-primary"><?= e(t('save')) ?></button>
-  </form>
 </details>
 
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

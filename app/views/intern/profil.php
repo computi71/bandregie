@@ -59,33 +59,6 @@
   <p class="muted small"><?= e(t('off_areas_when')) ?></p>
 </details>
 
-<?php // Anmeldung über Anbieter (#97): nur zeigen, wenn welche konfiguriert
-      // sind — sonst gäbe es hier Knöpfe ins Leere. Verknüpfen führt über den
-      // Anbieter (mit ?link=1 im signierten state), Trennen ist ein POST. ?>
-<?php if ($oauthProviders = oauth_enabled()): ?>
-<details class="card acc" name="profilacc">
-  <summary>🔑 <?= e(t('prof_identities')) ?></summary>
-  <p class="muted small"><?= e(t('prof_identities_hint')) ?></p>
-  <?php foreach ($oauthProviders as $key => $p): ?>
-    <div class="row-buttons" style="margin-bottom:0.4rem">
-      <strong><?= e($p['name']) ?></strong>
-      <?php if (isset($identities[$key])): ?>
-        <span class="muted small"><?= e(str_replace('%1', $identities[$key], t('prof_identity_as'))) ?></span>
-        <form class="inline" method="post" action="/intern/profil/identity/<?= e($key) ?>/delete"><?= csrf_field() ?>
-          <button class="btn btn-tiny btn-ghost"><?= e(t('prof_identity_unlink')) ?></button>
-        </form>
-      <?php else: ?>
-        <?php // Verknüpfen per POST mit Token: als Verweis ließe es sich von
-              // fremden Seiten aus auslösen. ?>
-        <form class="inline" method="post" action="/auth/<?= e($key) ?>"><?= csrf_field() ?>
-          <input type="hidden" name="link" value="1">
-          <button class="btn btn-tiny"><?= e(t('prof_identity_link')) ?></button>
-        </form>
-      <?php endif; ?>
-    </div>
-  <?php endforeach; ?>
-</details>
-<?php endif; ?>
 
 <?php // Push-Mitteilungen (#24): Themen gelten kontoweit, das Abo je Gerät.
       // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —

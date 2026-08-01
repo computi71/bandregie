@@ -5,9 +5,48 @@
 // Bandbereich funktioniert unverändert ohne Push.
 //
 // Die Verschlüsselung folgt RFC 8291 (aes128gcm), die Absender-Signatur
-// RFC 8292 (VAPID, ES256) — die ES256-Bausteine liegen seit der Anmeldung
-// über Apple im Haus (oauth.php). Alles Nötige bringt PHP selbst mit:
+// RFC 8292 (VAPID, ES256). Alles Nötige bringt PHP selbst mit:
 // openssl_pkey_derive (ECDH), hash_hkdf und AES-128-GCM.
+
+/**
+ * Base64 in der URL-Schreibweise, wie JWT und Web Push sie verlangen: ohne
+ * Füllzeichen, mit - und _ statt + und /.
+ */
+function push_b64(string $bin): string {
+  return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
+}
+function push_b64_decode(string $s): string {
+  return (string) base64_decode(strtr($s, '-_', '+/'));
+}
+
+/**
+ * OpenSSL liefert ECDSA-Signaturen DER-kodiert; ein JWT verlangt die rohen
+ * r‖s-Werte mit je 32 Bytes. Hier wird ausgepackt, entnullt und aufgefüllt.
+ */
+function push_ecdsa_der_to_raw(string $der): string {
+  $pos = 0;
+  $len = strlen($der);
+  if ($len < 8 || ord($der[$pos++]) !== 0x30) return '';
+  // Nur die Kurzform: eine ES256-Signatur ist immer kürzer als 128 Byte. Alles
+  // andere ist kein P-256-DER — dann lieber abbrechen als raten.
+  if (ord($der[$pos]) & 0x80) return '';
+  $pos++;
+  $out = '';
+  for ($i = 0; $i < 2; $i++) {
+    if ($pos + 2 > $len || ord($der[$pos++]) !== 0x02) return '';
+    $l = ord($der[$pos++]);
+    // Abgeschnittenes DER darf keine formal gültige, inhaltlich falsche
+    // Signatur ergeben: substr() würde stillschweigend kürzen und das Ergebnis
+    // anschließend links mit Nullen aufgefüllt.
+    if ($l === 0 || $pos + $l > $len) return '';
+    $val = substr($der, $pos, $l);
+    $pos += $l;
+    $val = ltrim($val, "\x00");
+    if (strlen($val) > 32) return '';
+    $out .= str_pad($val, 32, "\x00", STR_PAD_LEFT);
+  }
+  return $out;
+}
 
 /** Kann diese Installation überhaupt Push? (Voraussetzungen von PHP) */
 function push_supported(): bool {
@@ -67,8 +106,8 @@ function push_pem_from_raw(string $raw): string {
 
 /** VAPID-Schlüsselpaar: einmalig erzeugt, privat versiegelt abgelegt. */
 function push_keys(): array {
-  // Entsiegeln erledigt oauth_secret() — eine Stelle für dieselbe Sache.
-  $pem = oauth_secret('push_vapid_key');
+  // Entsiegeln erledigt crypt_reveal() — eine Stelle für dieselbe Sache.
+  $pem = crypt_reveal(setting('push_vapid_key'));
   if ($pem === '') {
     $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
     if ($key === false) return ['pem' => '', 'public' => ''];
@@ -78,7 +117,7 @@ function push_keys(): array {
   }
   $key = openssl_pkey_get_private($pem);
   return $key === false ? ['pem' => '', 'public' => '']
-    : ['pem' => $pem, 'public' => oauth_b64(push_raw_public($key))];
+    : ['pem' => $pem, 'public' => push_b64(push_raw_public($key))];
 }
 
 /** Der öffentliche VAPID-Schlüssel, wie ihn pushManager.subscribe erwartet. */
@@ -94,14 +133,14 @@ function push_vapid_auth(string $endpoint): string {
   $key = openssl_pkey_get_private($keys['pem']);
   if ($key === false) return '';
   $origin = parse_url($endpoint, PHP_URL_SCHEME) . '://' . parse_url($endpoint, PHP_URL_HOST);
-  $header = oauth_b64(json_encode(['alg' => 'ES256', 'typ' => 'JWT']));
-  $claims = oauth_b64(json_encode([
+  $header = push_b64(json_encode(['alg' => 'ES256', 'typ' => 'JWT']));
+  $claims = push_b64(json_encode([
     'aud' => $origin, 'exp' => time() + 12 * 3600,
     'sub' => 'mailto:' . (setting('contact_email') ?: 'no-reply@' . parse_url(absolute_url('/'), PHP_URL_HOST)),
   ]));
   if (!openssl_sign($header . '.' . $claims, $der, $key, OPENSSL_ALGO_SHA256)) return '';
-  $sig = oauth_ecdsa_der_to_raw($der);
-  return $sig === '' ? '' : 'vapid t=' . $header . '.' . $claims . '.' . oauth_b64($sig) . ', k=' . $keys['public'];
+  $sig = push_ecdsa_der_to_raw($der);
+  return $sig === '' ? '' : 'vapid t=' . $header . '.' . $claims . '.' . push_b64($sig) . ', k=' . $keys['public'];
 }
 
 // ---------- Verschlüsselung (RFC 8291, aes128gcm) ----------
@@ -112,8 +151,8 @@ function push_vapid_auth(string $endpoint): string {
  * im Betrieb entstehen beide frisch je Nachricht.
  */
 function push_encrypt(string $payload, string $p256dh, string $auth, ?string $ephemeralPem = null, ?string $salt = null): ?string {
-  $uaPub = oauth_b64_decode($p256dh);
-  $authSecret = oauth_b64_decode($auth);
+  $uaPub = push_b64_decode($p256dh);
+  $authSecret = push_b64_decode($auth);
   if (strlen($uaPub) !== 65 || strlen($authSecret) !== 16) return null;
   // Ein einzelner Datensatz von 4096 Bytes, abzüglich Prüfsumme und Trenner —
   // mehr passt nicht hinein, und ein zu großer würde erst beim Dienst auffallen.

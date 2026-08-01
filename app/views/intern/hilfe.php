@@ -107,14 +107,6 @@
   <?php endif; ?>
 </details>
 
-<?php // Anmeldung über einen Anbieter gibt es nur, wenn die Bandverwaltung
-      // einen eingerichtet hat — sonst wäre der Abschnitt eine leere Zusage. ?>
-<?php if (oauth_enabled()): ?>
-<details class="card acc" name="helpacc">
-  <summary>🔑 <?= e(t('help_login_title')) ?></summary>
-  <p class="muted"><?= e(t('help_login')) ?></p>
-</details>
-<?php endif; ?>
 
 <p class="muted small"><?= e(t('help_more')) ?> <a href="/intern/ueber"><?= e(t('about_open')) ?> →</a></p>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
