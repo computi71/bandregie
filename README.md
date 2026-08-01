@@ -1,5 +1,7 @@
 # Bandregie – Band Website & Organization Tool
 
+[**bandregie.info**](https://bandregie.info) · [**Try the demo**](https://demo.bandregie.info) — a full installation with example data, reset every hour, so you can click through everything before installing anything.
+
 ![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)
 
 **Free for your own band.** Install it, run it, change it, use it for a band

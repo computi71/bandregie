@@ -220,11 +220,19 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
   register_shutdown_function(function () use ($subs, $topic, $build): void {
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
     $byLang = [];
+    $offenJeNutzer = [];
     $failed = 0;
     foreach ($subs as $sub) {
       $lang = array_key_exists($sub['pref_lang'] ?? '', LANGS) ? $sub['pref_lang'] : 'de';
-      $byLang[$lang] ??= json_encode($build($lang), JSON_UNESCAPED_UNICODE);
-      if (!push_send_one($sub, $byLang[$lang])) $failed++;
+      $byLang[$lang] ??= $build($lang);
+      // Die Zahl am Symbol ist für jeden eine andere — sie reist deshalb je
+      // Empfänger mit, nicht je Sprache. Je Mitglied nur einmal ermittelt,
+      // auch wenn es mehrere Geräte hat.
+      $uid = (int) $sub['user_id'];
+      $offenJeNutzer[$uid] ??= open_items_count(['id' => $uid, 'role' => $sub['role'],
+                                                 'substitute_for' => $sub['substitute_for']]);
+      $inhalt = json_encode($byLang[$lang] + ['offen' => $offenJeNutzer[$uid]], JSON_UNESCAPED_UNICODE);
+      if (!push_send_one($sub, $inhalt)) $failed++;
     }
     // Einmal je Vorgang vermerken, nicht je Abo: „warum kam nichts an?" ist
     // sonst nicht zu beantworten, und eine Zeile je Gerät flutet das Log.

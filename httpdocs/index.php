@@ -1258,6 +1258,13 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_push_saved'));
     redirect('/intern/profil');
   }
+  // Wie viele offene Punkte hat der Anfragende? Die Seite holt sich das beim
+  // Öffnen und setzt damit die Zahl am Symbol — ohne diesen Abruf bliebe sie
+  // auf dem Stand der letzten Mitteilung stehen.
+  if ($path === '/intern/badge' && $method === 'GET') {
+    header('Content-Type: application/json; charset=utf-8');
+    exit(json_encode(['offen' => open_items_count($me)]));
+  }
   if ($path === '/intern/push/subscribe' && $method === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
     // Nicht in der Demo: sonst meldet ein Besucher sein Gerät an, und jeder

@@ -15,5 +15,30 @@ if ('serviceWorker' in navigator) {
         // Kein Grund zur Aufregung: ohne HTTPS oder in alten Browsern geht das
         // nicht, und die Anwendung braucht es auch nicht.
       });
+
+    // Wer die Anwendung öffnet, hat die Mitteilungen gesehen — dann gehört die
+    // Zahl am Symbol weg. Auch beim Zurückkehren aus dem Hintergrund, sonst
+    // bliebe sie stehen, bis jemand die App einmal ganz neu startet.
+    const gesehen = async () => {
+      if (document.visibilityState !== 'visible') return;
+      // Was noch zu tun ist, weiß nur der Server — die Mitteilungen dagegen sind
+      // mit dem Öffnen gesehen. Deshalb hier die frische Zahl holen und dem
+      // Service Worker mitgeben, statt die Marke blind zu löschen: eine offene
+      // Aufgabe verschwindet nicht dadurch, dass man die App aufmacht.
+      let offen = 0;
+      try {
+        const r = await fetch('/intern/badge', { credentials: 'same-origin' });
+        if (r.ok) offen = Number((await r.json()).offen) || 0;
+      } catch (e) { /* kein Netz: dann bleibt es beim letzten bekannten Stand */ }
+      try {
+        if (offen > 0 && navigator.setAppBadge) await navigator.setAppBadge(offen);
+        else if (navigator.clearAppBadge) await navigator.clearAppBadge();
+      } catch (e) { /* Gerät kann keine Marke — kein Beinbruch */ }
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'gesehen', offen });
+      }
+    };
+    gesehen();
+    document.addEventListener('visibilitychange', gesehen);
   });
 }

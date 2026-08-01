@@ -2847,6 +2847,38 @@ function is_substitute(?array $user): bool {
 }
 
 /**
+ * Was für dieses Mitglied noch offen ist — die Zahl am App-Symbol.
+ *
+ * Zwei Dinge, die eine Handlung verlangen: eigene Aufgaben, die niemand
+ * abgehakt hat, und kommende Termine, zu denen die Rückmeldung fehlt.
+ * Vergangene Termine zählen nicht — dort ändert eine Antwort nichts mehr.
+ *
+ * Die Sichtbarkeit gilt auch hier: Ersatzleute sehen nur die Termine, für die
+ * sie angefragt wurden, und dürfen auch nur die gezählt bekommen. Eine Zahl,
+ * die etwas mitzählt, das man nicht öffnen kann, wäre nicht erklärbar.
+ */
+function open_items_count(array $user): int {
+  $userId = (int) $user['id'];
+  $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
+                     [$userId])['c'];
+
+  $sichtbar = visible_event_ids($user);
+  if ($sichtbar === []) return $offen;          // Ersatz ohne Anfrage: keine Termine
+  $nurDiese = '';
+  $werte = [$userId];
+  if ($sichtbar !== null) {
+    $nurDiese = ' AND e.id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
+    $werte = [...$werte, ...$sichtbar];
+  }
+  $offen += (int) row("SELECT COUNT(*) c FROM events e
+                       WHERE e.date >= CURDATE()
+                         AND NOT EXISTS (SELECT 1 FROM attendance a
+                                         WHERE a.event_id = e.id AND a.user_id = ?)"
+                      . $nurDiese, $werte)['c'];
+  return $offen;
+}
+
+/**
  * Alle Spuren eines Mitglieds außerhalb der Mitgliederliste beseitigen.
  *
  * Zwei Sorten Daten, zwei Behandlungen — und die Grenze ist bewusst gezogen:

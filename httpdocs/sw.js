@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v11';
+const VERSION = 'bandregie-v12';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -195,15 +195,87 @@ self.addEventListener('fetch', event => {
 // Push-Mitteilungen (#24): der Server schickt Titel, Text und Ziel-Adresse als
 // JSON. Anzeigen ist Pflicht (userVisibleOnly) — eine leere Nachricht wäre ein
 // Vertrauensbruch gegenüber dem Browser, also gibt es notfalls den Bandnamen.
+// Zahl am Symbol: wie viele Mitteilungen seit dem letzten Öffnen gekommen sind.
+//
+// Der Zählstand muss einen Neustart des Service Workers überstehen — der wird
+// zwischen zwei Mitteilungen regelmäßig beendet —, deshalb liegt er im
+// Zwischenspeicher und nicht in einer Variablen. localStorage gibt es hier nicht.
+//
+// Kann das Gerät keine Zahl am Symbol (Android-Chrome etwa, oder eine Seite im
+// Browser statt als App), passiert schlicht nichts: die Mitteilung kommt
+// trotzdem an. Nichts hängt davon ab.
+// Zwei Zahlen ergeben die Marke: was noch zu tun ist (offene Aufgaben und
+// Termine ohne Antwort — die weiß nur der Server) und wie viele Mitteilungen
+// seit dem letzten Öffnen kamen. Beide zusammen sind das, was am Symbol steht.
+const BADGE_KEY = '/__badge';   // ungelesene Mitteilungen
+const OFFEN_KEY = '/__offen';   // offene Punkte, zuletzt vom Server gehört
+
+async function badgeState(neu = {}) {
+  const cache = await caches.open(VERSION + '-state');
+  const lies = async (key) => {
+    const hit = await cache.match(key);
+    return hit ? (Number(await hit.text()) || 0) : 0;
+  };
+  let mitteilungen = await lies(BADGE_KEY);
+  let offen = await lies(OFFEN_KEY);
+  if (neu.mitteilungen !== undefined) mitteilungen = Math.max(0, neu.mitteilungen);
+  if (neu.plus) mitteilungen = Math.max(0, mitteilungen + neu.plus);
+  if (neu.offen !== undefined) offen = Math.max(0, neu.offen);
+  await cache.put(BADGE_KEY, new Response(String(mitteilungen)));
+  await cache.put(OFFEN_KEY, new Response(String(offen)));
+  return offen + mitteilungen;
+}
+
+async function badgeSetzen(n) {
+  try {
+    if (n > 0 && self.navigator.setAppBadge) await self.navigator.setAppBadge(n);
+    else if (self.navigator.clearAppBadge) await self.navigator.clearAppBadge();
+  } catch (e) {
+    /* Gerät kann es nicht — die Mitteilung selbst ist davon unberührt. */
+  }
+}
+
+/**
+ * Alles auf „gesehen": Zähler zurück, Zahl weg, und die Mitteilungen aus der
+ * Leiste räumen.
+ *
+ * Das Aufräumen der Leiste ist der Android-Teil: Chrome kennt dort die
+ * Badging-API nicht, das System leitet die Marke am Symbol aber aus den noch
+ * offenen Mitteilungen ab. Bleiben sie liegen, bleibt auch die Marke — und
+ * umgekehrt verschwindet sie, sobald wir sie schließen. Auf dem iPhone macht
+ * setAppBadge die Zahl, hier fällt das Aufräumen bloß zusätzlich sauber aus.
+ */
+async function alleGesehen(offen) {
+  // Die ungelesenen Mitteilungen sind gesehen; was zu tun ist, bleibt stehen —
+  // eine Aufgabe erledigt sich nicht dadurch, dass man die App öffnet. Die
+  // frische Zahl der offenen Punkte bringt die Seite mit.
+  await badgeSetzen(await badgeState({ mitteilungen: 0, offen }));
+  const liste = await self.registration.getNotifications();
+  for (const n of liste) n.close();
+}
+
 self.addEventListener('push', event => {
   let daten = {};
   try { daten = event.data ? event.data.json() : {}; } catch (e) { /* kein JSON: Standardtext */ }
-  event.waitUntil(self.registration.showNotification(daten.title || 'Bandregie', {
-    body: daten.body || '',
-    icon: '/assets/app/icon-192.png',
-    badge: '/assets/app/icon-192.png',
-    data: { url: daten.url || '/intern' },
-  }));
+  event.waitUntil((async () => {
+    // Eine Mitteilung mehr, und die Zahl der offenen Punkte so, wie der Server
+    // sie beim Verschicken kannte.
+    const gesamt = await badgeState({ plus: 1, offen: Number(daten.offen) || 0 });
+    await self.registration.showNotification(daten.title || 'Bandregie', {
+      body: daten.body || '',
+      icon: '/assets/app/icon-192.png',
+      badge: '/assets/app/icon-192.png',
+      // Eigene Kennung je Mitteilung: sonst ersetzt die neue die vorherige und
+      // es steht immer nur eine in der Leiste. Auf Android zählt das System
+      // genau diese Einträge für die Marke am Symbol — ohne eigene Kennung
+      // bliebe sie dort ewig bei eins stehen.
+      tag: 'bandregie-' + Date.now(),
+      data: { url: daten.url || '/intern' },
+    });
+    // Die Zahl am Symbol erst danach: die Mitteilung ist das Wichtige, und
+    // scheitert das Setzen, soll sie trotzdem angekommen sein.
+    await badgeSetzen(gesamt);
+  })());
 });
 
 // Tippen auf die Mitteilung: ein offenes Fenster wiederverwenden, sonst eines
@@ -211,6 +283,7 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/intern';
+  event.waitUntil(alleGesehen());
   event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
     for (const client of list) {
       if (!('focus' in client)) continue;
@@ -229,6 +302,12 @@ self.addEventListener('notificationclick', event => {
 // davon ab, was jemand vorher zufällig geöffnet hat.
 self.addEventListener('message', event => {
   const daten = event.data || {};
+  // Die Seite meldet sich, wenn sie geöffnet oder wieder sichtbar wird: dann
+  // hat man die Mitteilungen gesehen, und die Zahl am Symbol gehört weg.
+  if (daten.type === 'gesehen') {
+    event.waitUntil(alleGesehen(Number(daten.offen) || 0));
+    return;
+  }
   if (daten.type !== 'mitnehmen' || !Array.isArray(daten.urls)) return;
 
   event.waitUntil((async () => {
