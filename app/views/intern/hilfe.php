@@ -89,8 +89,22 @@
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>
   <p class="muted"><?= e(t('off_help')) ?></p>
-  <p class="muted"><?= e(t('app_install_push')) ?></p>
+  <?php // Mitteilungen nur erklären, wenn es sie hier auch gibt — sonst schickt
+        // die Hilfe die Leute in einen Bereich, den sie im Profil nicht finden. ?>
+  <?php if (push_available()): ?>
+    <p class="muted"><?= e(t('app_install_push')) ?></p>
+    <p class="muted"><?= e(t('app_install_badge')) ?></p>
+  <?php endif; ?>
 </details>
+
+<?php // Anmeldung über einen Anbieter gibt es nur, wenn die Bandverwaltung
+      // einen eingerichtet hat — sonst wäre der Abschnitt eine leere Zusage. ?>
+<?php if (oauth_enabled()): ?>
+<details class="card acc" name="helpacc">
+  <summary>🔑 <?= e(t('help_login_title')) ?></summary>
+  <p class="muted"><?= e(t('help_login')) ?></p>
+</details>
+<?php endif; ?>
 
 <p class="muted small"><?= e(t('help_more')) ?> <a href="/intern/ueber"><?= e(t('about_open')) ?> →</a></p>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

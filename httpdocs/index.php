@@ -756,7 +756,9 @@ if (str_starts_with($path, '/intern')) {
   // dem Notenständer liegt; geändert wird unter /edit.
   if (preg_match('~^/intern/songs/(\d+)$~', $path, $m) && $method === 'GET') {
     $songOne = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
-    if (!$songOne) redirect('/intern/songs');
+    // Die Liste filtert über visible_song_ids(); eine zweite Route auf denselben
+    // Datensatz muss die Prüfung mitnehmen, sonst führt sie daran vorbei.
+    if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     view('intern/song', [
       'title' => $songOne['title'],
       'song' => $songOne,
@@ -771,11 +773,11 @@ if (str_starts_with($path, '/intern')) {
   // passiert im Browser, sonst bräche das Vollbild und der Offline-Stand).
   if (preg_match('~^/intern/songs/(\d+)/buehne$~', $path, $m) && $method === 'GET') {
     $songOne = row('SELECT id, title, lyrics, tempo FROM songs WHERE id = ?', [$m[1]]);
-    if (!$songOne) redirect('/intern/songs');
+    if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
     $stage = [];
     if ($slId) {
-      foreach (setlist_entries($slId) as $entry) {
+      foreach (may_see_setlist($me, $slId) ? setlist_entries($slId) : [] as $entry) {
         if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
         $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'], 'bpm' => song_bpm($entry['tempo']), 'lines' => lyrics_lines($entry['lyrics'])];
       }
@@ -793,11 +795,11 @@ if (str_starts_with($path, '/intern')) {
   // Zeichenbreite, damit Akkorde über den Silben stehen bleiben.
   if (preg_match('~^/intern/songs/(\d+)/noten$~', $path, $m) && $method === 'GET') {
     $songOne = row('SELECT id, title, tempo FROM songs WHERE id = ?', [$m[1]]);
-    if (!$songOne) redirect('/intern/songs');
+    if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
     $stage = [];
     if ($slId) {
-      foreach (setlist_entries($slId) as $entry) {
+      foreach (may_see_setlist($me, $slId) ? setlist_entries($slId) : [] as $entry) {
         if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
         $stage[] = noten_stage_entry($entry, $me['id']);
       }
@@ -815,7 +817,13 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/songs/lyrics' && $method === 'GET') {
     view('intern/songs_lyrics', [
       'title' => t('song_lyrics_bulk'),
-      'songs' => rows("SELECT id, title, artist, lyrics FROM songs WHERE status <> 'archiv' ORDER BY title"),
+      // Auch hier gilt die Sichtbarkeit: sonst stünden auf einer Seite alle
+      // Texte, die die Liste daneben sorgfältig filtert.
+      'songs' => (function () use ($me) {
+        [$wo, $werte] = visible_clause(visible_song_ids($me));
+        return rows("SELECT id, title, artist, lyrics FROM songs
+                     WHERE status <> 'archiv' $wo ORDER BY title", $werte);
+      })(),
     ]);
   }
   if ($path === '/intern/songs/lyrics' && $method === 'POST') {
@@ -828,7 +836,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
-    if (!$edit) redirect('/intern/songs');
+    if (!$edit || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     view('intern/songs', [
       'title' => t('inav_songs'),
       'ratings' => song_ratings($me['id']),

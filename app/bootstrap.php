@@ -246,16 +246,16 @@ const UI_STRINGS = [
   'help_more' => 'Mehr zur Anwendung, zur Lizenz und zu den Mitwirkenden steht unter „Über".',
   // Kurzbeschreibung je Bereich — die Schlüssel heißen wie die Bereiche
   'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
-  'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song.',
+  'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um.',
   'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern.',
-  'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen.',
+  'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. Über „Adresse suchen“ holt der Server einmalig die Koordinaten von OpenStreetMap und trägt Adresse und Ort gleich mit ein — das muss unter „Einstellungen → Verbindungen nach außen“ erlaubt sein, sonst bleibt der Knopf grau. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
   'help_abwesenheiten' => 'Urlaub und Sperrzeiten. Fällt ein Termin hinein, warnt die Terminliste.',
   'help_aufgaben' => 'Was ansteht und wer es macht.',
   'help_themen' => 'Diskussionen in Ruhe, ohne dass etwas im Chat untergeht.',
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult.',
-  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Archiv.',
+  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Archiv. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit vor, zu welchem Termin ein Foto gehört — zugeordnet wird erst auf Klick. Aus der gespeicherten Datei werden diese Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
   'help_mitglieder' => 'Wer zur Band gehört, mit Kontaktdaten und Rollen.',
@@ -664,7 +664,7 @@ const UI_STRINGS = [
   'app_description' => 'Termine, Setlists und Technik der Band — auch unterwegs.',
   'app_install' => 'Auf dem Handy installieren',
   'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandregie ein eigenes Symbol und startet ohne Adressleiste.',
-  'app_install_offline' => 'Übersicht, Termine, Setlists und Songs bleiben auf dem Gerät und sind auch ohne Empfang da — auf Bühnen ist das oft der Fall. Beim Abmelden werden sie gelöscht, damit auf einem geteilten Handy niemand die Termine des Vorgängers findet.',
+  'app_install_offline' => 'Ohne Empfang — auf Bühnen der Normalfall — ist trotzdem alles da: Übersicht, Termine, Setlists mit Druckfassung, Songs mit Liedtexten, Noten und Anhänge, Stagerider und Patchliste. Das ist von Haus aus so, damit niemand erst auf der Bühne merkt, dass er nichts mitgenommen hat. Wer weniger will — Noten brauchen Platz —, hakt es im Profil unter „Offline dabeihaben“ ab. Beim Abmelden wird alles gelöscht, damit auf einem geteilten Handy niemand die Termine des Vorgängers findet.',
   'app_install_store' => 'Eine App aus dem App Store oder von Google Play gibt es nicht. Der Weg über den Browser leistet dasselbe — ohne Jahresgebühr, ohne Prüfverfahren bei jeder Änderung und ohne einen zweiten Programmstand, der gepflegt werden will.',
   'song_lyrics' => 'Liedtext',
   'song_lyrics_ph' => "[Strophe]
@@ -741,6 +741,10 @@ Zeile zwei
   'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
   'set_push' => 'Mitteilungen aufs Gerät erlauben',
   'fl_fee_unclear' => 'Die Gage steht als Text da und lässt sich nicht eindeutig als Betrag lesen — bitte von Hand buchen.',
+  'help_login_title' => 'Anmelden ohne Passwort',
+  'help_login' => 'Hat die Bandverwaltung einen Anbieter eingerichtet, kannst du dich statt mit Passwort über dein bestehendes Konto bei Apple, Google oder Facebook anmelden. Verknüpfen und wieder trennen kannst du das jederzeit im Profil unter „Verknüpfte Anmeldungen“. Dein Passwort bleibt daneben bestehen und funktioniert weiter — ist ein Anbieter einmal nicht erreichbar, kommst du trotzdem herein. Ein Konto entsteht dabei nie von allein: Die Anmeldung findet nur ein Mitglied, das schon angelegt ist und dieselbe, beim Anbieter bestätigte E-Mail-Adresse hat.',
+  'taxr_neutral' => 'Einlagen und Ausschüttungen (nicht im Ergebnis)',
+  'taxr_neutral_hint' => 'Geld zwischen Band und Mitgliedern ist kein Betriebsergebnis: Eine Einlage ist kein Gewinn, eine Ausschüttung keine Betriebsausgabe. Beides steht unten in der Liste, zählt hier oben aber nicht mit.',
   'set_extern' => 'Verbindungen nach außen',
   'set_extern_hint' => 'Alles, was diese Installation nach außen tun kann, steht hier zusammen — abschaltbar, jedes für sich. Ist etwas aus, findet die Verbindung nicht statt.',
   'fl_extern_saved' => 'Verbindungen nach außen gespeichert.',
@@ -780,7 +784,8 @@ Zeile zwei
   'off_some' => '%1 geholt, %2 nicht — vermutlich ist der Speicher knapp.',
   'off_failed' => 'Hat nicht geklappt. Mit Empfang noch einmal versuchen.',
   'off_help' => 'Auf einem Termin steht „Diesen Termin mitnehmen": damit holt das Gerät die Setlist mit ihren Noten, den Rider und die Patchliste. Danach ist alles davon ohne Empfang da — auch, was du vorher nie geöffnet hast. Beim Abmelden wird es wieder gelöscht.',
-  'app_install_push' => 'Mitteilungen aufs Gerät gibt es im Profil: dort wählst du, worüber du Bescheid bekommen willst — neue Termine, neue Kommentare, Zu- und Absagen — und schaltest sie je Gerät ein. Am iPhone geht das nur für die installierte App.',
+  'app_install_push' => 'Mitteilungen aufs Gerät gibt es im Profil. Voreingestellt sind alle drei Themen — neue Termine, neue Kommentare, Zu- und Absagen —, du wählst also eher ab als an. Losgeschickt wird trotzdem erst etwas, wenn du dein Gerät dort anmeldest; dabei fragt der Browser selbst um Erlaubnis. Am iPhone geht das nur für die installierte App. Steht der Bereich im Profil nicht da, hat die Bandverwaltung Mitteilungen abgeschaltet oder der Server bringt die Voraussetzungen nicht mit.',
+  'app_install_badge' => 'Am Symbol steht eine Zahl, wenn etwas auf dich wartet: deine offenen Aufgaben und die kommenden Termine, zu denen du noch nicht zu- oder abgesagt hast. Dazu kommen Mitteilungen, die eingegangen sind, während die App zu war. Öffnest du die App, verschwinden die Mitteilungen aus der Zahl — die Aufgaben bleiben, denn eine Aufgabe erledigt sich nicht dadurch, dass man sie ansieht. Am iPhone schreibt die App die Zahl selbst, auf Android leitet das System sie aus den Mitteilungen in der Leiste ab; ob dort eine Zahl oder nur ein Punkt erscheint, entscheidet der Startbildschirm. Kann ein Gerät das nicht, fehlt nur die Zahl.',
   'stage_plot' => 'Bühnenplan', 'stage_back' => 'hinten', 'stage_front' => 'vorne (Publikum)',
   'stage_empty' => 'Noch nichts aufgestellt.',
   'stage_add' => 'Aufstellen', 'stage_kind' => 'Was', 'stage_label' => 'Beschriftung',
@@ -1796,6 +1801,29 @@ $seedStamp = sha1($seedStamp);
 // gibt es sie. Ein Seed ergänzt nur Fehlendes und käme an einen bestehenden
 // Eintrag nicht heran, deshalb hier gezielt: geändert wird ausschließlich, wo
 // noch der alte Wortlaut steht, damit von Hand gepflegte Fassungen bleiben.
+// Vor der Umstellung auf Abwahl bedeutete ein leeres Feld zweierlei: „noch nie
+// eingestellt" und „alle Haken entfernt und gespeichert" — die alte Route
+// schrieb beides als ''. Seit der Umstellung heißt leer „alles an", und damit
+// bekäme ausgerechnet die Person alles zurück, die es abbestellt hatte.
+//
+// Unterscheiden lässt sich das nachträglich nur an einem Anhaltspunkt: Wer ein
+// Gerät angemeldet bzw. je einen Offline-Bereich gespeichert hat, hat den
+// Dialog bewusst benutzt. Für die gilt das leere Feld als „nichts".
+if (setting('optout_migrated') !== '1') {
+  q("UPDATE users SET push_topics = '-'
+     WHERE push_topics = '' AND EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = users.id)");
+  set_setting('optout_migrated', '1');
+}
+// Fünf Hilfetexte beschrieben Vergangenes: den Offline-Vorrat als Anwahl, die
+// Mitteilungen ebenso, und zu Bühne, Adress-Suche und Foto-Auswertung stand
+// nichts. Die deutschen Fassungen sind korrigiert — die Übersetzungen dazu
+// erreicht ein Seed nicht, der nur Fehlendes ergänzt. Also die veralteten
+// gezielt entfernen; der Seed legt sie danach neu an.
+if (setting('help_texts_2026_08') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN
+     ('app_install_offline','app_install_push','help_songs','help_orte','help_fotos')");
+  set_setting('help_texts_2026_08', '1');
+}
 if (setting('push_help_fixed') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'app_install_push'
      AND (value LIKE '%noch nicht%' OR value LIKE '%do not exist yet%'
@@ -2970,12 +2998,31 @@ function user_purge(int $userId): void {
             'absences'] as $table) {
     q("DELETE FROM $table WHERE user_id = ?", [$userId]);
   }
+  // Private Daueraufträge sterben mit ihrem Besitzer. Sonst buchen sie weiter,
+  // ohne dass jemand sie sieht (die Liste zeigt private nur ihrem Eigentümer)
+  // oder abschalten kann (may_edit_order verweigert fremde private, auch
+  // Admins) — ein unsichtbarer Buchungsgenerator.
+  q('DELETE FROM standing_orders WHERE owner_id = ? AND private = 1', [$userId]);
+  q('UPDATE standing_orders SET owner_id = NULL WHERE owner_id = ?', [$userId]);
+  q('UPDATE standing_orders SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
   q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
+  q('UPDATE tasks SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);
   q('UPDATE events SET responsible_id = NULL WHERE responsible_id = ?', [$userId]);
   q('UPDATE finances SET member_id = NULL WHERE member_id = ?', [$userId]);
+  // Private Buchungen bleiben als Beleg im Buch, verlieren aber ihren Bezug:
+  // auf einer Nummer stehen zu bleiben, die ein künftiges Mitglied erben kann,
+  // wäre das Gegenteil einer Löschung.
+  q('UPDATE finances SET private_for = NULL WHERE private_for = ?', [$userId]);
   q('UPDATE photos SET uploaded_by = NULL WHERE uploaded_by = ?', [$userId]);
+  q('UPDATE files SET uploaded_by = NULL WHERE uploaded_by = ?', [$userId]);
+  q('UPDATE topics SET created_by = NULL WHERE created_by = ?', [$userId]);
+  q('DELETE FROM topic_posts WHERE user_id = ?', [$userId]);
+  // Ersatzanfragen für die Lücke dieses Mitglieds zeigen sonst ins Leere —
+  // substitute_auto_request() arbeitet genau mit diesem Feld.
+  q('DELETE FROM substitute_requests WHERE for_user_id = ?', [$userId]);
+  q('UPDATE substitute_requests SET requested_by = NULL WHERE requested_by = ?', [$userId]);
   // Wer als Ersatz einem ausgeschiedenen Mitglied zugeordnet war, hängt sonst
   // an einer Nummer, die es nicht mehr gibt.
   q('UPDATE users SET substitute_for = NULL WHERE substitute_for = ?', [$userId]);

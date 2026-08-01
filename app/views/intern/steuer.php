@@ -43,7 +43,14 @@ $taxQuery = fn(array $over = []): string => '?' . http_build_query(
       <li><strong><?= e(t('fin_income')) ?></strong><span class="muted">+ <?= fmt_money($report['sum_income']) ?></span></li>
       <li><strong><?= e(t('fin_expense')) ?></strong><span class="muted">− <?= fmt_money($report['sum_expense']) ?></span></li>
       <li><strong><?= e(t('taxr_afa')) ?></strong><span class="muted">− <?= fmt_money($report['sum_afa']) ?></span></li>
+      <?php // Einlagen und Ausschüttungen stehen in der Liste unten, zählen aber
+            // nicht ins Ergebnis. Ohne diese Zeile sähe es aus, als fehlte Geld. ?>
+      <?php $neutral = $report['sum_neutral_in'] + $report['sum_neutral_out']; ?>
+      <?php if ($neutral > 0): ?>
+        <li><strong><?= e(t('taxr_neutral')) ?></strong><span class="muted"><?= fmt_money($neutral) ?></span></li>
+      <?php endif; ?>
     </ul>
+    <?php if ($neutral > 0): ?><p class="muted small"><?= e(t('taxr_neutral_hint')) ?></p><?php endif; ?>
     <p class="muted small"><?= e($scope === 'band' ? t('taxr_scope_band_hint') : t('taxr_scope_own_hint')) ?></p>
   </div>
 

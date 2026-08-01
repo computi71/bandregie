@@ -21,6 +21,18 @@ declare(strict_types=1);
 const TAX_TURNOVER_EXCLUDES = ['einlage'];
 
 /**
+ * Kategorien, die kein Betriebsergebnis sind — sie bewegen Geld zwischen Band
+ * und Mitgliedern, nicht zwischen Band und Außenwelt.
+ *
+ * Eine Einlage ist kein Gewinn, eine Ausschüttung keine Betriebsausgabe: Für
+ * eine GbR wird der Gewinn den Gesellschaftern zugerechnet, und wer die
+ * Auszahlung noch einmal gegen ihn rechnet, zieht ihn zweimal ab. Beides steht
+ * weiterhin in der Liste — es gehört ins Kassenbuch —, geht aber nicht in
+ * Einnahmen, Ausgaben und Ergebnis ein.
+ */
+const TAX_RESULT_EXCLUDES = ['einlage', 'ausschuettung'];
+
+/**
  * Umsatz eines Jahres: alle Einnahmen der Band ohne die Beiträge und ohne
  * private Buchungen — was jemand für sich selbst bucht, ist nicht der Umsatz
  * der Band.
@@ -246,17 +258,21 @@ function tax_report(int $year, ?int $memberId): array {
                    ORDER BY f.date, f.id", [...$args, $year]);
 
   $income = $expense = []; $sumIn = $sumOut = 0; $plain = [];
+  $neutralIn = $neutralOut = 0;
   foreach ($entries as $en) {
     $cents = (int) $en['amount_cents'];
     // Der Kauf steckt in der Abschreibung, nicht in den Ausgaben.
     if ($en['equipment_id'] !== null && $en['type'] === 'ausgabe') continue;
     $plain[] = $en;
+    // Einlagen und Ausschüttungen bleiben in der Liste, aber außerhalb der
+    // Summen — sonst verschiebt sich das Ergebnis in beide Richtungen.
+    $neutral = in_array($en['category'], TAX_RESULT_EXCLUDES, true);
     if ($en['type'] === 'einnahme') {
       $income[$en['category']] = ($income[$en['category']] ?? 0) + $cents;
-      $sumIn += $cents;
+      if ($neutral) $neutralIn += $cents; else $sumIn += $cents;
     } else {
       $expense[$en['category']] = ($expense[$en['category']] ?? 0) + $cents;
-      $sumOut += $cents;
+      if ($neutral) $neutralOut += $cents; else $sumOut += $cents;
     }
   }
 
@@ -293,6 +309,9 @@ function tax_report(int $year, ?int $memberId): array {
     'income' => $income, 'expense' => $expense,
     'entries' => $plain, 'equipment' => $equipment,
     'sum_income' => $sumIn, 'sum_expense' => $sumOut, 'sum_afa' => $sumAfa,
+    // Getrennt ausgewiesen, damit die Zahlen aufgehen: Wer die Liste addiert,
+    // soll sehen, warum sie nicht der Summe entspricht.
+    'sum_neutral_in' => $neutralIn, 'sum_neutral_out' => $neutralOut,
     'result' => $sumIn - $sumOut - $sumAfa,
   ];
 }

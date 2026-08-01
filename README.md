@@ -38,7 +38,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines, an invoice that can cover several devices at once, an iCal calendar feed, and a stage-ready offline mode: every member picks in their own profile what stays on their phone — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines, an invoice that can cover several devices at once, an iCal calendar feed, and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -61,7 +61,9 @@ More: [songs](docs/screenshots/songs.jpg) · [members and permissions](docs/scre
 
 ## Installation
 
-Requirements: PHP 8.1 or newer with `pdo_mysql` and `fileinfo`, MariaDB 10.4+
+Requirements: PHP 8.1 or newer with `pdo_mysql`, `fileinfo`, `gd` and `exif`
+(the last two strip location data out of uploaded photos and match them to
+events — the system check names what is missing), MariaDB 10.4+
 or MySQL 8, and a web server. The examples use nginx with PHP-FPM on Debian;
 Apache works too (see below).
 
@@ -219,9 +221,9 @@ OpenStreetMap link on the desktop. The app fetches nothing; the destination
 goes to whichever app the member picks, under that vendor's terms.
 
 **Photo metadata**: on upload the capture date and GPS coordinates are read
-from the file (needs the `exif` extension — the system check says so if it is
-missing) and stored in the database for suggesting which event a photo belongs
-to. The metadata is then **removed from the stored file**, so coordinates —
+from the file (needs the `exif` extension) and stored in the database for
+suggesting which event a photo belongs to. The metadata is then **removed from
+the stored file** (needs the `gd` extension), so coordinates —
 a rehearsal room is often somebody's home — do not travel with a published
 photo. Only originals straight from a device carry metadata at all; copies
 shared through messengers or social platforms have already lost it.
@@ -230,12 +232,14 @@ shared through messengers or social platforms have already lost it.
 activities, including the optional ones, with bracket placeholders to fill in.
 If you add an outgoing service, add its paragraph in the same change.
 
-### Push notifications (optional, off by default)
+### Push notifications (on by default, switchable)
 
-Push is off until an administrator enables it in the settings. Once on,
-members can subscribe to notifications for new events, new comments and
-availability changes — per member with a per-topic switch, and enabled per
-device from the profile. Recipients only ever get notifications for events
+Push is available out of the box; an administrator can switch it off under
+*Settings → Outgoing connections*, where everything this installation can do
+towards the outside sits together. All three topics are preselected per
+member, so members untick rather than tick — but nothing is sent until a
+member registers a device from their profile, where the browser asks for
+permission itself. Recipients only ever get notifications for events
 they may see in the member area. Works on Android and, for the
 installed home-screen app, on iOS 16.4+. The VAPID key pair is generated
 server-side on first use (stored sealed when an encryption key is
@@ -332,8 +336,8 @@ or with the wrong one, nothing is touched and the message says which of the
 two it was. It also writes a safety copy of the current state before replacing
 anything.
 
-Both cases are covered by the test suite, because a restore path nobody has
-walked is a hope rather than a plan.
+Walk both paths once on a spare installation before you need them: a restore
+nobody has tried is a hope rather than a plan.
 
 ### Tax figures
 
@@ -501,6 +505,7 @@ therefore displays it as "Other".
 
 ## Roadmap
 
-See the GitHub issues and milestones: drag-and-drop setlist editor, per-event
-PA and lighting planning, stage rider builder, XLS export, song ratings,
-discussions, IMAP import of booking requests, mobile apps.
+See the GitHub issues and milestones: IMAP import of booking requests, and
+linking a cloud folder for files and photos. No native app is planned — the
+installable web app does the same job without a yearly fee, a review queue on
+every change, and a second codebase to keep alive.
