@@ -20,6 +20,7 @@
     <p class="muted"><?= e(t('help_taxr_what')) ?></p>
     <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
     <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
+    <p class="muted"><?= e(t('help_taxr_shares')) ?></p>
     <p class="muted">📦 <?= e(t('taxr_package_hint')) ?></p>
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
     <p class="muted small"><a href="/intern/kasse/steuer"><?= e(t('taxr_open')) ?> →</a></p>

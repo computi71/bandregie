@@ -68,6 +68,41 @@ $taxQuery = fn(array $over = []): string => '?' . http_build_query(
   </div>
 </div>
 
+<?php
+// Nur in der Bandansicht: In der eigenen geht es um die privaten Buchungen
+// eines Einzelnen, nicht um die Verteilung unter allen.
+$shares = $scope === 'band' ? tax_member_shares($year, $report['result']) : null;
+?>
+<?php if ($shares && $shares['heads'] > 0): ?>
+  <div class="card">
+    <h2>👥 <?= e(t('taxr_members')) ?></h2>
+    <p class="muted small"><?= e(t('taxr_members_hint')) ?></p>
+    <table class="table">
+      <thead>
+        <tr>
+          <th><?= e(t('name')) ?></th>
+          <th style="text-align:right"><?= e(t('taxr_paid_in')) ?></th>
+          <th style="text-align:right"><?= e(t('taxr_took_out')) ?></th>
+          <th style="text-align:right"><?= e(t('taxr_cash_net')) ?></th>
+          <th style="text-align:right"><?= e(t('taxr_share')) ?></th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($shares['members'] as $ms): ?>
+          <tr>
+            <td><?= e($ms['name']) ?></td>
+            <td style="text-align:right"><?= $ms['deposits'] ? fmt_money($ms['deposits']) : '<span class="muted">–</span>' ?></td>
+            <td style="text-align:right"><?= $ms['payouts'] ? fmt_money($ms['payouts']) : '<span class="muted">–</span>' ?></td>
+            <td style="text-align:right" class="<?= $ms['cash'] < 0 ? 'warn' : '' ?>"><?= fmt_money($ms['cash']) ?></td>
+            <td style="text-align:right"><?= fmt_money($ms['share']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <p class="muted small"><?= e(t('taxr_share_hint')) ?></p>
+  </div>
+<?php endif; ?>
+
 <?php if ($report['equipment']): ?>
   <div class="card">
     <h2>🎛 <?= e(t('taxr_equipment')) ?></h2>

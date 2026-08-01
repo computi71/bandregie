@@ -399,6 +399,64 @@ function tax_report(int $year, ?int $memberId): array {
 }
 
 /**
+ * Was jedes Mitglied eingezahlt, bekommen und zu erklären hat.
+ *
+ * Die Kasse stellt Einzahlungen und Kosten bisher nur in Summe gegenüber. Damit
+ * bleibt unsichtbar, wenn fünf von sechs die Miete tragen: Der Mietabzug drückt
+ * den Bandgewinn, und daran hat auch der sechste seinen Anteil — steuerlich
+ * stehen alle gleich, in der Kasse steht einer besser da. Sichtbar wird das
+ * erst je Kopf.
+ *
+ * Der Gewinn wird zu gleichen Teilen zugerechnet; das gilt bei einer GbR ohne
+ * abweichende Abrede. Wer etwas anderes vereinbart hat, rechnet anders — die
+ * Zahl hier ist eine Rechenhilfe und keine Gewinnverteilungsabrede.
+ *
+ * Gäste und Aushilfen bleiben außen vor: Sie sind nicht am Gewinn beteiligt,
+ * und ein Anteil für sie wäre schlicht falsch.
+ *
+ * @return array{members: array<int, array{id: int, name: string, deposits: int,
+ *                payouts: int, cash: int, share: int}>, share: int, heads: int}
+ */
+function tax_member_shares(int $year, int $result): array {
+  $members = rows("SELECT id, name FROM users
+                   WHERE role <> 'ersatz' AND substitute_for IS NULL
+                   ORDER BY name");
+  $heads = count($members);
+  // Ohne Köpfe keine Verteilung — und ohne Division durch null.
+  //
+  // Gerundet wird nicht: 1.000 € auf drei Köpfe wären dreimal 333,33 € und
+  // damit einen Cent zu wenig. Stattdessen bekommt der Rest je einen Cent
+  // aufgeschlagen, bis er aufgebraucht ist — dann ergibt die Spalte in der
+  // Summe wieder genau das Bandergebnis. Bei einem Verlust ist der Rest
+  // negativ, deshalb rechnet die Schleife mit dem Vorzeichen.
+  $base = $heads > 0 ? intdiv($result, $heads) : 0;
+  $rest = $result - $base * $heads;
+  $vorzeichen = $rest < 0 ? -1 : 1;
+  $offen = abs($rest);
+
+  $summen = [];
+  foreach (rows("SELECT member_id, category, COALESCE(SUM(amount_cents), 0) AS s
+                 FROM finances
+                 WHERE member_id IS NOT NULL AND private_for IS NULL
+                   AND category IN ('einlage', 'ausschuettung') AND YEAR(date) = ?
+                 GROUP BY member_id, category", [$year]) as $r) {
+    $summen[(int) $r['member_id']][$r['category']] = (int) $r['s'];
+  }
+
+  $out = [];
+  foreach ($members as $m) {
+    $id = (int) $m['id'];
+    $ein = $summen[$id]['einlage'] ?? 0;
+    $aus = $summen[$id]['ausschuettung'] ?? 0;
+    $anteil = $base;
+    if ($offen > 0) { $anteil += $vorzeichen; $offen--; }
+    $out[] = ['id' => $id, 'name' => $m['name'], 'deposits' => $ein, 'payouts' => $aus,
+              'cash' => $aus - $ein, 'share' => $anteil];
+  }
+  return ['members' => $out, 'share' => $base, 'heads' => $heads];
+}
+
+/**
  * Wann ein Gerät abgegeben wurde: die Einnahmezeile zum Gerät. Der frühste
  * Abgang zählt, falls jemand mehrfach gebucht hat.
  *
