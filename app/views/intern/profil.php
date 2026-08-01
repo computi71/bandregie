@@ -96,7 +96,8 @@
   <summary>🔔 <?= e(t('prof_push')) ?></summary>
   <p class="muted small"><?= e(t('prof_push_hint')) ?></p>
   <form method="post" action="/intern/profil/push-topics"><?= csrf_field() ?>
-    <?php $meineThemen = array_filter(explode(',', (string) ($profile['push_topics'] ?? ''))); ?>
+    <?php // Abwahl statt Anwahl: wer nie etwas eingestellt hat, hat alles an. ?>
+    <?php $meineThemen = push_topics($profile); ?>
     <fieldset class="gear-picker">
       <?php foreach (PUSH_TOPICS as $pushTopic): ?>
         <label class="checkbox">

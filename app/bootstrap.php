@@ -1555,8 +1555,25 @@ if (!column_exists('songs', 'composer')) {
  */
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
-// Worüber Push-Mitteilungen sprechen können — je Mitglied wählbar, Opt-in.
+// Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
 const PUSH_TOPICS = ['events', 'comments', 'attendance'];
+const PUSH_NICHTS = '-';
+
+/**
+ * Die Themen eines Mitglieds — Abwahl statt Anwahl, wie beim Offline-Vorrat.
+ *
+ * Leer heißt „noch nie eingestellt": dann sind alle Themen dabei. Das schickt
+ * niemandem etwas gegen seinen Willen — eine Mitteilung entsteht erst, wenn
+ * jemand sein Gerät anmeldet, und dabei fragt der Browser selbst um Erlaubnis.
+ * Wer alle Themen abwählt, speichert '-' und bekommt nichts; ohne diese
+ * Unterscheidung bekäme genau der wieder alles, der es abbestellt hat.
+ */
+function push_topics(?array $user): array {
+  $roh = trim((string) ($user['push_topics'] ?? ''));
+  if ($roh === '') return PUSH_TOPICS;
+  if ($roh === PUSH_NICHTS) return [];
+  return array_values(array_intersect(PUSH_TOPICS, array_map('trim', explode(',', $roh))));
+}
 
 // Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
 // offen"), der Text ist, was jemand beim Singen liest — und der wird lang.

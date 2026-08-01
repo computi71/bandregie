@@ -205,10 +205,14 @@ function push_t(string $lang, string $key): string {
  */
 function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0): void {
   if (!push_available()) return;
+  // Die Themen werden hier gefiltert, nicht in SQL: „nichts eingestellt" heißt
+  // alle Themen, und das lässt sich mit FIND_IN_SET nicht ausdrücken.
   $subs = rows("SELECT s.id, s.endpoint, s.p256dh, s.auth,
-                       u.id AS user_id, u.role, u.substitute_for, u.pref_lang
+                       u.id AS user_id, u.role, u.substitute_for, u.pref_lang, u.push_topics
                 FROM push_subscriptions s JOIN users u ON u.id = s.user_id
-                WHERE u.id <> ? AND FIND_IN_SET(?, u.push_topics)", [$exceptUserId, $topic]);
+                WHERE u.id <> ?", [$exceptUserId]);
+  $subs = array_values(array_filter($subs,
+    fn(array $s): bool => in_array($topic, push_topics($s), true)));
   if ($eventId) {
     $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_event($s, $eventId)));
   }
