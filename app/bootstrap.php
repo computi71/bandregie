@@ -639,6 +639,7 @@ const UI_STRINGS = [
   'bk_uploaded' => 'von außen eingespielt', 'bk_safety_made' => 'Sicherheitskopie:',
   'fl_bk_uploaded' => 'Archiv eingespielt.',
   'fl_bk_upload_invalid' => 'Das war keine Bandregie-Sicherung (.tar.gz).',
+  'fl_bk_upload_failed' => 'Die Datei ließ sich nicht ablegen — bitte Rechte und freien Platz im Sicherungsverzeichnis prüfen. Es wurde nichts eingetragen.',
   'fl_bk_missing' => 'Diese Sicherung liegt nicht mehr auf dem Server.',
   'bk_target_onedrive' => 'OneDrive',
   'bk_onedrive_pending' => 'Braucht eine Anmeldung bei Microsoft. Sobald die Verbindung für Dateien und Fotos steht, kann die Sicherung sie mitbenutzen.',

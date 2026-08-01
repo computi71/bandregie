@@ -2559,8 +2559,21 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_bk_upload_invalid'));
       redirect('/intern/einstellungen');
     }
-    $target = backup_dir() . '/' . preg_replace('~[^A-Za-z0-9._-]~', '_', $name);
-    move_uploaded_file($up['tmp_name'], $target);
+    $safe = preg_replace('~[^A-Za-z0-9._-]~', '_', $name);
+    // Kein vorhandenes Archiv überschreiben: sonst zeigten zwei Einträge auf
+    // dieselbe Datei, und „Löschen" bei einem nähme sie dem anderen weg.
+    $target = backup_dir() . '/' . $safe;
+    for ($n = 2; file_exists($target); $n++) {
+      $target = backup_dir() . '/' . $n . '-' . $safe;
+    }
+    // Erst eintragen, wenn die Datei wirklich liegt. Ohne diese Prüfung entstand
+    // bei einem gescheiterten Verschieben eine Zeile „ok, 0 Bytes", die einen
+    // Platz im Aufbewahrungsfenster belegte und eine echte Sicherung zu früh
+    // löschen ließ.
+    if (!move_uploaded_file($up['tmp_name'], $target)) {
+      flash(t('fl_bk_upload_failed'));
+      redirect('/intern/einstellungen');
+    }
     @chmod($target, 0600);
     q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
       [basename($target), (int) filesize($target), 'ok', t('bk_uploaded'), 'upload']);
@@ -2802,6 +2815,11 @@ function file_serve(array $f): never {
   // die Datei versiegelt; entschlüsselt existiert sie nur für diese Antwort.
   if (crypt_is_sealed($abs)) {
     $plain = tempnam(sys_get_temp_dir(), 'brf');
+    // Bricht der Browser während der Auslieferung ab, beendet PHP das Skript —
+    // das @unlink unten liefe dann nicht, und die entschlüsselte Fassung genau
+    // der Dateien, die auf der Platte versiegelt bleiben sollen, sammelte sich
+    // im Temp-Verzeichnis. Der Shutdown-Handler räumt in jedem Fall auf.
+    register_shutdown_function(static function () use ($plain): void { @unlink($plain); });
     if (!crypt_open_file($abs, $plain)) {
       @unlink($plain);
       http_response_code(500);

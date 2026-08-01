@@ -156,14 +156,32 @@ function backup_tar_header(string $name, int $size, int $mtime): ?string {
 
 /** Eine Datei ins Archiv schreiben; gibt false zurück, wenn der Pfad zu lang ist. */
 function backup_tar_add($gz, string $nameInArchive, string $file): bool {
+  // Zwischen dem Einsammeln der Liste und dem Packen kann eine Datei
+  // verschwunden sein — jemand löscht gerade einen Anhang. Das ist ein Grund,
+  // sie auszulassen, kein Grund, die ganze Sicherung fallen zu lassen.
+  $fh = @fopen($file, 'rb');
+  if (!$fh) return false;
   $size = (int) filesize($file);
   $header = backup_tar_header($nameInArchive, $size, (int) filemtime($file));
-  if ($header === null) return false;
-  gzwrite($gz, $header);
-  $fh = fopen($file, 'rb');
-  while (!feof($fh)) gzwrite($gz, (string) fread($fh, 262144));
+  if ($header === null) { fclose($fh); return false; }
+  // Auch beim Packen zählt jeder Schreibvorgang: eine volle Platte darf kein
+  // Archiv ergeben, das später als vollständig gilt.
+  $schreib = function (string $bytes) use ($gz): bool {
+    if ($bytes === '') return true;
+    $n = gzwrite($gz, $bytes);
+    return $n !== false && $n === strlen($bytes);
+  };
+  if (!$schreib($header)) { fclose($fh); throw new RuntimeException('Archiv nicht vollständig schreibbar (Platte voll?)'); }
+  while (!feof($fh)) {
+    if (!$schreib((string) fread($fh, 262144))) {
+      fclose($fh);
+      throw new RuntimeException('Archiv nicht vollständig schreibbar (Platte voll?)');
+    }
+  }
   fclose($fh);
-  if ($size % 512) gzwrite($gz, str_repeat("\0", 512 - ($size % 512)));
+  if ($size % 512 && !$schreib(str_repeat("\0", 512 - ($size % 512)))) {
+    throw new RuntimeException('Archiv nicht vollständig schreibbar (Platte voll?)');
+  }
   return true;
 }
 
@@ -212,8 +230,18 @@ function backup_run(string $trigger = 'auto'): array {
   $target = $dir . '/' . $name;
   $sqlFile = $dir . '/.dump.sql';
   $skipped = [];
+  // Reste eines hart abgebrochenen Laufs (OOM, Zeitlimit, Neustart) wegräumen:
+  // der aufräumende catch-Block läuft dann nicht, und in .dump.sql liegt die
+  // vollständige Datenbank im Klartext — Adressen, Kasse, Passwort-Hashes.
+  // Nur Altes anfassen, damit ein parallel laufender Vorgang unberührt bleibt.
+  foreach (glob($dir . '/{.dump.sql,*.part,.sealing-*,.opening-*}', GLOB_BRACE) ?: [] as $rest) {
+    if (is_file($rest) && filemtime($rest) < time() - 3600) @unlink($rest);
+  }
   try {
     backup_write_sql($sqlFile);
+    // Der Dump liegt kurzzeitig unverschlüsselt da; wenigstens nicht lesbar
+    // für andere Konten auf demselben Server.
+    @chmod($sqlFile, 0600);
     $gz = gzopen($target . '.part', 'wb6');
     if (!$gz) throw new RuntimeException('Archiv nicht schreibbar');
     backup_tar_add($gz, 'database.sql', $sqlFile);
@@ -431,6 +459,17 @@ function backup_restore(string $archive): array {
   global $db;
   if (!is_file($archive)) return ['ok' => false, 'message' => 'Archiv nicht gefunden', 'safety' => ''];
 
+  // Eigene Sperre für die gesamte Dauer. Zwei gleichzeitige Wiederherstellungen
+  // — Doppelklick, oder Oberfläche und Kommandozeile zusammen — würden ihre
+  // DROP- und INSERT-Folgen ineinander schieben. backup_run() hat seine eigene
+  // Sperre, die aber frei ist, sobald die Sicherheitskopie fertig ist.
+  $lock = @fopen(backup_dir() . '/.restore-lock', 'c');
+  if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+    return ['ok' => false, 'safety' => '',
+            'message' => 'Eine Wiederherstellung läuft bereits — bitte abwarten'];
+  }
+  @set_time_limit(0);
+
   // Das Archiv zuerst beiseitelegen: die Sicherheitskopie schreibt gleich ins
   // selbe Verzeichnis, und was zurückgespielt wird, soll davon unberührt sein.
   $tmp = backup_dir() . '/.restore-' . bin2hex(random_bytes(4));
@@ -475,16 +514,43 @@ function backup_restore(string $archive): array {
     foreach ($statements as $stmt) $db->exec($stmt);
     $db->exec('SET FOREIGN_KEY_CHECKS = 1');
 
-    // Dateien: den bisherigen Stand danebenlegen, dann den aus dem Archiv
+    // Dateien: den bisherigen Stand danebenlegen, dann den aus dem Archiv.
+    // Beide Umbenennungen werden geprüft — scheiterte die zweite unbemerkt,
+    // wäre der alte Bestand weggeschoben und kein neuer da, und der
+    // finally-Block hätte die ausgepackten Dateien gleich mitgelöscht.
     $stamp = date('Ymd-His');
+    $beiseite = [];
     foreach ([UPLOADS_DIR => 'uploads', FILES_DIR => 'files'] as $dir => $base) {
       if (!is_dir($tmp . '/' . $base)) continue;
-      if (is_dir($dir)) @rename($dir, $dir . '.vor-' . $stamp);
-      @rename($tmp . '/' . $base, $dir);
+      $alt = $dir . '.vor-' . $stamp;
+      if (is_dir($dir) && !@rename($dir, $alt)) {
+        throw new RuntimeException('Bisheriger Dateibestand ließ sich nicht beiseitelegen: ' . basename($dir));
+      }
+      if (!@rename($tmp . '/' . $base, $dir)) {
+        // Zurück auf Anfang für dieses Verzeichnis, damit nicht beides fehlt.
+        if (is_dir($alt)) @rename($alt, $dir);
+        throw new RuntimeException('Dateien aus dem Archiv ließen sich nicht einsetzen: ' . $base);
+      }
+      $beiseite[] = basename($alt);
+    }
+    // Die Datenbank kommt aus dem Archiv — und damit auch backup_runs in dem
+    // Stand von damals. Der Eintrag der Sicherheitskopie, die eben entstand,
+    // wäre also verschwunden: die Datei läge da, aber niemand fände sie in der
+    // Oberfläche. Deshalb hier neu eintragen, zusammen mit einem Vermerk.
+    if ($safetyName !== '' && is_file(backup_dir() . '/' . $safetyName)) {
+      q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
+        [$safetyName, (int) filesize(backup_dir() . '/' . $safetyName), 'ok',
+         'Stand vor dem Zurückspielen von ' . basename($archive), 'restore']);
+    }
+    if (is_file($archive)) {
+      q('INSERT IGNORE INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
+        [basename($archive), (int) filesize($archive), 'ok', 'Zurückgespielt', 'restored']);
     }
     $count = count($files);
+    $hinweis = $beiseite ? ' Der bisherige Dateibestand liegt als ' . implode(', ', $beiseite) . ' daneben.' : '';
     return ['ok' => true, 'safety' => $safetyName,
-            'message' => "Zurückgespielt: $count Dateien aus dem Archiv, " . count($statements) . ' SQL-Anweisungen'];
+            'message' => "Zurückgespielt: $count Dateien aus dem Archiv, "
+              . count($statements) . ' SQL-Anweisungen.' . $hinweis];
   } catch (Throwable $e) {
     return ['ok' => false, 'safety' => $safetyName, 'message' => $e->getMessage()];
   } finally {
@@ -498,6 +564,10 @@ function backup_restore(string $archive): array {
       }
       @rmdir($tmp);
     }
+    // Die Sperre auch im Fehlerfall freigeben, sonst wäre nach einem Abbruch
+    // kein zweiter Versuch mehr möglich.
+    flock($lock, LOCK_UN);
+    fclose($lock);
   }
 }
 
