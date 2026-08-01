@@ -21,6 +21,12 @@
     <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
     <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
     <p class="muted"><?= e(t('help_taxr_shares')) ?></p>
+    <?php // Rechtsform und Haftung hängen nicht an der Kleinunternehmerregelung
+          // — sie gelten so oder so, deshalb stehen sie hier und nicht dort. ?>
+    <h3><?= e(t('help_gbr_title')) ?></h3>
+    <p class="muted"><?= e(t('help_gbr_form')) ?></p>
+    <p class="muted">⚠ <?= e(t('help_gbr_liability')) ?></p>
+    <p class="muted"><?= e(t('help_gbr_register')) ?></p>
     <p class="muted">📦 <?= e(t('taxr_package_hint')) ?></p>
     <p class="muted small">⚖ <?= e(t('tax_no_advice')) ?></p>
     <p class="muted small"><a href="/intern/kasse/steuer"><?= e(t('taxr_open')) ?> →</a></p>
