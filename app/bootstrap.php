@@ -2553,26 +2553,50 @@ function photo_strip_exif(string $path): bool {
   if (!is_file($path) || !function_exists('imagecreatetruecolor')) return false;
   $info = @getimagesize($path);
   if (!$info) return false;
-  $img = match ($info['mime']) {
-    'image/jpeg' => @imagecreatefromjpeg($path),
-    'image/png'  => @imagecreatefrompng($path),
-    'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
-    // GIF trägt keine EXIF-Daten; neu schreiben würde nur Qualität kosten.
-    default      => false,
-  };
+  // Nur JPEG trägt die Aufnahmedaten, um die es geht. PNG und WebP neu zu
+  // schreiben brächte nichts und kostete nur: bei PNG ginge dabei sogar die
+  // Transparenz verloren — ein Bandlogo stünde danach auf schwarzem Grund.
+  if ($info['mime'] !== 'image/jpeg') return true;
+  // GD hält das Bild unkomprimiert im Speicher (Breite × Höhe × 4 Byte). Ein
+  // Foto aus einer heutigen Handykamera sprengt damit ein knappes Limit, und
+  // der Upload bräche mitten ab — Datei ohne Datenbankzeile. Lieber gar nicht
+  // anfassen und das ehrlich melden.
+  $brauchen = (int) ($info[0] * $info[1] * 4 * 1.8);
+  $frei = memory_limit_bytes() - memory_get_usage(true);
+  if ($frei > 0 && $brauchen > $frei) return false;
+  $img = @imagecreatefromjpeg($path);
   if (!$img) return false;
+  // Die Drehung steckt bei Handyfotos NUR in den EXIF-Daten. Entfernte man sie
+  // ersatzlos, läge jedes Hochformat-Foto danach quer — deshalb erst in die
+  // Pixel schreiben, dann verwerfen.
+  $orient = (int) (@exif_read_data($path)['Orientation'] ?? 1);
+  $gedreht = match ($orient) {
+    3 => @imagerotate($img, 180, 0),
+    6 => @imagerotate($img, -90, 0),
+    8 => @imagerotate($img, 90, 0),
+    default => null,
+  };
+  if ($gedreht) { imagedestroy($img); $img = $gedreht; }
   // In eine Nachbardatei schreiben und erst dann ersetzen: bricht es ab, bleibt
   // das Original stehen, statt halb geschrieben zu sein.
   $tmp = $path . '.strip';
-  $ok = match ($info['mime']) {
-    'image/jpeg' => imagejpeg($img, $tmp, 92),
-    'image/png'  => imagepng($img, $tmp),
-    'image/webp' => imagewebp($img, $tmp, 92),
-    default      => false,
-  };
+  $ok = imagejpeg($img, $tmp, 92);
   imagedestroy($img);
   if (!$ok || !is_file($tmp)) { @unlink($tmp); return false; }
   return @rename($tmp, $path);
+}
+
+/** Das Speicherlimit in Bytes; 0 heißt „kein Limit". */
+function memory_limit_bytes(): int {
+  $roh = trim((string) ini_get('memory_limit'));
+  if ($roh === '' || $roh === '-1') return 0;
+  $zahl = (int) $roh;
+  return match (strtolower(substr($roh, -1))) {
+    'g' => $zahl * 1024 * 1024 * 1024,
+    'm' => $zahl * 1024 * 1024,
+    'k' => $zahl * 1024,
+    default => $zahl,
+  };
 }
 
 function thumb_file(string $name, int $width = 480): ?string {

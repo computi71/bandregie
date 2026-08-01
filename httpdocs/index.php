@@ -2318,9 +2318,6 @@ if (str_starts_with($path, '/intern')) {
       // Nicht in der Demo umschaltbar: die Adress-Suche fragt serverseitig
       // OpenStreetMap, und die Nutzungsrichtlinie trifft die Adresse dieses
       // Servers — nicht die des Besuchers, der den Schalter umlegt.
-      if (!is_demo()) {
-        set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
-      }
       // Umleitung und Ziel bleiben in der Demo, wie sie sind: damit ließe sich
       // die öffentliche Demo in einen Umleiter auf eine beliebige Adresse
       // verwandeln — auf der Domain des Projekts, bis zum nächsten Zurücksetzen.

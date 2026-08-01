@@ -260,7 +260,13 @@ self.addEventListener('push', event => {
   event.waitUntil((async () => {
     // Eine Mitteilung mehr, und die Zahl der offenen Punkte so, wie der Server
     // sie beim Verschicken kannte.
-    const gesamt = await badgeState({ plus: 1, offen: Number(daten.offen) || 0 });
+    // Ein neuer Termin steckt schon in „offen" — sonst stünde für einen
+    // einzigen offenen Punkt eine 2 am Symbol. Der Server sagt uns, ob diese
+    // Mitteilung obendrauf zählt.
+    const gesamt = await badgeState({
+      plus: daten.zaehlt === false ? 0 : 1,
+      offen: daten.offen === undefined ? undefined : Number(daten.offen) || 0,
+    });
     await self.registration.showNotification(daten.title || 'Bandregie', {
       body: daten.body || '',
       icon: '/assets/app/icon-192.png',
@@ -305,7 +311,8 @@ self.addEventListener('message', event => {
   // Die Seite meldet sich, wenn sie geöffnet oder wieder sichtbar wird: dann
   // hat man die Mitteilungen gesehen, und die Zahl am Symbol gehört weg.
   if (daten.type === 'gesehen') {
-    event.waitUntil(alleGesehen(Number(daten.offen) || 0));
+    // Ohne Angabe bleibt die zuletzt bekannte Zahl offener Punkte stehen.
+    event.waitUntil(alleGesehen(daten.offen === undefined ? undefined : Number(daten.offen) || 0));
     return;
   }
   if (daten.type !== 'mitnehmen' || !Array.isArray(daten.urls)) return;

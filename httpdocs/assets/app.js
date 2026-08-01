@@ -25,17 +25,23 @@ if ('serviceWorker' in navigator) {
       // mit dem Öffnen gesehen. Deshalb hier die frische Zahl holen und dem
       // Service Worker mitgeben, statt die Marke blind zu löschen: eine offene
       // Aufgabe verschwindet nicht dadurch, dass man die App aufmacht.
-      let offen = 0;
+      let offen = null;   // null heißt: nicht erfahren, also nichts überschreiben
       try {
         const r = await fetch('/intern/badge', { credentials: 'same-origin' });
         if (r.ok) offen = Number((await r.json()).offen) || 0;
-      } catch (e) { /* kein Netz: dann bleibt es beim letzten bekannten Stand */ }
-      try {
-        if (offen > 0 && navigator.setAppBadge) await navigator.setAppBadge(offen);
-        else if (navigator.clearAppBadge) await navigator.clearAppBadge();
-      } catch (e) { /* Gerät kann keine Marke — kein Beinbruch */ }
+      } catch (e) { /* kein Netz — der letzte bekannte Stand bleibt stehen */ }
+      if (offen !== null) {
+        try {
+          if (offen > 0 && navigator.setAppBadge) await navigator.setAppBadge(offen);
+          else if (navigator.clearAppBadge) await navigator.clearAppBadge();
+        } catch (e) { /* Gerät kann keine Marke — kein Beinbruch */ }
+      }
       if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'gesehen', offen });
+        // Ohne Netz nur die Mitteilungen als gesehen melden; wie viel offen
+        // ist, weiß gerade niemand — dann lieber die alte Zahl behalten, als
+        // sie fälschlich auf null zu setzen.
+        navigator.serviceWorker.controller.postMessage(
+          offen === null ? { type: 'gesehen' } : { type: 'gesehen', offen });
       }
     };
     gesehen();

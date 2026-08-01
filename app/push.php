@@ -207,8 +207,11 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
   if (!push_available()) return;
   // Die Themen werden hier gefiltert, nicht in SQL: „nichts eingestellt" heißt
   // alle Themen, und das lässt sich mit FIND_IN_SET nicht ausdrücken.
-  $subs = rows("SELECT s.id, s.endpoint, s.p256dh, s.auth,
-                       u.id AS user_id, u.role, u.substitute_for, u.pref_lang, u.push_topics
+  // Die Abo-Kennung heißt bewusst sub_id: hieße sie 'id', hielte jede Prüfung,
+  // die ein Mitglied erwartet, sie für die Mitglieds-Kennung — genau daran ist
+  // die Sichtbarkeitsprüfung unten schon einmal vorbeigelaufen.
+  $subs = rows("SELECT s.id AS sub_id, s.endpoint, s.p256dh, s.auth,
+                       u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
                 FROM push_subscriptions s JOIN users u ON u.id = s.user_id
                 WHERE u.id <> ?", [$exceptUserId]);
   $subs = array_values(array_filter($subs,
@@ -231,7 +234,14 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
       $uid = (int) $sub['user_id'];
       $offenJeNutzer[$uid] ??= open_items_count(['id' => $uid, 'role' => $sub['role'],
                                                  'substitute_for' => $sub['substitute_for']]);
-      $inhalt = json_encode($byLang[$lang] + ['offen' => $offenJeNutzer[$uid]], JSON_UNESCAPED_UNICODE);
+      // Ein neuer Termin steckt bereits in „offen" (er ist unbeantwortet) —
+      // ihn zusätzlich als ungelesene Mitteilung zu zählen, ergäbe eine 2 für
+      // einen einzigen offenen Punkt. Kommentare und Zusagen dagegen ändern
+      // nichts an dem, was zu tun ist, und zählen deshalb obendrauf.
+      $inhalt = json_encode($byLang[$lang] + [
+        'offen' => $offenJeNutzer[$uid],
+        'zaehlt' => $topic !== 'events',
+      ], JSON_UNESCAPED_UNICODE);
       if (!push_send_one($sub, $inhalt)) $failed++;
     }
     // Einmal je Vorgang vermerken, nicht je Abo: „warum kam nichts an?" ist
