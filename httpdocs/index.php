@@ -13,7 +13,11 @@ require_once dirname(__DIR__) . '/app/dauerauftrag.php';
 require dirname(__DIR__) . '/app/equipmentbuchung.php';
 require dirname(__DIR__) . '/app/mischpult.php';
 
-$path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
+// parse_url() liefert bei einer kaputten Adresse false, nicht null — ?? fängt
+// das nicht, und rtrim(false) ist unter PHP 8 ein Fatal Error. Ein Scanner mit
+// einer verunglückten Anfrage bekam so einen 500er statt einer normalen Antwort.
+$rohPfad = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+$path = rtrim(is_string($rohPfad) ? $rohPfad : '/', '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'];
 $today = date('Y-m-d');
 
