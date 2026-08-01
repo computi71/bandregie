@@ -120,7 +120,6 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           ],
           t('inavg_konto')    => array_filter([
             '/intern/profil' => t('inav_profil'),
-            '/intern/hilfe' => t('inav_hilfe'),
             '/intern/ueber' => t('inav_ueber'),
             '/intern/einstellungen' => $user['role'] === 'admin' ? t('inav_einstellungen') : null,
           ]),
@@ -149,6 +148,11 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           <?php endforeach; ?>
         </details>
       <?php endforeach; ?>
+      <?php // Die Hilfe stand in der Gruppe „Konto" und war damit erst nach
+            // zwei Klicks zu finden — gesucht wird sie aber in dem Moment, in
+            // dem etwas unklar ist. Deshalb steht sie offen im Menü, unten,
+            // wo sie die Arbeitsbereiche nicht nach unten schiebt. ?>
+      <a href="/intern/hilfe" class="<?= str_starts_with($path, '/intern/hilfe') ? 'active' : '' ?>">❓ <?= e(t('inav_hilfe')) ?></a>
     <?php else: ?>
       <a href="/" class="<?= $path === '/' ? 'active' : '' ?>"><?= e(t('nav_start')) ?></a>
       <a href="/termine" class="<?= $path === '/termine' ? 'active' : '' ?>"><?= e(t('nav_termine')) ?></a>

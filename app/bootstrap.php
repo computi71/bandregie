@@ -265,7 +265,7 @@ const UI_STRINGS = [
   'inav_intern' => 'Intern', 'inav_zur_website' => 'Zur Website', 'logout' => 'Logout',
   // Überschriften im Klappmenü — siehe $navGroups in app/views/_header.php
   'inavg_planung' => 'Planung', 'inavg_musik' => 'Musik', 'inavg_technik' => 'Technik',
-  'inavg_material' => 'Material', 'inavg_band' => 'Band', 'inavg_konto' => 'Konto',
+  'inavg_material' => 'Medien', 'inavg_band' => 'Band', 'inavg_konto' => 'Konto',
   'inav_musik' => 'Musik & Videos', 'inav_hilfe' => 'Hilfe', 'inav_ueber' => 'Über',
   'fl_media_saved' => 'Link gespeichert.', 'fl_media_deleted' => 'Link gelöscht.',
   'help_title' => 'Hilfe', 'help_intro' => 'Was steckt hinter den einzelnen Bereichen?',
@@ -1889,6 +1889,13 @@ if (setting('tax_texts_2026_08') !== '1') {
 // Rechtsform und Haftung stehen jetzt im Abschnitt zur Steuerübersicht, weil
 // sie unabhängig von der Kleinunternehmerregelung gelten. Der alte Satz dazu
 // stand mitten im Text über die Umsatzgrenze und ist dort herausgenommen.
+// Die Menügruppe mit Fotos, Musik und Downloads hieß „Material" — unscharf für
+// das, was drinsteht, und die Sprachen waren sich uneins: Französisch sagte
+// längst „Médias". Jetzt überall Medien.
+if (setting('nav_media_2026_08') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'inavg_material'");
+  set_setting('nav_media_2026_08', '1');
+}
 if (setting('gbr_help_2026_08') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_tax_band'");
   set_setting('gbr_help_2026_08', '1');
