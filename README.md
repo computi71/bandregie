@@ -366,6 +366,23 @@ source exists for this, and a band's server should not depend on one.
 
 This is arithmetic, not tax advice.
 
+### Version numbers
+
+`Major.Minor.Fix`, read from the one question that matters before an update —
+**can I just pull, or do I have to do something?**
+
+- **Fix** — repairs only, nothing behaves differently. Update whenever.
+- **Minor** — new features or changed behaviour, applies itself. Just update.
+- **Major** — either the operator has to act (a manual database step, a newer
+  PHP, changed server configuration), or so much has changed that the release
+  notes are worth reading first: a whole new area, a reworked interface, a
+  fundamentally different workflow.
+
+This is semantic versioning with its major bump defined for a self-hosted
+application rather than a library: there is no API here for anyone's code to
+break against, so "breaking" is measured against the person running the
+server. Every release is tagged and carries notes.
+
 ### Updating
 
 The application never updates itself. Giving the web server write access to
