@@ -103,21 +103,33 @@ function backup_write_sql(string $path): void {
   global $db;
   $fh = fopen($path, 'wb');
   if (!$fh) throw new RuntimeException('SQL-Datei nicht schreibbar');
-  fwrite($fh, "-- Bandregie " . BANDREGIE_VERSION . ", " . date('c') . "\n");
-  fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
+  // Jeden Schreibvorgang prüfen. Läuft die Platte mitten im Lauf voll, schreibt
+  // fwrite() nur einen Teil und meldet das ausschließlich im Rückgabewert —
+  // ohne diese Prüfung entstünde eine halbe Datenbank, die als „ok" verbucht
+  // wird und Wochen später beim Zurückspielen auffliegt.
+  $schreib = function (string $text) use ($fh, $path): void {
+    $n = fwrite($fh, $text);
+    if ($n === false || $n !== strlen($text)) {
+      fclose($fh);
+      @unlink($path);
+      throw new RuntimeException('Sicherung abgebrochen: konnte nicht vollständig schreiben (Platte voll?)');
+    }
+  };
+  $schreib("-- Bandregie " . BANDREGIE_VERSION . ", " . date('c') . "\n");
+  $schreib("SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
   foreach ($db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $table) {
     $create = $db->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_NUM)[1] ?? '';
-    fwrite($fh, "DROP TABLE IF EXISTS `$table`;\n$create;\n\n");
+    $schreib("DROP TABLE IF EXISTS `$table`;\n$create;\n\n");
     $stmt = $db->query("SELECT * FROM `$table`");
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
       $cols = implode(', ', array_map(fn($c) => "`$c`", array_keys($row)));
       $vals = implode(', ', array_map(fn($v) => $v === null ? 'NULL' : $db->quote((string) $v), $row));
-      fwrite($fh, "INSERT INTO `$table` ($cols) VALUES ($vals);\n");
+      $schreib("INSERT INTO `$table` ($cols) VALUES ($vals);\n");
     }
-    fwrite($fh, "\n");
+    $schreib("\n");
   }
-  fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
-  fclose($fh);
+  $schreib("SET FOREIGN_KEY_CHECKS = 1;\n");
+  if (!fclose($fh)) throw new RuntimeException('Sicherung abgebrochen: Datei nicht sauber geschlossen');
 }
 
 /**
@@ -296,7 +308,16 @@ function backup_ftp_upload(string $file): array {
       $mine[] = $base;
     }
   }
-  rsort($mine);
+  // Nach dem Zeitstempel im Namen sortieren, nicht nach dem Namen selbst:
+  // „bandroadie…" sortiert wegen des o immer vor „bandregie…". Auf einem Ziel
+  // mit Dateien aus der Zeit vor der Umbenennung landete die frisch
+  // hochgeladene Sicherung dadurch am Ende der Liste — und wurde als erstes
+  // wieder gelöscht, mit grüner Erfolgsmeldung.
+  usort($mine, function (string $a, string $b): int {
+    preg_match('~(\d{4}-\d{2}-\d{2}-\d{6})~', $a, $ma);
+    preg_match('~(\d{4}-\d{2}-\d{2}-\d{6})~', $b, $mb);
+    return strcmp($mb[1] ?? '', $ma[1] ?? '');
+  });
   $dropped = 0;
   foreach (array_slice($mine, $cfg['keep']) as $old) {
     if (@ftp_delete($conn, $old)) $dropped++;

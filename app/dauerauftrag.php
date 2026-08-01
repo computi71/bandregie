@@ -55,6 +55,17 @@ function orders_run(): int {
   $today = date('Y-m-d');
   $made = 0;
   foreach (rows('SELECT * FROM standing_orders WHERE paused = 0 AND next_date <= ?', [$today]) as $order) {
+    // Den Auftrag zuerst beanspruchen: Wer das UPDATE gewinnt, bucht ihn.
+    // Zwei gleichzeitige Seitenaufrufe am Fälligkeitstag lasen sonst beide
+    // denselben Stand und buchten beide — die Miete stand zweimal im Buch.
+    $bis = $order['next_date'];
+    for ($vor = 0; $vor < 120 && $bis <= $today; $vor++) {
+      if ($order['end_date'] !== null && $bis > $order['end_date']) break;
+      $bis = order_next_date($bis, $order['interval_kind']);
+    }
+    $claim = q('UPDATE standing_orders SET next_date = ? WHERE id = ? AND next_date = ?',
+               [$bis, $order['id'], $order['next_date']]);
+    if ($claim->rowCount() !== 1) continue;   // ein anderer Lauf war schneller
     $date = $order['next_date'];
     // Ein Lauf holt alle versäumten Termine nach; die Schranke verhindert,
     // dass ein kaputtes Datum eine Endlosschleife dreht.
@@ -63,7 +74,10 @@ function orders_run(): int {
       // Ein privater Auftrag bucht privat: die Zeile steht im Kassenbuch,
       // sieht sie aber nur ihr Besitzer, und sie zählt nicht zum Bandvermögen.
       // Eine Einzahlung trägt denselben Namen, geht aber alle an.
-      q('INSERT INTO finances (date, type, amount_cents, category, description, member_id, created_by, standing_order_id, private_for)
+      // IGNORE fängt den eindeutigen Schlüssel (standing_order_id, date) ab:
+      // Sollte derselbe Termin doch ein zweites Mal hier ankommen, entsteht
+      // keine zweite Zeile, statt dass die Buchung mit einem Fehler abbricht.
+      q('INSERT IGNORE INTO finances (date, type, amount_cents, category, description, member_id, created_by, standing_order_id, private_for)
          VALUES (?,?,?,?,?,?,?,?,?)', [
         $date, $order['type'], $order['amount_cents'], $order['category'],
         $order['description'], $order['owner_id'], $order['created_by'], $order['id'],
@@ -72,7 +86,9 @@ function orders_run(): int {
       $made++;
       $date = order_next_date($date, $order['interval_kind']);
     }
-    q('UPDATE standing_orders SET next_date = ? WHERE id = ?', [$date, $order['id']]);
+    // Kein UPDATE mehr am Ende: das nächste Datum steht schon aus dem Anspruch
+    // oben. Es hier ein zweites Mal auszurechnen hieße, dieselbe Regel doppelt
+    // zu pflegen — und die beiden liefen irgendwann auseinander.
   }
   return $made;
 }

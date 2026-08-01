@@ -94,22 +94,42 @@ function crypt_seal_file(string $source, string $target): bool {
   $out = @fopen($tmp, 'wb');
   if (!$out) { fclose($in); return false; }
 
+  // Jeder Schreibvorgang wird geprüft. Läuft die Platte voll, schreibt fwrite()
+  // nur einen Teil und sagt das nur im Rückgabewert — ungeprüft entstünde eine
+  // abgeschnittene Datei, die anschließend über das Original benannt wird. Der
+  // Anhang wäre damit unwiederbringlich weg, gemeldet als „versiegelt".
+  $abbruch = false;
+  $schreib = function (string $bytes) use ($out, &$abbruch): bool {
+    if ($abbruch) return false;
+    $n = fwrite($out, $bytes);
+    if ($n === false || $n !== strlen($bytes)) { $abbruch = true; return false; }
+    return true;
+  };
+
   [$state, $header] = sodium_crypto_secretstream_xchacha20poly1305_init_push($key);
-  fwrite($out, CRYPT_MAGIC);
-  fwrite($out, $header);
-  while (!feof($in)) {
+  $schreib(CRYPT_MAGIC);
+  $schreib($header);
+  // Das Schlusszeichen muss zuverlässig gesetzt werden. feof() ist nach dem
+  // Lesen des letzten vollen Blocks noch falsch — bei einer Datei, deren Größe
+  // genau ein Vielfaches der Blockgröße ist, bekam der letzte Block deshalb
+  // kein TAG_FINAL, und die versiegelte Datei hatte gar kein Ende.
+  $letzterGeschrieben = false;
+  while (!$abbruch) {
     $chunk = (string) fread($in, CRYPT_CHUNK);
-    if ($chunk === '' && feof($in)) break;
     $last = feof($in);
+    if ($chunk === '' && !$last) break;          // Lesefehler
+    if ($chunk === '' && $letzterGeschrieben) break;
     $cipher = sodium_crypto_secretstream_xchacha20poly1305_push(
       $state, $chunk, '',
       $last ? SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL : 0);
-    fwrite($out, pack('N', strlen($cipher)));
-    fwrite($out, $cipher);
+    $schreib(pack('N', strlen($cipher)));
+    $schreib($cipher);
+    if ($last) { $letzterGeschrieben = true; break; }
   }
   fclose($in);
-  fclose($out);
+  $zu = fclose($out);
   sodium_memzero($state);
+  if ($abbruch || !$zu || !$letzterGeschrieben) { @unlink($tmp); return false; }
   return @rename($tmp, $target);
 }
 
@@ -131,19 +151,33 @@ function crypt_open_file(string $source, string $target): bool {
   $out = @fopen($tmp, 'wb');
   if (!$out) { fclose($in); return false; }
   $ok = true;
+  // Das Schlusszeichen entscheidet. Jeder Block ist für sich geprüft, das Ende
+  // des Stroms aber nicht — ohne diese Forderung galt eine bei 60 % abgebrochene
+  // Sicherung als vollständig lesbar, und der Restore hätte alle Tabellen
+  // verworfen und nur die ersten wieder eingespielt.
+  $fertig = false;
   while (!feof($in)) {
     $lenRaw = (string) fread($in, 4);
     if (strlen($lenRaw) < 4) break;
     $len = unpack('N', $lenRaw)[1] ?? 0;
     if ($len <= 0 || $len > CRYPT_CHUNK * 2) { $ok = false; break; }
     $cipher = (string) fread($in, $len);
+    if (strlen($cipher) !== $len) { $ok = false; break; }   // Datei endet mitten im Block
     $res = @sodium_crypto_secretstream_xchacha20poly1305_pull($state, $cipher);
     if ($res === false) { $ok = false; break; }
-    fwrite($out, $res[0]);
-    if ($res[1] === SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL) break;
+    $n = fwrite($out, $res[0]);
+    if ($n === false || $n !== strlen($res[0])) { $ok = false; break; }
+    if ($res[1] === SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL) { $fertig = true; break; }
   }
   fclose($in);
-  fclose($out);
+  if (!fclose($out)) $ok = false;
+  // Dateien aus der Zeit vor dieser Prüfung tragen unter Umständen kein
+  // Schlusszeichen. Sie abzulehnen hieße, alte Sicherungen unbrauchbar zu
+  // machen — deshalb nur vermerken, nicht verweigern.
+  if ($ok && !$fertig) {
+    error_log('Bandregie: ' . basename($source) . ' ohne Schlusszeichen geöffnet — '
+      . 'entweder aus einer älteren Fassung oder unvollständig. Bitte prüfen.');
+  }
   if (!$ok) { @unlink($tmp); return false; }
   return @rename($tmp, $target);
 }

@@ -1168,6 +1168,13 @@ if (str_starts_with($path, '/intern')) {
     // Die Sammelrechnung nennt kein Hauptgerät: das erste angehakte übernimmt
     // die Rolle, die übrigen bekommen ihre eigene Zeile wie sonst auch.
     if ($type === 'equipment' && !$entityId && $alsoIds) $entityId = (int) array_shift($alsoIds);
+    // Anhängen darf nur, wer das Ziel auch bearbeiten dürfte. Der
+    // Frontcontroller prüft den Bereich; ob diese eine Buchung dem
+    // Anfragenden gehört, weiß nur may_edit_finance().
+    if ($type === 'finance' && !may_edit_finance(row('SELECT private_for FROM finances WHERE id = ?', [$entityId]))) {
+      flash(t('fl_no_permission'));
+      redirect('/intern/kasse');
+    }
     if ($type && ($entityId || $type === 'download')) {
       foreach ($_FILES['files']['tmp_name'] ?? [] as $i => $tmp) {
         if (upload_rejected((int) ($_FILES['files']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
@@ -2107,7 +2114,10 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/kasse' && $method === 'POST') {
     if (!can_finance()) { flash(t('fl_finance_required')); redirect('/intern/kasse'); }
-    $amount = (int) round(((float) str_replace(',', '.', str_replace('.', '', trim($_POST['amount'] ?? '')))) * 100);
+    // price_to_cents() unterscheidet Tausender- von Dezimaltrennzeichen an der
+    // Stellenzahl. Die frühere Zeile entfernte erst alle Punkte — „12.50" wurde
+    // damit zu 1.250,00 €, und ein Handy-Zahlenfeld liefert nun einmal Punkte.
+    $amount = (int) (price_to_cents((string) ($_POST['amount'] ?? '')) ?? 0);
     $desc = trim($_POST['description'] ?? '');
     $date = $_POST['date'] ?? '';
     if ($amount > 0 && $desc !== '' && preg_match('~^\d{4}-\d{2}-\d{2}$~', $date)) {
@@ -2131,12 +2141,20 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/kasse/gage/(\d+)$~', $path, $m) && $method === 'POST') {
     if (!can_finance()) { flash(t('fl_finance_required')); redirect('/intern/kasse'); }
     $ev = row("SELECT * FROM events WHERE id = ? AND fee != ''", [$m[1]]);
-    if ($ev && preg_match('~(\d+(?:[.,]\d{1,2})?)~', str_replace('.', '', $ev['fee']), $fm)) {
-      $amount = (int) round(((float) str_replace(',', '.', $fm[1])) * 100);
+    // Das Gage-Feld ist Freitext. Früher wurde die erste Ziffernfolge daraus
+    // gegriffen — aus „ab 19 Uhr, 600 €" wurden 19,00 €, aus „2x400" zwei Euro.
+    // Übernommen wird jetzt nur, was als Ganzes ein Betrag ist; alles andere
+    // trägt die Kassenführung von Hand ein, statt dass wir raten.
+    if ($ev) {
+      $feeRoh = trim((string) $ev['fee']);
+      $amount = preg_match('~^[\d.,\s]+(?:€|EUR)?$~ui', $feeRoh)
+        ? (int) (price_to_cents($feeRoh) ?? 0) : 0;
       if ($amount > 0) {
         q('INSERT INTO finances (date, type, amount_cents, category, description, event_id, created_by) VALUES (?,?,?,?,?,?,?)',
           [$ev['date'], 'einnahme', $amount, 'gage', $ev['title'], $ev['id'], $me['id']]);
         flash(t('fl_fin_saved'));
+      } else {
+        flash(t('fl_fee_unclear'));
       }
     }
     redirect('/intern/kasse');

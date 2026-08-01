@@ -740,6 +740,7 @@ Zeile zwei
   'set_geocoding' => 'Adress-Suche über OpenStreetMap erlauben',
   'set_privacy_note' => 'Beim Aktivieren gilt der zugehörige Absatz der Datenschutzerklärung — bitte prüfen, dass er dort steht.',
   'set_push' => 'Mitteilungen aufs Gerät erlauben',
+  'fl_fee_unclear' => 'Die Gage steht als Text da und lässt sich nicht eindeutig als Betrag lesen — bitte von Hand buchen.',
   'set_extern' => 'Verbindungen nach außen',
   'set_extern_hint' => 'Alles, was diese Installation nach außen tun kann, steht hier zusammen — abschaltbar, jedes für sich. Ist etwas aus, findet die Verbindung nicht statt.',
   'fl_extern_saved' => 'Verbindungen nach außen gespeichert.',
@@ -992,9 +993,14 @@ const PERM_MODULES = [
 ];
 
 /** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
+// Jeder Anhang-Typ braucht hier seinen Bereich. Fehlt einer, liefert
+// perm_module_for() null — und dann greift die Rechteprüfung im
+// Frontcontroller gar nicht erst. Genau so waren Kassenbelege und
+// Veranstalter-Downloads für jedes angemeldete Konto abrufbar.
 const PERM_ENTITY_MODULES = [
   'event' => 'termine', 'song' => 'songs', 'venue' => 'orte',
   'equipment' => 'equipment', 'setlist' => 'setlists',
+  'finance' => 'kasse', 'download' => 'downloads',
 ];
 
 /**
@@ -1411,6 +1417,15 @@ $tables = [
 foreach ($tables as $ddl) $db->exec($ddl);
 
 // ---------- Migrationen für bestehende Installationen ----------
+/** Gibt es diesen Schlüssel schon? Damit eine Migration zweimal laufen darf. */
+function index_exists(string $table, string $index): bool {
+  global $db, $config;
+  $st = $db->prepare('SELECT 1 FROM information_schema.statistics
+                      WHERE table_schema = ? AND table_name = ? AND index_name = ?');
+  $st->execute([$config['db_name'], $table, $index]);
+  return $st->fetch() !== false;
+}
+
 function column_exists(string $table, string $column): bool {
   global $db, $config;
   $st = $db->prepare('SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?');
@@ -1490,6 +1505,20 @@ if (!column_exists('backup_runs', 'ftp_ok')) {
 // Verweis ließe sich ein falscher Betrag später nicht zurückverfolgen.
 if (!column_exists('finances', 'standing_order_id')) {
   $db->exec('ALTER TABLE finances ADD COLUMN standing_order_id INT NULL');
+}
+// Ein Dauerauftrag darf denselben Termin nur einmal buchen. Ohne diesen
+// Schlüssel entstand die Miete zweimal, wenn am Fälligkeitstag zwei Leute
+// gleichzeitig die Seite öffneten — und ebenso nach einem Abbruch mitten im
+// Nachholen. NULL kollidiert in MySQL nicht, Handbuchungen bleiben also frei.
+if (!index_exists('finances', 'uniq_order_date')) {
+  try {
+    $db->exec('ALTER TABLE finances ADD UNIQUE KEY uniq_order_date (standing_order_id, date)');
+  } catch (PDOException $e) {
+    // Schon vorhandene Doppelbuchungen verhindern den Schlüssel. Das ist kein
+    // Grund, die Seite anzuhalten — aber es gehört ins Log, damit es auffällt.
+    error_log('Bandregie: uniq_order_date nicht angelegt, vermutlich wegen vorhandener '
+      . 'Doppelbuchungen — bitte prüfen: ' . $e->getMessage());
+  }
 }
 // Wem eine Buchung privat gehört. NULL heißt „der Band" — nur diese Zeilen
 // zählen für den Kontostand. Was jemand privat zahlt, geht die Band nichts an.
@@ -2020,8 +2049,26 @@ function may_see_file(?array $user, array $file): bool {
     'event' => may_see_event($user, $id),
     'setlist' => may_see_setlist($user, $id),
     'song' => may_see_song($user, $id),
-    default => true,
+    // Ein Kassenbeleg gehört zu seiner Buchung: private Auslagen sieht nur,
+    // wer die Buchung selbst sehen darf.
+    'finance' => may_see_finance_file($user, $id),
+    // Diese drei hängen an ihrem Bereich, den der Frontcontroller schon prüft.
+    'venue', 'equipment', 'download' => true,
+    // Unbekannter Typ heißt nein. Andersherum wäre jeder künftige Anhang-Typ
+    // erst einmal für alle offen, bis jemand daran denkt — das ist die falsche
+    // Richtung für eine Zugriffsprüfung.
+    default => false,
   };
+}
+
+/** Darf jemand den Beleg zu dieser Kassenbuchung sehen? */
+function may_see_finance_file(?array $user, int $financeId): bool {
+  if (!$user) return false;
+  $f = row('SELECT private_for FROM finances WHERE id = ?', [$financeId]);
+  if (!$f) return false;
+  // Private Auslagen gehören dem Mitglied, alles andere der Bandkasse.
+  if ($f['private_for'] !== null) return (int) $f['private_for'] === (int) $user['id'];
+  return perm_allows($user, 'kasse');
 }
 
 /** Baut „AND id IN (...)“ für eine Sichtbarkeitsliste; null lässt alles durch. */
