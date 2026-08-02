@@ -38,6 +38,12 @@ if (!headers_sent()) {
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: SAMEORIGIN');
   header('Referrer-Policy: same-origin');
+  // Eine Demo gehört nicht in den Suchindex (#174): Ihre Inhalte sind erfunden
+  // und werden stündlich zurückgesetzt, und sie stünde als zweite Fassung
+  // derselben Anwendung neben der echten Seite. Als Kopfzeile UND als Meta im
+  // Kopf der Seite — die Kopfzeile liest auch ein Sucher, der das HTML gar
+  // nicht auswertet, etwa bei einem PDF oder einem Bild.
+  if (is_demo()) header('X-Robots-Tag: noindex, nofollow');
 }
 
 // Überschreitet ein Upload post_max_size, verwirft PHP den gesamten Request-Body:
@@ -60,6 +66,32 @@ if ($method === 'POST' && !csrf_valid()) {
 // ============================================================
 // Öffentliche Seiten
 // ============================================================
+
+// ---------- robots.txt ----------
+// Bisher gab es keine: Die Adresse landete auf der 404-Seite, und ein Sucher
+// nahm mangels Auskunft alles mit. Was hier steht, hängt von der Installation
+// ab — eine Anweisung, die für alle gleich lautet, wäre für die meisten falsch.
+if ($path === '/robots.txt') {
+  header('Content-Type: text/plain; charset=utf-8');
+  $zeilen = ["User-agent: *"];
+  if (is_demo()) {
+    // Erfundene Inhalte, stündlich zurückgesetzt — davon gehört nichts in einen
+    // Index, auch nicht die öffentliche Seite.
+    $zeilen[] = 'Disallow: /';
+  } elseif (setting('public_mode') === 'redirect') {
+    // Wer die öffentliche Seite auf eine Weiterleitung gestellt hat, hat hier
+    // nichts zu zeigen; zu indexieren gibt es entsprechend auch nichts.
+    $zeilen[] = 'Disallow: /';
+  } else {
+    // Der Bandbereich ist ohnehin hinter der Anmeldung — aber ein Sucher soll
+    // gar nicht erst anklopfen, und Uploads gehören niemandem als der Band.
+    $zeilen[] = 'Disallow: /intern';
+    $zeilen[] = 'Disallow: /login';
+    $zeilen[] = 'Disallow: /uploads';
+    $zeilen[] = 'Allow: /';
+  }
+  exit(implode("\n", $zeilen) . "\n");
+}
 
 // ---------- App: Manifest und Symbole ----------
 // Das Manifest macht die Seite installierbar. Es trägt den Bandnamen, damit

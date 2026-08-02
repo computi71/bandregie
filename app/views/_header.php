@@ -12,7 +12,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($title) ?> · <?= e($settings['band_name']) ?></title>
-  <?php if (in_array($path, ['/impressum', '/datenschutz'], true)): ?>
+  <?php // Rechtliches gehört nicht in den Index — und eine Demo als Ganzes
+        // ebenso wenig: erfundene Inhalte, stündlich zurückgesetzt, und sie
+        // stünde als zweite Fassung neben der echten Seite (#174). ?>
+  <?php if (is_demo() || in_array($path, ['/impressum', '/datenschutz'], true)): ?>
     <meta name="robots" content="noindex, nofollow">
   <?php endif; ?>
   <?php // Ohne eigenes Zeichen das App-Symbol nehmen — sonst fragt jeder
