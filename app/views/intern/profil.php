@@ -155,7 +155,18 @@
       <li><?= e(t('prof_push_denied_os')) ?></li>
     </ul>
   </div>
-  <p class="warn" data-push-open hidden><?= e(t('prof_push_open')) ?></p>
+  <?php // Zwei Fälle sehen für den Browser gleich aus und fühlen sich völlig
+        // verschieden an: Die Frage kam als Glocke und wurde übersehen — oder
+        // sie kam gar nicht, weil der Browser die Seite nach dreimaligem
+        // Wegklicken eine Woche lang nicht mehr fragt. Das zweite steht in
+        // keiner Sperrliste und ist von außen nicht zu erraten. ?>
+  <div class="warn" data-push-open hidden>
+    <strong><?= e(t('prof_push_open')) ?></strong>
+    <ul class="task-list">
+      <li><?= e(t('prof_push_open_bell')) ?></li>
+      <li><?= e(t('prof_push_open_embargo')) ?></li>
+    </ul>
+  </div>
   <p class="warn" data-push-failed hidden><?= e(t('prof_push_failed')) ?></p>
 </details>
 <?php endif; ?>
