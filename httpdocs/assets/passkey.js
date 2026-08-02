@@ -126,11 +126,10 @@ function pkFehlschlag() {
 let pkLaufend = null;
 
 /**
- * @param mediation 'conditional' für die stille Bereitschaft, sonst undefined
  * @param nurDieser Kennung des bekannten Passkeys — dann fragt das Gerät nicht
  *                  nach, welcher es sein soll, sondern entsperrt sofort.
  */
-async function pkFrageStellen(mediation, nurDieser) {
+async function pkFrageStellen(nurDieser) {
   if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; }
   const { data } = await pkPost('/passkey/challenge');
   if (data.error) return null;
@@ -149,27 +148,13 @@ async function pkFrageStellen(mediation, nurDieser) {
   // Seite hat. Eine Liste vom Server müsste vorher verraten, wer hier ein
   // Konto hat.
   if (nurDieser) wunsch.allowCredentials = [{ type: 'public-key', id: pkBin(nurDieser) }];
-  return navigator.credentials.get({ publicKey: wunsch, mediation, signal: abbruch.signal });
+  return navigator.credentials.get({ publicKey: wunsch, signal: abbruch.signal });
 }
 
-/**
- * Die stille Bereitschaft: Das Gerät bietet den Passkey im Tastaturvorschlag
- * an, sobald jemand ins E-Mail-Feld tippt — ohne dass vorher etwas gedrückt
- * werden muss. Kann der Browser das nicht, passiert hier nichts.
- */
-async function pkBereitstehen(meldung) {
-  if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) return false;
-  try {
-    if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return false;
-    const cred = await pkFrageStellen('conditional');
-    if (cred) await pkAbsenden(cred, meldung);
-    return true;
-  } catch (e) {
-    // Abbruch ist hier der Normalfall: Wer das Passwort tippt, bricht die
-    // stille Bereitschaft ab. Das ist keine Meldung wert.
-    return true;
-  }
-}
+// Die „stille Bereitschaft" (mediation: 'conditional') ist wieder draußen.
+// Sie hängt eine offene Passkey-Anfrage an das E-Mail-Feld, und damit übernahm
+// der Passwortsafe das Feld: Das Passwort ließ sich nicht mehr eintippen. Ein
+// zweiter Anmeldeweg darf den ersten nie blockieren — das Formular hat Vorrang.
 
 /** Die Antwort des Geräts an den Server geben und weitergehen. */
 async function pkAbsenden(cred, meldung) {
@@ -199,7 +184,7 @@ async function pkAnmelden(knopf, meldung, nurDieser) {
   };
   if (knopf) knopf.disabled = true;
   try {
-    const cred = await pkFrageStellen(undefined, nurDieser);
+    const cred = await pkFrageStellen(nurDieser);
     if (!cred) { setze(knopf && knopf.dataset.unsupported, true); return; }
     await pkAbsenden(cred, meldung);
   } catch (e) {
@@ -229,22 +214,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!anmelden) return;
   anmelden.addEventListener('click', () => pkAnmelden(anmelden, meldung));
 
-  // Direkt statt auf Knopfdruck, in zwei Stufen — und in dieser Reihenfolge:
+  // Ist auf diesem Gerät schon ein Passkey gelaufen, kennen wir seine Kennung.
+  // Dann fragt die Seite beim Öffnen direkt nach dem Gesicht, ohne den Umweg
+  // über „welchen Schlüssel möchtest du?".
   //
-  //  1. Ist auf diesem Gerät schon ein Passkey gelaufen, kennen wir seine
-  //     Kennung. Dann fragt die Seite beim Öffnen sofort nach dem Gesicht,
-  //     ohne den Umweg über „welchen Schlüssel möchtest du?" — das ist der
-  //     Weg, den man von anderen Apps kennt.
-  //  2. Ist das Gerät neu, geht es leiser: Kann der Browser die stille
-  //     Bereitschaft, hängt der Passkey im Tastaturvorschlag über dem
-  //     E-Mail-Feld. Wer lieber tippt, tippt einfach.
-  //
-  // Nur eins von beidem: Beide gleichzeitig hieße zwei Zufallsfragen, und die
-  // zweite machte die erste ungültig.
-  //
-  // Schlägt die direkte Abfrage fehl oder wird sie weggetippt, steht die Seite
-  // da wie immer — Passwort im Formular, Passkey auf dem Knopf.
+  // Schlägt das fehl oder wird es weggetippt, steht die Seite da wie immer:
+  // Passwort im Formular, Passkey auf dem Knopf. Das Formular bleibt dabei
+  // jederzeit benutzbar — daran hängt nichts.
   const bekannt = pkKennt();
-  if (bekannt) { pkAnmelden(null, meldung, bekannt); return; }
-  await pkBereitstehen(meldung);
+  if (bekannt) pkAnmelden(null, meldung, bekannt);
 });
