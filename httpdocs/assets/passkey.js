@@ -52,7 +52,7 @@ async function pkAnlegen(knopf, meldung) {
         pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
         // Der Schlüssel soll auf dem Gerät bleiben und ohne Eingabe eines
         // Kontonamens funktionieren; entsperrt wird er durch das Gerät selbst.
-        authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+        authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
         // Dasselbe Gerät soll sich nicht zweimal eintragen.
         excludeCredentials: (vorbereitung.vorhanden || []).map(id => ({ type: 'public-key', id: pkBin(id) })),
         attestation: 'none',
@@ -86,47 +86,98 @@ async function pkAnlegen(knopf, meldung) {
 
 // ---------- Anmelden (auf der Login-Seite) ----------
 
+// Merkt sich, dass auf DIESEM Gerät schon einmal ein Passkey benutzt wurde.
+// Nur dann fragt die Seite beim Öffnen von selbst — wer keinen hat, soll nicht
+// bei jedem Besuch eine Gesichtserkennung wegtippen müssen.
+const PK_MERKER = 'bandregie-passkey';
+const pkKennt = () => { try { return localStorage.getItem(PK_MERKER) === '1'; } catch (e) { return false; } };
+const pkMerken = () => { try { localStorage.setItem(PK_MERKER, '1'); } catch (e) { /* egal */ } };
+const pkVergessen = () => { try { localStorage.removeItem(PK_MERKER); } catch (e) { /* egal */ } };
+
+// Die laufende Anfrage, damit sich zwei nicht in die Quere kommen: Es gibt nur
+// eine Zufallsfrage in der Sitzung, und die zweite machte die erste ungültig.
+let pkLaufend = null;
+
+async function pkFrageStellen(mediation) {
+  if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; }
+  const { data } = await pkPost('/passkey/challenge');
+  if (data.error) return null;
+  const abbruch = new AbortController();
+  pkLaufend = abbruch;
+  return navigator.credentials.get({
+    publicKey: {
+      challenge: pkBin(data.challenge),
+      rpId: data.rpId,
+      userVerification: 'preferred',
+      timeout: 120000,
+    },
+    mediation,
+    signal: abbruch.signal,
+  });
+}
+
+/**
+ * Die stille Bereitschaft: Das Gerät bietet den Passkey im Tastaturvorschlag
+ * an, sobald jemand ins E-Mail-Feld tippt — ohne dass vorher etwas gedrückt
+ * werden muss. Kann der Browser das nicht, passiert hier nichts.
+ */
+async function pkBereitstehen(meldung) {
+  if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) return false;
+  try {
+    if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return false;
+    const cred = await pkFrageStellen('conditional');
+    if (cred) await pkAbsenden(cred, meldung);
+    return true;
+  } catch (e) {
+    // Abbruch ist hier der Normalfall: Wer das Passwort tippt, bricht die
+    // stille Bereitschaft ab. Das ist keine Meldung wert.
+    return true;
+  }
+}
+
+/** Die Antwort des Geräts an den Server geben und weitergehen. */
+async function pkAbsenden(cred, meldung) {
+  const { ok, data } = await pkPost('/passkey/login', {
+    id: cred.id,
+    authenticatorData: pkB64(cred.response.authenticatorData),
+    clientDataJSON: pkB64(cred.response.clientDataJSON),
+    signature: pkB64(cred.response.signature),
+  });
+  if (!ok || !data.ok) {
+    if (meldung) { meldung.textContent = data.error || ''; meldung.className = 'muted small warn'; }
+    // Merker weg: Wer seinen Passkey entfernt hat, soll nicht bei jedem Besuch
+    // eine Abfrage bekommen, die nur scheitern kann. Eine gelungene Anmeldung
+    // setzt ihn gleich wieder.
+    pkVergessen();
+    return;
+  }
+  pkMerken();
+  location.href = data.weiter || '/intern';
+}
+
 async function pkAnmelden(knopf, meldung) {
   const setze = (text, fehler) => {
     if (!meldung) return;
     meldung.textContent = text;
     meldung.className = 'muted small' + (fehler ? ' warn' : '');
   };
-  knopf.disabled = true;
+  if (knopf) knopf.disabled = true;
   try {
-    const { data: vorbereitung } = await pkPost('/passkey/challenge');
-    if (vorbereitung.error) { setze(knopf.dataset.unsupported, true); return; }
-
-    const cred = await navigator.credentials.get({
-      publicKey: {
-        challenge: pkBin(vorbereitung.challenge),
-        rpId: vorbereitung.rpId,
-        // Keine Liste erlaubter Schlüssel: Das Gerät weiß selbst, welchen es
-        // für diese Seite hat. Eine Liste vom Server müsste vorher verraten,
-        // wer hier ein Konto hat.
-        userVerification: 'preferred',
-        timeout: 120000,
-      },
-    });
-    if (!cred) { setze(knopf.dataset.failed, true); return; }
-
-    const { ok, data } = await pkPost('/passkey/login', {
-      id: cred.id,
-      authenticatorData: pkB64(cred.response.authenticatorData),
-      clientDataJSON: pkB64(cred.response.clientDataJSON),
-      signature: pkB64(cred.response.signature),
-    });
-    if (!ok || !data.ok) { setze(data.error || knopf.dataset.failed, true); return; }
-    location.href = data.weiter || '/intern';
+    // Keine Liste erlaubter Schlüssel: Das Gerät weiß selbst, welchen es für
+    // diese Seite hat. Eine Liste vom Server müsste vorher verraten, wer hier
+    // ein Konto hat.
+    const cred = await pkFrageStellen(undefined);
+    if (!cred) { setze(knopf && knopf.dataset.unsupported, true); return; }
+    await pkAbsenden(cred, meldung);
   } catch (e) {
-    setze(e && e.name === 'NotAllowedError' ? knopf.dataset.cancelled : knopf.dataset.failed,
-          !(e && e.name === 'NotAllowedError'));
+    const abgebrochen = e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
+    setze(knopf && (abgebrochen ? knopf.dataset.cancelled : knopf.dataset.failed), !abgebrochen);
   } finally {
-    knopf.disabled = false;
+    if (knopf) knopf.disabled = false;
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const bereich = document.querySelector('[data-passkey]');
   if (!bereich) return;
   // Ohne Unterstützung gar nicht erst zeigen: ein Knopf, der nichts kann, ist
@@ -134,8 +185,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!pkMoeglich()) return;
   bereich.hidden = false;
 
+  const meldung = document.getElementById('pk-msg');
   const anlegen = document.getElementById('pk-add');
-  if (anlegen) anlegen.addEventListener('click', () => pkAnlegen(anlegen, document.getElementById('pk-msg')));
+  if (anlegen) anlegen.addEventListener('click', () => pkAnlegen(anlegen, meldung));
+
   const anmelden = document.getElementById('pk-login');
-  if (anmelden) anmelden.addEventListener('click', () => pkAnmelden(anmelden, document.getElementById('pk-msg')));
+  if (!anmelden) return;
+  anmelden.addEventListener('click', () => pkAnmelden(anmelden, meldung));
+
+  // Direkt statt auf Knopfdruck, in zwei Stufen:
+  //
+  //  1. Kann der Browser die stille Bereitschaft, hängt der Passkey im
+  //     Tastaturvorschlag über dem E-Mail-Feld — antippen, Gesicht zeigen,
+  //     drin. Kein Knopf nötig, und wer lieber tippt, tippt einfach.
+  //  2. Kann er das nicht, aber auf diesem Gerät wurde hier schon einmal ein
+  //     Passkey benutzt, fragt die Seite beim Öffnen von selbst.
+  //
+  // Nur eins von beidem: Beide gleichzeitig hieße zwei Zufallsfragen, und die
+  // zweite machte die erste ungültig.
+  if (await pkBereitstehen(meldung)) return;
+  if (pkKennt()) pkAnmelden(null, meldung);
 });
