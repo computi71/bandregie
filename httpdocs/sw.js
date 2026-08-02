@@ -16,10 +16,17 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v14';
+const VERSION = 'bandregie-v15';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
+
+// Der Zählstand hinter der Zahl am App-Symbol. Sein Name trägt bewusst KEINE
+// Fassungsnummer: Vorgehaltene Seiten und Dateien dürfen mit einer neuen
+// Fassung verfallen — was jemand noch offen hat, nicht. Solange der Name
+// wechselte, räumte ihn jede neue Fassung mit weg, und die Marke am Symbol war
+// nach jedem Update verschwunden.
+const STATE_CACHE = 'bandregie-state';
 
 const STATIC_FILES = [
   '/assets/style.css',
@@ -70,7 +77,11 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(names => Promise.all(names.filter(n => !n.startsWith(VERSION)).map(n => caches.delete(n))))
+      // Der Zustandsspeicher überlebt die Aufräumaktion: Er gehört keiner
+      // Fassung, sondern der Person, die dort noch etwas offen hat.
+      .then(names => Promise.all(names
+        .filter(n => !n.startsWith(VERSION) && n !== STATE_CACHE)
+        .map(n => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -165,7 +176,7 @@ self.addEventListener('fetch', event => {
       event.waitUntil(Promise.all([
         caches.delete(PAGE_CACHE),
         caches.delete(FILE_CACHE),
-        caches.delete(VERSION + '-state'),
+        caches.delete(STATE_CACHE),
       ]));
     }
     return;
@@ -234,7 +245,7 @@ const BADGE_KEY = '/__badge';   // ungelesene Mitteilungen
 const OFFEN_KEY = '/__offen';   // offene Punkte, zuletzt vom Server gehört
 
 async function badgeState(neu = {}) {
-  const cache = await caches.open(VERSION + '-state');
+  const cache = await caches.open(STATE_CACHE);
   const lies = async (key) => {
     const hit = await cache.match(key);
     return hit ? (Number(await hit.text()) || 0) : 0;
