@@ -4,8 +4,8 @@
   <p class="muted"><?= e(t('login_only_members')) ?> <?= e($settings['band_name']) ?>.</p>
   <?php if ($error): ?><div class="error"><?= e($error) ?></div><?php endif; ?>
   <form method="post" action="/login" class="stack"><?= csrf_field() ?>
-    <label><?= e(t('login_email')) ?><input type="email" name="email" required autofocus></label>
-    <label><?= e(t('login_password')) ?><input type="password" name="password" required></label>
+    <label><?= e(t('login_email')) ?><input type="email" name="email" required autofocus autocomplete="username webauthn"></label>
+    <label><?= e(t('login_password')) ?><input type="password" name="password" required autocomplete="current-password"></label>
     <button class="btn btn-primary"><?= e(t('login_submit')) ?></button>
   </form>
   <?php // Passkey: versteckt, bis das Skript weiß, dass der Browser es kann.

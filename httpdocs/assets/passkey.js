@@ -129,7 +129,7 @@ let pkLaufend = null;
  * @param nurDieser Kennung des bekannten Passkeys — dann fragt das Gerät nicht
  *                  nach, welcher es sein soll, sondern entsperrt sofort.
  */
-async function pkFrageStellen(nurDieser) {
+async function pkFrageStellen(nurDieser, mediation) {
   if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; }
   const { data } = await pkPost('/passkey/challenge');
   if (data.error) return null;
@@ -148,13 +148,48 @@ async function pkFrageStellen(nurDieser) {
   // Seite hat. Eine Liste vom Server müsste vorher verraten, wer hier ein
   // Konto hat.
   if (nurDieser) wunsch.allowCredentials = [{ type: 'public-key', id: pkBin(nurDieser) }];
-  return navigator.credentials.get({ publicKey: wunsch, signal: abbruch.signal });
+  return navigator.credentials.get({ publicKey: wunsch, mediation, signal: abbruch.signal });
 }
 
-// Die „stille Bereitschaft" (mediation: 'conditional') ist wieder draußen.
-// Sie hängt eine offene Passkey-Anfrage an das E-Mail-Feld, und damit übernahm
-// der Passwortsafe das Feld: Das Passwort ließ sich nicht mehr eintippen. Ein
-// zweiter Anmeldeweg darf den ersten nie blockieren — das Formular hat Vorrang.
+/**
+ * Die stille Bereitschaft: Der Passkey hängt im Vorschlag über dem E-Mail-Feld,
+ * neben den gespeicherten Passwörtern. Beides zusammen ist so vorgesehen — das
+ * Verfahren verdrängt den Passwortsafe nicht, es stellt sich dazu.
+ *
+ * Beim ersten Versuch tat es das doch, und der Grund lag nicht hier, sondern
+ * am Formular: Nur das E-Mail-Feld war ausgezeichnet, das Passwortfeld gar
+ * nicht. Ohne autocomplete="current-password" erkennt der Safe das Gebilde
+ * nicht mehr als Anmeldeformular und füllt nichts mehr aus.
+ *
+ * Zusätzlich der Notausgang unten: Wer das Passwortfeld anfasst, bekommt die
+ * Anfrage abgebrochen. Ein zweiter Anmeldeweg darf den ersten nie blockieren —
+ * lieber kein Passkey-Vorschlag als ein Formular, in das man nichts eintragen
+ * kann.
+ */
+async function pkBereitstehen(meldung) {
+  if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) return false;
+  try {
+    if (!(await PublicKeyCredential.isConditionalMediationAvailable())) return false;
+  } catch (e) {
+    return false;
+  }
+  // Der Notausgang wird vor der Anfrage scharf gemacht, nicht danach: Sonst
+  // gäbe es einen Moment, in dem sie schon läuft und noch niemand sie stoppen
+  // kann.
+  const pw = document.querySelector('input[type="password"]');
+  if (pw) {
+    const frei = () => { if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; } };
+    pw.addEventListener('focus', frei, { once: true });
+    pw.addEventListener('input', frei);
+  }
+  try {
+    const cred = await pkFrageStellen(null, 'conditional');
+    if (cred) await pkAbsenden(cred, meldung);
+  } catch (e) {
+    // Abbruch ist hier der Normalfall — wer tippt, will kein Passkey-Fenster.
+  }
+  return true;
+}
 
 /** Die Antwort des Geräts an den Server geben und weitergehen. */
 async function pkAbsenden(cred, meldung) {
@@ -214,13 +249,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!anmelden) return;
   anmelden.addEventListener('click', () => pkAnmelden(anmelden, meldung));
 
-  // Ist auf diesem Gerät schon ein Passkey gelaufen, kennen wir seine Kennung.
-  // Dann fragt die Seite beim Öffnen direkt nach dem Gesicht, ohne den Umweg
-  // über „welchen Schlüssel möchtest du?".
+  // Ohne Knopfdruck geht es auf zwei Wegen, und welcher greift, entscheidet
+  // der Browser:
   //
-  // Schlägt das fehl oder wird es weggetippt, steht die Seite da wie immer:
-  // Passwort im Formular, Passkey auf dem Knopf. Das Formular bleibt dabei
-  // jederzeit benutzbar — daran hängt nichts.
+  //  1. Safari und Chrome auf heutigen Geräten können die stille Bereitschaft.
+  //     Das ist dort auch der einzige Weg: Eine Passkey-Abfrage ohne
+  //     Nutzeraktion weist Safari ab — Conditional UI ist die ausdrückliche
+  //     Ausnahme davon. Der Passkey hängt dann im Vorschlag über dem Feld.
+  //  2. Wo das fehlt, aber auf diesem Gerät schon ein Passkey lief, fragt die
+  //     Seite beim Öffnen direkt nach dem Gesicht.
+  //
+  // Nur eins von beidem: Es gibt eine Zufallsfrage je Sitzung, und die zweite
+  // machte die erste ungültig.
+  if (await pkBereitstehen(meldung)) return;
   const bekannt = pkKennt();
   if (bekannt) pkAnmelden(null, meldung, bekannt);
 });
