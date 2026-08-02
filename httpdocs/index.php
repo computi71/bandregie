@@ -446,6 +446,10 @@ if (str_starts_with($path, '/intern')) {
   // ist — eine Abfrage auf ein Datum —, und erspart einen zweiten Zeitgeber.
   orders_run();
 
+  // Aus demselben Grund gleich hier: Abos wegräumen, von denen seit Monaten
+  // nichts mehr zu hören war. Höchstens einmal am Tag, sonst kostenlos.
+  push_prune();
+
   // Fällige Sicherung nebenbei anstoßen. Ohne Cronjob gibt es keinen anderen
   // Zeitpunkt; die Sperre in backup_run() verhindert doppelte Läufe. Wo der
   // Server es kann, ist die Seite vorher ausgeliefert und niemand wartet.
@@ -1242,6 +1246,15 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/badge' && $method === 'GET') {
     header('Content-Type: application/json; charset=utf-8');
     exit(json_encode(['offen' => open_items_count($me)]));
+  }
+  // Lebenszeichen eines Geräts: „mein Abo gibt es noch". Ohne das lässt sich
+  // ein totes Abo von einem stillen nicht unterscheiden — der Zustelldienst
+  // nimmt beide an. Die Seite meldet sich höchstens einmal am Tag.
+  if ($path === '/intern/push/seen' && $method === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    q('UPDATE push_subscriptions SET last_seen_at = NOW() WHERE endpoint_hash = ? AND user_id = ?',
+      [hash('sha256', trim((string) ($_POST['endpoint'] ?? ''))), $me['id']]);
+    exit('{"ok":true}');
   }
   if ($path === '/intern/push/subscribe' && $method === 'POST') {
     header('Content-Type: application/json; charset=utf-8');

@@ -1512,6 +1512,12 @@ $db->exec('CREATE TABLE IF NOT EXISTS push_subscriptions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY user_id (user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+// Wann sich dieses Gerät zuletzt gemeldet hat. Daran — und nur daran — lässt
+// sich ein totes Abo erkennen: Der Zustelldienst nimmt Nachrichten an ein
+// abgeschaltetes Gerät weiter mit „201" entgegen und verwirft sie still.
+if (!column_exists('push_subscriptions', 'last_seen_at')) {
+  $db->exec('ALTER TABLE push_subscriptions ADD COLUMN last_seen_at DATETIME NULL');
+}
 if (!column_exists('users', 'push_topics')) {
   $db->exec("ALTER TABLE users ADD COLUMN push_topics VARCHAR(190) NOT NULL DEFAULT ''");
 }

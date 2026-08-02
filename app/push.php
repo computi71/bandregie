@@ -85,6 +85,38 @@ function push_endpoint_ok(string $endpoint): bool {
   return str_ends_with($host, '.notify.windows.com');
 }
 
+/**
+ * Wie lange ein Abo ohne Lebenszeichen überlebt.
+ *
+ * Ein Gerät, auf dem jemand die Mitteilungen abschaltet, meldet sich nicht ab —
+ * und der Zustelldienst nimmt Nachrichten dorthin noch monatelang mit „201
+ * angenommen" entgegen und verwirft sie still. Am Fehlercode ist so ein Abo
+ * also nicht zu erkennen. Woran dann? Daran, dass sich das Gerät nicht mehr
+ * meldet: Wer die Anwendung benutzt und ein Abo hat, sagt das beim Öffnen.
+ *
+ * Neunzig Tage, damit ein Sommer ohne Proben kein Abo kostet.
+ */
+const PUSH_MAX_STILL_DAYS = 90;
+
+/**
+ * Abos wegräumen, von denen lange nichts mehr zu hören war.
+ *
+ * Läuft nebenbei mit den übrigen fälligen Arbeiten und höchstens einmal am Tag;
+ * dafür ist die Aufgabe zu klein, um einen eigenen Zeitgeber zu verdienen.
+ *
+ * @return int wie viele weg sind
+ */
+function push_prune(): int {
+  if (setting('push_pruned_on') === date('Y-m-d')) return 0;
+  set_setting('push_pruned_on', date('Y-m-d'));
+  $st = q('DELETE FROM push_subscriptions
+           WHERE COALESCE(last_seen_at, created_at) < DATE_SUB(NOW(), INTERVAL ? DAY)',
+          [PUSH_MAX_STILL_DAYS]);
+  $weg = $st->rowCount();
+  if ($weg > 0) error_log("Bandregie: $weg verwaiste Push-Abos entfernt");
+  return $weg;
+}
+
 // ---------- Schlüssel ----------
 
 /** Der rohe öffentliche Punkt (04‖x‖y) eines EC-Schlüssels. */

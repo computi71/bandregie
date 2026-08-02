@@ -19,7 +19,22 @@
   if (hinweis && supported) {
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => { if (!sub) hinweis.hidden = false; })
+      .then((sub) => {
+        if (!sub) { hinweis.hidden = false; return; }
+        // Lebenszeichen: Sagt dem Server, dass es dieses Abo noch gibt. Ohne
+        // das kann er ein totes nicht von einem stillen unterscheiden — der
+        // Zustelldienst nimmt beide an. Einmal am Tag genügt dafür bei Weitem.
+        const heute = new Date().toISOString().slice(0, 10);
+        try {
+          if (localStorage.getItem('bandregie-push-seen') === heute) return;
+          localStorage.setItem('bandregie-push-seen', heute);
+        } catch (e) { /* ohne Gedächtnis eben jedes Mal */ }
+        const fd = new FormData();
+        fd.append('_token', hinweis.dataset.token || '');
+        fd.append('endpoint', sub.endpoint);
+        fetch('/intern/push/seen', { method: 'POST', body: fd, credentials: 'same-origin' })
+          .catch(() => {});
+      })
       .catch(() => {});
   }
 
