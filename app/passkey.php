@@ -55,13 +55,36 @@ function passkey_rp_id(): string {
   return (string) parse_url(rtrim(trim(setting('site_url')), '/') . '/', PHP_URL_HOST);
 }
 
-/** Die Herkunft, die im clientDataJSON stehen muss. */
+/** Die Herkunft laut fester Adresse — die, unter der wir uns selbst kennen. */
 function passkey_origin(): string {
   $u = rtrim(trim(setting('site_url')), '/') . '/';
   $scheme = parse_url($u, PHP_URL_SCHEME);
   $host = parse_url($u, PHP_URL_HOST);
   $port = parse_url($u, PHP_URL_PORT);
   return $scheme . '://' . $host . ($port ? ':' . $port : '');
+}
+
+/**
+ * Welche Herkünfte gelten. Neben der festen Adresse auch ihr Gegenstück mit
+ * bzw. ohne www — dieselbe Installation, nur anders getippt.
+ *
+ * Der Browser lässt das ausdrücklich zu: Als Kennung darf eine Seite die
+ * übergeordnete Domain nennen, deshalb meldet www.beispiel.de brav
+ * „beispiel.de" zurück. Nur die Herkunft trägt dann eben www, und ohne diese
+ * Ergänzung würde eine sonst einwandfreie Anmeldung abgewiesen, weil jemand
+ * drei Buchstaben mitgetippt hat.
+ *
+ * Weiter geht die Nachsicht nicht: Was hier nicht steht, wird abgelehnt.
+ *
+ * @return string[]
+ */
+function passkey_origins(): array {
+  $o = passkey_origin();
+  $host = (string) parse_url($o, PHP_URL_HOST);
+  $zwilling = str_starts_with($host, 'www.')
+    ? substr($host, 4)
+    : 'www.' . $host;
+  return array_values(array_unique([$o, str_replace('://' . $host, '://' . $zwilling, $o)]));
 }
 
 function passkey_b64(string $bin): string {
@@ -109,7 +132,12 @@ function passkey_client_data_error(string $clientDataJson, string $challenge, st
   // hash_equals, damit die Prüfung nicht an der Laufzeit verrät, wie weit zwei
   // Werte übereinstimmen.
   if (!hash_equals($challenge, (string) ($d['challenge'] ?? ''))) return 'fl_pk_bad_challenge';
-  if (!hash_equals(passkey_origin(), (string) ($d['origin'] ?? ''))) return 'fl_pk_bad_origin';
+  $herkunft = (string) ($d['origin'] ?? '');
+  $passt = false;
+  foreach (passkey_origins() as $erlaubt) {
+    if (hash_equals($erlaubt, $herkunft)) $passt = true;
+  }
+  if (!$passt) return 'fl_pk_bad_origin';
   return null;
 }
 
