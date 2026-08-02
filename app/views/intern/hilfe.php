@@ -94,6 +94,25 @@
   </details>
 <?php endif; ?>
 
+<?php // Wenn Mitteilungen ausbleiben, liegt es fast nie an der Anwendung —
+      // sondern an einem von vier Schaltern, die alle stumm sperren. Die
+      // Reihenfolge ist die Suchreihenfolge: von innen nach außen. ?>
+<?php if (push_available()): ?>
+  <details class="card acc" name="helpacc">
+    <summary>🔕 <?= e(t('help_push_trouble_title')) ?></summary>
+    <p class="muted"><?= e(t('help_push_trouble_intro')) ?></p>
+    <ul class="task-list">
+      <li><?= e(t('help_push_trouble_app')) ?></li>
+      <li><?= e(t('help_push_trouble_site')) ?></li>
+      <li><?= e(t('help_push_trouble_browser')) ?></li>
+      <li><?= e(t('help_push_trouble_os')) ?></li>
+    </ul>
+    <p class="muted">📱 <?= e(t('help_push_trouble_ios')) ?></p>
+    <p class="muted">🔄 <?= e(t('help_push_trouble_dead')) ?></p>
+    <p class="muted small"><a href="/intern/profil#mitteilungen"><?= e(t('prof_push')) ?> →</a></p>
+  </details>
+<?php endif; ?>
+
 <?php if (passkey_available()): ?>
   <details class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>

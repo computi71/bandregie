@@ -247,6 +247,15 @@ configured); no third-party service and no library involved — messages are
 encrypted per RFC 8291 and sent directly to the browser vendors' push
 endpoints. Browsers without push support simply never see the buttons.
 
+Four switches stand between a message and a screen — the per-device
+registration, the site permission, the browser's master switch, and the
+operating system's own notification setting — and every one of them refuses in
+silence. Chromium adds a fifth that is invisible: dismiss the question three
+times and the origin is embargoed for a week, `requestPermission()` resolves
+to `default` with no dialog, and the site turns up in no block list. The
+in-app help walks all of them from the inside out, because from the outside a
+blocked notification and a working one look exactly alike.
+
 ### Backups
 
 Back up the database and the `data/` folder. Updating the code never touches
