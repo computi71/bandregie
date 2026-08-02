@@ -63,9 +63,15 @@
     Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' });
   };
+  // Hat der Browser die Mitteilungen für diese Seite blockiert, fragt er nie
+  // wieder — ein Klick auf „aktivieren" läuft dann ins Leere. Also den Knopf
+  // gar nicht erst anbieten und stattdessen sagen, woran es liegt: Freigeben
+  // geht nur in den Browsereinstellungen, nicht von hier aus.
+  const blockiert = () => Notification.permission === 'denied';
   const show = (sub) => {
-    if (enableBtn) enableBtn.hidden = !!sub;
+    if (enableBtn) enableBtn.hidden = !!sub || blockiert();
     if (disableBtn) disableBtn.hidden = !sub;
+    if (deniedMsg && blockiert()) deniedMsg.hidden = false;
   };
 
   navigator.serviceWorker.ready
