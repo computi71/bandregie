@@ -43,6 +43,8 @@ require_once __DIR__ . '/push.php';
 // auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
 // Steuerseite, die das Modul früher allein geladen hat.
 require_once __DIR__ . '/steuer.php';
+// Anmeldung mit Passkey: Login-Seite und Profil fragen danach.
+require_once __DIR__ . '/passkey.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -154,6 +156,31 @@ const UI_STRINGS = [
   'help_gbr_liability' => 'Daraus folgt etwas, das man kennen sollte: In einer GbR haftet jedes Mitglied persönlich, gesamtschuldnerisch und unbeschränkt — mit dem Privatvermögen, nicht nur mit dem, was in der Bandkasse liegt (§ 721 BGB). Wem Geld zusteht, der darf sich aussuchen, wen von euch er in Anspruch nimmt. Eine Abrede unter euch ändert daran nichts: Sie wirkt untereinander, nicht gegenüber der Vermieterin oder dem Veranstalter. Und wer neu dazukommt, haftet auch für das, was vorher entstanden ist (§ 721a BGB) — das gehört vor dem Einstieg besprochen, nicht danach.',
   'help_gbr_register' => 'Seit dem 1. Januar 2024 gibt es das Gesellschaftsregister und die eingetragene eGbR. Die Eintragung ist freiwillig und weder für das Bestehen der Gesellschaft noch für ihre Rechtsfähigkeit nötig; verlangt wird sie erst, wenn die GbR selbst in ein anderes Register soll, etwa ins Grundbuch. Für eine Band, die Auftritte spielt und einen Proberaum mietet, ist sie in aller Regel entbehrlich. An der persönlichen Haftung ändert eine Eintragung ohnehin nichts.',
   'help_taxr_shares' =>'In der Bandansicht steht zusätzlich eine Zeile je Mitglied: eingezahlt, bekommen, was netto durch die Kasse gegangen ist, und der Gewinnanteil für die eigene Erklärung. Erklärt wird nämlich nicht, was ausgezahlt wurde, sondern der Anteil am Gewinn — bei einer GbR wird er den Gesellschaftern zugerechnet, ob er auf dem Konto liegt oder nicht. Der Anteil ist zu gleichen Teilen gerechnet; habt ihr etwas anderes vereinbart, gilt eure Abrede und nicht diese Spalte. Weicht „Kasse netto" zwischen den Mitgliedern stark ab, tragen einzelne mehr als die anderen — das gehört in der Kasse ausgeglichen, nicht in der Steuererklärung.',
+  'pk_login' => 'Mit Passkey anmelden',
+  'pk_add' => 'Passkey für dieses Gerät anlegen',
+  'pk_remove' => 'Entfernen',
+  'pk_label' => 'Name des Geräts',
+  'pk_label_placeholder' => 'z. B. mein iPhone',
+  'pk_device' => 'Gerät',
+  'pk_none' => 'Noch kein Passkey angelegt.',
+  'pk_added' => 'angelegt am %1',
+  'pk_last_used' => 'zuletzt benutzt am %1',
+  'pk_never_used' => 'noch nicht benutzt',
+  'pk_cancelled' => 'Abgebrochen.',
+  'pk_unsupported' => 'Dieser Browser kann keine Passkeys. Das Passwort funktioniert weiter.',
+  'prof_passkeys' => 'Passkeys',
+  'prof_passkeys_hint' => 'Ein Passkey ist ein Schlüssel, der auf diesem Gerät bleibt und sich mit Gesichtserkennung, Fingerabdruck oder der Gerätesperre öffnen lässt. Weder Gesicht noch Fingerabdruck verlassen dabei das Gerät — hier liegt nur der öffentliche Teil, mit dem sich ausschließlich prüfen lässt, ob eine Unterschrift von deinem Gerät stammt. Lege für jedes Gerät einen eigenen an; dein Passwort bleibt daneben bestehen und funktioniert weiter.',
+  'fl_pk_failed' => 'Das hat nicht geklappt. Versuch es noch einmal oder nimm dein Passwort.',
+  'fl_pk_removed' => 'Passkey entfernt.',
+  'fl_pk_bad_data' => 'Die Antwort des Geräts war unvollständig.',
+  'fl_pk_bad_type' => 'Die Antwort des Geräts passt nicht zur Anfrage.',
+  'fl_pk_bad_challenge' => 'Die Anfrage ist abgelaufen. Bitte noch einmal versuchen.',
+  'fl_pk_bad_origin' => 'Die Antwort kam von einer anderen Adresse.',
+  'fl_pk_bad_rp' => 'Dieser Passkey gehört zu einer anderen Seite.',
+  'fl_pk_no_presence' => 'Das Gerät hat nicht bestätigt, dass jemand davorsteht.',
+  'fl_pk_bad_key' => 'Der Schlüssel des Geräts ließ sich nicht lesen.',
+  'help_passkey_title' => 'Anmelden mit Passkey',
+  'help_passkey' => 'Statt eines Passworts kannst du dich mit einem Passkey anmelden: einem Schlüssel, der im gesicherten Bereich deines Geräts entsteht und dort bleibt. Geöffnet wird er, wie du dein Gerät öffnest — mit Gesicht, Fingerabdruck oder Code. Nichts davon erreicht diesen Server: Er bekommt nur den öffentlichen Teil des Schlüssels und bei jeder Anmeldung eine Unterschrift unter eine Zufallsfrage, die genau einmal gilt. Damit gibt es hier kein Passwort, das gestohlen werden könnte, und keine Anmeldung, die sich anderswo wiederverwenden ließe. Anlegen kannst du ihn im Profil, für jedes Gerät einen eigenen. Dein Passwort bleibt bestehen und funktioniert weiter — geht ein Gerät verloren, kommst du damit trotzdem herein und entfernst den Passkey im Profil.',
   'set_tax_start' => 'Gegründet am',
   'set_tax_start_hint' => 'Nur für das Gründungsjahr wichtig: Dort gibt es kein Vorjahr, und die kleinere Grenze gilt für das laufende Jahr — als harte Decke. Hochgerechnet wird nichts, wer im Oktober anfängt hat dieselbe Grenze wie alle. Leer lassen, wenn die Band schon länger besteht.',
   'tax_first_year' => 'Gründungsjahr: Es gibt kein Vorjahr, deshalb gilt die kleinere Grenze für dieses Jahr — und zwar sofort. Wird sie überschritten, endet die Befreiung mit dem Umsatz, der sie reißt, nicht erst zum 1. Januar.',
@@ -1632,6 +1659,22 @@ if (!column_exists('users', 'offline_scope')) {
 // die alle bekämen sonst einen Anteil, und allen anderen fehlte er. Neu ist an,
 // damit sich für bestehende Installationen nichts ändert; Aushilfen sind ohnehin
 // nie beteiligt und werden nicht gefragt.
+// Passkeys (#168): je Gerät einer, mehrere je Mitglied — Handy und Rechner
+// sind zwei. credential_id ist die Kennung des Geräts und eindeutig; sie ist
+// binär und wird deshalb in der URL-Schreibweise abgelegt, damit sie sich
+// vergleichen lässt, ohne jedes Mal umzurechnen.
+$db->exec("CREATE TABLE IF NOT EXISTS passkeys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    credential_id VARCHAR(255) NOT NULL,
+    public_key TEXT NOT NULL,
+    label VARCHAR(60) NOT NULL DEFAULT '',
+    sign_count INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME NULL,
+    UNIQUE KEY uniq_credential (credential_id),
+    KEY idx_user (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 if (!column_exists('users', 'profit_share')) {
   $db->exec('ALTER TABLE users ADD COLUMN profit_share TINYINT(1) NOT NULL DEFAULT 1');
 }
@@ -3062,7 +3105,7 @@ function open_items_count(array $user): int {
  */
 function user_purge(int $userId): void {
   foreach (['attendance', 'permissions', 'song_chords', 'song_ratings',
-            'push_subscriptions', 'substitute_requests',
+            'push_subscriptions', 'passkeys', 'substitute_requests',
             'absences'] as $table) {
     q("DELETE FROM $table WHERE user_id = ?", [$userId]);
   }

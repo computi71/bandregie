@@ -300,6 +300,62 @@ if ($path === '/logout' && $method === 'POST') {
   redirect('/');
 }
 
+// ---------- Anmeldung mit Passkey (#168) ----------
+// Die Zufallsfrage holen. Ohne Konto-Angabe: Welche Passkeys es gibt, geht
+// niemanden etwas an, der noch nicht angemeldet ist. Das Gerät bringt selbst
+// mit, für wen es signiert.
+if ($path === '/passkey/challenge' && $method === 'POST') {
+  header('Content-Type: application/json; charset=utf-8');
+  if (!passkey_supported()) exit(json_encode(['error' => 'unsupported']));
+  exit(json_encode(['challenge' => passkey_challenge_new('login'), 'rpId' => passkey_rp_id()]));
+}
+
+// Die Antwort des Geräts prüfen und anmelden.
+if ($path === '/passkey/login' && $method === 'POST') {
+  header('Content-Type: application/json; charset=utf-8');
+  $in = $_POST;
+  $challenge = passkey_challenge_take('login');
+  $credId = trim((string) ($in['id'] ?? ''));
+  // Absichtlich eine einzige Absage für jeden Fehlschlag: Wer probiert, soll
+  // nicht daran ablesen können, ob es diesen Passkey überhaupt gibt.
+  $absage = static function (): never {
+    http_response_code(400);
+    exit(json_encode(['error' => t('fl_pk_failed')]));
+  };
+  if ($challenge === null || $credId === '') $absage();
+  if (throttle_blocked('passkey', $credId, 10, 15)) {
+    http_response_code(429);
+    exit(json_encode(['error' => t('fl_throttled')]));
+  }
+  throttle_note('passkey', $credId);
+
+  $pk = row('SELECT * FROM passkeys WHERE credential_id = ?', [$credId]);
+  if (!$pk) $absage();
+  $authData = passkey_b64_decode((string) ($in['authenticatorData'] ?? ''));
+  $clientData = passkey_b64_decode((string) ($in['clientDataJSON'] ?? ''));
+  $signature = passkey_b64_decode((string) ($in['signature'] ?? ''));
+  if (passkey_client_data_error($clientData, $challenge, 'webauthn.get') !== null) $absage();
+  if (passkey_auth_data_error($authData) !== null) $absage();
+  if (!passkey_signature_ok($pk['public_key'], $authData, $clientData, $signature)) $absage();
+
+  $u = row('SELECT * FROM users WHERE id = ?', [$pk['user_id']]);
+  if (!$u) $absage();
+  // Der Zählstand des Geräts wächst mit jeder Nutzung. Bleibt er stehen oder
+  // fällt zurück, kann das eine Kopie des Schlüssels sein — ein Gerät zählt
+  // nicht rückwärts. Manche Geräte zählen gar nicht (dann immer 0); nur wenn
+  // vorher schon gezählt wurde, ist ein Rückschritt ein Grund zur Sorge.
+  $zaehler = passkey_sign_count($authData);
+  if ((int) $pk['sign_count'] > 0 && $zaehler > 0 && $zaehler <= (int) $pk['sign_count']) {
+    error_log('Bandregie: Passkey-Zählstand nicht gewachsen (Konto ' . (int) $pk['user_id'] . ')');
+  }
+  q('UPDATE passkeys SET sign_count = ?, last_used_at = NOW() WHERE id = ?', [$zaehler, $pk['id']]);
+  throttle_clear('passkey', $credId);
+  session_regenerate_id(true);
+  $_SESSION['uid'] = $u['id'];
+  if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
+  exit(json_encode(['ok' => true, 'weiter' => !empty($u['must_change_pw']) ? '/intern/passwort' : '/intern']));
+}
+
 // Passwort vergessen: Link per E-Mail anfordern (ohne Konto-Enumeration)
 if ($path === '/passwort-vergessen') {
   if ($method === 'POST') {
@@ -1222,6 +1278,59 @@ if (str_starts_with($path, '/intern')) {
     q('DELETE FROM push_subscriptions WHERE endpoint_hash = ? AND user_id = ?',
       [hash('sha256', trim((string) ($_POST['endpoint'] ?? ''))), $me['id']]);
     exit('{"ok":true}');
+  }
+  // Einen Passkey für dieses Gerät anlegen. Die Frage stellt der Server, damit
+  // die Antwort nur zu dieser Sitzung passt.
+  if ($path === '/intern/profil/passkey/challenge' && $method === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!passkey_supported()) exit(json_encode(['error' => 'unsupported']));
+    exit(json_encode([
+      'challenge' => passkey_challenge_new('register'),
+      'rpId' => passkey_rp_id(),
+      'rpName' => setting('band_name') ?: 'Bandregie',
+      // Die Kennung des Kontos ist die interne Nummer und nicht die E-Mail:
+      // Sie bleibt gleich, wenn sich die Adresse ändert, und sie steht sonst
+      // auf dem Gerät für jeden lesbar.
+      'userId' => passkey_b64((string) $me['id']),
+      'userName' => $me['email'],
+      'userDisplay' => $me['name'],
+      // Was schon da ist, damit dasselbe Gerät nicht zweimal einträgt.
+      'vorhanden' => array_column(rows('SELECT credential_id FROM passkeys WHERE user_id = ?', [$me['id']]), 'credential_id'),
+    ]));
+  }
+  if ($path === '/intern/profil/passkey' && $method === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    $in = $_POST;
+    $challenge = passkey_challenge_take('register');
+    $credId = trim((string) ($in['id'] ?? ''));
+    $spki = passkey_b64_decode((string) ($in['publicKey'] ?? ''));
+    $clientData = passkey_b64_decode((string) ($in['clientDataJSON'] ?? ''));
+    $fehler = $challenge === null ? 'fl_pk_bad_challenge'
+      : passkey_client_data_error($clientData, $challenge, 'webauthn.create');
+    if ($fehler === null && ($credId === '' || $spki === '')) $fehler = 'fl_pk_bad_data';
+    // Der Schlüssel muss sich lesen lassen — sonst stünde eine Zeile in der
+    // Tabelle, mit der sich später nie jemand anmelden kann.
+    if ($fehler === null && openssl_pkey_get_public(passkey_pem($spki)) === false) $fehler = 'fl_pk_bad_key';
+    if ($fehler !== null) {
+      http_response_code(400);
+      exit(json_encode(['error' => t($fehler)]));
+    }
+    $label = mb_substr(trim((string) ($in['label'] ?? '')), 0, 60);
+    if ($label === '') $label = passkey_label_from_agent((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    try {
+      q('INSERT INTO passkeys (user_id, credential_id, public_key, label) VALUES (?,?,?,?)',
+        [$me['id'], $credId, passkey_pem($spki), $label]);
+    } catch (PDOException) {
+      // Schon eingetragen — kein Fehler, das Gerät ist ja bereits verbunden.
+      exit(json_encode(['ok' => true, 'schon' => true]));
+    }
+    exit(json_encode(['ok' => true]));
+  }
+  if (preg_match('~^/intern/profil/passkey/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    // Nur den eigenen — die Bedingung im DELETE entscheidet, nicht die Anzeige.
+    q('DELETE FROM passkeys WHERE id = ? AND user_id = ?', [$m[1], $me['id']]);
+    flash(t('fl_pk_removed'));
+    redirect('/intern/profil');
   }
   if ($path === '/intern/profil' && $method === 'POST') {
     if (display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']) !== '' && ($_POST['email'] ?? '') !== '') {

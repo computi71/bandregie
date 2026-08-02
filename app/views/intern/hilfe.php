@@ -94,6 +94,14 @@
   </details>
 <?php endif; ?>
 
+<?php if (passkey_supported()): ?>
+  <details class="card acc" name="helpacc">
+    <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
+    <p class="muted"><?= e(t('help_passkey')) ?></p>
+    <p class="muted small"><a href="/intern/profil"><?= e(t('prof_passkeys')) ?> →</a></p>
+  </details>
+<?php endif; ?>
+
 <details class="card acc" name="helpacc">
   <summary>📱 <?= e(t('app_install')) ?></summary>
   <p class="muted"><?= e(t('app_install_hint')) ?></p>

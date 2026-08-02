@@ -60,6 +60,45 @@
 </details>
 
 
+<?php // Passkey (#168): ein zweiter Weg herein, neben dem Passwort. Der Abschnitt
+      // bleibt verborgen, bis das Skript weiß, dass der Browser mitmacht — die
+      // schon eingetragenen Geräte stehen trotzdem, damit sie sich auch von
+      // einem Rechner aus entfernen lassen, der selbst keinen anlegen kann. ?>
+<?php if (passkey_supported()): ?>
+  <?php $meinePasskeys = passkey_list((int) $me['id']); ?>
+  <details class="card acc" name="profilacc">
+    <summary>🔐 <?= e(t('prof_passkeys')) ?></summary>
+    <p class="muted small"><?= e(t('prof_passkeys_hint')) ?></p>
+    <?php if ($meinePasskeys): ?>
+      <ul class="task-list">
+        <?php foreach ($meinePasskeys as $pk): ?>
+          <li>
+            <strong><?= e($pk['label']) ?></strong>
+            <span class="muted small">
+              <?= e(sprintf(t('pk_added'), fmt_date($pk['created_at']))) ?>
+              · <?= e($pk['last_used_at'] ? sprintf(t('pk_last_used'), fmt_date($pk['last_used_at'])) : t('pk_never_used')) ?>
+            </span>
+            <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/delete"
+                  data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+              <button class="btn btn-tiny btn-ghost"><?= e(t('pk_remove')) ?></button>
+            </form>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php else: ?>
+      <p class="muted small"><?= e(t('pk_none')) ?></p>
+    <?php endif; ?>
+    <div data-passkey data-token="<?= e(csrf_token()) ?>" hidden>
+      <label><?= e(t('pk_label')) ?><input id="pk-label" maxlength="60" placeholder="<?= e(t('pk_label_placeholder')) ?>"></label>
+      <button type="button" class="btn btn-primary" id="pk-add"
+              data-failed="<?= e(t('fl_pk_failed')) ?>"
+              data-cancelled="<?= e(t('pk_cancelled')) ?>"
+              data-unsupported="<?= e(t('pk_unsupported')) ?>">🔐 <?= e(t('pk_add')) ?></button>
+      <p class="muted small" id="pk-msg"></p>
+    </div>
+  </details>
+<?php endif; ?>
+
 <?php // Push-Mitteilungen (#24): Themen gelten kontoweit, das Abo je Gerät.
       // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —
       // stiller Rückfall statt Knopf ins Leere. ?>
