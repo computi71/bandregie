@@ -5,7 +5,7 @@ SET NAMES utf8mb4;
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','prof_push_denied','The browser refuses notifications. That cannot be changed from here — and it can be either of two things.'),
 ('en','prof_push_denied_site','For this site: click the lock or info icon in the address bar, set notifications to "Allow", reload the page.'),
-('en','prof_push_denied_all','For every site: if no question ever appeared and there is no bell icon either, the browser''s master switch is off. In Edge under edge://settings/content/notifications, in Chrome under chrome://settings/content/notifications — "Ask before sending" has to be on. While it is off every request is refused silently, and the per-site permission is not even offered.'),
+('en','prof_push_denied_all','For every site: if no question ever appeared and there is no bell icon either, the browser''s master switch is off. In Edge under edge://settings/content/notifications, in Chrome under chrome://settings/content/notifications — "Ask before sending (recommended)" has to be on, the toggle is blue when it is. While it is off every request is refused silently, and the per-site permission is not even offered.'),
 ('en','prof_push_denied_os','If it still will not work: in the Windows settings under "System → Notifications" the browser itself must be allowed to show them.'),
 ('fr','prof_push_denied','Le navigateur refuse les notifications. Cela ne se change pas d''ici — et il peut y avoir deux raisons.'),
 ('fr','prof_push_denied_site','Pour ce site : cliquez sur l''icône de cadenas ou d''information dans la barre d''adresse, réglez les notifications sur « Autoriser », rechargez la page.'),
