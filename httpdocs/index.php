@@ -306,7 +306,7 @@ if ($path === '/logout' && $method === 'POST') {
 // mit, für wen es signiert.
 if ($path === '/passkey/challenge' && $method === 'POST') {
   header('Content-Type: application/json; charset=utf-8');
-  if (!passkey_supported()) exit(json_encode(['error' => 'unsupported']));
+  if (!passkey_available()) exit(json_encode(['error' => 'unsupported']));
   exit(json_encode(['challenge' => passkey_challenge_new('login'), 'rpId' => passkey_rp_id()]));
 }
 
@@ -1283,7 +1283,7 @@ if (str_starts_with($path, '/intern')) {
   // die Antwort nur zu dieser Sitzung passt.
   if ($path === '/intern/profil/passkey/challenge' && $method === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
-    if (!passkey_supported()) exit(json_encode(['error' => 'unsupported']));
+    if (!passkey_available()) exit(json_encode(['error' => 'unsupported']));
     exit(json_encode([
       'challenge' => passkey_challenge_new('register'),
       'rpId' => passkey_rp_id(),

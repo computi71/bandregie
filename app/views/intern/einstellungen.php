@@ -38,6 +38,11 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label class="span2"><?= e(t('set_site_url')) ?>
       <input name="site_url" value="<?= e($settings['site_url'] ?? '') ?>" placeholder="https://<?= e($_SERVER['HTTP_HOST'] ?? 'example.de') ?>">
       <span class="muted small"><?= e(t('set_site_url_hint')) ?></span>
+      <?php // Ohne feste Adresse gibt es keine Passkeys — das gehört an das
+            // Feld, an dem es liegt, und nicht in eine Fehlermeldung woanders. ?>
+      <?php if (passkey_supported() && trim($settings['site_url'] ?? '') === ''): ?>
+        <span class="muted small">🔐 <?= e(t('set_site_url_passkey')) ?></span>
+      <?php endif; ?>
     </label>
     <label class="span2"><?= e(t('set_copyright')) ?>
       <input name="copyright_text" value="<?= e($settings['copyright_text'] ?? '') ?>"

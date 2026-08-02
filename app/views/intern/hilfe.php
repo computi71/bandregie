@@ -94,7 +94,7 @@
   </details>
 <?php endif; ?>
 
-<?php if (passkey_supported()): ?>
+<?php if (passkey_available()): ?>
   <details class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
     <p class="muted"><?= e(t('help_passkey')) ?></p>

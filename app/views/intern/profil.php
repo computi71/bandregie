@@ -64,7 +64,7 @@
       // bleibt verborgen, bis das Skript weiß, dass der Browser mitmacht — die
       // schon eingetragenen Geräte stehen trotzdem, damit sie sich auch von
       // einem Rechner aus entfernen lassen, der selbst keinen anlegen kann. ?>
-<?php if (passkey_supported()): ?>
+<?php if (passkey_available()): ?>
   <?php $meinePasskeys = passkey_list((int) $me['id']); ?>
   <details class="card acc" name="profilacc">
     <summary>🔐 <?= e(t('prof_passkeys')) ?></summary>

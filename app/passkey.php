@@ -34,18 +34,30 @@ function passkey_supported(): bool {
 }
 
 /**
- * Die Kennung dieser Installation für WebAuthn — der reine Hostname. Ein
- * Passkey gilt genau für diesen Namen; deshalb steht hier die feste Adresse
- * aus den Einstellungen und nicht der Host der laufenden Anfrage, der sich
- * von außen setzen ließe.
+ * Sind Passkeys nutzbar? Zusätzlich zum Können die feste Adresse.
+ *
+ * Ein Passkey gilt für genau einen Namen. Ohne feste Adresse käme die Kennung
+ * aus dem Host der laufenden Anfrage — und dieselbe Installation heißt dann
+ * unter www anders als ohne. Wer seinen Passkey mit www anlegt, käme ohne www
+ * nicht mehr herein: das Gerät antwortet, die Prüfung weist zu Recht ab, und
+ * niemand versteht warum. Lieber gar nicht anbieten als so.
+ */
+function passkey_available(): bool {
+  return passkey_supported() && trim(setting('site_url')) !== '';
+}
+
+/**
+ * Die Kennung dieser Installation für WebAuthn — der reine Hostname aus der
+ * festen Adresse. Nicht aus dem Host der Anfrage: der ließe sich von außen
+ * setzen, und er wechselt mit www.
  */
 function passkey_rp_id(): string {
-  return (string) parse_url(absolute_url('/'), PHP_URL_HOST);
+  return (string) parse_url(rtrim(trim(setting('site_url')), '/') . '/', PHP_URL_HOST);
 }
 
 /** Die Herkunft, die im clientDataJSON stehen muss. */
 function passkey_origin(): string {
-  $u = absolute_url('/');
+  $u = rtrim(trim(setting('site_url')), '/') . '/';
   $scheme = parse_url($u, PHP_URL_SCHEME);
   $host = parse_url($u, PHP_URL_HOST);
   $port = parse_url($u, PHP_URL_PORT);

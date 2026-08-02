@@ -718,6 +718,7 @@ const UI_STRINGS = [
   // Bühnenplan
   'set_site_url' => 'Feste Adresse dieser Installation',
   'set_site_url_hint' => 'Wird für Links in E-Mails und im Kalender benutzt. Leer lassen heißt: aus der Anfrage übernehmen — eingetragen ist sicherer.',
+  'set_site_url_passkey' => 'Für Passkeys ist der Eintrag Voraussetzung: Ein Passkey gilt für genau einen Namen, und ohne feste Adresse hieße dieselbe Installation unter www anders als ohne. Solange hier nichts steht, bleibt die Anmeldung mit Passkey ausgeblendet.',
   'app_description' => 'Termine, Setlists und Technik der Band — auch unterwegs.',
   'app_install' => 'Auf dem Handy installieren',
   'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandregie ein eigenes Symbol und startet ohne Adressleiste.',

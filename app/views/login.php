@@ -10,7 +10,7 @@
   </form>
   <?php // Passkey: versteckt, bis das Skript weiß, dass der Browser es kann.
         // Wer keinen hat, sieht damit auch keinen Knopf, der ins Leere führt. ?>
-  <?php if (passkey_supported()): ?>
+  <?php if (passkey_available()): ?>
     <div data-passkey data-token="<?= e(csrf_token()) ?>" hidden style="margin-top:0.8rem">
       <button type="button" class="btn btn-ghost" id="pk-login" style="width:100%"
               data-failed="<?= e(t('fl_pk_failed')) ?>"
