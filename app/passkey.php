@@ -250,37 +250,87 @@ function cbor_read(string $b, int &$pos) {
  * Passkeys praktisch nicht vor; ein ehrliches Nein ist dort besser als ein
  * halb geratener Schlüssel.
  *
- * @return array{0: string, 1: string} SPKI und Credential-ID, beide '' bei Fehler
+ * Nebenbei fällt die AAGUID ab — die Kennung des Anbieters, der den Passkey
+ * verwahrt. Sie benennt nicht das Gerät, sondern den Schlüsselbund: iCloud,
+ * Google, Windows Hello, 1Password. Genau das unterscheidet zwei Einträge auf
+ * demselben Rechner voneinander.
+ *
+ * @return array{0: string, 1: string, 2: string} SPKI, Credential-ID, AAGUID
  */
 function passkey_from_attestation(string $attestationObject): array {
   $pos = 0;
   $att = cbor_read($attestationObject, $pos);
-  if (!is_array($att) || !isset($att['authData']) || !is_string($att['authData'])) return ['', ''];
+  if (!is_array($att) || !isset($att['authData']) || !is_string($att['authData'])) return ['', '', ''];
   $auth = $att['authData'];
   // rpIdHash 32 + Flags 1 + Zähler 4, dann muss das Flag „enthält Schlüssel"
   // gesetzt sein — sonst steht dahinter gar keiner.
-  if (strlen($auth) < 55 || !(ord($auth[32]) & 0x40)) return ['', ''];
-  $p = 37 + 16;                                    // AAGUID überspringen
+  if (strlen($auth) < 55 || !(ord($auth[32]) & 0x40)) return ['', '', ''];
+  // Die AAGUID steht direkt hinter dem Zähler, 16 Bytes, in der üblichen
+  // Strichschreibweise ausgegeben.
+  $roh = substr($auth, 37, 16);
+  $hex = bin2hex($roh);
+  $aaguid = $roh === str_repeat("\x00", 16) ? ''
+    : substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4)
+      . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20);
+  $p = 37 + 16;
   $idLen = (ord($auth[$p]) << 8) | ord($auth[$p + 1]);
   $p += 2;
-  if ($idLen <= 0 || $p + $idLen > strlen($auth)) return ['', ''];
+  if ($idLen <= 0 || $p + $idLen > strlen($auth)) return ['', '', ''];
   $credId = substr($auth, $p, $idLen);
   $p += $idLen;
 
   $kPos = 0;
   $cose = cbor_read(substr($auth, $p), $kPos);
-  if (!is_array($cose)) return ['', ''];
+  if (!is_array($cose)) return ['', '', ''];
   $kty = $cose[1] ?? null;
   $alg = $cose[3] ?? null;
   $crv = $cose[-1] ?? null;
   $x = $cose[-2] ?? null;
   $y = $cose[-3] ?? null;
-  if ($kty !== 2 || $alg !== -7 || $crv !== 1) return ['', ''];
-  if (!is_string($x) || !is_string($y) || strlen($x) !== 32 || strlen($y) !== 32) return ['', ''];
+  if ($kty !== 2 || $alg !== -7 || $crv !== 1) return ['', '', ''];
+  if (!is_string($x) || !is_string($y) || strlen($x) !== 32 || strlen($y) !== 32) return ['', '', ''];
 
   // Der DER-Vorspann für einen P-256-Punkt ist konstant; nur der Punkt wechselt.
   $der = hex2bin('3059301306072a8648ce3d020106082a8648ce3d030107034200') . "\x04" . $x . $y;
-  return [$der, $credId];
+  return [$der, $credId, $aaguid];
+}
+
+/**
+ * Wer den Passkey verwahrt, nach AAGUID.
+ *
+ * Aus der gemeinschaftlich gepflegten Liste des passkey-developer-Projekts.
+ * Sie ist nicht vollständig — LastPass etwa fehlt dort —, und was hier nicht
+ * steht, bekommt eben den Namen der Plattform. Ein falscher Name wäre
+ * schlechter als ein ungenauer.
+ */
+const PASSKEY_ANBIETER = [
+  'fbfc3007-154e-4ecc-8c0b-6e020557d7bd' => 'Apple Passwörter',
+  'dd4ec289-e01d-41c9-bb89-70fa845d4bf2' => 'iCloud Schlüsselbund',
+  'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4' => 'Google Passwortmanager',
+  '08987058-cadc-4b81-b6e1-30de50dcbe96' => 'Windows Hello',
+  '9ddd1817-af5a-4672-a2b9-3e3dd95000a9' => 'Windows Hello',
+  '6028b017-b1d4-4c02-b4b3-afcdafc96bb2' => 'Windows Hello',
+  'bada5566-a7aa-401f-bd96-45619a55120d' => '1Password',
+  'd548826e-79b4-db40-a3d8-11116f7e8349' => 'Bitwarden',
+  '531126d6-e717-415c-9320-3d9aa6981239' => 'Dashlane',
+  '0ea242b4-43c4-4a1b-8b17-dd6d0b6baec6' => 'Keeper',
+  'b84e4048-15dc-4dd0-8640-f4f60813c8af' => 'NordPass',
+  'f3809540-7f14-49c1-a8b3-8f813b225541' => 'Enpass',
+  '53414d53-554e-4700-0000-000000000000' => 'Samsung Pass',
+  'adce0002-35bc-c60a-648b-0b25f1f05503' => 'Chrome auf Mac',
+  '771b48fd-d3d4-4f74-9232-fc157ab0507a' => 'Edge auf Mac',
+];
+
+/**
+ * Der Name, unter dem ein neuer Passkey erscheint: der Schlüsselbund, wenn wir
+ * ihn kennen, sonst die Plattform aus der Kennung.
+ *
+ * Der Schlüsselbund sagt mehr als das Gerät, sobald jemand zwei auf demselben
+ * Rechner hat — „1Password" und „Windows Hello" unterscheiden sich, zweimal
+ * „Windows" nicht.
+ */
+function passkey_label(string $aaguid, string $userAgent): string {
+  return PASSKEY_ANBIETER[$aaguid] ?? passkey_label_from_agent($userAgent);
 }
 
 /** Aus dem rohen SPKI ein PEM machen, wie openssl es lesen will. */

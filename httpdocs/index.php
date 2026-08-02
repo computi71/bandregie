@@ -1309,12 +1309,14 @@ if (str_starts_with($path, '/intern')) {
     // Passkey an, geben den Schlüssel aber nur im attestationObject heraus.
     // Dann wird er dort herausgeholt, statt die Anmeldung abzulehnen, obwohl
     // das Gerät sie längst eingerichtet hat.
-    if ($spki === '') {
-      [$spki, $rohId] = passkey_from_attestation(passkey_b64_decode((string) ($in['attestationObject'] ?? '')));
-      // Die Kennung aus dem Attestat muss die sein, die der Browser nennt —
-      // sonst legten wir einen Schlüssel unter fremdem Namen ab.
-      if ($spki !== '' && $rohId !== '' && !hash_equals(passkey_b64($rohId), $credId)) $spki = '';
-    }
+    // Das Attestat wird immer ausgepackt: Auch wenn getPublicKey() etwas
+    // geliefert hat, steht nur dort, welcher Schlüsselbund den Passkey
+    // verwahrt — und danach heißt er in der Liste.
+    [$ausAtt, $rohId, $aaguid] = passkey_from_attestation(passkey_b64_decode((string) ($in['attestationObject'] ?? '')));
+    if ($spki === '') $spki = $ausAtt;
+    // Die Kennung aus dem Attestat muss die sein, die der Browser nennt —
+    // sonst legten wir einen Schlüssel unter fremdem Namen ab.
+    if ($rohId !== '' && !hash_equals(passkey_b64($rohId), $credId)) $spki = '';
     $fehler = $challenge === null ? 'fl_pk_bad_challenge'
       : passkey_client_data_error($clientData, $challenge, 'webauthn.create');
     if ($fehler === null && ($credId === '' || $spki === '')) $fehler = 'fl_pk_bad_data';
@@ -1326,10 +1328,13 @@ if (str_starts_with($path, '/intern')) {
       exit(json_encode(['error' => t($fehler)]));
     }
     $label = mb_substr(trim((string) ($in['label'] ?? '')), 0, 60);
-    if ($label === '') $label = passkey_label_from_agent((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    if ($label === '') $label = passkey_label($aaguid, (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
     try {
-      q('INSERT INTO passkeys (user_id, credential_id, public_key, label) VALUES (?,?,?,?)',
-        [$me['id'], $credId, passkey_pem($spki), $label]);
+      // Die AAGUID wird mitgeschrieben, auch wenn wir sie heute nicht benennen
+      // können: Die Liste der Anbieter wächst, und dann lässt sich ein alter
+      // Eintrag nachträglich richtig beschriften, ohne ihn neu anzulegen.
+      q('INSERT INTO passkeys (user_id, credential_id, public_key, label, aaguid) VALUES (?,?,?,?,?)',
+        [$me['id'], $credId, passkey_pem($spki), $label, $aaguid]);
     } catch (PDOException) {
       // Schon eingetragen — kein Fehler, das Gerät ist ja bereits verbunden.
       exit(json_encode(['ok' => true, 'schon' => true]));

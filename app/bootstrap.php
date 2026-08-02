@@ -1681,6 +1681,12 @@ $db->exec("CREATE TABLE IF NOT EXISTS passkeys (
     UNIQUE KEY uniq_credential (credential_id),
     KEY idx_user (user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+// Wer den Passkey verwahrt — iCloud, Google, 1Password. Auch aufgehoben, wenn
+// wir den Namen dazu heute nicht kennen: Die Anbieterliste wächst, und dann
+// lässt sich ein alter Eintrag nachträglich beschriften.
+if (!column_exists('passkeys', 'aaguid')) {
+  $db->exec("ALTER TABLE passkeys ADD COLUMN aaguid VARCHAR(36) NOT NULL DEFAULT ''");
+}
 if (!column_exists('users', 'profit_share')) {
   $db->exec('ALTER TABLE users ADD COLUMN profit_share TINYINT(1) NOT NULL DEFAULT 1');
 }
