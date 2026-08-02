@@ -298,12 +298,13 @@ function passkey_from_attestation(string $attestationObject): array {
 /**
  * Wer den Passkey verwahrt, nach AAGUID.
  *
- * Aus der gemeinschaftlich gepflegten Liste des passkey-developer-Projekts.
- * Sie ist nicht vollständig — LastPass etwa fehlt dort —, und was hier nicht
- * steht, bekommt eben den Namen der Plattform. Ein falscher Name wäre
- * schlechter als ein ungenauer.
+ * Aus der gemeinschaftlich gepflegten Liste des passkey-developer-Projekts,
+ * ergänzt um LastPass: Der fehlt dort, seine Kennung ließ sich aber aus zwei
+ * unabhängigen Verzeichnissen belegen. Was hier nicht steht, bekommt den Namen
+ * der Plattform — ein falscher Name wäre schlechter als ein ungenauer.
  */
 const PASSKEY_ANBIETER = [
+  'b78a0a55-6ef8-d246-a042-ba0f6d55050c' => 'LastPass',
   'fbfc3007-154e-4ecc-8c0b-6e020557d7bd' => 'Apple Passwörter',
   'dd4ec289-e01d-41c9-bb89-70fa845d4bf2' => 'iCloud Schlüsselbund',
   'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4' => 'Google Passwortmanager',

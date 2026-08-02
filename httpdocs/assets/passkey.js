@@ -157,7 +157,14 @@ let pkLaufend = null;
  *                  nach, welcher es sein soll, sondern entsperrt sofort.
  */
 async function pkFrageStellen(nurDieser, mediation) {
-  if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; }
+  if (pkLaufend) {
+    pkLaufend.abort();
+    pkLaufend = null;
+    // Dem Browser einen Moment lassen, die alte Anfrage wirklich abzuräumen.
+    // Safari wies die neue sonst ab, weil die vorige noch als offen galt —
+    // beim zweiten Versuch ging es dann. Genau dieses Holpern.
+    await new Promise(r => setTimeout(r, 60));
+  }
   const { data } = await pkPost('/passkey/challenge');
   if (data.error) return null;
   const abbruch = new AbortController();
@@ -253,6 +260,11 @@ async function pkAnmelden(knopf, meldung, nurDieser) {
     // Nur die Abfrage, die von selbst kam, zählt mit. Wer den Knopf gedrückt
     // hat, weiß ja, was er tut.
     if (!knopf) { pkFehlschlag(); return; }
+    // Ein Abbruch, den wir selbst ausgelöst haben, ist keine Nachricht wert:
+    // Der Knopfdruck stoppt die stille Bereitschaft, und die meldet sich dann
+    // mit AbortError. „Hier liegt kein Passkey" wäre dazu schlicht gelogen —
+    // das war der holprige erste Versuch.
+    if (e && e.name === 'AbortError') return;
     // Am Knopf endet es nie mit einer bloßen Absage. Ob hier noch kein Passkey
     // liegt oder jemand abgebrochen hat, lässt sich nicht unterscheiden — beide
     // Male ist derselbe Satz richtig: mit Passwort herein, danach einen

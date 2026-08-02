@@ -1944,6 +1944,20 @@ if (setting('tax_texts_2026_08') !== '1') {
 // Ein Passkey gehört einem Schlüsselbund, nicht einem Gerät: Der im iCloud-
 // Schlüsselbund gilt auf iPhone, iPad und Mac zugleich. Die Texte sagten
 // „einen pro Gerät" und schickten damit alle auf den falschen Weg.
+// Einträge, die vor der Anbietererkennung entstanden sind, tragen den erratenen
+// Plattformnamen. Wo die Kennung inzwischen einen Anbieter benennt, wird er
+// nachgetragen — aber nur bei den geratenen Namen. Was jemand selbst getippt
+// hat, bleibt: Ein Name, den man vergeben hat, gehört einem.
+if (setting('passkey_relabel') !== '1') {
+  foreach (rows("SELECT id, label, aaguid FROM passkeys WHERE aaguid <> ''") as $pkRow) {
+    $besser = PASSKEY_ANBIETER[$pkRow['aaguid']] ?? '';
+    $geraten = in_array($pkRow['label'], ['iPhone', 'iPad', 'Mac', 'Android', 'Windows', 'Linux'], true);
+    if ($besser !== '' && $geraten) {
+      q('UPDATE passkeys SET label = ? WHERE id = ?', [$besser, $pkRow['id']]);
+    }
+  }
+  set_setting('passkey_relabel', '1');
+}
 if (setting('passkey_keychain_text') !== '1') {
   q("DELETE FROM translations WHERE tkey IN ('prof_passkeys_hint','help_passkey')");
   set_setting('passkey_keychain_text', '1');
