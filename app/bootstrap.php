@@ -174,7 +174,10 @@ const UI_STRINGS = [
   'pk_offer_later' => 'Später',
   'pk_unsupported' => 'Dieser Browser kann keine Passkeys. Das Passwort funktioniert weiter.',
   'prof_passkeys' => 'Passkeys',
-  'prof_passkeys_hint' => 'Ein Passkey ist ein Schlüssel, der auf diesem Gerät bleibt und sich mit Gesichtserkennung, Fingerabdruck oder der Gerätesperre öffnen lässt. Weder Gesicht noch Fingerabdruck verlassen dabei das Gerät — hier liegt nur der öffentliche Teil, mit dem sich ausschließlich prüfen lässt, ob eine Unterschrift von deinem Gerät stammt. Lege für jedes Gerät einen eigenen an; dein Passwort bleibt daneben bestehen und funktioniert weiter.',
+  'prof_passkeys_hint' => 'Ein Passkey ist ein Schlüssel, der in deinem Schlüsselbund liegt und sich mit Gesichtserkennung, Fingerabdruck oder der Gerätesperre öffnen lässt. Weder Gesicht noch Fingerabdruck verlassen dabei das Gerät — hier liegt nur der öffentliche Teil, mit dem sich ausschließlich prüfen lässt, ob eine Unterschrift von dir stammt. Dein Passwort bleibt daneben bestehen und funktioniert weiter.',
+  'prof_passkeys_sync' => 'Einer je Schlüsselbund genügt, nicht einer je Gerät: Ein Passkey im iCloud-Schlüsselbund gilt auf iPhone, iPad und Mac zugleich, einer im Passwortmanager überall dort, wo der eingerichtet ist. Nur gerätegebundene wie Windows Hello brauchen je Rechner einen eigenen. Einen zweiten anzulegen schadet nicht — er ist dann eben ein zweiter Weg herein.',
+  'pk_rename' => 'Umbenennen',
+  'fl_pk_renamed' => 'Name geändert.',
   'fl_pk_failed' => 'Das hat nicht geklappt. Versuch es noch einmal oder nimm dein Passwort.',
   'fl_pk_removed' => 'Passkey entfernt.',
   'fl_pk_bad_data' => 'Die Antwort des Geräts war unvollständig.',
@@ -185,7 +188,8 @@ const UI_STRINGS = [
   'fl_pk_no_presence' => 'Das Gerät hat nicht bestätigt, dass jemand davorsteht.',
   'fl_pk_bad_key' => 'Der Schlüssel des Geräts ließ sich nicht lesen.',
   'help_passkey_title' => 'Anmelden mit Passkey',
-  'help_passkey' => 'Statt eines Passworts kannst du dich mit einem Passkey anmelden: einem Schlüssel, der im gesicherten Bereich deines Geräts entsteht und dort bleibt. Geöffnet wird er, wie du dein Gerät öffnest — mit Gesicht, Fingerabdruck oder Code. Nichts davon erreicht diesen Server: Er bekommt nur den öffentlichen Teil des Schlüssels und bei jeder Anmeldung eine Unterschrift unter eine Zufallsfrage, die genau einmal gilt. Damit gibt es hier kein Passwort, das gestohlen werden könnte, und keine Anmeldung, die sich anderswo wiederverwenden ließe. Anlegen kannst du ihn im Profil, für jedes Gerät einen eigenen. Dein Passwort bleibt bestehen und funktioniert weiter — geht ein Gerät verloren, kommst du damit trotzdem herein und entfernst den Passkey im Profil.',
+  'help_passkey_sync' => 'Wie viele du brauchst, hängt vom Schlüsselbund ab, nicht von der Zahl deiner Geräte. Ein Passkey im iCloud-Schlüsselbund wird zwischen iPhone, iPad und Mac abgeglichen — einmal angelegt, überall nutzbar. Dasselbe gilt für einen Passwortmanager: Dort liegt er am Konto, nicht am Gerät. Nur gerätegebundene Verfahren wie Windows Hello brauchen je Rechner einen eigenen. Wenn du magst, leg trotzdem mehrere an; sie stören einander nicht, und geht einer verloren, bleiben die anderen.',
+  'help_passkey' => 'Statt eines Passworts kannst du dich mit einem Passkey anmelden: einem Schlüssel, der im gesicherten Bereich deines Geräts entsteht und dort bleibt. Geöffnet wird er, wie du dein Gerät öffnest — mit Gesicht, Fingerabdruck oder Code. Nichts davon erreicht diesen Server: Er bekommt nur den öffentlichen Teil des Schlüssels und bei jeder Anmeldung eine Unterschrift unter eine Zufallsfrage, die genau einmal gilt. Damit gibt es hier kein Passwort, das gestohlen werden könnte, und keine Anmeldung, die sich anderswo wiederverwenden ließe. Anlegen kannst du ihn im Profil. In der Liste steht er unter dem Namen seines Schlüsselbunds — „Apple Passwörter", „1Password", „Windows Hello" —, denn dort liegt er, und umbenennen kannst du ihn jederzeit. Dein Passwort bleibt bestehen und funktioniert weiter — geht ein Gerät verloren, kommst du damit trotzdem herein und entfernst den Passkey im Profil.',
   'set_tax_start' => 'Gegründet am',
   'set_tax_start_hint' => 'Nur für das Gründungsjahr wichtig: Dort gibt es kein Vorjahr, und die kleinere Grenze gilt für das laufende Jahr — als harte Decke. Hochgerechnet wird nichts, wer im Oktober anfängt hat dieselbe Grenze wie alle. Leer lassen, wenn die Band schon länger besteht.',
   'tax_first_year' => 'Gründungsjahr: Es gibt kein Vorjahr, deshalb gilt die kleinere Grenze für dieses Jahr — und zwar sofort. Wird sie überschritten, endet die Befreiung mit dem Umsatz, der sie reißt, nicht erst zum 1. Januar.',
@@ -1937,6 +1941,13 @@ if (setting('tax_texts_2026_08') !== '1') {
 // längst „Médias". Jetzt überall Medien.
 // Der Hinweis unter der Mitgliedertabelle sagt jetzt auch, wer überhaupt
 // aufgeführt wird — seit es den Schalter zur Gewinnbeteiligung gibt.
+// Ein Passkey gehört einem Schlüsselbund, nicht einem Gerät: Der im iCloud-
+// Schlüsselbund gilt auf iPhone, iPad und Mac zugleich. Die Texte sagten
+// „einen pro Gerät" und schickten damit alle auf den falschen Weg.
+if (setting('passkey_keychain_text') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN ('prof_passkeys_hint','help_passkey')");
+  set_setting('passkey_keychain_text', '1');
+}
 if (setting('profit_share_hint') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'taxr_share_hint'");
   set_setting('profit_share_hint', '1');

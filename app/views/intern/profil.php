@@ -73,6 +73,7 @@
   <details class="card acc" name="profilacc" id="passkey">
     <summary>🔐 <?= e(t('prof_passkeys')) ?></summary>
     <p class="muted small"><?= e(t('prof_passkeys_hint')) ?></p>
+    <p class="muted small">☁ <?= e(t('prof_passkeys_sync')) ?></p>
     <?php if ($meinePasskeys): ?>
       <ul class="task-list">
         <?php foreach ($meinePasskeys as $pk): ?>
@@ -85,6 +86,11 @@
               <?= e(str_replace('%1', fmt_date($pk['created_at']), t('pk_added'))) ?>
               · <?= e($pk['last_used_at'] ? str_replace('%1', fmt_date($pk['last_used_at']), t('pk_last_used')) : t('pk_never_used')) ?>
             </span>
+            <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/name"><?= csrf_field() ?>
+              <input name="label" value="<?= e($pk['label']) ?>" maxlength="60" size="16"
+                     aria-label="<?= e(t('pk_label')) ?>">
+              <button class="btn btn-tiny btn-ghost"><?= e(t('pk_rename')) ?></button>
+            </form>
             <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/delete"
                   data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
               <button class="btn btn-tiny btn-ghost"><?= e(t('pk_remove')) ?></button>

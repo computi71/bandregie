@@ -98,6 +98,7 @@
   <details class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
     <p class="muted"><?= e(t('help_passkey')) ?></p>
+    <p class="muted">☁ <?= e(t('help_passkey_sync')) ?></p>
     <p class="muted small"><a href="/intern/profil"><?= e(t('prof_passkeys')) ?> →</a></p>
   </details>
 <?php endif; ?>

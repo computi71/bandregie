@@ -1328,7 +1328,15 @@ if (str_starts_with($path, '/intern')) {
       exit(json_encode(['error' => t($fehler)]));
     }
     $label = mb_substr(trim((string) ($in['label'] ?? '')), 0, 60);
-    if ($label === '') $label = passkey_label($aaguid, (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    if ($label === '') {
+      $label = passkey_label($aaguid, (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+      // Zweimal „iPhone" in einer Liste hilft niemandem. Erst wenn der Name
+      // schon vergeben ist, kommt Datum und Uhrzeit dahinter — im Regelfall
+      // bleibt es beim kurzen Namen, und umbenennen kann man ihn ohnehin.
+      if (row('SELECT 1 FROM passkeys WHERE user_id = ? AND label = ?', [$me['id'], $label])) {
+        $label = mb_substr($label . ' · ' . date('d.m.Y H:i'), 0, 60);
+      }
+    }
     try {
       // Die AAGUID wird mitgeschrieben, auch wenn wir sie heute nicht benennen
       // können: Die Liste der Anbieter wächst, und dann lässt sich ein alter
@@ -1340,6 +1348,15 @@ if (str_starts_with($path, '/intern')) {
       exit(json_encode(['ok' => true, 'schon' => true]));
     }
     exit(json_encode(['ok' => true]));
+  }
+  // Umbenennen — nur den eigenen; die Bedingung im UPDATE entscheidet.
+  if (preg_match('~^/intern/profil/passkey/(\d+)/name$~', $path, $m) && $method === 'POST') {
+    $neu = mb_substr(trim((string) ($_POST['label'] ?? '')), 0, 60);
+    if ($neu !== '') {
+      q('UPDATE passkeys SET label = ? WHERE id = ? AND user_id = ?', [$neu, $m[1], $me['id']]);
+      flash(t('fl_pk_renamed'));
+    }
+    redirect('/intern/profil#passkey');
   }
   if (preg_match('~^/intern/profil/passkey/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     // Nur den eigenen — die Bedingung im DELETE entscheidet, nicht die Anzeige.
