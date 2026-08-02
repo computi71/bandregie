@@ -176,6 +176,113 @@ function passkey_signature_ok(string $spkiPem, string $authData, string $clientD
   return openssl_verify($signed, $signature, $key, OPENSSL_ALGO_SHA256) === 1;
 }
 
+/**
+ * Ein winziger CBOR-Leser — nur so viel, wie WebAuthn braucht.
+ *
+ * Nötig geworden, weil getPublicKey() nicht überall etwas liefert: Passwort-
+ * verwalter wie LastPass legen den Passkey an, geben den öffentlichen Teil
+ * aber nicht in dieser bequemen Form heraus. Dann steht er nur im
+ * attestationObject, und das ist CBOR. Die Abkürzung war also eine, die manche
+ * Geräte aussperrt — dieser Leser holt das nach.
+ *
+ * Unterstützt werden die fünf Typen, die hier vorkommen: Zahlen (auch
+ * negative, denn COSE-Schlüssel sind mit -1, -2, -3 benannt), Bytefolgen,
+ * Text, Listen und Zuordnungen. Alles andere ist in diesen Daten nicht
+ * vorgesehen und führt zum Abbruch, statt zu einer Vermutung.
+ *
+ * @return mixed null bei allem, was nicht sauber gelesen werden kann
+ */
+function cbor_read(string $b, int &$pos) {
+  if ($pos >= strlen($b)) return null;
+  $kopf = ord($b[$pos++]);
+  $typ = $kopf >> 5;
+  $kurz = $kopf & 0x1f;
+
+  // Die Länge steht entweder im Kopf selbst oder in den folgenden Bytes.
+  $laenge = $kurz;
+  if ($kurz >= 24 && $kurz <= 27) {
+    $n = 1 << ($kurz - 24);                       // 1, 2, 4 oder 8 Bytes
+    if ($pos + $n > strlen($b)) return null;
+    $laenge = 0;
+    for ($i = 0; $i < $n; $i++) $laenge = ($laenge << 8) | ord($b[$pos++]);
+  } elseif ($kurz >= 28) {
+    return null;                                   // unbestimmte Länge: nicht hier
+  }
+
+  switch ($typ) {
+    case 0: return $laenge;                        // positive Zahl
+    case 1: return -1 - $laenge;                   // negative Zahl
+    case 2:                                        // Bytefolge
+    case 3:                                        // Text
+      if ($pos + $laenge > strlen($b)) return null;
+      $wert = substr($b, $pos, $laenge);
+      $pos += $laenge;
+      return $wert;
+    case 4:                                        // Liste
+      $out = [];
+      for ($i = 0; $i < $laenge; $i++) {
+        $v = cbor_read($b, $pos);
+        if ($v === null) return null;
+        $out[] = $v;
+      }
+      return $out;
+    case 5:                                        // Zuordnung
+      $out = [];
+      for ($i = 0; $i < $laenge; $i++) {
+        $k = cbor_read($b, $pos);
+        $v = cbor_read($b, $pos);
+        if ($k === null || $v === null) return null;
+        $out[is_int($k) ? $k : (string) $k] = $v;
+      }
+      return $out;
+  }
+  return null;
+}
+
+/**
+ * Den öffentlichen Schlüssel aus dem attestationObject holen, als SPKI.
+ *
+ * Der Weg: CBOR auspacken → authData → den Teil hinter Kennung und Zähler →
+ * darin der COSE-Schlüssel. Von den COSE-Feldern brauchen wir kty (1), alg (3),
+ * crv (-1) sowie x (-2) und y (-3).
+ *
+ * Nur P-256/ES256. RS256 käme mit deutlich mehr DER-Bastelei und kommt bei
+ * Passkeys praktisch nicht vor; ein ehrliches Nein ist dort besser als ein
+ * halb geratener Schlüssel.
+ *
+ * @return array{0: string, 1: string} SPKI und Credential-ID, beide '' bei Fehler
+ */
+function passkey_from_attestation(string $attestationObject): array {
+  $pos = 0;
+  $att = cbor_read($attestationObject, $pos);
+  if (!is_array($att) || !isset($att['authData']) || !is_string($att['authData'])) return ['', ''];
+  $auth = $att['authData'];
+  // rpIdHash 32 + Flags 1 + Zähler 4, dann muss das Flag „enthält Schlüssel"
+  // gesetzt sein — sonst steht dahinter gar keiner.
+  if (strlen($auth) < 55 || !(ord($auth[32]) & 0x40)) return ['', ''];
+  $p = 37 + 16;                                    // AAGUID überspringen
+  $idLen = (ord($auth[$p]) << 8) | ord($auth[$p + 1]);
+  $p += 2;
+  if ($idLen <= 0 || $p + $idLen > strlen($auth)) return ['', ''];
+  $credId = substr($auth, $p, $idLen);
+  $p += $idLen;
+
+  $kPos = 0;
+  $cose = cbor_read(substr($auth, $p), $kPos);
+  if (!is_array($cose)) return ['', ''];
+  $kty = $cose[1] ?? null;
+  $alg = $cose[3] ?? null;
+  $crv = $cose[-1] ?? null;
+  $x = $cose[-2] ?? null;
+  $y = $cose[-3] ?? null;
+  if ($kty !== 2 || $alg !== -7 || $crv !== 1) return ['', ''];
+  if (!is_string($x) || !is_string($y) || strlen($x) !== 32 || strlen($y) !== 32) return ['', ''];
+
+  // Der DER-Vorspann für einen P-256-Punkt ist konstant; nur der Punkt wechselt.
+  $der = hex2bin('3059301306072a8648ce3d020106082a8648ce3d030107034200') . "\x04" . $x . $y;
+  return [$der, $credId];
+}
+
 /** Aus dem rohen SPKI ein PEM machen, wie openssl es lesen will. */
 function passkey_pem(string $spkiDer): string {
   return "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($spkiDer), 64, "\n") . "-----END PUBLIC KEY-----\n";

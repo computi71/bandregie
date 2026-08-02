@@ -1305,6 +1305,16 @@ if (str_starts_with($path, '/intern')) {
     $credId = trim((string) ($in['id'] ?? ''));
     $spki = passkey_b64_decode((string) ($in['publicKey'] ?? ''));
     $clientData = passkey_b64_decode((string) ($in['clientDataJSON'] ?? ''));
+    // getPublicKey() liefert nicht überall etwas — Passwortverwalter legen den
+    // Passkey an, geben den Schlüssel aber nur im attestationObject heraus.
+    // Dann wird er dort herausgeholt, statt die Anmeldung abzulehnen, obwohl
+    // das Gerät sie längst eingerichtet hat.
+    if ($spki === '') {
+      [$spki, $rohId] = passkey_from_attestation(passkey_b64_decode((string) ($in['attestationObject'] ?? '')));
+      // Die Kennung aus dem Attestat muss die sein, die der Browser nennt —
+      // sonst legten wir einen Schlüssel unter fremdem Namen ab.
+      if ($spki !== '' && $rohId !== '' && !hash_equals(passkey_b64($rohId), $credId)) $spki = '';
+    }
     $fehler = $challenge === null ? 'fl_pk_bad_challenge'
       : passkey_client_data_error($clientData, $challenge, 'webauthn.create');
     if ($fehler === null && ($credId === '' || $spki === '')) $fehler = 'fl_pk_bad_data';

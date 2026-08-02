@@ -27,6 +27,31 @@ async function pkPost(url, daten) {
 
 // ---------- Anlegen (im Profil) ----------
 
+/**
+ * Ein Name für das Gerät.
+ *
+ * Den echten Gerätenamen („Michas iPhone") gibt kein Browser heraus, und das
+ * ist Absicht: Er trägt meist einen Vornamen und wäre ein Wiedererkennungs-
+ * merkmal quer über alle Seiten. Was manche Browser hergeben, ist das Modell —
+ * Chrome auf Android etwa nennt „Pixel 8". Safari nennt gar nichts, dort bleibt
+ * es bei der Plattform, die der Server aus der Kennung errät.
+ *
+ * Selbst getippt schlägt beides: Wer etwas ins Feld schreibt, bekommt das.
+ */
+async function pkGeraetename() {
+  const feld = document.getElementById('pk-label');
+  if (feld && feld.value.trim()) return feld.value.trim();
+  try {
+    const uad = navigator.userAgentData;
+    if (uad && uad.getHighEntropyValues) {
+      const d = await uad.getHighEntropyValues(['model', 'platform']);
+      const teile = [d.model, d.platform].filter(Boolean);
+      if (teile.length) return teile.join(' · ').slice(0, 60);
+    }
+  } catch (e) { /* dann eben nicht */ }
+  return '';
+}
+
 async function pkAnlegen(knopf, meldung) {
   const setze = (text, fehler) => {
     if (!meldung) return;
@@ -61,17 +86,19 @@ async function pkAnlegen(knopf, meldung) {
     });
     if (!cred) { setze(knopf.dataset.failed, true); return; }
 
-    // getPublicKey() liefert den öffentlichen Teil fertig als SPKI. Fehlt die
-    // Methode (sehr alte Browser), ließe sich der Schlüssel nur aus CBOR
-    // herausholen — dann lieber ehrlich absagen als halb funktionieren.
+    // getPublicKey() liefert den öffentlichen Teil bequem als SPKI — aber längst
+    // nicht überall: Passwortverwalter wie LastPass legen den Passkey an und
+    // geben hier nichts heraus. Dann reisen die Rohdaten mit, und der Server
+    // holt den Schlüssel selbst aus dem CBOR. Absagen wäre falsch: Das Gerät
+    // hat den Schlüssel dann ja schon angelegt.
     const spki = cred.response.getPublicKey && cred.response.getPublicKey();
-    if (!spki) { setze(knopf.dataset.unsupported, true); return; }
 
     const { ok, data } = await pkPost('/intern/profil/passkey', {
       id: cred.id,
-      publicKey: pkB64(spki),
+      publicKey: spki ? pkB64(spki) : '',
+      attestationObject: pkB64(cred.response.attestationObject),
       clientDataJSON: pkB64(cred.response.clientDataJSON),
-      label: (document.getElementById('pk-label') || {}).value || '',
+      label: await pkGeraetename(),
     });
     if (!ok) { setze(data.error || knopf.dataset.failed, true); return; }
     // Gleich merken: Dann fragt schon die nächste Anmeldung direkt nach dem
