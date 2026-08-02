@@ -50,6 +50,8 @@
   const enableBtn = box.querySelector('[data-push-enable]');
   const disableBtn = box.querySelector('[data-push-disable]');
   const deniedMsg = box.querySelector('[data-push-denied]');
+  const offenMsg = box.querySelector('[data-push-open]');
+  const fehlerMsg = box.querySelector('[data-push-failed]');
   const key = box.dataset.pushKey;
   const token = box.dataset.pushToken;
 
@@ -79,19 +81,33 @@
     .then(show)
     .catch(() => {});
 
+  // Drei Gründe, aus denen es nicht klappt, und drei verschiedene Auswege:
+  //
+  //  * blockiert — der Browser fragt nie wieder, Freigabe nur in seinen
+  //    Einstellungen.
+  //  * nicht beantwortet — Chrome und Edge zeigen die Frage seit einiger Zeit
+  //    oft nicht mehr als Fenster, sondern nur als kleines Glockensymbol in der
+  //    Adressleiste. Wer das nicht bemerkt, hat nie „blockieren" geklickt und
+  //    steht trotzdem ohne Erlaubnis da. Genau dieser Fall wurde bisher als
+  //    „blockiert" gemeldet, was schlicht nicht stimmte.
+  //  * technisch gescheitert — Abo ließ sich nicht anlegen.
+  const meldung = (el) => {
+    [deniedMsg, offenMsg, fehlerMsg].forEach((m) => { if (m) m.hidden = true; });
+    if (el) el.hidden = false;
+  };
   if (enableBtn) enableBtn.addEventListener('click', async () => {
     try {
-      if (await Notification.requestPermission() !== 'granted') {
-        if (deniedMsg) deniedMsg.hidden = false;
-        return;
-      }
+      const antwort = await Notification.requestPermission();
+      if (antwort === 'denied') { meldung(deniedMsg); show(null); return; }
+      if (antwort !== 'granted') { meldung(offenMsg); return; }
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
       const j = sub.toJSON();
       await post('/intern/push/subscribe', { endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth });
+      meldung(null);
       show(sub);
     } catch (e) {
-      if (deniedMsg) deniedMsg.hidden = false;
+      meldung(fehlerMsg);
     }
   });
 

@@ -765,7 +765,9 @@ Zeile zwei
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
   'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
-  'prof_push_denied' => 'Der Browser blockiert Mitteilungen für diese Seite — in den Browser-Einstellungen freigeben.',
+  'prof_push_denied' => 'Der Browser blockiert Mitteilungen für diese Seite. Von hier aus lässt sich das nicht ändern: In der Adressleiste auf das Schloss- oder Info-Symbol tippen, dort Mitteilungen auf „Zulassen" stellen und die Seite neu laden.',
+  'prof_push_open' => 'Die Frage nach der Erlaubnis wurde nicht beantwortet. Chrome und Edge zeigen sie oft nicht mehr als Fenster, sondern nur als kleines Glockensymbol rechts in der Adressleiste — dort antragen und zulassen. Danach hier noch einmal aktivieren.',
+  'prof_push_failed' => 'Das Abo ließ sich nicht anlegen. Erlaubnis steht, es hakt woanders — neu laden und noch einmal versuchen.',
   'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
   'push_ev_title' => 'Neuer Termin',
   'push_comment_title' => 'Neuer Kommentar',
@@ -1956,6 +1958,12 @@ if (setting('tax_texts_2026_08') !== '1') {
 // Plattformnamen. Wo die Kennung inzwischen einen Anbieter benennt, wird er
 // nachgetragen — aber nur bei den geratenen Namen. Was jemand selbst getippt
 // hat, bleibt: Ein Name, den man vergeben hat, gehört einem.
+// Eine Meldung für drei Ursachen nannte oft die falsche: „blockiert" stand
+// auch dann da, wenn der Browser gar nicht gefragt hatte. Der Text ist ersetzt.
+if (setting('push_reasons_text') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'prof_push_denied'");
+  set_setting('push_reasons_text', '1');
+}
 if (setting('passkey_relabel') !== '1') {
   foreach (rows("SELECT id, label, aaguid FROM passkeys WHERE aaguid <> ''") as $pkRow) {
     $besser = PASSKEY_ANBIETER[$pkRow['aaguid']] ?? '';

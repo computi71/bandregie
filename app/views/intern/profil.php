@@ -139,7 +139,12 @@
     <button type="button" class="btn btn-ghost btn-small" data-push-disable hidden><?= e(t('prof_push_disable')) ?></button>
   </div>
   <p class="muted small" data-push-ios hidden>📲 <?= e(t('prof_push_ios')) ?></p>
+  <?php // Drei getrennte Meldungen statt einer: „blockiert", „Frage offen" und
+        // „technisch gescheitert" verlangen jeweils etwas anderes. Eine Meldung
+        // für alles nannte einen Grund, der oft gar nicht zutraf. ?>
   <p class="warn" data-push-denied hidden><?= e(t('prof_push_denied')) ?></p>
+  <p class="warn" data-push-open hidden><?= e(t('prof_push_open')) ?></p>
+  <p class="warn" data-push-failed hidden><?= e(t('prof_push_failed')) ?></p>
 </details>
 <?php endif; ?>
 
