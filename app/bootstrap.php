@@ -192,7 +192,10 @@ const UI_STRINGS = [
   'totp_forced_undo' => 'Doch nicht vorschreiben',
   'totp_setup_title' => 'Zweiten Faktor einrichten',
   'totp_setup_app' => '1. Eine Authenticator-App aufs Handy, falls noch keine da ist. Es geht jede: Google Authenticator, Microsoft Authenticator, Aegis, 2FAS, der Passwortmanager oder der eingebaute Schlüsselbund. Alle rechnen dasselbe aus, du bist an keinen Anbieter gebunden.',
-  'totp_setup_scan' => '2. In der App „Konto hinzufügen" wählen und diesen Code abfotografieren.',
+  'totp_setup_scan' => '2. Das Konto in die App übernehmen. Welcher Weg der richtige ist, hängt nur davon ab, wo die App liegt.',
+  'totp_setup_here' => '📱 Die App liegt auf diesem Gerät — der Normalfall, wenn du gerade am Handy bist. Dann geht es ohne Foto: Der Knopf öffnet die App und legt das Konto dort an. Tut sich nichts, ist noch keine Authenticator-App installiert.',
+  'totp_setup_open_app' => 'In der App öffnen',
+  'totp_setup_other' => '💻 Die App liegt auf einem anderen Gerät — der Normalfall, wenn du gerade am Rechner sitzt. Dann in der App „Konto hinzufügen" wählen und diesen Code abfotografieren.',
   'totp_setup_confirm' => '3. Die sechsstellige Zahl, die dann erscheint, hier eintragen. Damit ist bewiesen, dass die App wirklich funktioniert — erst dann wird beim Anmelden danach gefragt.',
   'totp_manual_title' => 'Kein Foto möglich?',
   'totp_manual_hint' => 'Dann in der App „Schlüssel manuell eingeben" wählen und diese Zeichenfolge abtippen. Groß- und Kleinschreibung sowie Leerzeichen sind egal.',
@@ -2033,6 +2036,14 @@ if (setting('tax_texts_2026_08') !== '1') {
 if (setting('push_reasons_text') !== '3') {
   q("DELETE FROM translations WHERE tkey IN ('prof_push_denied','prof_push_open')");
   set_setting('push_reasons_text', '3');
+}
+// Schritt 2 der Einrichtung hieß „diesen Code abfotografieren" — was auf dem
+// Handy nicht geht, weil die App auf demselben Gerät liegt. Der Schritt trennt
+// jetzt die beiden Fälle, und der alte Text muss weg: Ein Seed schreibt eine
+// vorhandene Zeile nicht um.
+if (setting('totp_setup_texts') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'totp_setup_scan'");
+  set_setting('totp_setup_texts', '1');
 }
 if (setting('passkey_relabel') !== '1') {
   foreach (rows("SELECT id, label, aaguid FROM passkeys WHERE aaguid <> ''") as $pkRow) {

@@ -63,6 +63,17 @@
     <p class="muted small"><?= e(t('totp_setup_app')) ?></p>
     <p class="muted small"><?= e(t('totp_setup_scan')) ?></p>
 
+    <?php // Auf dem Handy kann der QR-Code nicht helfen: Die App liegt auf
+          // demselben Bildschirm, der ihn anzeigt. Die otpauth-Adresse als
+          // Verweis löst das — ein Tippen öffnet die App, und sie legt das
+          // Konto selbst an. Auf dem Rechner passiert nichts, wenn dort keine
+          // Authenticator-App registriert ist; deshalb steht das im Text.
+          // Der Verweis steht zuerst, weil die Einrichtung am Handy der Fall
+          // ist, in dem der Weg darunter gar nicht funktioniert. ?>
+    <p class="muted small"><?= e(t('totp_setup_here')) ?></p>
+    <p><a class="btn btn-primary" href="<?= e($uri) ?>"><?= e(t('totp_setup_open_app')) ?></a></p>
+
+    <p class="muted small"><?= e(t('totp_setup_other')) ?></p>
     <?php // Der QR-Code entsteht hier im Haus (app/qr.php) und nicht bei einem
           // Dienst im Netz: Er trägt das Geheimnis im Klartext, und fremd
           // gerendert wäre der zweite Faktor verschickt, bevor er wirkt. ?>
