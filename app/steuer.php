@@ -62,7 +62,7 @@ function tax_turnover(int $year): int {
  *
  * @return array{
  *   this_year: int, prev_year: int, limit_this: int, limit_prev: int,
- *   share: float, state: string
+ *   share: float, state: string, first_year: bool
  * }|null  state: 'ok' | 'close' | 'next_year' | 'over_prev' | 'over_this'
  */
 function tax_small_business_status(): ?array {
@@ -73,6 +73,21 @@ function tax_small_business_status(): ?array {
   $limitPrev = (int) round((float) setting('tax_limit_prev_year', '25000') * 100);
   $thisYear = tax_turnover($year);
   $prevYear = tax_turnover($year - 1);
+
+  // Im Gründungsjahr gibt es kein Vorjahr, und dann gilt die kleinere Grenze
+  // für das laufende Jahr — als harte Decke, nicht als Ausblick aufs nächste:
+  // Überschritten endet die Befreiung sofort. Hochgerechnet wird dabei nichts;
+  // die anteilige Umrechnung auf ein volles Jahr ist mit der Neuregelung
+  // entfallen, wer im Oktober anfängt hat dieselbe Grenze wie alle.
+  //
+  // Ohne diese Unterscheidung meldete die Kasse im Gründungsjahr „läuft bis
+  // Silvester", wo die Befreiung in Wahrheit schon gefallen ist.
+  $start = trim(setting('tax_business_start', ''));
+  $firstYear = $start !== '' && (int) substr($start, 0, 4) === $year;
+  if ($firstYear) {
+    $limitThis = $limitPrev;
+    $prevYear = 0;
+  }
 
   // Reihenfolge nach Dringlichkeit:
   //  over_this  — die Jahresgrenze ist gerissen, die Befreiung endet sofort
@@ -86,7 +101,9 @@ function tax_small_business_status(): ?array {
   if ($limitThis > 0 && $thisYear > $limitThis)            $state = 'over_this';
   elseif ($limitPrev > 0 && $prevYear > $limitPrev)        $state = 'over_prev';
   elseif ($limitThis > 0 && $thisYear >= $limitThis * 0.8) $state = 'close';
-  elseif ($limitPrev > 0 && $thisYear > $limitPrev)        $state = 'next_year';
+  // „Endet zu Silvester" gibt es im Gründungsjahr nicht: dort ist dieselbe
+  // Grenze schon die harte Decke, und die ist oben abgehandelt.
+  elseif (!$firstYear && $limitPrev > 0 && $thisYear > $limitPrev) $state = 'next_year';
 
   return [
     'this_year'  => $thisYear,
@@ -95,6 +112,7 @@ function tax_small_business_status(): ?array {
     'limit_prev' => $limitPrev,
     'share'      => $limitThis > 0 ? min(1.0, $thisYear / $limitThis) : 0.0,
     'state'      => $state,
+    'first_year' => $firstYear,
   ];
 }
 

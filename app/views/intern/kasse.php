@@ -108,13 +108,21 @@ foreach ($entries as $en) {
           <?= fmt_money($tax['this_year']) ?> <?= e(t('tax_of')) ?> <?= fmt_money($tax['limit_this']) ?>
         </span>
       </li>
-      <li>
-        <strong><?= e(sprintf(t('tax_turnover_year'), date('Y') - 1)) ?></strong>
-        <span class="<?= $tax['state'] === 'over_prev' ? 'warn' : 'muted' ?>">
-          <?= fmt_money($tax['prev_year']) ?> <?= e(t('tax_of')) ?> <?= fmt_money($tax['limit_prev']) ?>
-        </span>
-      </li>
+      <?php // Im Gründungsjahr gibt es kein Vorjahr — eine Zeile mit 0,00 €
+            // dahinter läse sich wie „reichlich Luft", und das Gegenteil
+            // stimmt: dieselbe Grenze ist oben schon die harte Decke. ?>
+      <?php if (!$tax['first_year']): ?>
+        <li>
+          <strong><?= e(sprintf(t('tax_turnover_year'), date('Y') - 1)) ?></strong>
+          <span class="<?= $tax['state'] === 'over_prev' ? 'warn' : 'muted' ?>">
+            <?= fmt_money($tax['prev_year']) ?> <?= e(t('tax_of')) ?> <?= fmt_money($tax['limit_prev']) ?>
+          </span>
+        </li>
+      <?php endif; ?>
     </ul>
+    <?php if ($tax['first_year']): ?>
+      <p class="muted small">🌱 <?= e(t('tax_first_year')) ?></p>
+    <?php endif; ?>
     <?php if ($tax['state'] !== 'ok'): ?>
       <p class="<?= $tax['state'] === 'close' ? 'muted' : 'warn' ?>">
         <strong><?= e(t('tax_state_' . $tax['state'])) ?></strong>

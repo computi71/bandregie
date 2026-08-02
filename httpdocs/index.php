@@ -2260,6 +2260,10 @@ if (str_starts_with($path, '/intern')) {
         if ($afaYears >= 1 && $afaYears <= 50) set_setting($afaKey, (string) $afaYears);
       }
       set_setting('tax_prices_gross', isset($_POST['tax_prices_gross']) ? '1' : '0');
+      // Gründungsdatum: leer heißt „gibt es nicht" — dann rechnet die Kasse wie
+      // bisher mit Vorjahr und laufendem Jahr.
+      $taxStart = trim($_POST['tax_business_start'] ?? '');
+      set_setting('tax_business_start', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxStart) ? $taxStart : '');
       set_setting('tax_small_business', isset($_POST['tax_small_business']) ? '1' : '0');
       $taxDate = trim($_POST['tax_values_checked'] ?? '');
       set_setting('tax_values_checked', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxDate) ? $taxDate : date('Y-m-d'));

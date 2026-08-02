@@ -345,6 +345,10 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <?= e(t('set_tax_small')) ?>
     </label>
     <p class="muted small span2"><?= e(t('set_tax_small_hint')) ?></p>
+    <label class="span2"><?= e(t('set_tax_start')) ?>
+      <input type="date" name="tax_business_start" value="<?= e(setting('tax_business_start', '')) ?>">
+      <span class="muted small"><?= e(t('set_tax_start_hint')) ?></span>
+    </label>
     <label><?= e(t('set_tax_prev')) ?><input name="tax_limit_prev_year" inputmode="decimal" value="<?= e(setting('tax_limit_prev_year', '25000')) ?>"></label>
     <label><?= e(t('set_tax_this')) ?><input name="tax_limit_this_year" inputmode="decimal" value="<?= e(setting('tax_limit_this_year', '100000')) ?>"></label>
     <label><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">

@@ -44,6 +44,7 @@
     <p class="muted"><?= e(t('help_tax_counts')) ?></p>
     <p class="muted"><?= e(t('help_tax_over')) ?></p>
     <p class="muted"><?= e(t('help_tax_next_year')) ?></p>
+    <p class="muted"><?= e(t('help_tax_first_year')) ?></p>
     <p class="muted"><?= e(t('help_tax_back')) ?></p>
     <p class="muted"><?= e(t('help_tax_changed')) ?></p>
     <p class="muted"><?= e(t('help_tax_gwg')) ?></p>
