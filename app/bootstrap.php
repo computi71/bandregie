@@ -154,13 +154,15 @@ const UI_STRINGS = [
   'help_gbr_liability' => 'Daraus folgt etwas, das man kennen sollte: In einer GbR haftet jedes Mitglied persönlich, gesamtschuldnerisch und unbeschränkt — mit dem Privatvermögen, nicht nur mit dem, was in der Bandkasse liegt (§ 721 BGB). Wem Geld zusteht, der darf sich aussuchen, wen von euch er in Anspruch nimmt. Eine Abrede unter euch ändert daran nichts: Sie wirkt untereinander, nicht gegenüber der Vermieterin oder dem Veranstalter. Und wer neu dazukommt, haftet auch für das, was vorher entstanden ist (§ 721a BGB) — das gehört vor dem Einstieg besprochen, nicht danach.',
   'help_gbr_register' => 'Seit dem 1. Januar 2024 gibt es das Gesellschaftsregister und die eingetragene eGbR. Die Eintragung ist freiwillig und weder für das Bestehen der Gesellschaft noch für ihre Rechtsfähigkeit nötig; verlangt wird sie erst, wenn die GbR selbst in ein anderes Register soll, etwa ins Grundbuch. Für eine Band, die Auftritte spielt und einen Proberaum mietet, ist sie in aller Regel entbehrlich. An der persönlichen Haftung ändert eine Eintragung ohnehin nichts.',
   'help_taxr_shares' =>'In der Bandansicht steht zusätzlich eine Zeile je Mitglied: eingezahlt, bekommen, was netto durch die Kasse gegangen ist, und der Gewinnanteil für die eigene Erklärung. Erklärt wird nämlich nicht, was ausgezahlt wurde, sondern der Anteil am Gewinn — bei einer GbR wird er den Gesellschaftern zugerechnet, ob er auf dem Konto liegt oder nicht. Der Anteil ist zu gleichen Teilen gerechnet; habt ihr etwas anderes vereinbart, gilt eure Abrede und nicht diese Spalte. Weicht „Kasse netto" zwischen den Mitgliedern stark ab, tragen einzelne mehr als die anderen — das gehört in der Kasse ausgeglichen, nicht in der Steuererklärung.',
+  'mem_profit_share' => 'Am Gewinn beteiligt',
+  'mem_profit_share_hint' => 'Gesellschafter teilen den Gewinn und erklären ihn jeder für sich. Wer für die Band arbeitet, ohne Gesellschafter zu sein — Management, Technik, ein Konto aus alten Zeiten —, gehört hier abgewählt: sonst bekommt er einen Anteil, und allen anderen fehlt er.',
   'taxr_members' => 'Je Mitglied',
   'taxr_members_hint' => 'Wer wie viel eingezahlt und bekommen hat — und was davon in die eigene Steuererklärung gehört. Erklärt wird nicht die Auszahlung, sondern der Gewinnanteil: Bei einer GbR wird der Gewinn den Gesellschaftern zugerechnet, gleich ob er ausgezahlt wurde oder liegen bleibt. Eine Einzahlung ist umgekehrt keine Ausgabe des Mitglieds, sondern Kapital.',
   'taxr_paid_in' => 'Eingezahlt',
   'taxr_took_out' => 'Bekommen',
   'taxr_cash_net' => 'Kasse netto',
   'taxr_share' => 'Gewinnanteil',
-  'taxr_share_hint' => 'Der Anteil ist zu gleichen Teilen gerechnet — so gilt es bei einer GbR ohne abweichende Abrede. Habt ihr eine andere Verteilung vereinbart, stimmt die Spalte nicht; die Kasse kennt eure Abrede nicht. Fällt „Kasse netto" bei einzelnen deutlich ab, tragen sie mehr als die anderen: Der Abzug für Miete und Proberaum senkt den Bandgewinn für alle, unabhängig davon, wer ihn bezahlt hat. Geradegerückt wird das nicht über die Steuer, sondern in der Kasse — indem die Einzahlungen zurückgezahlt werden, bevor der Gewinn verteilt wird. Das ändert an keiner Steuerzahl etwas, weil eine Einlagenrückzahlung so wenig Einkommen ist wie die Einlage Ausgabe war.',
+  'taxr_share_hint' => 'Gezeigt wird, wer am Gewinn beteiligt ist; wer es nicht ist, steht bei den Mitgliedern abgewählt und taucht hier nicht auf. Der Anteil ist zu gleichen Teilen gerechnet — so gilt es bei einer GbR ohne abweichende Abrede. Habt ihr eine andere Verteilung vereinbart, stimmt die Spalte nicht; die Kasse kennt eure Abrede nicht. Fällt „Kasse netto" bei einzelnen deutlich ab, tragen sie mehr als die anderen: Der Abzug für Miete und Proberaum senkt den Bandgewinn für alle, unabhängig davon, wer ihn bezahlt hat. Geradegerückt wird das nicht über die Steuer, sondern in der Kasse — indem die Einzahlungen zurückgezahlt werden, bevor der Gewinn verteilt wird. Das ändert an keiner Steuerzahl etwas, weil eine Einlagenrückzahlung so wenig Einkommen ist wie die Einlage Ausgabe war.',
   'taxr_equipment_hint' => 'Gerätekäufe stehen nicht bei den Ausgaben, sondern hier: oberhalb der Grenze verteilt sich der Preis über die Nutzungsdauer, gerechnet ab dem Kaufmonat. Sonst stünde derselbe Kauf zweimal im Ergebnis.',
   'taxr_purchased' => 'Gekauft', 'taxr_purchase_price' => 'Kaufpreis',
   'taxr_method' => 'Verfahren', 'taxr_amount_year' => 'In diesem Jahr', 'taxr_remaining' => 'Restwert',
@@ -1621,6 +1623,14 @@ function push_topics(?array $user): array {
 if (!column_exists('users', 'offline_scope')) {
   $db->exec("ALTER TABLE users ADD COLUMN offline_scope VARCHAR(190) NOT NULL DEFAULT ''");
 }
+// Wer am Gewinn beteiligt ist. Nicht jedes Konto gehört einem Gesellschafter:
+// ein Manager, eine Technikerin, ein aufbewahrtes Konto eines Ausgetretenen —
+// die alle bekämen sonst einen Anteil, und allen anderen fehlte er. Neu ist an,
+// damit sich für bestehende Installationen nichts ändert; Aushilfen sind ohnehin
+// nie beteiligt und werden nicht gefragt.
+if (!column_exists('users', 'profit_share')) {
+  $db->exec('ALTER TABLE users ADD COLUMN profit_share TINYINT(1) NOT NULL DEFAULT 1');
+}
 if (!column_exists('songs', 'lyrics')) {
   $db->exec('ALTER TABLE songs ADD COLUMN lyrics MEDIUMTEXT NULL AFTER notes');
 }
@@ -1866,6 +1876,12 @@ if (setting('tax_texts_2026_08') !== '1') {
 // Die Menügruppe mit Fotos, Musik und Downloads hieß „Material" — unscharf für
 // das, was drinsteht, und die Sprachen waren sich uneins: Französisch sagte
 // längst „Médias". Jetzt überall Medien.
+// Der Hinweis unter der Mitgliedertabelle sagt jetzt auch, wer überhaupt
+// aufgeführt wird — seit es den Schalter zur Gewinnbeteiligung gibt.
+if (setting('profit_share_hint') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'taxr_share_hint'");
+  set_setting('profit_share_hint', '1');
+}
 if (setting('nav_media_2026_08') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'inavg_material'");
   set_setting('nav_media_2026_08', '1');

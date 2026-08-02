@@ -84,6 +84,16 @@
             <input type="number" name="substitute_rank" min="0" max="99" value="<?= (int) ($mFull['substitute_rank'] ?? 0) ?>">
             <span class="muted small"><?= e(t('mem_substitute_rank_hint')) ?></span>
           </label>
+          <?php // Nur wo die Kasse überhaupt geführt wird, ist die Frage
+                // sinnvoll — sonst erklärt der Schalter etwas, das nirgends
+                // vorkommt. Aushilfen sind ohnehin nie beteiligt. ?>
+          <?php if (perm_allows($user, 'kasse') && ($mFull['role'] ?? '') !== 'ersatz'): ?>
+            <label class="checkbox span2">
+              <input type="checkbox" name="profit_share" value="1" <?= (int) ($mFull['profit_share'] ?? 1) === 1 ? 'checked' : '' ?>>
+              <?= e(t('mem_profit_share')) ?>
+            </label>
+            <p class="muted small span2"><?= e(t('mem_profit_share_hint')) ?></p>
+          <?php endif; ?>
           <?php // In der Demo bleiben Adresse und Rolle stehen — die Route
                 // übernimmt sie ohnehin nicht, und ein Feld, das sich tippen
                 // lässt und dann nichts tut, ist schlimmer als ein gesperrtes. ?>

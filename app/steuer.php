@@ -411,15 +411,19 @@ function tax_report(int $year, ?int $memberId): array {
  * abweichende Abrede. Wer etwas anderes vereinbart hat, rechnet anders — die
  * Zahl hier ist eine Rechenhilfe und keine Gewinnverteilungsabrede.
  *
- * Gäste und Aushilfen bleiben außen vor: Sie sind nicht am Gewinn beteiligt,
- * und ein Anteil für sie wäre schlicht falsch.
+ * Aushilfen bleiben außen vor: Sie sind nicht am Gewinn beteiligt, und ein
+ * Anteil für sie wäre schlicht falsch. Dasselbe gilt für jedes Konto, das
+ * keinem Gesellschafter gehört — eine Managerin, ein Techniker, ein Konto, das
+ * nach einem Austritt für die Geschichte stehen blieb. Dafür gibt es den
+ * Schalter am Mitglied; er steht neu auf „beteiligt", weil das der Regelfall
+ * ist und sich für bestehende Installationen nichts ändern soll.
  *
  * @return array{members: array<int, array{id: int, name: string, deposits: int,
  *                payouts: int, cash: int, share: int}>, share: int, heads: int}
  */
 function tax_member_shares(int $year, int $result): array {
   $members = rows("SELECT id, name FROM users
-                   WHERE role <> 'ersatz' AND substitute_for IS NULL
+                   WHERE role <> 'ersatz' AND substitute_for IS NULL AND profit_share = 1
                    ORDER BY name");
   $heads = count($members);
   // Ohne Köpfe keine Verteilung — und ohne Division durch null.
