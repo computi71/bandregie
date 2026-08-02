@@ -223,17 +223,40 @@ async function pkAnmelden(knopf, meldung, nurDieser) {
     if (!cred) { setze(knopf && knopf.dataset.unsupported, true); return; }
     await pkAbsenden(cred, meldung);
   } catch (e) {
-    const abgebrochen = e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
-    setze(knopf && (abgebrochen ? knopf.dataset.cancelled : knopf.dataset.failed), !abgebrochen);
     // Nur die Abfrage, die von selbst kam, zählt mit. Wer den Knopf gedrückt
     // hat, weiß ja, was er tut.
-    if (!knopf) pkFehlschlag();
+    if (!knopf) { pkFehlschlag(); return; }
+    // Am Knopf endet es nie mit einer bloßen Absage. Ob hier noch kein Passkey
+    // liegt oder jemand abgebrochen hat, lässt sich nicht unterscheiden — beide
+    // Male ist derselbe Satz richtig: mit Passwort herein, danach einen
+    // anlegen. Der Blick geht gleich aufs Feld, damit die Hand weiß wohin.
+    setze(knopf.dataset.none, false);
+    const feld = document.querySelector('input[type="email"]');
+    if (feld) feld.focus();
   } finally {
     if (knopf) knopf.disabled = false;
   }
 }
 
+/**
+ * Das Angebot auf der Startseite: Wer sich mit Passwort angemeldet hat und auf
+ * diesem Gerät noch keinen Passkey benutzt, wird einmal gefragt. „Später"
+ * heißt später und nicht gleich wieder — das merkt sich der Browser.
+ */
+function pkAngebot() {
+  const karte = document.querySelector('[data-passkey-offer]');
+  if (!karte || !pkMoeglich() || pkKennt()) return;
+  try { if (localStorage.getItem('bandregie-passkey-spaeter') === '1') return; } catch (e) { /* egal */ }
+  karte.hidden = false;
+  const spaeter = karte.querySelector('[data-passkey-later]');
+  if (spaeter) spaeter.addEventListener('click', () => {
+    karte.hidden = true;
+    try { localStorage.setItem('bandregie-passkey-spaeter', '1'); } catch (e) { /* egal */ }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  pkAngebot();
   const bereich = document.querySelector('[data-passkey]');
   if (!bereich) return;
   // Ohne Unterstützung gar nicht erst zeigen: ein Knopf, der nichts kann, ist

@@ -1,5 +1,20 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('dash_hello')) ?> <?= e($user['name']) ?>! 👋</h1>
+<?php // Wer sich mit Passwort angemeldet hat und auf diesem Gerät noch keinen
+      // Passkey hat, bekommt hier das Angebot — einmal, wegklickbar. Ob dieses
+      // Gerät schon einen hat, weiß nur der Browser: Ein Konto kann auf dem
+      // Handy einen haben und auf dem Rechner keinen. Deshalb entscheidet das
+      // Skript, nicht der Server; hier steht nur das fertige Angebot bereit. ?>
+<?php if (passkey_available()): ?>
+  <div class="card" data-passkey-offer hidden>
+    <strong>🔐 <?= e(t('pk_offer_title')) ?></strong>
+    <p class="muted small"><?= e(t('pk_offer')) ?></p>
+    <div class="row-buttons">
+      <a class="btn btn-small" href="/intern/profil#passkey"><?= e(t('pk_offer_yes')) ?></a>
+      <button type="button" class="btn btn-ghost btn-small" data-passkey-later><?= e(t('pk_offer_later')) ?></button>
+    </div>
+  </div>
+<?php endif; ?>
 <?php if (!empty($deadlines)): ?>
   <div class="card">
     <strong>⏰ <?= e(t('dash_deadlines')) ?>:</strong>

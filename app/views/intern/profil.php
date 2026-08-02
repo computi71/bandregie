@@ -70,7 +70,7 @@
         // es nur im Front Controller. Mit $me schlug die Liste Mitglied 0 nach
         // und blieb still leer, obwohl der Passkey längst eingetragen war. ?>
   <?php $meinePasskeys = passkey_list((int) $profile['id']); ?>
-  <details class="card acc" name="profilacc">
+  <details class="card acc" name="profilacc" id="passkey">
     <summary>🔐 <?= e(t('prof_passkeys')) ?></summary>
     <p class="muted small"><?= e(t('prof_passkeys_hint')) ?></p>
     <?php if ($meinePasskeys): ?>

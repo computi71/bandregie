@@ -15,7 +15,8 @@
       <button type="button" class="btn btn-ghost" id="pk-login" style="width:100%"
               data-failed="<?= e(t('fl_pk_failed')) ?>"
               data-cancelled="<?= e(t('pk_cancelled')) ?>"
-              data-unsupported="<?= e(t('pk_unsupported')) ?>">🔐 <?= e(t('pk_login')) ?></button>
+              data-unsupported="<?= e(t('pk_unsupported')) ?>"
+              data-none="<?= e(t('pk_none_here')) ?>">🔐 <?= e(t('pk_login')) ?></button>
       <p class="muted small" id="pk-msg"></p>
     </div>
   <?php endif; ?>
