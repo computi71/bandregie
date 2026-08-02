@@ -116,7 +116,7 @@
       // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —
       // stiller Rückfall statt Knopf ins Leere. ?>
 <?php if (push_available()): ?>
-<details class="card acc" name="profilacc" data-push
+<details class="card acc" name="profilacc" id="mitteilungen" data-push
          data-push-key="<?= e(push_public_key()) ?>" data-push-token="<?= e(csrf_token()) ?>">
   <summary>🔔 <?= e(t('prof_push')) ?></summary>
   <p class="muted small"><?= e(t('prof_push_hint')) ?></p>

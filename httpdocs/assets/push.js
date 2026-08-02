@@ -6,10 +6,24 @@
 // Seite dort im Safari läuft, erscheint stattdessen der Hinweis.
 (function () {
   const box = document.querySelector('[data-push]');
-  if (!box) return;
   const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  // Hinweis auf der Startseite: Dass auf DIESEM Gerät keine Mitteilungen
+  // ankommen, sieht man der App sonst nicht an — sie schweigt einfach, und man
+  // hält es für Ruhe statt für einen abgeschalteten Schalter. Ob ein Abo
+  // besteht, weiß nur der Browser; der Server kennt nur die Abos, die einmal
+  // angelegt wurden, und ein abgeschaltetes Gerät meldet sich nicht ab.
+  const hinweis = document.querySelector('[data-push-hint]');
+  if (hinweis && supported) {
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => { if (!sub) hinweis.hidden = false; })
+      .catch(() => {});
+  }
+
+  if (!box) return;
   if (!supported) {
     if (ios && !standalone) {
       const p = box.querySelector('[data-push-ios]');

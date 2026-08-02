@@ -5,6 +5,15 @@
       // Gerät schon einen hat, weiß nur der Browser: Ein Konto kann auf dem
       // Handy einen haben und auf dem Rechner keinen. Deshalb entscheidet das
       // Skript, nicht der Server; hier steht nur das fertige Angebot bereit. ?>
+<?php // Mitteilungen sind auf diesem Gerät aus — das merkt sonst niemand: Die
+      // App schweigt einfach, und man hält es für Ruhe. Ob ein Abo besteht,
+      // weiß nur der Browser, deshalb blendet push.js den Hinweis ein. ?>
+<?php if (push_available()): ?>
+  <a class="card" data-push-hint hidden href="/intern/profil#mitteilungen" style="display:block">
+    <strong>🔕 <?= e(t('push_off_here')) ?></strong>
+    <p class="muted small"><?= e(t('push_off_here_hint')) ?></p>
+  </a>
+<?php endif; ?>
 <?php if (passkey_available()): ?>
   <div class="card" data-passkey-offer hidden>
     <strong>🔐 <?= e(t('pk_offer_title')) ?></strong>
