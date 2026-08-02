@@ -113,6 +113,24 @@
   </details>
 <?php endif; ?>
 
+<?php // Zweiter Faktor: erklärt, solange es ihn hier gibt — oder solange
+      // dieses Konto noch einen hat und die Abfrage kennt. ?>
+<?php // totp_active() statt totp_active_for($user): $user kommt aus
+      // current_user() und trägt die Felder des zweiten Faktors nicht mit. ?>
+<?php if (totp_available() || totp_active((int) $user['id'])): ?>
+  <details class="card acc" name="helpacc">
+    <summary>🔑 <?= e(t('help_totp_title')) ?></summary>
+    <p class="muted"><?= e(t('help_totp_what')) ?></p>
+    <p class="muted"><?= e(t('help_totp_apps')) ?></p>
+    <p class="muted"><?= e(t('help_totp_setup')) ?></p>
+    <p class="muted">📄 <?= e(t('help_totp_recovery')) ?></p>
+    <?php if (passkey_available()): ?><p class="muted">🔐 <?= e(t('help_totp_passkey')) ?></p><?php endif; ?>
+    <p class="muted">⏰ <?= e(t('help_totp_clock')) ?></p>
+    <?php if (perm_allows($user, 'mitglieder')): ?><p class="muted">⚙ <?= e(t('help_totp_admin')) ?></p><?php endif; ?>
+    <p class="muted small"><a href="/intern/zwei-faktor"><?= e(t('totp_title')) ?> →</a></p>
+  </details>
+<?php endif; ?>
+
 <?php if (passkey_available()): ?>
   <details class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>

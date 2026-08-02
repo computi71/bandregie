@@ -316,6 +316,14 @@ if ($path === '/login') {
     if ($u && password_verify($_POST['password'] ?? '', $u['password_hash'])) {
       throttle_clear('login', $email);
       session_regenerate_id(true);
+      // Zweiter Faktor (#169): Ein richtiges Passwort meldet noch niemanden
+      // an. Bis der Code stimmt, steht in der Sitzung nur eine Absicht und
+      // keine uid — alles hinter require_login() bleibt damit zu, ohne dass
+      // eine einzige Route etwas davon wissen muss.
+      if (totp_available() && totp_active_for($u)) {
+        $_SESSION['totp_wait'] = ['uid' => (int) $u['id'], 'seit' => time()];
+        redirect('/login/code');
+      }
       $_SESSION['uid'] = $u['id'];
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
@@ -325,6 +333,49 @@ if ($path === '/login') {
     view('login', ['title' => 'Login', 'error' => t('login_failed')]);
   }
   view('login', ['title' => 'Login', 'error' => null]);
+}
+
+/**
+ * Der zweite Schritt der Anmeldung mit Passwort (#169).
+ *
+ * Getrennte Seite und nicht ein zweites Feld auf der Anmeldemaske: Die Zahl
+ * wechselt alle dreißig Sekunden, und wer sie eintippt, während er noch das
+ * Passwort sucht, tippt sie zweimal.
+ */
+if ($path === '/login/code') {
+  if (current_user()) redirect('/intern');
+  $warte = $_SESSION['totp_wait'] ?? null;
+  // Zehn Minuten: lang genug, um die App zu suchen, kurz genug, dass ein
+  // stehengelassener Rechner keine halbfertige Anmeldung offen hält.
+  if (!is_array($warte) || time() - (int) ($warte['seit'] ?? 0) > 600) {
+    unset($_SESSION['totp_wait']);
+    redirect('/login');
+  }
+  $uid = (int) $warte['uid'];
+  if ($method === 'POST') {
+    if (throttle_blocked('totp', (string) $uid)) {
+      http_response_code(429);
+      view('login-code', ['title' => t('totp_step_title'), 'error' => t('fl_throttled')]);
+    }
+    $u = row('SELECT * FROM users WHERE id = ?', [$uid]);
+    $eingabe = trim((string) ($_POST['code'] ?? ''));
+    // Der Rückweg steht im selben Feld: Wer sein Handy verloren hat, sucht
+    // sonst erst nach einem zweiten Formular. Beide sind eindeutig zu
+    // unterscheiden — sechs Ziffern oder zehn Buchstaben mit Bindestrich.
+    $ok = $u && (totp_verify(totp_secret_for($u), $eingabe) || totp_recovery_use($u, $eingabe));
+    if ($ok) {
+      throttle_clear('totp', (string) $uid);
+      unset($_SESSION['totp_wait']);
+      session_regenerate_id(true);
+      $_SESSION['uid'] = $uid;
+      if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
+      redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
+    }
+    throttle_note('totp', (string) $uid);
+    http_response_code(401);
+    view('login-code', ['title' => t('totp_step_title'), 'error' => t('totp_wrong')]);
+  }
+  view('login-code', ['title' => t('totp_step_title'), 'error' => null]);
 }
 
 if ($path === '/logout' && $method === 'POST') {
@@ -461,6 +512,25 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/passwort');
   }
 
+  // Vorgeschriebener zweiter Faktor (#169): danach, nicht davor — ein frisch
+  // vergebenes Startpasswort gehört gewechselt, bevor etwas daran hängt.
+  //
+  // totp_active() und nicht totp_active_for($me): current_user() lädt eine
+  // knappe Spaltenliste ohne die Felder des zweiten Faktors. Mit $me wäre die
+  // Antwort immer „hat keinen" — und damit stünde bei „vorgeschrieben" auch
+  // der auf der Einrichtungsseite fest, der längst einen hat.
+  //
+  // Die Einstellung selbst bleibt offen, sonst schnappt eine Falle zu: Ein
+  // Admin ohne zweiten Faktor, der „vorgeschrieben" einschaltet, käme an
+  // keine Einstellung mehr heran — auch nicht an die, mit der er es
+  // zurücknimmt. Die Route prüft weiterhin selbst auf Admin.
+  if (totp_mode() === 'required'
+      && $path !== '/intern/zwei-faktor'
+      && $path !== '/intern/einstellungen/zwei-faktor'
+      && !totp_active((int) $me['id'])) {
+    redirect('/intern/zwei-faktor');
+  }
+
   // Rechte je Bereich, an einer Stelle für alle Routen. Ein GET braucht das
   // Leserecht, alles Schreibende das Änderungsrecht. Pfade ohne Bereich —
   // Übersicht, eigenes Profil, Passwort — stehen jedem Angemeldeten offen,
@@ -529,6 +599,84 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/passwort');
     }
     view('intern/passwort', ['title' => t('pw_change_title'), 'forced' => !empty($me['must_change_pw'])]);
+  }
+
+  /**
+   * Zweiten Faktor einrichten, erneuern, abschalten (#169).
+   *
+   * Eine Seite für beide Wege — freiwillig aus dem Profil und erzwungen nach
+   * dem Anmelden. Zwei Fassungen derselben Anleitung würden auseinanderlaufen,
+   * und die erzwungene wäre die, die niemand pflegt.
+   */
+  if ($path === '/intern/zwei-faktor') {
+    $totpErzwungen = totp_mode() === 'required';
+    // Die volle Zeile: current_user() führt die Felder des zweiten Faktors
+    // absichtlich nicht mit.
+    $totpMe = totp_state((int) $me['id']);
+    // Abgeschaltet: Wer noch einen hat, darf ihn loswerden; alle anderen
+    // haben hier nichts verloren.
+    if (!totp_available() && !totp_active_for($totpMe)) redirect('/intern/profil');
+
+    if ($method === 'POST') {
+      deny_in_demo('/intern/profil');
+      $totpTat = $_POST['tat'] ?? 'confirm';
+
+      if ($totpTat === 'delete') {
+        if ($totpErzwungen) {
+          flash(t('totp_cannot_remove'));
+          redirect('/intern/zwei-faktor');
+        }
+        totp_clear((int) $me['id']);
+        flash(t('totp_removed'));
+        redirect('/intern/profil');
+      }
+
+      // Bestätigen und Rückwege erneuern prüfen beide einen Code, also auch
+      // beide gegen dieselbe Bremse — sonst wäre das Erneuern das offene Tor.
+      if (throttle_blocked('totp', (string) $me['id'])) {
+        flash(t('fl_throttled'));
+        redirect('/intern/zwei-faktor');
+      }
+      // Beim Erneuern gilt das schon bestätigte Geheimnis, beim Einrichten
+      // das aus der Sitzung — abgelegt wird es erst, wenn ein Code stimmt.
+      $totpGeheim = $totpTat === 'codes'
+        ? totp_secret_for($totpMe)
+        : (string) ($_SESSION['totp_setup'] ?? '');
+      if ($totpGeheim === '' || !totp_verify($totpGeheim, (string) ($_POST['code'] ?? ''))) {
+        throttle_note('totp', (string) $me['id']);
+        flash(t('totp_wrong'));
+        redirect('/intern/zwei-faktor');
+      }
+      throttle_clear('totp', (string) $me['id']);
+
+      $totpCodes = totp_recovery_new();
+      totp_store((int) $me['id'], $totpGeheim, $totpCodes);
+      unset($_SESSION['totp_setup']);
+      // Einmal zeigen, dann nie wieder — gespeichert ist nur der Abdruck.
+      // Über die Sitzung und nicht direkt gerendert, damit ein Neuladen der
+      // Seite die Codes nicht ein zweites Mal aus einer POST-Antwort holt.
+      $_SESSION['totp_codes'] = $totpCodes;
+      redirect('/intern/zwei-faktor');
+    }
+
+    $totpAktiv = totp_active_for($totpMe);
+    $totpNeueCodes = $_SESSION['totp_codes'] ?? null;
+    unset($_SESSION['totp_codes']);
+    // Das Geheimnis lebt bis zur Bestätigung nur in der Sitzung: Wer die
+    // Einrichtung abbricht, lässt nichts im Konto zurück.
+    if (!$totpAktiv && empty($_SESSION['totp_setup'])) $_SESSION['totp_setup'] = totp_secret_new();
+    $totpGeheim = $totpAktiv ? '' : (string) $_SESSION['totp_setup'];
+
+    view('intern/zwei-faktor', [
+      'title'     => t('totp_setup_title'),
+      'aktiv'     => $totpAktiv,
+      'erzwungen' => $totpErzwungen,
+      'geheim'    => $totpGeheim,
+      'uri'       => $totpAktiv ? '' : totp_uri($totpGeheim, (string) $me['email'], setting('band_name', 'Bandregie')),
+      'codes'     => is_array($totpNeueCodes) ? $totpNeueCodes : null,
+      'uebrig'    => totp_recovery_left($totpMe),
+      'seit'      => $totpMe['totp_confirmed_at'] ?? null,
+    ]);
   }
 
   // ---------- Dashboard ----------
@@ -1660,7 +1808,7 @@ if (str_starts_with($path, '/intern')) {
     }
     redirect('/intern/mitglieder');
   }
-  if (preg_match('~^/intern/mitglieder/(\d+)/(delete|passwort)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/mitglieder/(\d+)/(delete|passwort|zwei-faktor)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     // Ein gelöschtes Konto und ein geändertes Kennwort treffen beide den
     // nächsten Besucher, nicht den, der es tut.
@@ -1677,6 +1825,17 @@ if (str_starts_with($path, '/intern')) {
       }
       redirect('/intern/mitglieder');
     }
+    // Zweiten Faktor zurücksetzen (#169): der Weg zurück, wenn Handy und
+    // Rückwege zugleich weg sind. Nur Admins, denn es nimmt einem fremden
+    // Konto eine Schutzschicht — und deshalb steht es auch im Protokoll.
+    if ($action === 'zwei-faktor') {
+      require_admin();
+      totp_clear((int) $id);
+      error_log('Bandregie: Zweiter Faktor zurückgesetzt für Konto ' . (int) $id . ' durch Konto ' . (int) $me['id']);
+      flash(t('fl_totp_reset'));
+      redirect('/intern/mitglieder');
+    }
+
     // Passwort ändern: selbst oder als Admin
     if ((int) $id !== (int) $me['id'] && $me['role'] !== 'admin') {
       flash(t('fl_only_admin_pw'));
@@ -2394,6 +2553,18 @@ if (str_starts_with($path, '/intern')) {
     set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
     set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
     flash(t('fl_extern_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Zweiter Faktor: ob es ihn gibt, und ob er für alle gilt (#169).
+  if ($path === '/intern/einstellungen/zwei-faktor' && $method === 'POST') {
+    require_admin();
+    // In der Demo unverändert: „vorgeschrieben" würde jeden Besucher in eine
+    // Einrichtung zwingen, die er mit einem geteilten Konto gar nicht führen
+    // kann — und der Nächste stünde vor einem Code, den er nie bekommt.
+    deny_in_demo('/intern/einstellungen');
+    $totpModus = $_POST['totp_mode'] ?? 'optional';
+    set_setting('totp_mode', in_array($totpModus, ['off', 'optional', 'required'], true) ? $totpModus : 'optional');
+    flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen' && $method === 'GET') {

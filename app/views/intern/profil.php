@@ -112,6 +112,31 @@
   </details>
 <?php endif; ?>
 
+<?php // Zweiter Faktor (#169): Der Abschnitt zeigt nur den Stand und führt
+      // weiter — eingerichtet wird auf einer eigenen Seite, weil dieselbe
+      // Anleitung auch beim erzwungenen Weg nach dem Anmelden erscheint und
+      // es sie nicht zweimal geben soll.
+      // Sichtbar bleibt er auch bei abgeschaltetem zweitem Faktor, solange
+      // dieses Konto noch einen hat: Sonst stünde jemand vor einer Abfrage,
+      // die er nirgends mehr loswird. ?>
+<?php if (totp_available() || totp_active_for($profile)): ?>
+  <details class="card acc" name="profilacc" id="zwei-faktor">
+    <summary>🔑 <?= e(t('totp_title')) ?></summary>
+    <?php if (totp_active_for($profile)): ?>
+      <p><strong>✅ <?= e(str_replace('%1', fmt_date($profile['totp_confirmed_at']), t('totp_active_since'))) ?></strong></p>
+      <?php $totpUebrig = totp_recovery_left($profile); ?>
+      <p class="<?= $totpUebrig > 0 ? 'muted' : 'warn' ?> small">
+        <?= e($totpUebrig > 0 ? str_replace('%1', (string) $totpUebrig, t('totp_codes_left')) : t('totp_codes_none_left')) ?>
+      </p>
+    <?php else: ?>
+      <p class="muted small"><?= e(t('totp_hint')) ?></p>
+      <p class="muted small"><?= e(t('totp_none')) ?></p>
+    <?php endif; ?>
+    <p class="muted small"><?= e(t('totp_passkey_note')) ?></p>
+    <p><a class="btn btn-small" href="/intern/zwei-faktor">🔑 <?= e(totp_active_for($profile) ? t('totp_title') : t('totp_setup_open')) ?></a></p>
+  </details>
+<?php endif; ?>
+
 <?php // Push-Mitteilungen (#24): Themen gelten kontoweit, das Abo je Gerät.
       // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —
       // stiller Rückfall statt Knopf ins Leere. ?>

@@ -51,6 +51,13 @@
             </form>
           </details>
         <?php endif; ?>
+        <?php // Zweiten Faktor zurücksetzen (#169): der einzige Weg zurück,
+              // wenn Handy und Rückwege zugleich verloren sind. Nur sichtbar,
+              // wenn dieses Mitglied wirklich einen hat — ein Knopf, der
+              // nichts tut, sieht aus wie ein Knopf, der nicht funktioniert. ?>
+        <?php if ($user['role'] === 'admin' && totp_active_for($m) && !is_demo()): ?>
+          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zwei-faktor" data-confirm="<?= e(t('totp_reset_member')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">🔑✖</button></form>
+        <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>

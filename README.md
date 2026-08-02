@@ -459,6 +459,37 @@ starting point, not legal advice.
 
 ## Security
 
+### Signing in
+
+Three ways in, and they stack rather than compete.
+
+**Password** is always there. **Passkeys** sit next to it: the private key stays
+in the member's keychain and is released by face, fingerprint or the device
+lock, so nothing reusable is ever sent. **A second factor** (TOTP, RFC 6238)
+can be switched on for password sign-in — off, optional, or required for
+everyone, set by an administrator under *Settings → Second factor*.
+
+Signing in with a passkey never asks for the second factor. That is deliberate,
+not an oversight: releasing a passkey already requires the device to be
+unlocked, which is a second factor that cannot be typed in, phished, or read
+off a screen.
+
+Setting it up shows a QR code and the secret to type by hand, and takes one
+code from the app before it counts — proof that the app really computes,
+before it becomes the condition for getting in. Ten single-use recovery codes
+are shown exactly once and stored only as SHA-256 fingerprints. When phone and
+recovery codes are gone at once, an administrator resets the factor from the
+member list; when an administrator locks *themselves* out by requiring it
+without having one, the setup page offers them the way back.
+
+The secret is sealed with the encryption key when one is configured, code entry
+is rate-limited like the password, and a correct password alone puts no user id
+in the session — until the code is right, everything behind the login stays
+shut. No library and no external service is involved: the QR encoder
+(`app/qr.php`) is part of this repository, because the code carries the secret
+in the clear and rendering it elsewhere would ship the second factor to a
+stranger.
+
 Found a hole? Please report it privately first — see [SECURITY.md](SECURITY.md).
 
 ## Contributing

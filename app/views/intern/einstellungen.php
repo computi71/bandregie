@@ -340,6 +340,24 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <p class="muted small"><?= e(t('set_crypt_law')) ?></p>
 </details>
 
+<?php // Zweiter Faktor (#169): eine Auswahl aus dreien statt zweier Haken —
+      // „freiwillig" und „vorgeschrieben" schließen einander aus, und zwei
+      // Kästchen ließen den unmöglichen vierten Fall zu. ?>
+<details class="card acc" name="setacc">
+  <summary>🔑 <?= e(t('set_totp')) ?></summary>
+  <p class="muted small"><?= e(t('set_totp_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/zwei-faktor" class="stack"><?= csrf_field() ?>
+    <?php $totpModus = totp_mode(); ?>
+    <?php foreach (['off', 'optional', 'required'] as $totpWahl): ?>
+      <label class="checkbox">
+        <input type="radio" name="totp_mode" value="<?= $totpWahl ?>" <?= $totpModus === $totpWahl ? 'checked' : '' ?>>
+        <?= e(t('set_totp_' . $totpWahl)) ?>
+      </label>
+    <?php endforeach; ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <?php require_once BASE_DIR . '/app/steuer.php'; ?>
 <details class="card acc" name="setacc">
   <summary>⚖ <?= e(t('set_tax')) ?></summary>

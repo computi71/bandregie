@@ -45,6 +45,8 @@ require_once __DIR__ . '/push.php';
 require_once __DIR__ . '/steuer.php';
 // Anmeldung mit Passkey: Login-Seite und Profil fragen danach.
 require_once __DIR__ . '/passkey.php';
+require_once __DIR__ . '/totp.php';
+require_once __DIR__ . '/qr.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -176,6 +178,51 @@ const UI_STRINGS = [
   'prof_passkeys' => 'Passkeys',
   'prof_passkeys_hint' => 'Ein Passkey ist ein Schlüssel, der in deinem Schlüsselbund liegt und sich mit Gesichtserkennung, Fingerabdruck oder der Gerätesperre öffnen lässt. Weder Gesicht noch Fingerabdruck verlassen dabei das Gerät — hier liegt nur der öffentliche Teil, mit dem sich ausschließlich prüfen lässt, ob eine Unterschrift von dir stammt. Dein Passwort bleibt daneben bestehen und funktioniert weiter.',
   'prof_passkeys_sync' => 'Einer je Schlüsselbund genügt, nicht einer je Gerät: Ein Passkey im iCloud-Schlüsselbund gilt auf iPhone, iPad und Mac zugleich, einer im Passwortmanager überall dort, wo der eingerichtet ist. Nur gerätegebundene wie Windows Hello brauchen je Rechner einen eigenen. Einen zweiten anzulegen schadet nicht — er ist dann eben ein zweiter Weg herein.',
+  // Zweiter Faktor (#169)
+  'totp_title' => 'Zweiter Faktor',
+  'totp_hint' => 'Ein Passwort kann abgeschaut, erraten oder aus dem Datenleck einer ganz anderen Seite wiederverwendet werden. Der zweite Faktor hilft genau dagegen: eine sechsstellige Zahl, die alle dreißig Sekunden wechselt und nur auf deinem Gerät entsteht. Wer dein Passwort hat, kommt damit trotzdem nicht herein.',
+  'totp_passkey_note' => 'Beim Anmelden mit Passkey wird nicht danach gefragt — dort steckt der zweite Faktor schon im Entsperren des Geräts.',
+  'totp_none' => 'Noch nicht eingerichtet.',
+  'totp_setup_open' => 'Zweiten Faktor einrichten',
+  'totp_active_since' => 'Aktiv seit %1.',
+  'totp_remove' => 'Zweiten Faktor entfernen',
+  'totp_removed' => 'Zweiter Faktor entfernt.',
+  'totp_cannot_remove' => 'Die Band hat den zweiten Faktor vorgeschrieben; er lässt sich hier nicht abschalten.',
+  'totp_forced_intro' => 'Die Band hat den zweiten Faktor vorgeschrieben. Einmal einrichten, dann geht es weiter — ohne ihn bleibt der Bandbereich zu.',
+  'totp_forced_undo' => 'Doch nicht vorschreiben',
+  'totp_setup_title' => 'Zweiten Faktor einrichten',
+  'totp_setup_app' => '1. Eine Authenticator-App aufs Handy, falls noch keine da ist. Es geht jede: Google Authenticator, Microsoft Authenticator, Aegis, 2FAS, der Passwortmanager oder der eingebaute Schlüsselbund. Alle rechnen dasselbe aus, du bist an keinen Anbieter gebunden.',
+  'totp_setup_scan' => '2. In der App „Konto hinzufügen" wählen und diesen Code abfotografieren.',
+  'totp_setup_confirm' => '3. Die sechsstellige Zahl, die dann erscheint, hier eintragen. Damit ist bewiesen, dass die App wirklich funktioniert — erst dann wird beim Anmelden danach gefragt.',
+  'totp_manual_title' => 'Kein Foto möglich?',
+  'totp_manual_hint' => 'Dann in der App „Schlüssel manuell eingeben" wählen und diese Zeichenfolge abtippen. Groß- und Kleinschreibung sowie Leerzeichen sind egal.',
+  'totp_code_label' => 'Sechsstelliger Code',
+  'totp_confirm' => 'Bestätigen und einschalten',
+  'totp_wrong' => 'Der Code stimmt nicht. Er wechselt alle dreißig Sekunden — nimm den, der gerade angezeigt wird.',
+  'totp_step_title' => 'Zweiter Faktor',
+  'totp_step_hint' => 'Passwort stimmt. Jetzt noch die sechsstellige Zahl aus deiner Authenticator-App.',
+  'totp_step_recovery' => 'Handy verloren oder App weg? Dann hier einen deiner Rückweg-Codes eintragen — jeder gilt genau einmal. Sind auch die weg, setzt die Bandleitung den zweiten Faktor zurück.',
+  'totp_codes_title' => 'Deine Rückwege',
+  'totp_codes_hint' => 'Diese Codes ersetzen die App, wenn das Handy weg ist. Jeder gilt genau einmal. Jetzt ausdrucken oder in den Passwortmanager legen — sie werden nur dieses eine Mal gezeigt, danach liegt hier nur noch ihr Abdruck.',
+  'totp_codes_left' => 'Noch %1 Rückwege übrig.',
+  'totp_codes_none_left' => 'Keine Rückwege mehr übrig. Ohne Handy käme jetzt nur noch die Bandleitung weiter.',
+  'totp_codes_new' => 'Neue Rückwege erzeugen',
+  'totp_codes_new_hint' => 'Erzeugt zehn neue und macht alle bisherigen ungültig. Braucht einen aktuellen Code aus der App.',
+  'totp_reset_member' => 'Zweiten Faktor zurücksetzen',
+  'fl_totp_reset' => 'Zweiter Faktor zurückgesetzt. Beim nächsten Anmelden wird nicht mehr danach gefragt.',
+  'set_totp' => 'Zweiter Faktor',
+  'set_totp_hint' => 'Gilt für das Anmelden mit Passwort. Wer sich mit Passkey anmeldet, wird nie gefragt — dort ist der zweite Faktor die Gerätesperre selbst.',
+  'set_totp_off' => 'Aus — niemand kann ihn einrichten, bestehende werden nicht mehr abgefragt.',
+  'set_totp_optional' => 'Freiwillig — wer mag, richtet ihn im Profil ein.',
+  'set_totp_required' => 'Vorgeschrieben — wer keinen hat, richtet ihn beim nächsten Anmelden ein, bevor es weitergeht.',
+  'help_totp_title' => 'Zweiter Faktor beim Anmelden',
+  'help_totp_what' => 'Der zweite Faktor ist eine sechsstellige Zahl, die alle dreißig Sekunden wechselt. Sie entsteht aus einem Geheimnis, das nur deine App und dieser Server kennen, und aus der aktuellen Uhrzeit — deshalb braucht die App weder Netz noch ein Konto irgendwo. Wer dein Passwort in die Finger bekommt, kommt ohne dein Handy trotzdem nicht herein.',
+  'help_totp_apps' => 'Welche App du nimmst, ist deine Sache: Google Authenticator, Microsoft Authenticator, Aegis, 2FAS, 1Password, Bitwarden oder der Schlüsselbund von Apple und Android. Alle rechnen nach demselben offenen Verfahren, keine ist an Bandregie gebunden, und du kannst jederzeit wechseln.',
+  'help_totp_setup' => 'Eingerichtet wird er im Profil unter „Zweiter Faktor": QR-Code mit der App abfotografieren, die angezeigte Zahl einmal eintragen, fertig. Die Zahl bei der Einrichtung ist kein Formalismus — sie beweist, dass die App wirklich rechnet, bevor sie zur Bedingung fürs Hereinkommen wird.',
+  'help_totp_recovery' => 'Beim Einschalten bekommst du zehn Rückwege. Jeder ersetzt einmal die App, wenn das Handy weg ist. Sie werden genau einmal gezeigt und danach nur noch als Abdruck gespeichert — ausdrucken oder in den Passwortmanager. Sind alle verbraucht, setzt die Bandleitung den zweiten Faktor zurück.',
+  'help_totp_passkey' => 'Beim Anmelden mit Passkey fragt niemand nach einer Zahl. Das ist keine Lücke: Ein Passkey wird mit Gesichtserkennung, Fingerabdruck oder der Gerätesperre freigegeben, das ist bereits ein zweiter Faktor — und zwar einer, der nicht abgetippt werden kann.',
+  'help_totp_admin' => 'Die Bandleitung stellt unter Einstellungen ein, ob es ihn gibt, ob er freiwillig ist oder für alle gilt. Bei „vorgeschrieben" wird jeder ohne zweiten Faktor beim nächsten Anmelden durch die Einrichtung geführt, bevor der Bandbereich aufgeht. Und sie kann ihn bei einem Mitglied zurücksetzen, wenn Handy und Rückwege zugleich weg sind.',
+  'help_totp_clock' => 'Stimmt der Code nie, geht meist die Uhr des Handys falsch. Das Verfahren rechnet mit der Zeit; eine halbe Minute Abweichung wird verziehen, mehr nicht. In den Handyeinstellungen die Uhrzeit auf automatisch stellen behebt das.',
   'help_push_trouble_title' => 'Mitteilungen kommen nicht an',
   'help_push_trouble_intro' => 'Zwischen einer Mitteilung und deinem Bildschirm liegen vier Schalter, und jeder einzelne kann sie stoppen — meist stumm, ohne Fehlermeldung. Deshalb der Reihe nach von innen nach außen; wer oben anfängt, findet es am schnellsten.',
   'help_push_trouble_app' => '1. In Bandregie: Im Profil unter „Mitteilungen" muss auf diesem Gerät „Auf diesem Gerät aktivieren" gedrückt worden sein — die Einstellung gilt je Gerät, nicht je Konto. Steht auf der Startseite der Hinweis „Mitteilungen sind auf diesem Gerät aus", ist es genau das. Die Haken darüber wählen nur die Themen; sie ersetzen das Aktivieren nicht.',
@@ -1686,6 +1733,16 @@ function push_topics(?array $user): array {
 // selbst — der Knopf am Termin geht trotzdem.
 if (!column_exists('users', 'offline_scope')) {
   $db->exec("ALTER TABLE users ADD COLUMN offline_scope VARCHAR(190) NOT NULL DEFAULT ''");
+}
+// Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
+// das Geheimnis, ob es je bestätigt wurde, und die Rückwege. Ohne das
+// Bestätigungsdatum sperrt sich aus, wer den QR-Code scannt und die App
+// gleich wieder löscht — dann läge ein Geheimnis im Konto, das niemand hat.
+if (!column_exists('users', 'totp_secret')) {
+  $db->exec("ALTER TABLE users
+    ADD COLUMN totp_secret VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN totp_confirmed_at DATETIME NULL,
+    ADD COLUMN totp_recovery TEXT NULL");
 }
 // Wer am Gewinn beteiligt ist. Nicht jedes Konto gehört einem Gesellschafter:
 // ein Manager, eine Technikerin, ein aufbewahrtes Konto eines Ausgetretenen —
