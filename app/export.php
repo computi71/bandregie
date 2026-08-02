@@ -12,9 +12,23 @@ function export_available_format(): string {
 /** @param string[] $head @param array<int, array<int, string>> $rows */
 function export_send(string $basename, array $head, array $rows): never {
   if (export_available_format() === 'xlsx') {
-    export_send_xlsx($basename, $head, $rows);
+    $data = export_xlsx_bytes($head, $rows);
+    // Leer heißt: das Archiv kam nicht zustande. Dann die Tabelle als CSV —
+    // besser ein anderes Format als eine Datei, die sich nicht öffnen lässt.
+    if ($data !== '') export_send_bytes($basename . '.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $data);
+    error_log('Bandregie: xlsx-Export fehlgeschlagen, CSV ausgeliefert');
   }
   export_send_csv($basename, $head, $rows);
+}
+
+/** Fertige Bytes als Download hinausgeben. */
+function export_send_bytes(string $filename, string $mime, string $data): never {
+  header('Content-Type: ' . $mime);
+  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  header('Content-Length: ' . (string) strlen($data));
+  echo $data;
+  exit;
 }
 
 /**
@@ -50,10 +64,7 @@ function export_csv_bytes(array $head, array $rows): string {
 }
 
 function export_send_csv(string $basename, array $head, array $rows): never {
-  header('Content-Type: text/csv; charset=utf-8');
-  header('Content-Disposition: attachment; filename="' . $basename . '.csv"');
-  echo export_csv_bytes($head, $rows);
-  exit;
+  export_send_bytes($basename . '.csv', 'text/csv; charset=utf-8', export_csv_bytes($head, $rows));
 }
 
 function export_xlsx_bytes(array $head, array $rows): string {
@@ -107,23 +118,24 @@ function export_xlsx_bytes(array $head, array $rows): string {
   ];
 
   $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
+  // Die Datei trägt den vollständigen Export — bei der Steuertabelle also die
+  // Finanzen der Band. Endet die Anfrage zwischen Anlegen und Aufräumen, liefe
+  // das @unlink unten nie; der Shutdown-Handler räumt auf jedem Weg.
+  register_shutdown_function(static function () use ($tmp): void { @unlink($tmp); });
   $zip = new ZipArchive();
-  $zip->open($tmp, ZipArchive::OVERWRITE);
+  // Lässt sich das Archiv nicht anlegen (kein Platz, keine Rechte im
+  // Temp-Verzeichnis), schlägt anschließend jedes addFromString fehl und
+  // zurückbliebe die leere Datei von tempnam() — ausgeliefert als 0-Byte-xlsx
+  // mit Erfolgsmeldung. Wer damit zur Steuerberatung geht, merkt es dort.
+  // Dann lieber die CSV: sie braucht kein Archiv und trägt dieselben Zahlen.
+  if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) return '';
   foreach ($parts as $name => $content) $zip->addFromString($name, $content);
-  $zip->close();
+  if (!$zip->close()) return '';
   $data = (string) file_get_contents($tmp);
   @unlink($tmp);
   return $data;
 }
 
-function export_send_xlsx(string $basename, array $head, array $rows): never {
-  $data = export_xlsx_bytes($head, $rows);
-  header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  header('Content-Disposition: attachment; filename="' . $basename . '.xlsx"');
-  header('Content-Length: ' . (string) strlen($data));
-  echo $data;
-  exit;
-}
 
 /**
  * Die Tabelle im bestmöglichen Format, als Endung und Inhalt — für alles, was
@@ -132,7 +144,11 @@ function export_send_xlsx(string $basename, array $head, array $rows): never {
  * @return array{0: string, 1: string} Endung und Inhalt
  */
 function export_table_bytes(array $head, array $rows): array {
-  return export_available_format() === 'xlsx'
-    ? ['xlsx', export_xlsx_bytes($head, $rows)]
-    : ['csv', export_csv_bytes($head, $rows)];
+  if (export_available_format() === 'xlsx') {
+    $data = export_xlsx_bytes($head, $rows);
+    // Auch hier gilt: lieber eine CSV im Paket als eine leere Tabelle darin.
+    if ($data !== '') return ['xlsx', $data];
+    error_log('Bandregie: xlsx-Export fehlgeschlagen, CSV ins Paket gelegt');
+  }
+  return ['csv', export_csv_bytes($head, $rows)];
 }

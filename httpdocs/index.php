@@ -1027,7 +1027,17 @@ if (str_starts_with($path, '/intern')) {
     header('Content-Type: application/json; charset=utf-8');
     if (setting('geocoding_enabled') !== '1') { echo json_encode(['off' => true, 'results' => []]); exit; }
     $qStr = trim((string) ($_GET['q'] ?? ''));
-    echo json_encode(['results' => mb_strlen($qStr) >= 3 ? geocode_search($qStr) : []]);
+    if (mb_strlen($qStr) < 3) { echo json_encode(['results' => []]); exit; }
+    // Nominatim lässt etwa eine Anfrage je Sekunde zu und sperrt nach IP-Adresse.
+    // Ohne Bremse könnte eine festgehaltene Taste die Adresse der ganzen
+    // Installation sperren lassen — für alle, auch für die Suche, die die Band
+    // wirklich braucht. Deshalb je Mitglied gezählt, großzügig genug fürs Tippen.
+    if (throttle_blocked('geo', (string) $me['id'], 40, 5)) {
+      echo json_encode(['results' => [], 'throttled' => true]);
+      exit;
+    }
+    throttle_note('geo', (string) $me['id']);
+    echo json_encode(['results' => geocode_search($qStr)]);
     exit;
   }
 
@@ -1382,9 +1392,15 @@ if (str_starts_with($path, '/intern')) {
         $email = is_demo()
           ? (row('SELECT email FROM users WHERE id = ?', [$m[1]])['email'] ?? '')
           : strtolower(trim($_POST['email']));
+        // Der Haken zur Gewinnbeteiligung steht nur im Formular, wenn die Kasse
+        // sichtbar ist. Wo er fehlt, bleibt der bisherige Wert — ein fehlendes
+        // Feld darf keine stille Abwahl bedeuten.
+        $anteil = perm_allows($me, 'kasse')
+          ? (isset($_POST['profit_share']) ? 1 : 0)
+          : (int) (row('SELECT profit_share FROM users WHERE id = ?', [$m[1]])['profit_share'] ?? 1);
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
-                            substitute_rank=? WHERE id=?', [
+                            substitute_rank=?, profit_share=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
                        row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
@@ -1392,6 +1408,7 @@ if (str_starts_with($path, '/intern')) {
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
           max(0, min(99, (int) ($_POST['substitute_rank'] ?? 0))),
+          $anteil,
           $m[1],
         ]);
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus).

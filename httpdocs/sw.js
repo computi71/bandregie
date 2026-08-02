@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v12';
+const VERSION = 'bandregie-v13';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -99,13 +99,22 @@ async function mitZeitstempel(response) {
   });
 }
 
-/** Seite: erst das Netz, dann der Zwischenspeicher. */
-async function seite(request) {
+/**
+ * Seite: erst das Netz, dann der Zwischenspeicher.
+ *
+ * Das Ablegen hängt an event.waitUntil und nicht an einem losgelösten Promise:
+ * Sobald der Handler zurückkehrt, darf der Browser den Service Worker beenden,
+ * und was dann noch unterwegs ist, wird nicht zwingend fertig. Ohne das käme
+ * die Seite an, landete aber mitunter nie im Vorrat — und auf der Bühne fehlte
+ * genau sie.
+ */
+async function seite(event) {
+  const request = event.request;
   try {
     const response = await fetch(request);
     if (response.ok) {
       const kopie = await mitZeitstempel(response.clone());
-      caches.open(PAGE_CACHE).then(cache => cache.put(request, kopie));
+      event.waitUntil(caches.open(PAGE_CACHE).then(cache => cache.put(request, kopie)));
     }
     return response;
   } catch (e) {
@@ -123,7 +132,8 @@ async function seite(request) {
 }
 
 /** Anhang: erst der Zwischenspeicher, dann das Netz. */
-async function anhang(request) {
+async function anhang(event) {
+  const request = event.request;
   const hit = await caches.match(request);
   if (hit) return hit;
   const response = await fetch(request);
@@ -131,7 +141,10 @@ async function anhang(request) {
   // nächsten Mal eine kaputte Datei.
   if (response.status === 200 && await hatPlatz()) {
     const copy = response.clone();
-    caches.open(FILE_CACHE).then(cache => cache.put(request, copy));
+    // Wie bei den Seiten am Ereignis festgemacht — sonst bricht das Ablegen bei
+    // einer großen Datei mitten im Schreiben ab, und beim nächsten Mal lädt sie
+    // wieder komplett neu.
+    event.waitUntil(caches.open(FILE_CACHE).then(cache => cache.put(request, copy)));
   }
   return response;
 }
@@ -141,9 +154,19 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') {
     // Beim Abmelden alles vergessen, was jemandem gehört — ein fremdes Gerät
     // geht uns nichts an.
+    //
+    // Zwingend an event.waitUntil: Kehrt der Handler zurück, darf der Browser
+    // den Service Worker sofort beenden, und ein losgelöstes caches.delete()
+    // muss er nicht mehr zu Ende bringen. Ohne das überlebten Setlists, Noten
+    // und Verträge des Vorgängers genau auf dem geteilten Gerät, um das es hier
+    // geht. Der Zählstand am App-Symbol gehört mit dazu — sonst startet die
+    // nächste Person mit den Zahlen der vorherigen.
     if (new URL(request.url).pathname === '/logout') {
-      caches.delete(PAGE_CACHE);
-      caches.delete(FILE_CACHE);
+      event.waitUntil(Promise.all([
+        caches.delete(PAGE_CACHE),
+        caches.delete(FILE_CACHE),
+        caches.delete(VERSION + '-state'),
+      ]));
     }
     return;
   }
@@ -183,13 +206,13 @@ self.addEventListener('fetch', event => {
   }
 
   if (FILE_PATTERN.test(url.pathname)) {
-    event.respondWith(anhang(request));
+    event.respondWith(anhang(event));
     return;
   }
 
   const istSeite = OFFLINE_PAGES.includes(url.pathname)
     || OFFLINE_PATTERNS.some(p => p.test(url.pathname));
-  if (istSeite) event.respondWith(seite(request));
+  if (istSeite) event.respondWith(seite(event));
 });
 
 // Push-Mitteilungen (#24): der Server schickt Titel, Text und Ziel-Adresse als
