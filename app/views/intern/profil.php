@@ -142,7 +142,19 @@
   <?php // Drei getrennte Meldungen statt einer: „blockiert", „Frage offen" und
         // „technisch gescheitert" verlangen jeweils etwas anderes. Eine Meldung
         // für alles nannte einen Grund, der oft gar nicht zutraf. ?>
-  <p class="warn" data-push-denied hidden><?= e(t('prof_push_denied')) ?></p>
+  <?php // „Blockiert" hat zwei Ursachen, und die zweite ist die unsichtbare:
+        // Ist im Browser der Hauptschalter aus, kommt weder ein Fenster noch
+        // ein Glockensymbol, und die Freigabe je Seite steht gar nicht erst zur
+        // Wahl. Wer dann nur zum Schloss-Symbol geschickt wird, sucht dort
+        // vergeblich. Deshalb stehen beide Wege da, der wahrscheinlichere zuerst. ?>
+  <div class="warn" data-push-denied hidden>
+    <strong><?= e(t('prof_push_denied')) ?></strong>
+    <ul class="task-list">
+      <li><?= e(t('prof_push_denied_site')) ?></li>
+      <li><?= e(t('prof_push_denied_all')) ?></li>
+      <li><?= e(t('prof_push_denied_os')) ?></li>
+    </ul>
+  </div>
   <p class="warn" data-push-open hidden><?= e(t('prof_push_open')) ?></p>
   <p class="warn" data-push-failed hidden><?= e(t('prof_push_failed')) ?></p>
 </details>

@@ -765,8 +765,11 @@ Zeile zwei
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
   'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
-  'prof_push_denied' => 'Der Browser blockiert Mitteilungen für diese Seite. Von hier aus lässt sich das nicht ändern: In der Adressleiste auf das Schloss- oder Info-Symbol tippen, dort Mitteilungen auf „Zulassen" stellen und die Seite neu laden.',
-  'prof_push_open' => 'Die Frage nach der Erlaubnis wurde nicht beantwortet. Chrome und Edge zeigen sie oft nicht mehr als Fenster, sondern nur als kleines Glockensymbol rechts in der Adressleiste — dort antragen und zulassen. Danach hier noch einmal aktivieren.',
+  'prof_push_denied' => 'Der Browser lehnt Mitteilungen ab. Von hier aus lässt sich das nicht ändern — und es kann an zwei Stellen liegen.',
+  'prof_push_denied_site' => 'Für diese Seite: in der Adressleiste auf das Schloss- oder Info-Symbol, dort Mitteilungen auf „Zulassen", Seite neu laden.',
+  'prof_push_denied_all' => 'Für alle Seiten: Kam nie eine Frage und ist auch kein Glockensymbol zu sehen, ist im Browser der Hauptschalter aus. In Edge unter edge://settings/content/notifications, in Chrome unter chrome://settings/content/notifications — „Vor dem Senden nachfragen" muss an sein. Solange er aus ist, wird jede Anfrage still abgelehnt, und die Freigabe je Seite steht gar nicht zur Wahl.',
+  'prof_push_denied_os' => 'Bleibt es dabei: In den Windows-Einstellungen unter „System → Benachrichtigungen" muss der Browser selbst Mitteilungen zeigen dürfen.',
+  'prof_push_open' => 'Die Frage nach der Erlaubnis wurde nicht beantwortet. Chrome und Edge zeigen sie oft nicht mehr als Fenster, sondern nur als kleines Glockensymbol rechts in der Adressleiste — dort antippen und zulassen. Danach hier noch einmal aktivieren.',
   'prof_push_failed' => 'Das Abo ließ sich nicht anlegen. Erlaubnis steht, es hakt woanders — neu laden und noch einmal versuchen.',
   'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
   'push_ev_title' => 'Neuer Termin',
@@ -1960,9 +1963,9 @@ if (setting('tax_texts_2026_08') !== '1') {
 // hat, bleibt: Ein Name, den man vergeben hat, gehört einem.
 // Eine Meldung für drei Ursachen nannte oft die falsche: „blockiert" stand
 // auch dann da, wenn der Browser gar nicht gefragt hatte. Der Text ist ersetzt.
-if (setting('push_reasons_text') !== '1') {
+if (setting('push_reasons_text') !== '2') {
   q("DELETE FROM translations WHERE tkey = 'prof_push_denied'");
-  set_setting('push_reasons_text', '1');
+  set_setting('push_reasons_text', '2');
 }
 if (setting('passkey_relabel') !== '1') {
   foreach (rows("SELECT id, label, aaguid FROM passkeys WHERE aaguid <> ''") as $pkRow) {
