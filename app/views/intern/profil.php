@@ -65,7 +65,11 @@
       // schon eingetragenen Geräte stehen trotzdem, damit sie sich auch von
       // einem Rechner aus entfernen lassen, der selbst keinen anlegen kann. ?>
 <?php if (passkey_available()): ?>
-  <?php $meinePasskeys = passkey_list((int) $me['id']); ?>
+  <?php // $profile, nicht $me: Ansichten bekommen von view() den angemeldeten
+        // Menschen als $user und die Daten dieser Seite als $profile — $me gibt
+        // es nur im Front Controller. Mit $me schlug die Liste Mitglied 0 nach
+        // und blieb still leer, obwohl der Passkey längst eingetragen war. ?>
+  <?php $meinePasskeys = passkey_list((int) $profile['id']); ?>
   <details class="card acc" name="profilacc">
     <summary>🔐 <?= e(t('prof_passkeys')) ?></summary>
     <p class="muted small"><?= e(t('prof_passkeys_hint')) ?></p>
@@ -75,8 +79,11 @@
           <li>
             <strong><?= e($pk['label']) ?></strong>
             <span class="muted small">
-              <?= e(sprintf(t('pk_added'), fmt_date($pk['created_at']))) ?>
-              · <?= e($pk['last_used_at'] ? sprintf(t('pk_last_used'), fmt_date($pk['last_used_at'])) : t('pk_never_used')) ?>
+              <?php // str_replace und nicht sprintf: Die Texte hier tragen %1 wie
+                    // die Mitteilungen, und %1 ist für sprintf kein Platzhalter —
+                    // PHP 8 bricht daran ab, mitten in der Seite. ?>
+              <?= e(str_replace('%1', fmt_date($pk['created_at']), t('pk_added'))) ?>
+              · <?= e($pk['last_used_at'] ? str_replace('%1', fmt_date($pk['last_used_at']), t('pk_last_used')) : t('pk_never_used')) ?>
             </span>
             <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/delete"
                   data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
