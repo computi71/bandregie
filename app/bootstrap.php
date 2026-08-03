@@ -380,7 +380,7 @@ const UI_STRINGS = [
   'help_themen' => 'Diskussionen in Ruhe, ohne dass etwas im Chat untergeht.',
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
-  'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult.',
+  'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult. Der Bühnenplan ist maßstäblich: Vorgabe sind 8 × 6 m, und alles mit echtem Grundriss — Podeste, Verstärker, Monitore, Boxen — wird in seinem Maß gezeichnet. Daran sieht ein Veranstalter, ob die Band auf seine Bühne passt. „Aus der Mitgliederliste erzeugen" stellt eine Vorlage auf: Schlagzeug hinten Mitte auf einem Podest von 3 × 2 m, Bass hinten links, Gesang vorne, dazu Strom und Stagebox. Danach lässt sich alles verschieben oder über die Zahlenfelder eintragen. Wer im Profil „Ich stehe auf der Bühne" aushakt, wird nicht aufgestellt — dort gehört die Technik hin. Welche Figur ein Mitglied im Plan bekommt, wählt es selbst im Profil; mit „Mein Foto" steht dort das Profilbild.',
   'help_fotos' => 'Bilder für die öffentliche Seite und fürs Archiv. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit vor, zu welchem Termin ein Foto gehört — zugeordnet wird erst auf Klick. Aus der gespeicherten Datei werden diese Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
@@ -2294,6 +2294,13 @@ if (setting('push_help_fixed') !== '1') {
 if (setting('help_equipment_quantity') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_equipment'");
   set_setting('help_equipment_quantity', '1');
+}
+// Die Hilfe zum Rider beschrieb den Bühnenplan von vor dem Maßstab (#186):
+// keine Vorlage, keine Podestgröße, keine Figuren. Derselbe Handgriff wie oben —
+// ein Seed ergänzt nur Fehlendes, die alte Fassung muss deshalb weichen.
+if (setting('help_rider_stageplot') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_rider'");
+  set_setting('help_rider_stageplot', '1');
 }
 if (setting('tax_texts_2026_08') !== '1') {
   q("DELETE FROM translations WHERE tkey IN
