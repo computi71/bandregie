@@ -88,17 +88,15 @@ $vbT  = $flT + 2 * $rand;
                 // Schlagzeuger, und zwei Texte übereinander liest niemand.
                 //
                 //
-                // Die Notiz kommt in die untere Ecke, nicht unter das Podest:
-                // Dort steht die Beschriftung des Schlagzeugs, das darauf
-                // aufgebaut ist, und zwei Zeilen aus zwei Dingen lesen sich wie
-                // eine. Beide Texte links am Rand, denn in der Mitte stehen der
-                // Schlagzeuger und sein Set. $notizVerbraucht sorgt dafür, dass
-                // der gemeinsame Block die Notiz nicht ein zweites Mal setzt. ?>
-          <?php $notizVerbraucht = ($it['note'] ?? '') !== ''; ?>
+                // Auf dem Podest steht nur sein Maß — das ist, was ein
+                // Veranstalter nachmisst. Die Notiz wird hier nicht gezeichnet:
+                // Unter dem Podest steht schon die Beschriftung des Schlagzeugs,
+                // das darauf aufgebaut ist, und in der Fläche stehen der
+                // Schlagzeuger und sein Set. Aus wie vielen Modulen das Podest
+                // gebaut wird, ist eine Angabe für den Aufbau und steht in der
+                // Zeile unter dem Plan, wo sie sich auch ändern lässt. ?>
+          <?php $notizVerbraucht = true; ?>
           <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round(-$tf / 2 + 17, 1) ?>" font-size="14" fill="<?= $stroke ?>" opacity="0.6"><?= rtrim(rtrim(number_format($bCm / 100, 2, ',', ''), '0'), ',') ?> × <?= rtrim(rtrim(number_format($tCm / 100, 2, ',', ''), '0'), ',') ?> m</text>
-          <?php if ($notizVerbraucht): ?>
-            <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round($tf / 2 - 8, 1) ?>" font-size="12" fill="<?= $stroke ?>" opacity="0.55"><?= e($it['note']) ?></text>
-          <?php endif; ?>
 
         <?php elseif ($it['kind'] === 'musiker'): ?>
           <?php
