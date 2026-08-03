@@ -126,6 +126,9 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
         <img class="eq-thumb" src="/intern/datei/<?= (int) $eqThumb['id'] ?>" alt="" loading="lazy">
       <?php endif; ?>
       <strong><?= e($eq['name']) ?></strong>
+      <?php // Nur ab zwei Stück, und knapp: „1 Stück" an hundert Zeilen wäre
+            // Lärm, und „10 Stück" braucht in einer Liste kein Wort (#185). ?>
+      <?php if ((int) ($eq['quantity'] ?? 1) > 1): ?><span class="badge">×<?= (int) $eq['quantity'] ?></span><?php endif; ?>
       <?php if (!empty($eq['disposed_on'])): ?><span class="badge">📦 <?= e(sprintf(t('eqb_disposed_on'), fmt_date($eq['disposed_on']))) ?></span><?php endif; ?>
       <?php if ($eq['is_standard'] && empty($eq['disposed_on'])): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
       <span class="muted"><?= e(t('eq_owner')) ?>: <?= e($eq['owner_name'] ?: t('eq_owner_band')) ?></span>

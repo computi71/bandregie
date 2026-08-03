@@ -5,7 +5,7 @@
 // zwei Fassungen auseinanderlaufen.
 ?>
 <div class="page-head">
-  <h1>🎛 <?= e($detailEq['name']) ?></h1>
+  <h1>🎛 <?= e($detailEq['name']) ?><?php if ($detailQty = eq_quantity_label($detailEq)): ?> <span class="muted">· <?= e($detailQty) ?></span><?php endif; ?></h1>
   <div class="row-buttons">
     <a class="btn btn-ghost btn-small" href="/intern/equipment">← <?= e(t('inav_equipment')) ?></a>
   </div>

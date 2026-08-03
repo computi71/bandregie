@@ -52,6 +52,12 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
           // hier. Die Nummer gilt je Gerät, die Rechnung wird nur ausgewählt —
           // erfasst wird sie einmal in der Rechnungsliste. ?>
     <label><?= e(t('inv_article_no')) ?><input name="article_no" value="<?= e($formEq['article_no'] ?? '') ?>" <?= $eqLock ?>></label>
+    <?php // Menge nur für Kleinteile und Meterware. Echte Geräte bleiben bei 1
+          // und bekommen je Stück ihren eigenen Eintrag (#185). ?>
+    <label><?= e(t('eq_quantity')) ?>
+      <input name="quantity" inputmode="numeric" value="<?= (int) ($formEq['quantity'] ?? 1) ?>" <?= $eqLock ?>>
+      <span class="muted small"><?= e(t('eq_quantity_hint')) ?></span>
+    </label>
     <label><?= e(t('inv_pick')) ?>
       <select name="invoice_id" <?= $eqLock ?>>
         <option value=""><?= e(t('inv_pick_none')) ?></option>

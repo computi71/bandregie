@@ -379,7 +379,7 @@ const UI_STRINGS = [
   'help_aufgaben' => 'Was ansteht und wer es macht.',
   'help_themen' => 'Diskussionen in Ruhe, ohne dass etwas im Chat untergeht.',
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
-  'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen.',
+  'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult.',
   'help_fotos' => 'Bilder für die öffentliche Seite und fürs Archiv. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit vor, zu welchem Termin ein Foto gehört — zugeordnet wird erst auf Klick. Aus der gespeicherten Datei werden diese Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
@@ -1091,6 +1091,9 @@ Gitarre: vorne rechts",
   'fl_eq_reactivated' => 'Gerät ist wieder im Bestand.',
   'fl_eq_book_needs_price' => 'Ohne Kaufpreis lässt sich nichts buchen.',
   'fl_eq_booked_already' => 'Dieser Kauf ist bereits gebucht.',
+  'eq_quantity' => 'Menge',
+  'eq_quantity_hint' => 'Nur für Kleinteile und Meterware — zehn XLR-Tüllen sind keine zehn Einträge. Echte Geräte bleiben bei 1 und bekommen je Stück ihren eigenen Eintrag: Ein Mikrofon wird einzeln getragen, verliehen und vermisst.',
+  'eq_quantity_n' => '%1 Stück',
   'eq_split' => 'In einzelne Geräte aufteilen',
   'eq_split_found' => '(sieht nach %d Stück aus)',
   'eq_split_hint' => 'Steht diese Zeile für mehrere gleiche Geräte, macht das daraus durchnummerierte Einzelgeräte — jedes mit eigenem Preis, eigener Frist und eigenem Häkchen auf der Packliste. Die Stückzahl im Namen entfällt dabei.',
@@ -1740,6 +1743,11 @@ foreach ([
   // Der Beleg, auf dem dieses Gerät steht. Mehrere Geräte zeigen auf dieselbe
   // Rechnung — genau darum ist sie eine eigene Zeile.
   'invoice_id'    => 'INT NULL',
+  // Wie viele Stück dieser Eintrag zählt. Für Kleinteile und Meterware: Zehn
+  // XLR-Tüllen sind keine zehn Inventarzeilen. Echte Geräte bleiben bei 1 und
+  // bekommen je Stück ihren eigenen Eintrag — ein Mikrofon wird einzeln
+  // getragen, verliehen und vermisst (#185).
+  'quantity'      => 'INT NOT NULL DEFAULT 1',
 ] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
@@ -2043,6 +2051,23 @@ if (setting('names_split') !== '1') {
   }
   set_setting('names_split', '1');
 }
+// Die Menge stand im Namen: „Neutrik NC3 FXX (10x)" (#185). Beim Übernehmen der
+// Händlerbestellungen ist sie dort gelandet, weil es kein Feld dafür gab. Eine
+// Zahl im Anzeigenamen lässt sich nicht filtern, summieren oder korrigieren —
+// sie gehört in eine Spalte. Nur Einträge mit Menge 1 werden angefasst, damit
+// ein von Hand gesetzter Wert nicht überschrieben wird.
+if (setting('eq_quantity_from_name') !== '1' && column_exists('equipment', 'quantity')) {
+  foreach (rows("SELECT id, name FROM equipment WHERE quantity = 1 AND name REGEXP '\\\\([0-9]+x\\\\)'") as $eqQ) {
+    if (!preg_match('~^(.*?)\s*\((\d+)x\)\s*$~', (string) $eqQ['name'], $eqM)) continue;
+    $menge = (int) $eqM[2];
+    $rest  = trim($eqM[1]);
+    // Ein „(2x)" mitten im Namen gehört zum Produkt („Kabel 2x XLR") und bleibt,
+    // wo es ist; nur das Zählsuffix am Ende wandert.
+    if ($menge < 2 || $rest === '') continue;
+    q('UPDATE equipment SET name = ?, quantity = ? WHERE id = ?', [$rest, $menge, (int) $eqQ['id']]);
+  }
+  set_setting('eq_quantity_from_name', '1');
+}
 if (setting('ical_token') === '') set_setting('ical_token', bin2hex(random_bytes(16)));
 if (setting('downloads_token') === '') set_setting('downloads_token', bin2hex(random_bytes(16)));
 if (setting('downloads_mode') === '') set_setting('downloads_mode', 'token');
@@ -2127,6 +2152,14 @@ if (setting('push_help_fixed') !== '1') {
 // auch ohne Vorsteuerabzug, die Nutzungsdauer steht jetzt je Geräteart, und der
 // Verkauf eines Geräts zählt nach § 19 Abs. 2 Satz 2 UStG nicht zum Umsatz. Ein
 // Seed ergänzt nur Fehlendes und käme an die alten Fassungen nicht heran.
+// Die Hilfe zum Inventar sagte nichts darüber, wann eine Zeile für ein Gerät
+// steht und wann für zehn Kleinteile (#185). Der Text in Seed 29 ist ergänzt,
+// aber ein Seed ergänzt nur Fehlendes — die alte Fassung muss weg, sonst bleibt
+// sie stehen und beschreibt die Hälfte.
+if (setting('help_equipment_quantity') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_equipment'");
+  set_setting('help_equipment_quantity', '1');
+}
 if (setting('tax_texts_2026_08') !== '1') {
   q("DELETE FROM translations WHERE tkey IN
      ('set_tax_gwg_hint','set_tax_afa_hint','help_tax_gwg','tax_counts_hint')");
@@ -3445,12 +3478,16 @@ function eq_may_edit_owner_fields(?array $eq, ?array $user): bool {
 }
 
 /**
- * Steckt in Name oder Steckplatz eine Stückzahl („4×", „(2×)")? Beim Import
- * aus einer Liste landet die Menge oft im Text, und dann steht eine Zeile für
- * vier Kabel. Der Fund ist nur ein Vorschlag für das Formular — aufgeteilt
- * wird erst, wenn jemand es bestätigt. „4x4 Case" ist keine Stückzahl.
+ * Für wie viele Stück steht diese Zeile? Zuerst zählt die Spalte `quantity` —
+ * eine gepflegte Angabe schlägt jede Textsuche. Erst wenn dort 1 steht, wird im
+ * Text nachgesehen: Beim Import aus einer Liste landet die Menge oft im Namen
+ * („4×", „(2×)"), und dann steht eine Zeile für vier Kabel. Der Fund ist nur
+ * ein Vorschlag für das Formular — aufgeteilt wird erst, wenn jemand es
+ * bestätigt. „4x4 Case" ist keine Stückzahl.
  */
 function eq_quantity_hint(array $eq): ?int {
+  $gepflegt = (int) ($eq['quantity'] ?? 1);
+  if ($gepflegt > 1 && $gepflegt <= 99) return $gepflegt;
   foreach ([(string) ($eq['slot'] ?? ''), (string) ($eq['name'] ?? '')] as $text) {
     if (preg_match(EQ_QUANTITY_RE, trim($text), $m)) {
       $n = (int) $m[1];
@@ -3463,6 +3500,22 @@ function eq_quantity_hint(array $eq): ?int {
 /** Die Stückzahl aus einem Text entfernen — sie steht danach in eigenen Zeilen. */
 function eq_strip_quantity(string $text): string {
   return trim(preg_replace(EQ_QUANTITY_RE, '', trim($text)) ?? $text);
+}
+
+/**
+ * Die eingegebene Menge auf etwas Sinnvolles bringen. Mindestens 1, denn eine
+ * Zeile über null Stück ist keine; die Obergrenze hält Zahlendreher aus dem
+ * Bestand heraus. Leer heißt 1 und nicht 0 — sonst verschwände ein Gerät aus
+ * dem Bestand, nur weil jemand das Feld geleert hat.
+ */
+function eq_quantity_input(mixed $eingabe): int {
+  return min(9999, max(1, (int) $eingabe));
+}
+
+/** „10 Stück" für die Anzeige — bei einem Stück steht da nichts. */
+function eq_quantity_label(array $eq): string {
+  $n = (int) ($eq['quantity'] ?? 1);
+  return $n > 1 ? str_replace('%1', (string) $n, t('eq_quantity_n')) : '';
 }
 
 /**

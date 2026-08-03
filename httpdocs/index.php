@@ -2017,7 +2017,7 @@ if (str_starts_with($path, '/intern')) {
       $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
       $name  = trim($_POST['name']);
       for ($i = 1; $i <= $count; $i++) {
-        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id, quantity) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
           $count > 1 ? $name . ' #' . $i : $name,
           array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
           $ownerId,
@@ -2034,6 +2034,7 @@ if (str_starts_with($path, '/intern')) {
           // Nur ein Beleg, den dieser Mensch auch sehen darf — sonst haengte
           // sich ein Geraet an eine fremde Privatrechnung.
           eq_invoice_input($_POST['invoice_id'] ?? null, $me),
+          eq_quantity_input($_POST['quantity'] ?? null),
         ]);
       }
       flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
@@ -2142,14 +2143,15 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_eq_split_impossible'));
       redirect('/intern/equipment');
     }
-    // Die Stückzahl verschwindet aus Name und Steckplatz — sie steht jetzt
-    // in der Zahl der Zeilen. Der Preis war der eines Geräts und bleibt es.
+    // Die Stückzahl verschwindet aus Name, Steckplatz und Mengenfeld — sie steht
+    // jetzt in der Zahl der Zeilen. Der Preis war der eines Geräts und bleibt es.
     $baseName = eq_strip_quantity((string) $eq['name']);
     $baseSlot = eq_strip_quantity((string) $eq['slot']);
-    q('UPDATE equipment SET name = ?, slot = ? WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    $neue = [];
     for ($i = 2; $i <= $count; $i++) {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id, quantity)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)', [
         $baseName . ' #' . $i, $eq['category'], $eq['owner_id'], $eq['location'],
         $eq['is_standard'], $eq['notes'], $eq['parent_id'], $baseSlot,
         // Zehn aufgeteilte Kabel kamen aus derselben Bestellung: Datum, Preis
@@ -2157,6 +2159,18 @@ if (str_starts_with($path, '/intern')) {
         $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'], $eq['acquired_as'],
         $eq['article_no'], $eq['invoice_id'],
       ]);
+      $neue[] = (int) $db->lastInsertId();
+    }
+    // Das Foto gehört jedem Stück: gleiche Datei, eigene Zeile — wie beim
+    // Übernehmen eines vorhandenen Bildes (#184). Ohne das stünden neun der zehn
+    // aufgeteilten Zeilen ohne Bild in der Liste.
+    foreach (rows("SELECT * FROM files WHERE entity_type = 'equipment' AND entity_id = ?", [$m[1]]) as $eqFile) {
+      if (!in_array(strtolower(pathinfo($eqFile['original_name'], PATHINFO_EXTENSION)),
+            ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) continue;
+      foreach ($neue as $neuId) {
+        q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
+          ['equipment', (int) $neuId, $eqFile['filename'], $eqFile['original_name'], (int) $eqFile['size'], $me['id']]);
+      }
     }
     flash(sprintf(t('fl_eq_split'), $count));
     redirect('/intern/equipment');
@@ -2186,7 +2200,7 @@ if (str_starts_with($path, '/intern')) {
         ? ((int) ($_POST['owner_id'] ?? 0) ?: null)
         : ($eqBefore['owner_id'] !== null ? (int) $eqBefore['owner_id'] : null);
       [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=?, article_no=?, invoice_id=? WHERE id=?', [
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=?, article_no=?, invoice_id=?, quantity=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         $ownerId,
@@ -2207,6 +2221,9 @@ if (str_starts_with($path, '/intern')) {
           : (string) $eqBefore['acquired_as'],
         $mayOwn ? trim((string) ($_POST['article_no'] ?? '')) : (string) $eqBefore['article_no'],
         $mayOwn ? eq_invoice_input($_POST['invoice_id'] ?? null, $me) : ($eqBefore['invoice_id'] !== null ? (int) $eqBefore['invoice_id'] : null),
+        // Die Menge steht nicht hinter der Preisschranke: Wie viele Kabel im
+        // Koffer liegen, gehört zum Bestand und nicht zum Kaufpreis.
+        eq_quantity_input($_POST['quantity'] ?? null),
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit —
