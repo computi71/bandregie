@@ -518,6 +518,17 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 /* Die Links stehen im <details> und sind damit keine Flex-Kinder mehr */
 .site-header nav .nav-group a { display: block; padding-left: 1.5rem; }
 
+/* Zeichen vor den Menüpunkten. Feste Breite, weil Emoji unterschiedlich breit
+   sind — ohne sie fängt jede Beschriftung an einer anderen Stelle an, und eine
+   Spalte aus siebzehn Zeilen sieht ausgefranst aus. Die Sperrung und die
+   Großschreibung der Gruppenüberschrift gelten hier nicht: Beides wirkt auf
+   Emoji nicht, schiebt sie aber unnötig weit vom Wort weg. */
+.nav-icon {
+  display: inline-block; width: 1.4em; margin-right: 0.4em;
+  text-align: center; letter-spacing: normal; text-transform: none;
+  font-style: normal; flex: 0 0 auto;
+}
+
 /* Der nachgeladene Bearbeiten-Block: bis er da ist, steht dort nur der Knopf,
    der ohne JavaScript auf dieselbe Seite führt. */
 .eq-detail { margin-top: 0.6rem; }

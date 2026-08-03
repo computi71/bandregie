@@ -98,41 +98,53 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
         // Der Bandbereich hat inzwischen 17 Seiten. Als flache Liste war das
         // eine Wand aus gleichwertigen Zeilen; nach Themen gruppiert findet
         // man wieder etwas. Die Übersicht bleibt als Einstieg oben stehen.
+        // Jeder Eintrag trägt sein Zeichen, wie die Hilfe es schon tat: In einer
+        // Spalte aus siebzehn ähnlich langen Wörtern findet das Auge die Zeile
+        // am Bild schneller als am Text — besonders auf dem Handy, wo das Menü
+        // über den halben Bildschirm läuft.
+        //
+        // Wo die Seite selbst schon ein Zeichen im Titel führt, steht hier
+        // dasselbe; sonst hätte dieselbe Sache zwei Gesichter. Die Gruppen
+        // bekommen bewusst Zeichen aus einer anderen Familie — Ordner, Kasten,
+        // Stecker —, damit Überschrift und Eintrag nicht gleich aussehen.
+        // Zeichen und Beschriftung stehen getrennt und nicht als ein Text: Sonst
+        // steckt Darstellung im Schlüssel eines Feldes, und zwei Gruppen mit
+        // gleicher Beschriftung würden sich überschreiben.
         $navGroups = [
-          t('inavg_planung')  => [
-            '/intern/termine' => t('inav_termine'),
-            '/intern/abwesenheiten' => t('inav_abwesenheiten'),
-            '/intern/aufgaben' => t('inav_aufgaben'),
-            '/intern/themen' => t('inav_themen'),
-            '/intern/orte' => t('inav_orte'),
-          ],
-          t('inavg_musik')    => [
-            '/intern/songs' => t('inav_songs'),
-            '/intern/setlists' => t('inav_setlists'),
-          ],
-          t('inavg_technik')  => [
-            '/intern/equipment' => t('inav_equipment'),
-            '/intern/stagerider' => t('inav_rider'),
-            '/intern/kanaele' => t('inav_kanaele'),
-          ],
-          t('inavg_material') => [
-            '/intern/fotos' => t('inav_fotos'),
-            '/intern/musik' => t('inav_musik'),
-            '/intern/downloads' => t('inav_downloads'),
-          ],
-          t('inavg_band')     => [
-            '/intern/kasse' => t('inav_kasse'),
-            '/intern/mitglieder' => t('inav_mitglieder'),
-          ],
-          t('inavg_konto')    => array_filter([
-            '/intern/profil' => t('inav_profil'),
-            '/intern/ueber' => t('inav_ueber'),
-            '/intern/einstellungen' => $user['role'] === 'admin' ? t('inav_einstellungen') : null,
-          ]),
+          ['🗂', t('inavg_planung'), [
+            '/intern/termine' => ['📅', t('inav_termine')],
+            '/intern/abwesenheiten' => ['🏖', t('inav_abwesenheiten')],
+            '/intern/aufgaben' => ['✅', t('inav_aufgaben')],
+            '/intern/themen' => ['💬', t('inav_themen')],
+            '/intern/orte' => ['📍', t('inav_orte')],
+          ]],
+          ['🎼', t('inavg_musik'), [
+            '/intern/songs' => ['🎵', t('inav_songs')],
+            '/intern/setlists' => ['🎤', t('inav_setlists')],
+          ]],
+          ['🔌', t('inavg_technik'), [
+            '/intern/equipment' => ['🎛', t('inav_equipment')],
+            '/intern/stagerider' => ['📋', t('inav_rider')],
+            '/intern/kanaele' => ['🎚', t('inav_kanaele')],
+          ]],
+          ['📦', t('inavg_material'), [
+            '/intern/fotos' => ['📷', t('inav_fotos')],
+            '/intern/musik' => ['🎬', t('inav_musik')],
+            '/intern/downloads' => ['⬇', t('inav_downloads')],
+          ]],
+          ['🎸', t('inavg_band'), [
+            '/intern/kasse' => ['💰', t('inav_kasse')],
+            '/intern/mitglieder' => ['👥', t('inav_mitglieder')],
+          ]],
+          ['🔑', t('inavg_konto'), array_filter([
+            '/intern/profil' => ['👤', t('inav_profil')],
+            '/intern/ueber' => ['ℹ️', t('inav_ueber')],
+            '/intern/einstellungen' => $user['role'] === 'admin' ? ['⚙️', t('inav_einstellungen')] : null,
+          ])],
         ];
       ?>
-      <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><?= e(t('inav_uebersicht')) ?></a>
-      <?php foreach ($navGroups as $groupLabel => $groupItems): ?>
+      <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><span class="nav-icon">🏠</span><?= e(t('inav_uebersicht')) ?></a>
+      <?php foreach ($navGroups as [$groupIcon, $groupLabel, $groupItems]): ?>
         <?php
           // Was jemand nicht sehen darf, steht auch nicht im Menü — sonst
           // führt jeder zweite Eintrag nur auf eine Absage.
@@ -148,9 +160,9 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           }
         ?>
         <details class="nav-group <?= $groupActive ? 'has-active' : '' ?>" <?= $groupActive ? 'open' : '' ?>>
-          <summary><?= e($groupLabel) ?></summary>
-          <?php foreach ($groupItems as $itemPath => $itemLabel): ?>
-            <a href="<?= e($itemPath) ?>" class="<?= str_starts_with($path, $itemPath) ? 'active' : '' ?>"><?= e($itemLabel) ?></a>
+          <summary><span class="nav-icon"><?= $groupIcon ?></span><?= e($groupLabel) ?></summary>
+          <?php foreach ($groupItems as $itemPath => [$itemIcon, $itemLabel]): ?>
+            <a href="<?= e($itemPath) ?>" class="<?= str_starts_with($path, $itemPath) ? 'active' : '' ?>"><span class="nav-icon"><?= $itemIcon ?></span><?= e($itemLabel) ?></a>
           <?php endforeach; ?>
         </details>
       <?php endforeach; ?>
@@ -158,7 +170,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             // zwei Klicks zu finden — gesucht wird sie aber in dem Moment, in
             // dem etwas unklar ist. Deshalb steht sie offen im Menü, unten,
             // wo sie die Arbeitsbereiche nicht nach unten schiebt. ?>
-      <a href="/intern/hilfe" class="<?= str_starts_with($path, '/intern/hilfe') ? 'active' : '' ?>">❓ <?= e(t('inav_hilfe')) ?></a>
+      <a href="/intern/hilfe" class="<?= str_starts_with($path, '/intern/hilfe') ? 'active' : '' ?>"><span class="nav-icon">❓</span><?= e(t('inav_hilfe')) ?></a>
     <?php else: ?>
       <a href="/" class="<?= $path === '/' ? 'active' : '' ?>"><?= e(t('nav_start')) ?></a>
       <a href="/termine" class="<?= $path === '/termine' ? 'active' : '' ?>"><?= e(t('nav_termine')) ?></a>
