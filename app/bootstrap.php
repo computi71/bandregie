@@ -957,6 +957,8 @@ Zeile zwei
   'stage_size_default' => 'leer = übliches Maß',
   'stage_scale_hint' => 'Podeste, Verstärker, Monitore und Boxen werden maßstäblich gezeichnet. Ein Podest ist üblicherweise 2 × 1 m; drei davon nebeneinander ergeben die 3 × 2 m, auf denen das Schlagzeug steht. Wer ein anderes Maß hat, trägt es ein.',
   'stage_figure' => 'Figur im Bühnenplan',
+  'stage_guest' => 'Name (Gast ohne Konto)',
+  'stage_label_opt' => 'bei einem Mitglied nicht nötig',
   'stage_figure_auto' => 'Foto, wenn eines da ist',
   'stage_figure_neutral' => 'Neutral',
   'stage_figure_w' => 'Weiblich',

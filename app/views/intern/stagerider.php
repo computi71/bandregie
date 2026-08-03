@@ -39,7 +39,24 @@
                   <option value="<?= $k ?>" <?= $si['kind'] === $k ? 'selected' : '' ?>><?= e(t('stagekind_' . $k)) ?></option>
                 <?php endforeach; ?>
               </select>
-              <input name="item[<?= $si['id'] ?>][label]" value="<?= e($si['label']) ?>" aria-label="<?= e(t('stage_label')) ?>">
+              <?php // Bei Menschen steht an zweiter Stelle das Mitglied und nicht ein
+                    // getippter Name: Der Name kommt aus dem Profil, und ein Feld
+                    // daneben wäre eine zweite Wahrheit. Ein Namensfeld gibt es nur,
+                    // solange kein Mitglied gewählt ist — für Gäste ohne Konto. ?>
+              <?php if ($si['kind'] === 'musiker'): ?>
+                <select name="item[<?= $si['id'] ?>][user_id]" aria-label="<?= e(t('stage_member')) ?>">
+                  <option value=""><?= e(t('stage_member_none')) ?></option>
+                  <?php foreach ($stageMembers as $sm): ?>
+                    <option value="<?= (int) $sm['id'] ?>" <?= (int) ($si['user_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>><?= e($sm['name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (!($si['user_id'] ?? null)): ?>
+                  <input name="item[<?= $si['id'] ?>][label]" value="<?= e($si['label']) ?>" placeholder="<?= e(t('stage_guest')) ?>" aria-label="<?= e(t('stage_guest')) ?>">
+                <?php endif; ?>
+              <?php else: ?>
+                <input name="item[<?= $si['id'] ?>][label]" value="<?= e($si['label']) ?>" aria-label="<?= e(t('stage_label')) ?>">
+                <input type="hidden" name="item[<?= $si['id'] ?>][user_id]" value="<?= (int) ($si['user_id'] ?? 0) ?>">
+              <?php endif; ?>
               <input name="item[<?= $si['id'] ?>][note]" value="<?= e($si['note']) ?>" placeholder="<?= e(t('stage_note')) ?>" aria-label="<?= e(t('stage_note')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][x]" value="<?= (int) $si['x'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_x')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][y]" value="<?= (int) $si['y'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_y')) ?>">
@@ -50,17 +67,6 @@
                      min="0" max="2000" class="stage-num" placeholder="<?= e(t('stage_w')) ?>" aria-label="<?= e(t('stage_w')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][depth_cm]" value="<?= $si['depth_cm'] !== null ? (int) $si['depth_cm'] : '' ?>"
                      min="0" max="2000" class="stage-num" placeholder="<?= e(t('stage_d')) ?>" aria-label="<?= e(t('stage_d')) ?>">
-              <?php // Nur bei Menschen: Der Verweis holt Figur und Foto. ?>
-              <?php if ($si['kind'] === 'musiker'): ?>
-                <select name="item[<?= $si['id'] ?>][user_id]" aria-label="<?= e(t('stage_member')) ?>">
-                  <option value=""><?= e(t('stage_member_none')) ?></option>
-                  <?php foreach ($stageMembers as $sm): ?>
-                    <option value="<?= (int) $sm['id'] ?>" <?= (int) ($si['user_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>><?= e($sm['name']) ?></option>
-                  <?php endforeach; ?>
-                </select>
-              <?php else: ?>
-                <input type="hidden" name="item[<?= $si['id'] ?>][user_id]" value="<?= (int) ($si['user_id'] ?? 0) ?>">
-              <?php endif; ?>
               <?php // Ein eigenes Formular je Zeile wäre verschachtelt und damit
                     // ungültig — der Knopf schickt stattdessen seine Kennung mit. ?>
               <button class="btn btn-tiny btn-danger" name="remove" value="<?= $si['id'] ?>"
@@ -81,7 +87,10 @@
             <?php foreach (array_keys(STAGE_KINDS) as $k): ?><option value="<?= $k ?>"><?= e(t('stagekind_' . $k)) ?></option><?php endforeach; ?>
           </select>
         </label>
-        <label><?= e(t('stage_label')) ?><input name="label" required></label>
+        <?php // Nicht mehr verlangt: Bei einem Menschen kommt der Name vom
+              // gewählten Mitglied, und ein Pflichtfeld, dessen Inhalt beim
+              // Speichern verworfen wird, ist eine Zumutung (#187). ?>
+        <label><?= e(t('stage_label')) ?><input name="label" placeholder="<?= e(t('stage_label_opt')) ?>"></label>
         <label><?= e(t('stage_note')) ?><input name="note"></label>
         <label><?= e(t('stage_x')) ?><input type="number" name="x" min="0" max="100" value="50"></label>
         <label><?= e(t('stage_y')) ?><input type="number" name="y" min="0" max="100" value="50"></label>
