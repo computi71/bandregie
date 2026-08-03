@@ -980,6 +980,10 @@ Gitarre: vorne rechts",
   // Equipment
   'inav_equipment' => 'Equipment',
   'eq_new' => 'Neues Equipment', 'eq_cat' => 'Kategorie',
+  'eq_acquired' => 'Angeschafft als',
+  'eq_acquired_unknown' => 'nicht erfasst',
+  'eq_acq_neu' => 'Neu', 'eq_acq_bware' => 'B-Ware', 'eq_acq_gebraucht' => 'Gebraucht',
+  'eq_acquired_hint' => 'B-Ware sind geöffnete Rückläufer und Vorführgeräte — neuwertig, aber eben nicht neu. Der Unterschied zählt beim Wiederverkauf und bei der Abschreibung: Ein gebraucht gekauftes Gerät hat eine kürzere Restnutzungsdauer als ein fabrikneues.',
   'eqcat_instrument' => 'Instrument', 'eqcat_pa' => 'PA/Ton', 'eqcat_licht' => 'Licht',
   'eqcat_transport' => 'Transport', 'eqcat_sonstiges' => 'Sonstiges',
   'eq_owner' => 'Gehört', 'eq_owner_band' => 'Band', 'eq_location' => 'Lagerort',
@@ -1217,6 +1221,20 @@ const EQ_CATEGORIES = [
   'instrument' => 'Instrument', 'pa' => 'PA/Ton', 'licht' => 'Licht',
   'transport' => 'Transport', 'sonstiges' => 'Sonstiges',
 ];
+
+/**
+ * In welchem Zustand ein Gerät angeschafft wurde.
+ *
+ * Drei Stufen und nicht zwei, weil B-Ware weder das eine noch das andere ist:
+ * geöffnete Rückläufer und Vorführgeräte, die neuwertig sein können oder auch
+ * nicht. Sie einfach als „neu" zu führen wäre bequem und im Zweifel falsch —
+ * beim Wiederverkauf wie beim Finanzamt, denn ein gebraucht gekauftes Gerät
+ * hat eine kürzere Restnutzungsdauer als ein fabrikneues.
+ *
+ * Leer bedeutet „nicht erfasst" und ist kein vierter Zustand: Bei den Geräten,
+ * die schon vor diesem Feld im Bestand standen, weiß es niemand mehr.
+ */
+const EQ_ACQUIRED = ['neu' => 'Neu', 'bware' => 'B-Ware', 'gebraucht' => 'Gebraucht'];
 
 // Song-Lebenszyklus
 const SONG_STATUS = [
@@ -1620,6 +1638,9 @@ foreach ([
   // gilt — eine Snare und ein Flügel teilen die Kategorie, aber nicht die
   // Lebensdauer.
   'afa_years'     => 'INT NULL',
+  // Neu, B-Ware oder gebraucht angeschafft. Leer heißt „nicht erfasst" — bei
+  // Altbestand weiß das niemand mehr, und geraten wäre schlechter als offen.
+  'acquired_as'   => "VARCHAR(12) NOT NULL DEFAULT ''",
 ] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
@@ -2601,6 +2622,10 @@ function song_status_label(string $k): string { return t('songstatus_' . $k) !==
 function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'fincat_' . $k ? t('fincat_' . $k) : $k; }
 function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
+/** Beschriftung für den Anschaffungszustand; leer bleibt leer. */
+function eq_acquired_label(string $k): string {
+  return isset(EQ_ACQUIRED[$k]) ? t('eq_acq_' . $k) : '';
+}
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 
 /**

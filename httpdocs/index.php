@@ -1950,7 +1950,7 @@ if (str_starts_with($path, '/intern')) {
       $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
       $name  = trim($_POST['name']);
       for ($i = 1; $i <= $count; $i++) {
-        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
+        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [
           $count > 1 ? $name . ' #' . $i : $name,
           array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
           $ownerId,
@@ -1962,6 +1962,7 @@ if (str_starts_with($path, '/intern')) {
           trim($_POST['purchased_on'] ?? '') ?: null,
           price_to_cents((string) ($_POST['price'] ?? '')),
           tax_afa_years_input($_POST['afa_years'] ?? null),
+          array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '',
         ]);
       }
       flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
@@ -2025,11 +2026,13 @@ if (str_starts_with($path, '/intern')) {
     $baseSlot = eq_strip_quantity((string) $eq['slot']);
     q('UPDATE equipment SET name = ?, slot = ? WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
     for ($i = 2; $i <= $count; $i++) {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [
         $baseName . ' #' . $i, $eq['category'], $eq['owner_id'], $eq['location'],
         $eq['is_standard'], $eq['notes'], $eq['parent_id'], $baseSlot,
-        $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'],
+        // Zehn aufgeteilte Kabel kamen aus derselben Bestellung: Datum, Preis
+        // und Zustand gelten für jedes einzelne.
+        $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'], $eq['acquired_as'],
       ]);
     }
     flash(sprintf(t('fl_eq_split'), $count));
@@ -2060,7 +2063,7 @@ if (str_starts_with($path, '/intern')) {
         ? ((int) ($_POST['owner_id'] ?? 0) ?: null)
         : ($eqBefore['owner_id'] !== null ? (int) $eqBefore['owner_id'] : null);
       [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=? WHERE id=?', [
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         $ownerId,
@@ -2074,6 +2077,11 @@ if (str_starts_with($path, '/intern')) {
         // Die Nutzungsdauer steht hinter derselben Schranke wie der Preis: wer
         // ihn nicht sehen darf, ändert auch nichts an der Abschreibung.
         $mayOwn ? tax_afa_years_input($_POST['afa_years'] ?? null) : $eqBefore['afa_years'],
+        // Ebenso der Anschaffungszustand: Er steht im Formular hinter derselben
+        // Schranke, also darf ihn ein fremder Absender auch nicht überschreiben.
+        $mayOwn
+          ? (array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '')
+          : (string) $eqBefore['acquired_as'],
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit —

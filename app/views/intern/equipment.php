@@ -31,6 +31,16 @@
     <?php // Kein type="number": das Feld wirft ein Komma stillschweigend weg,
           // aus 231,27 wird 23127. Als Textfeld kommt die Eingabe heil an. ?>
     <label><?= e(t('eq_price_each')) ?><input name="price" inputmode="decimal" placeholder="0,00"></label>
+    <?php // Auch hier und nicht nur beim Bearbeiten: Wer ein Gerät einträgt,
+          // weiß in dem Moment, wie er es gekauft hat — später nicht mehr. ?>
+    <label><?= e(t('eq_acquired')) ?>
+      <select name="acquired_as">
+        <option value=""><?= e(t('eq_acquired_unknown')) ?></option>
+        <?php foreach (array_keys(EQ_ACQUIRED) as $eqAcq): ?>
+          <option value="<?= e($eqAcq) ?>"><?= e(eq_acquired_label($eqAcq)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
     <label><?= e(t('eq_count')) ?><input type="number" name="count" value="1" min="1" max="99"></label>
     <label class="checkbox"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
     <p class="muted span2"><?= e(t('eq_count_hint')) ?></p>
@@ -109,6 +119,13 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
       <?php if ($eq['location']): ?><span class="muted">📍 <?= e($eq['location']) ?></span><?php endif; ?>
       <?php if (eq_may_see_price($eq, $user) && ($eq['price_cents'] !== null || !empty($eq['purchased_on']))): ?>
         <span class="muted">🧾 <?= e(eq_purchase_label($eq)) ?></span>
+      <?php endif; ?>
+      <?php // Nur wenn erfasst: „nicht erfasst" an hundert Zeilen zu schreiben
+            // wäre Lärm, der nichts sagt. Und nur „neu" wegzulassen ginge auch
+            // nicht — dann wüsste man bei einem Gerät ohne Zeichen nie, ob es
+            // neu war oder ob es niemand eingetragen hat. ?>
+      <?php if (($eq['acquired_as'] ?? '') !== '' && eq_may_see_price($eq, $user)): ?>
+        <span class="badge"><?= e(eq_acquired_label($eq['acquired_as'])) ?></span>
       <?php endif; ?>
       <?php if (!empty($childrenOf[(int) $eq['id']])): ?>
         <?php $eqSum = eq_tree_value($eq, $items, $user); ?>

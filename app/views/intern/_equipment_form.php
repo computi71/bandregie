@@ -45,6 +45,18 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
     <?php // Textfeld statt type="number", sonst geht das Komma verloren.
           // Angezeigt wird deshalb auch in der Schreibweise des Landes. ?>
     <label><?= e(t('eq_price')) ?><input name="price" inputmode="decimal" placeholder="0,00" value="<?= $formEq['price_cents'] !== null ? e(number_format((int) $formEq['price_cents'] / 100, 2, ',', '.')) : '' ?>" <?= $eqLock ?>></label>
+    <?php // Neben Datum und Preis, weil es zur Anschaffung gehört und dieselbe
+          // Sichtbarkeitsregel hat: Was ein Gerät gekostet hat und in welchem
+          // Zustand es kam, geht dieselben Leute etwas an. ?>
+    <label class="span2"><?= e(t('eq_acquired')) ?>
+      <select name="acquired_as" <?= $eqLock ?>>
+        <option value=""><?= e(t('eq_acquired_unknown')) ?></option>
+        <?php foreach (array_keys(EQ_ACQUIRED) as $eqAcq): ?>
+          <option value="<?= e($eqAcq) ?>" <?= ($formEq['acquired_as'] ?? '') === $eqAcq ? 'selected' : '' ?>><?= e(eq_acquired_label($eqAcq)) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('eq_acquired_hint')) ?></span>
+    </label>
     <label class="span2"><?= e(t('eq_afa_years')) ?>
       <input name="afa_years" inputmode="numeric" placeholder="<?= (int) tax_afa_years_for($formEq['category']) ?>" value="<?= $formEq['afa_years'] !== null ? (int) $formEq['afa_years'] : '' ?>" <?= $eqLock ?>>
       <span class="muted small"><?= e(t('eq_afa_hint')) ?></span>

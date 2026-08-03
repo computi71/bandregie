@@ -1,0 +1,35 @@
+-- How a piece of gear was acquired: new, B-stock, or used (#179).
+SET NAMES utf8mb4;
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','eq_acquired','Acquired as'),
+('en','eq_acquired_unknown','not recorded'),
+('en','eq_acq_neu','New'),
+('en','eq_acq_bware','B-stock'),
+('en','eq_acq_gebraucht','Used'),
+('en','eq_acquired_hint','B-stock means opened returns and demo units — as good as new, but not new. The difference matters when reselling and for depreciation: gear bought used has a shorter remaining useful life than a factory-fresh one.'),
+('fr','eq_acquired','Acquis comme'),
+('fr','eq_acquired_unknown','non renseigné'),
+('fr','eq_acq_neu','Neuf'),
+('fr','eq_acq_bware','Déstockage'),
+('fr','eq_acq_gebraucht','Occasion'),
+('fr','eq_acquired_hint','Le déstockage désigne les retours ouverts et les appareils de démonstration — comme neufs, mais pas neufs. La différence compte à la revente et pour l''amortissement : un appareil acheté d''occasion a une durée d''utilisation restante plus courte qu''un appareil sorti d''usine.'),
+('es','eq_acquired','Adquirido como'),
+('es','eq_acquired_unknown','sin registrar'),
+('es','eq_acq_neu','Nuevo'),
+('es','eq_acq_bware','Producto B'),
+('es','eq_acq_gebraucht','Usado'),
+('es','eq_acquired_hint','El producto B son devoluciones abiertas y aparatos de demostración — como nuevos, pero no nuevos. La diferencia cuenta al revender y para la amortización: un aparato comprado usado tiene una vida útil restante más corta que uno recién salido de fábrica.'),
+('nl','eq_acquired','Aangeschaft als'),
+('nl','eq_acquired_unknown','niet vastgelegd'),
+('nl','eq_acq_neu','Nieuw'),
+('nl','eq_acq_bware','B-keus'),
+('nl','eq_acq_gebraucht','Tweedehands'),
+('nl','eq_acquired_hint','B-keus zijn geopende retouren en demo-apparaten — zo goed als nieuw, maar niet nieuw. Het verschil telt bij doorverkoop en bij de afschrijving: een tweedehands gekocht apparaat heeft een kortere resterende levensduur dan een fabrieksnieuw exemplaar.'),
+('it','eq_acquired','Acquistato come'),
+('it','eq_acquired_unknown','non registrato'),
+('it','eq_acq_neu','Nuovo'),
+('it','eq_acq_bware','Prodotto B'),
+('it','eq_acq_gebraucht','Usato'),
+('it','eq_acquired_hint','I prodotti B sono resi aperti e apparecchi da esposizione — come nuovi, ma non nuovi. La differenza conta nella rivendita e nell''ammortamento: un apparecchio comprato usato ha una vita utile residua più breve di uno appena uscito di fabbrica.')
+ON DUPLICATE KEY UPDATE value = value;
