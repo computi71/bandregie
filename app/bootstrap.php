@@ -1376,8 +1376,12 @@ function stage_default_items(array $members): array {
   // Das Schlagzeug steht auf dem Podest, und zwar als eigenes Ding: Erst wenn
   // seine Fläche im Plan liegt, sieht man, ob 3 × 2 m reichen — der
   // Schlagzeuger allein sagt darüber nichts.
+  // y = 24 und nicht weiter hinten: Bei 22 lief die Oberkante des Umrisses genau
+  // durch das Instrument unter dem Namen des Schlagzeugers. Vorn ragt das Set
+  // damit ein paar Zentimeter über das Podest — das ist keine Ungenauigkeit,
+  // sondern genau die Auskunft, ob 3 × 2 m reichen.
   $items[] = ['kind' => 'schlagzeug', 'label' => t('stagekind_schlagzeug'), 'note' => '',
-              'x' => 50, 'y' => 22];
+              'x' => 50, 'y' => 24];
 
   // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach.
   // Die Beschriftung kommt aus den Übersetzungen: der Plan wird verschickt,
