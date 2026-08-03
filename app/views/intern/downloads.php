@@ -32,7 +32,7 @@ require BASE_DIR . '/app/views/_header.php';
   <ul class="task-list">
     <?php foreach ($files as $f): ?>
       <li>
-        <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a>
+        <a href="/intern/datei/<?= $f['id'] ?>/ansicht"><?= e($f['original_name']) ?></a>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
         <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
       </li>

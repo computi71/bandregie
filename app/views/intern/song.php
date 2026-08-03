@@ -66,7 +66,7 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
     <h2>📎 <?= e(t('files_word')) ?></h2>
     <ul class="task-list">
       <?php foreach ($songFiles as $f): ?>
-        <li><a href="/intern/datei/<?= (int) $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a></li>
+        <li><a href="/intern/datei/<?= (int) $f['id'] ?>/ansicht"><?= e($f['original_name']) ?></a></li>
       <?php endforeach; ?>
     </ul>
   </div>

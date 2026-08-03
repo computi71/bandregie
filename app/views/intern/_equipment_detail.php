@@ -39,7 +39,7 @@
     <?php $detailInvAnzahl = invoice_item_count((int) $detailInv['id']); ?>
     <?= e($detailInvAnzahl === 1 ? t('inv_items_one') : str_replace('%1', (string) $detailInvAnzahl, t('inv_items'))) ?>
     <?php foreach (rows("SELECT * FROM files WHERE entity_type = 'invoice' AND entity_id = ?", [(int) $detailInv['id']]) as $detailInvFile): ?>
-      · <a href="/intern/datei/<?= (int) $detailInvFile['id'] ?>" target="_blank">📄 <?= e($detailInvFile['original_name']) ?></a>
+      · <a href="/intern/datei/<?= (int) $detailInvFile['id'] ?>/ansicht">📄 <?= e($detailInvFile['original_name']) ?></a>
     <?php endforeach; ?>
   </p>
 <?php endif; ?>

@@ -293,7 +293,7 @@ foreach ($entries as $en) {
             <?php if ($en['private_for'] !== null): ?><div class="muted small">🔒 <?= e(t('fin_private')) ?></div><?php endif; ?>
             <?php if (!empty($en['equipment_name'])): ?><div class="muted small">🎛 <a href="/intern/equipment"><?= e($en['equipment_name']) ?></a></div><?php endif; ?>
             <?php foreach ($filesByFinance[$en['id']] ?? [] as $f): ?>
-              <div class="small">📎 <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a></div>
+              <div class="small">📎 <a href="/intern/datei/<?= $f['id'] ?>/ansicht"><?= e($f['original_name']) ?></a></div>
             <?php endforeach; ?>
           </td>
           <td><span class="badge"><?= e(fin_category_label($en['category'])) ?></span></td>
