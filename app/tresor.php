@@ -137,7 +137,7 @@ function crypt_seal_file(string $source, string $target): bool {
  * Zurück in den Klartext. Schlägt die Prüfung eines Stücks fehl, bricht das
  * Ganze ab: eine veränderte Sicherung wird nicht halb eingespielt.
  */
-function crypt_open_file(string $source, string $target): bool {
+function crypt_open_file(string $source, string $target, bool $streng = false): bool {
   $key = crypt_key();
   if ($key === null) return false;
   $in = @fopen($source, 'rb');
@@ -172,14 +172,73 @@ function crypt_open_file(string $source, string $target): bool {
   fclose($in);
   if (!fclose($out)) $ok = false;
   // Dateien aus der Zeit vor dieser Prüfung tragen unter Umständen kein
-  // Schlusszeichen. Sie abzulehnen hieße, alte Sicherungen unbrauchbar zu
-  // machen — deshalb nur vermerken, nicht verweigern.
+  // Schlusszeichen. Ein alter Anhang darf deshalb nicht abgelehnt werden — das
+  // machte Bestandsdaten unbrauchbar. Beim Zurückspielen ist es umgekehrt: Dort
+  // ist eine bei 60 % abgebrochene Sicherung genau das, was hinterher alle
+  // Tabellen gelöscht und nur die ersten wieder eingespielt hätte. Wer streng
+  // aufruft, bekommt sie abgelehnt.
   if ($ok && !$fertig) {
+    if ($streng) {
+      @unlink($tmp);
+      error_log('Bandregie: ' . basename($source) . ' ohne Schlusszeichen — abgelehnt, weil streng geprüft.');
+      return false;
+    }
     error_log('Bandregie: ' . basename($source) . ' ohne Schlusszeichen geöffnet — '
       . 'entweder aus einer älteren Fassung oder unvollständig. Bitte prüfen.');
   }
   if (!$ok) { @unlink($tmp); return false; }
   return @rename($tmp, $target);
+}
+
+/**
+ * Lässt sich diese versiegelte Datei vollständig lesen?
+ *
+ * Wie crypt_open_file(), nur ohne Ziel: Jeder Block wird entschlüsselt und
+ * geprüft, das Ergebnis aber weggeworfen. Gebraucht wird das, um eine gerade
+ * geschriebene Sicherung zu beurteilen, ohne sie doppelt auf die Platte zu
+ * legen — und um vor dem Zurückspielen zu wissen, ob das Archiv überhaupt
+ * ganz ist.
+ *
+ * Das Schlusszeichen ist Pflicht. Ohne es ist die Datei abgeschnitten, und eine
+ * abgeschnittene Sicherung ist keine.
+ *
+ * @return array{ok: bool, bytes: int, message: string}
+ */
+function crypt_verify_file(string $source): array {
+  $key = crypt_key();
+  if ($key === null) return ['ok' => false, 'bytes' => 0, 'message' => 'kein Schlüssel gesetzt'];
+  $in = @fopen($source, 'rb');
+  if (!$in) return ['ok' => false, 'bytes' => 0, 'message' => 'nicht lesbar'];
+  if (fread($in, strlen(CRYPT_MAGIC)) !== CRYPT_MAGIC) {
+    fclose($in);
+    return ['ok' => false, 'bytes' => 0, 'message' => 'kein versiegeltes Format'];
+  }
+  $header = (string) fread($in, SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_HEADERBYTES);
+  $state = @sodium_crypto_secretstream_xchacha20poly1305_init_pull($header, $key);
+  if ($state === false) {
+    fclose($in);
+    return ['ok' => false, 'bytes' => 0, 'message' => 'Kopf unlesbar — anderer Schlüssel?'];
+  }
+  $bytes = 0;
+  $fertig = false;
+  $fehler = '';
+  while (!feof($in)) {
+    $lenRaw = (string) fread($in, 4);
+    if (strlen($lenRaw) < 4) break;
+    $len = unpack('N', $lenRaw)[1] ?? 0;
+    if ($len <= 0 || $len > CRYPT_CHUNK * 2) { $fehler = 'Blocklänge unplausibel'; break; }
+    $cipher = (string) fread($in, $len);
+    if (strlen($cipher) !== $len) { $fehler = 'Datei endet mitten in einem Block'; break; }
+    $res = @sodium_crypto_secretstream_xchacha20poly1305_pull($state, $cipher);
+    if ($res === false) { $fehler = 'Block verändert oder beschädigt'; break; }
+    $bytes += strlen($res[0]);
+    if ($res[1] === SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL) { $fertig = true; break; }
+  }
+  fclose($in);
+  sodium_memzero($state);
+  if ($fehler !== '') return ['ok' => false, 'bytes' => $bytes, 'message' => $fehler];
+  if (!$fertig) return ['ok' => false, 'bytes' => $bytes, 'message' => 'ohne Schlusszeichen — abgeschnitten'];
+  return ['ok' => true, 'bytes' => $bytes, 'message' => ''];
 }
 
 /** Ein kurzer Text — Beschreibung, Betrag — als versiegelte Zeichenkette. */

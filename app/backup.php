@@ -237,6 +237,10 @@ function backup_run(string $trigger = 'auto'): array {
   foreach (glob($dir . '/{.dump.sql,*.part,.sealing-*,.opening-*}', GLOB_BRACE) ?: [] as $rest) {
     if (is_file($rest) && filemtime($rest) < time() - 3600) @unlink($rest);
   }
+  // Der Klartext-Dump ist die ganze Datenbank: Adressen, Kasse,
+  // Passwort-Hashes. Bei einem harten Abbruch — OOM, Zeitlimit, Neustart —
+  // läuft weder catch noch finally, wohl aber dieser Handler.
+  register_shutdown_function(static function () use ($sqlFile): void { @unlink($sqlFile); });
   try {
     backup_write_sql($sqlFile);
     // Der Dump liegt kurzzeitig unverschlüsselt da; wenigstens nicht lesbar
@@ -250,9 +254,20 @@ function backup_run(string $trigger = 'auto'): array {
         if (!backup_tar_add($gz, $inArchive, $path)) $skipped[] = $inArchive;
       }
     }
-    gzwrite($gz, str_repeat("\0", 1024)); // tar endet mit zwei leeren Blöcken
-    gzclose($gz);
+    // Auch der Abschluss wird geprüft: Zwei leere Blöcke sind das Ende des tar,
+    // und ohne sie hält die Prüfung das Archiv später für abgeschnitten — zu Recht.
+    $ende = str_repeat("\0", 1024);
+    if (gzwrite($gz, $ende) !== strlen($ende)) {
+      gzclose($gz);
+      throw new RuntimeException('Archivabschluss nicht schreibbar (Platte voll?)');
+    }
+    if (!gzclose($gz)) throw new RuntimeException('Archiv nicht sauber geschlossen');
     @unlink($sqlFile);
+
+    // Zurücklesen, bevor irgendetwas „ok" heißt. Erst danach ist es eine
+    // Sicherung und nicht bloß eine Datei mit plausibler Größe.
+    $probe = backup_verify_archive($target . '.part');
+    if (!$probe['ok']) throw new RuntimeException('Sicherung nicht verwendbar: ' . $probe['message']);
     // Versiegeln, bevor die Datei ihren endgültigen Namen bekommt: was unter
     // dem Namen der Sicherung liegt, ist damit nie kurz der Klartext.
     if (crypt_available()) {
@@ -260,11 +275,20 @@ function backup_run(string $trigger = 'auto'): array {
         throw new RuntimeException('Sicherung ließ sich nicht verschlüsseln');
       }
       @unlink($target . '.part');
-    } else {
-      rename($target . '.part', $target);
+      // Auch die versiegelte Fassung wird zurückgelesen. Das Versiegeln prüft
+      // seine Schreibvorgänge, aber damit ist nur der Weg hinaus geprüft — ob
+      // sich die Datei wieder öffnen lässt, weiß man erst, wenn man es tut.
+      $siegel = crypt_verify_file($target);
+      if (!$siegel['ok']) {
+        @unlink($target);
+        throw new RuntimeException('Verschlüsselte Sicherung nicht wieder lesbar: ' . $siegel['message']);
+      }
+    } elseif (!rename($target . '.part', $target)) {
+      throw new RuntimeException('Sicherung ließ sich nicht an ihren Platz benennen');
     }
     @chmod($target, 0600);
-    $notes = [];
+    $notes = ['geprüft: ' . $probe['entries'] . ' Einträge, Datenbank '
+              . round($probe['sql_bytes'] / 1024) . ' KB'];
     if ($skipped) $notes[] = count($skipped) . ' Datei(en) mit zu langem Pfad ausgelassen';
     // Das Zweitziel wird getrennt vermerkt. Scheitert es, ist die Sicherung
     // hier trotzdem gültig und zählt für die Aufbewahrung — sichtbar bleibt
@@ -366,6 +390,66 @@ function backup_prune(): void {
     @unlink(backup_dir() . '/' . $run['filename']);
     q("UPDATE backup_runs SET filename = '', message = ? WHERE id = ?", ['abgelaufen und gelöscht', $run['id']]);
   }
+}
+
+/**
+ * Ein fertiges Archiv zurücklesen, ohne es auszupacken.
+ *
+ * Das ist die Stelle, an der eine Sicherung von einem Versprechen zu einer
+ * Sicherung wird. Bisher wurde geschrieben und danach „ok" vermerkt — lief die
+ * Platte nachts voll, stand in der Liste ein glaubwürdiger Eintrag mit
+ * plausibler Größe, die Systemprüfung war grün, und die Aufbewahrung schob
+ * dafür eine echte Sicherung aus dem Fenster.
+ *
+ * Geprüft wird, was eine Rücksicherung braucht: dass der gz-Strom sauber bis
+ * zum Ende läuft, dass jeder tar-Kopf plausibel ist, dass die Datei mit den
+ * beiden leeren Blöcken endet und dass database.sql enthalten und nicht leer
+ * ist. Ein Archiv ohne Datenbank ist kein halbes, sondern keins.
+ *
+ * @return array{ok: bool, entries: int, sql_bytes: int, message: string}
+ */
+function backup_verify_archive(string $archive): array {
+  $nul = chr(0);
+  $gz = @gzopen($archive, 'rb');
+  if (!$gz) return ['ok' => false, 'entries' => 0, 'sql_bytes' => 0, 'message' => 'Archiv nicht lesbar'];
+  $entries = 0;
+  $sqlBytes = -1;
+  $endeGesehen = false;
+  $fehler = '';
+  while (true) {
+    $header = (string) gzread($gz, 512);
+    if (strlen($header) < 512) {
+      // Ein tar endet mit zwei Nullblöcken. Fehlen sie, ist die Datei
+      // abgeschnitten — genau der Fall „Platte voll um drei Uhr nachts".
+      if (!$endeGesehen) $fehler = 'Archiv endet ohne Abschluss (abgeschnitten?)';
+      break;
+    }
+    if (trim($header, $nul) === '') { $endeGesehen = true; continue; }
+    if ($endeGesehen) { $fehler = 'Daten nach dem Archivende'; break; }
+    $name = trim(substr($header, 0, 100), $nul . ' ');
+    $sizeOkt = trim(substr($header, 124, 12), $nul . ' ');
+    if ($name === '' || !preg_match('~^[0-7]+$~', $sizeOkt)) { $fehler = 'tar-Kopf unplausibel'; break; }
+    $size = (int) octdec($sizeOkt);
+    if ($name === 'database.sql') $sqlBytes = $size;
+    // Inhalt überspringen, auf 512 aufgerundet — und dabei prüfen, ob er
+    // überhaupt noch vollständig da ist.
+    $rest = (int) (ceil($size / 512) * 512);
+    $gelesen = 0;
+    while ($gelesen < $rest) {
+      $stueck = (string) gzread($gz, min(262144, $rest - $gelesen));
+      if ($stueck === '') break;
+      $gelesen += strlen($stueck);
+    }
+    if ($gelesen < $rest) { $fehler = 'Inhalt von ' . $name . ' fehlt teilweise'; break; }
+    $entries++;
+  }
+  gzclose($gz);
+  if ($fehler !== '') {
+    return ['ok' => false, 'entries' => $entries, 'sql_bytes' => max(0, $sqlBytes), 'message' => $fehler];
+  }
+  if ($sqlBytes < 0) return ['ok' => false, 'entries' => $entries, 'sql_bytes' => 0, 'message' => 'database.sql fehlt im Archiv'];
+  if ($sqlBytes === 0) return ['ok' => false, 'entries' => $entries, 'sql_bytes' => 0, 'message' => 'database.sql ist leer'];
+  return ['ok' => true, 'entries' => $entries, 'sql_bytes' => $sqlBytes, 'message' => ''];
 }
 
 /**
@@ -484,16 +568,48 @@ function backup_restore(string $archive): array {
   // Einspielen mit halb ersetzter Datenbank.
   if (crypt_is_sealed($source)) {
     $opened = $tmp . '/klartext.tar.gz';
-    if (!crypt_open_file($source, $opened)) {
+    // Erst durchlesen, dann öffnen. Das kostet einen zweiten Durchgang, liefert
+    // aber den Grund: „anderer Schlüssel" und „abgeschnitten" sehen beim
+    // Öffnen gleich aus, und wer im Ernstfall nach einem Schlüsselproblem
+    // sucht, während die Datei bloß unvollständig ist, verliert Zeit, die er
+    // nicht hat.
+    $lesbar = crypt_verify_file($source);
+    if (!$lesbar['ok']) {
       @unlink($source);
       @rmdir($tmp);
       return ['ok' => false, 'safety' => '',
-              'message' => crypt_available()
-                ? 'Die Sicherung lässt sich mit dem eingetragenen data_key nicht öffnen — ist es der Schlüssel des Servers, auf dem sie entstanden ist?'
-                : 'Die Sicherung ist verschlüsselt, aber in app/config.php steht kein data_key'];
+              'message' => !crypt_available()
+                ? 'Die Sicherung ist verschlüsselt, aber in app/config.php steht kein data_key'
+                : 'Die Sicherung ist nicht vollständig lesbar: ' . $lesbar['message']
+                  . '. Es wurde nichts verändert.'];
+    }
+    // Streng: Ohne Schlusszeichen ist die Sicherung abgeschnitten. Bei einem
+    // Anhang wäre das zu hart — dort gibt es Dateien aus der Zeit vor dieser
+    // Prüfung. Hier ist es genau richtig, denn eine bei 60 % abgebrochene
+    // Sicherung hätte alle Tabellen gelöscht und nur die ersten wieder
+    // eingespielt.
+    if (!crypt_open_file($source, $opened, true)) {
+      @unlink($source);
+      @rmdir($tmp);
+      return ['ok' => false, 'safety' => '',
+              'message' => 'Die Sicherung ließ sich nicht entschlüsseln — es wurde nichts verändert.'];
     }
     @unlink($source);
     $source = $opened;
+  }
+
+  // Erst prüfen, dann anfassen. Diese Reihenfolge ist der ganze Schutz: Eine
+  // Datenbank lässt sich nicht zurückrollen — MySQL kennt für DROP TABLE keine
+  // Transaktion —, also darf gar nichts gelöscht werden, solange nicht
+  // feststeht, dass das Archiv vollständig ist. Vorher lief das Einspielen los
+  // und merkte einen Mangel erst mittendrin.
+  $vorab = backup_verify_archive($source);
+  if (!$vorab['ok']) {
+    @unlink($source);
+    @rmdir($tmp);
+    return ['ok' => false, 'safety' => '',
+            'message' => 'Das Archiv ist nicht vollständig (' . $vorab['message']
+              . ') — es wurde nichts verändert.'];
   }
 
   $safety = backup_run('restore');
@@ -552,7 +668,16 @@ function backup_restore(string $archive): array {
             'message' => "Zurückgespielt: $count Dateien aus dem Archiv, "
               . count($statements) . ' SQL-Anweisungen.' . $hinweis];
   } catch (Throwable $e) {
-    return ['ok' => false, 'safety' => $safetyName, 'message' => $e->getMessage()];
+    // Scheitert es hier, sind Tabellen schon verworfen. Zurückrollen kann das
+    // niemand, also muss die Meldung den Weg zurück nennen — und zwar so, dass
+    // man ihn abschreiben kann. Eine Fehlermeldung ohne Ausweg ist im Ernstfall
+    // wertlos.
+    $ausweg = $safetyName !== ''
+      ? ' Der Stand von vorher liegt als ' . $safetyName . '. Zurück damit: '
+        . 'php app/backup.php restore ' . backup_dir() . '/' . $safetyName
+      : ' Es gibt keine Sicherheitskopie dieses Vorgangs.';
+    error_log('Bandregie: Zurückspielen abgebrochen: ' . $e->getMessage() . $ausweg);
+    return ['ok' => false, 'safety' => $safetyName, 'message' => $e->getMessage() . $ausweg];
   } finally {
     // Reste des Auspackens wegräumen, auch die verschachtelten
     if (is_dir($tmp)) {

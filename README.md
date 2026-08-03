@@ -261,6 +261,27 @@ blocked notification and a working one look exactly alike.
 Back up the database and the `data/` folder. Updating the code never touches
 either, but never overwrite `data/` or `app/config.php` when deploying.
 
+Every run reads its own archive back before recording success: the gzip stream
+has to end cleanly, every tar header has to be plausible, the two closing
+blocks have to be there, and `database.sql` has to be present and non-empty.
+With encryption on, the sealed file is decrypted a second time to confirm it
+opens and carries its final tag. A run that cannot do that records an error
+instead of a size — which matters because the retention window counts only
+successful runs, and a plausible-looking archive that nobody ever read back
+used to push a real backup out of it.
+
+Restoring verifies before it touches anything. A database cannot be rolled
+back — MySQL has no transaction for `DROP TABLE` — so an incomplete archive
+has to be refused while everything is still intact, not discovered halfway
+through. Truncated, unreadable, or missing `database.sql`: all three stop with
+the tables untouched, and the message says which of them it was.
+
+Restore from the command line, which keeps working when the site does not:
+
+```bash
+php app/backup.php restore data/backups/bandregie-2026-08-03-131335.tar.gz.enc
+```
+
 ### Plesk: close the statistics directory
 
 Plesk publishes AWStats reports under `/plesk-stat/`, and by default anybody
