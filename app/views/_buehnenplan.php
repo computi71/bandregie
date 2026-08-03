@@ -155,6 +155,10 @@ $vbT  = $flT + 2 * $rand;
             // wächst die Zeichnung nicht mit dem Grundriss mit — eine DI-Box
             // wäre sonst ein Punkt, den niemand mehr anfassen kann.
             $kb = max($b, 48); $kt = max($tf, 34);
+            // Die Beschriftung muss unter das Gezeichnete, nicht unter den
+            // Grundriss: Bei einer DI-Box ist die Zeichnung größer als das Maß,
+            // und der Name stand sonst mitten in der Kiste.
+            $unten = max($unten, $kt / 2 + 17);
           ?>
           <rect x="<?= round(-$kb / 2, 1) ?>" y="<?= round(-$kt / 2, 1) ?>" width="<?= round($kb, 1) ?>" height="<?= round($kt, 1) ?>" rx="4"
                 fill="<?= $fuell ?>" stroke="<?= $stroke ?>" stroke-width="2"/>
