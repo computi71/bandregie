@@ -11,6 +11,21 @@
   <h2>🎭 <?= e(t('stage_plot')) ?></h2>
   <p class="muted small"><?= e(t('stage_hint')) ?></p>
   <?php $stageEdit = perm_allows($user, 'rider', 'write'); require BASE_DIR . '/app/views/_buehnenplan.php'; ?>
+  <?php if ($stageEdit): ?>
+    <?php // Das Maß steht beim Plan und nicht in den Einstellungen: Wer den
+          // Rider pflegt, weiß, von welcher Bühne die Band ausgeht. ?>
+    <?php [$stageMB, $stageMT] = stage_size(); ?>
+    <details class="subsection">
+      <summary>📐 <?= e(t('stage_size')) ?> — <?= $stageMB ?> × <?= $stageMT ?> m</summary>
+      <p class="muted small"><?= e(t('stage_size_hint')) ?></p>
+      <form method="post" action="/intern/stagerider/mass" class="form-grid"><?= csrf_field() ?>
+        <label><?= e(t('stage_width_m')) ?><input type="number" name="stage_width_m" min="2" max="30" value="<?= $stageMB ?>"></label>
+        <label><?= e(t('stage_depth_m')) ?><input type="number" name="stage_depth_m" min="2" max="20" value="<?= $stageMT ?>"></label>
+        <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+      </form>
+    </details>
+    <p class="muted small">📏 <?= e(t('stage_scale_hint')) ?></p>
+  <?php endif; ?>
 
   <?php if ($stageEdit): ?>
     <?php if ($stageItems): ?>
@@ -28,6 +43,24 @@
               <input name="item[<?= $si['id'] ?>][note]" value="<?= e($si['note']) ?>" placeholder="<?= e(t('stage_note')) ?>" aria-label="<?= e(t('stage_note')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][x]" value="<?= (int) $si['x'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_x')) ?>">
               <input type="number" name="item[<?= $si['id'] ?>][y]" value="<?= (int) $si['y'] ?>" min="0" max="100" class="stage-num" aria-label="<?= e(t('stage_y')) ?>">
+              <?php // Leer heißt „übliches Maß seiner Art" — nur wer abweicht,
+                    // trägt etwas ein. Ein Podest von 3 x 2 m etwa besteht aus
+                    // drei Modulen von 100 x 200 cm. ?>
+              <input type="number" name="item[<?= $si['id'] ?>][width_cm]" value="<?= $si['width_cm'] !== null ? (int) $si['width_cm'] : '' ?>"
+                     min="0" max="2000" class="stage-num" placeholder="<?= e(t('stage_w')) ?>" aria-label="<?= e(t('stage_w')) ?>">
+              <input type="number" name="item[<?= $si['id'] ?>][depth_cm]" value="<?= $si['depth_cm'] !== null ? (int) $si['depth_cm'] : '' ?>"
+                     min="0" max="2000" class="stage-num" placeholder="<?= e(t('stage_d')) ?>" aria-label="<?= e(t('stage_d')) ?>">
+              <?php // Nur bei Menschen: Der Verweis holt Figur und Foto. ?>
+              <?php if ($si['kind'] === 'musiker'): ?>
+                <select name="item[<?= $si['id'] ?>][user_id]" aria-label="<?= e(t('stage_member')) ?>">
+                  <option value=""><?= e(t('stage_member_none')) ?></option>
+                  <?php foreach ($stageMembers as $sm): ?>
+                    <option value="<?= (int) $sm['id'] ?>" <?= (int) ($si['user_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>><?= e($sm['name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              <?php else: ?>
+                <input type="hidden" name="item[<?= $si['id'] ?>][user_id]" value="<?= (int) ($si['user_id'] ?? 0) ?>">
+              <?php endif; ?>
               <?php // Ein eigenes Formular je Zeile wäre verschachtelt und damit
                     // ungültig — der Knopf schickt stattdessen seine Kennung mit. ?>
               <button class="btn btn-tiny btn-danger" name="remove" value="<?= $si['id'] ?>"
@@ -52,6 +85,14 @@
         <label><?= e(t('stage_note')) ?><input name="note"></label>
         <label><?= e(t('stage_x')) ?><input type="number" name="x" min="0" max="100" value="50"></label>
         <label><?= e(t('stage_y')) ?><input type="number" name="y" min="0" max="100" value="50"></label>
+        <label><?= e(t('stage_w')) ?><input type="number" name="width_cm" min="0" max="2000" placeholder="<?= e(t('stage_size_default')) ?>"></label>
+        <label><?= e(t('stage_d')) ?><input type="number" name="depth_cm" min="0" max="2000" placeholder="<?= e(t('stage_size_default')) ?>"></label>
+        <label><?= e(t('stage_member')) ?>
+          <select name="user_id">
+            <option value=""><?= e(t('stage_member_none')) ?></option>
+            <?php foreach ($stageMembers as $sm): ?><option value="<?= (int) $sm['id'] ?>"><?= e($sm['name']) ?></option><?php endforeach; ?>
+          </select>
+        </label>
         <button class="btn btn-primary span2"><?= e(t('stage_add')) ?></button>
       </form>
     </details>
@@ -77,8 +118,25 @@
     <label class="span2"><?= e(t('rider_positions_lbl')) ?>
       <textarea name="rider_positions" rows="5" placeholder="<?= e(t('rider_positions_ph')) ?>"><?= e($settings['rider_positions'] ?? '') ?></textarea>
     </label>
-    <label><?= e(t('rider_contact_tech_lbl')) ?><input name="rider_contact_tech" value="<?= e($settings['rider_contact_tech'] ?? '') ?>"></label>
-    <label><?= e(t('rider_contact_booking_lbl')) ?><input name="rider_contact_booking" value="<?= e($settings['rider_contact_booking'] ?? '') ?>"></label>
+    <?php // Ansprechpartner als Mitglied. Bei der Technik ist der Techniker
+          // vorausgewählt, solange noch nichts gewählt wurde — geraten am
+          // Instrument („Ton", „FOH", „Technik"), überschreibbar mit einem Klick. ?>
+    <p class="muted small span2"><?= e(t('rider_contact_hint')) ?></p>
+    <?php foreach (['tech' => rider_tech_guess($stageMembers), 'booking' => 0] as $riderArt => $riderVorschlag): ?>
+      <?php $riderGesetzt = (int) ($settings['rider_contact_' . $riderArt . '_user'] ?? 0); ?>
+      <?php $riderWahl = $riderGesetzt ?: (($settings['rider_contact_' . $riderArt] ?? '') === '' ? $riderVorschlag : 0); ?>
+      <label><?= e(t('rider_contact_' . $riderArt . '_lbl')) ?> — <?= e(t('rider_contact_member')) ?>
+        <select name="rider_contact_<?= $riderArt ?>_user">
+          <option value="0"><?= e(t('rider_contact_none')) ?></option>
+          <?php foreach ($stageMembers as $rm): ?>
+            <option value="<?= (int) $rm['id'] ?>" <?= $riderWahl === (int) $rm['id'] ? 'selected' : '' ?>><?= e($rm['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label><?= e(t('rider_contact_free')) ?>
+        <input name="rider_contact_<?= $riderArt ?>" value="<?= e($settings['rider_contact_' . $riderArt] ?? '') ?>">
+      </label>
+    <?php endforeach; ?>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
 </div>

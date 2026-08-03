@@ -1621,11 +1621,14 @@ if (str_starts_with($path, '/intern')) {
         // aus. Der Rest ist gerade das, was man ausprobieren will.
         $email = is_demo() ? $me['email'] : strtolower(trim($_POST['email']));
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=?,
-                            first_name=?, last_name=?, phone=?, mobile=? WHERE id=?', [
+                            first_name=?, last_name=?, phone=?, mobile=?, stage_figure=?, on_stage=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           $email, $prefLang,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
+          // Nur eine der angebotenen Figuren; alles andere wird neutral.
+          array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? $_POST['stage_figure'] : '',
+          isset($_POST['on_stage']) ? 1 : 0,
           $me['id'],
         ]);
         $_SESSION['pub_lang'] = $prefLang;
@@ -1660,20 +1663,29 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Bühnenplan ----------
   if (preg_match('~^/intern/stagerider/plan/(add|update|delete|vorlage)$~', $path, $m) && $method === 'POST') {
     if (!perm_allows($me, 'rider', 'write')) { flash(t('fl_no_permission')); redirect('/intern/stagerider'); }
+    // Leer bleibt leer: Ein Maß, das niemand eingetragen hat, ist NULL und
+    // holt sich damit das Übliche seiner Art — nicht null Zentimeter.
+    $stageMass = static function (mixed $v): ?int {
+      $v = trim((string) $v);
+      return $v === '' ? null : max(0, min(2000, (int) $v));
+    };
     if ($m[1] === 'vorlage') {
       q('DELETE FROM stage_items');
       $pos = 0;
-      foreach (stage_default_items(rows('SELECT name, stage_name, instrument FROM users ORDER BY name')) as $it) {
-        q('INSERT INTO stage_items (kind, label, x, y, note, position) VALUES (?,?,?,?,?,?)',
-          [$it['kind'], $it['label'], $it['x'], $it['y'], $it['note'], $pos++]);
+      foreach (stage_default_items(rows('SELECT id, name, stage_name, instrument, on_stage FROM users ORDER BY name')) as $it) {
+        q('INSERT INTO stage_items (kind, label, x, y, note, position, width_cm, depth_cm, user_id) VALUES (?,?,?,?,?,?,?,?,?)',
+          [$it['kind'], $it['label'], $it['x'], $it['y'], $it['note'], $pos++,
+           $it['width_cm'] ?? null, $it['depth_cm'] ?? null, $it['user_id'] ?? null]);
       }
     } elseif ($m[1] === 'add') {
-      q('INSERT INTO stage_items (kind, label, x, y, note, position) VALUES (?,?,?,?,?,?)', [
+      q('INSERT INTO stage_items (kind, label, x, y, note, position, width_cm, depth_cm, user_id) VALUES (?,?,?,?,?,?,?,?,?)', [
         array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges',
         trim($_POST['label'] ?? ''),
         max(0, min(100, (int) ($_POST['x'] ?? 50))), max(0, min(100, (int) ($_POST['y'] ?? 50))),
         trim($_POST['note'] ?? ''),
         (int) (row('SELECT COALESCE(MAX(position), 0) + 1 AS p FROM stage_items')['p'] ?? 1),
+        $stageMass($_POST['width_cm'] ?? ''), $stageMass($_POST['depth_cm'] ?? ''),
+        ((int) ($_POST['user_id'] ?? 0)) ?: null,
       ]);
     } elseif ($m[1] === 'update' && ($_POST['remove'] ?? '') !== '') {
       // Der Löschknopf steckt im selben Formular; ein eigenes wäre verschachtelt
@@ -1683,14 +1695,27 @@ if (str_starts_with($path, '/intern')) {
     } elseif ($m[1] === 'update') {
       // Alle Einträge auf einmal — beim Ziehen im Plan ändern sich mehrere
       foreach ((array) ($_POST['item'] ?? []) as $id => $vals) {
-        q('UPDATE stage_items SET kind = ?, label = ?, x = ?, y = ?, note = ? WHERE id = ?', [
+        q('UPDATE stage_items SET kind = ?, label = ?, x = ?, y = ?, note = ?, width_cm = ?, depth_cm = ?, user_id = ? WHERE id = ?', [
           array_key_exists($vals['kind'] ?? '', STAGE_KINDS) ? $vals['kind'] : 'sonstiges',
           trim($vals['label'] ?? ''),
           max(0, min(100, (int) ($vals['x'] ?? 50))), max(0, min(100, (int) ($vals['y'] ?? 50))),
-          trim($vals['note'] ?? ''), (int) $id,
+          trim($vals['note'] ?? ''),
+          $stageMass($vals['width_cm'] ?? ''), $stageMass($vals['depth_cm'] ?? ''),
+          ((int) ($vals['user_id'] ?? 0)) ?: null,
+          (int) $id,
         ]);
       }
     }
+    flash(t('fl_stage_saved'));
+    redirect('/intern/stagerider');
+  }
+  // Das Bühnenmaß. Es gehört zum Plan und nicht in die allgemeinen
+  // Einstellungen: Wer den Rider pflegt, weiß, auf welcher Bühne die Band steht.
+  if ($path === '/intern/stagerider/mass' && $method === 'POST') {
+    if (!perm_allows($me, 'rider', 'write')) { flash(t('fl_no_permission')); redirect('/intern/stagerider'); }
+    deny_in_demo('/intern/stagerider');
+    set_setting('stage_width_m', (string) max(2, min(30, (int) ($_POST['stage_width_m'] ?? 8))));
+    set_setting('stage_depth_m', (string) max(2, min(20, (int) ($_POST['stage_depth_m'] ?? 6))));
     flash(t('fl_stage_saved'));
     redirect('/intern/stagerider');
   }
@@ -2275,6 +2300,11 @@ if (str_starts_with($path, '/intern')) {
       'title' => t('rider_title'),
       'channels' => rows('SELECT * FROM channels ORDER BY number'),
       'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
+      // Für die Zuordnung eines Eintrags zu einem Menschen — daran hängen
+      // Figur und Foto im Plan. Das Instrument muss mit: An ihm errät
+      // rider_tech_guess(), wer die Technik ist. Ohne die Spalte fand es nie
+      // jemanden, und die Vorauswahl blieb still leer.
+      'stageMembers' => rows('SELECT id, name, instrument, on_stage FROM users ORDER BY name'),
     ]);
   }
   if ($path === '/intern/stagerider' && $method === 'POST') {
@@ -2283,6 +2313,13 @@ if (str_starts_with($path, '/intern')) {
               'rider_getin', 'rider_extras', 'rider_positions',
               'rider_contact_tech', 'rider_contact_booking'] as $key) {
       if (isset($_POST[$key])) set_setting($key, trim($_POST[$key]));
+    }
+    // Die Ansprechpartner als Mitglied. 0 heißt „niemand" und lässt den
+    // Freitext gelten; eine Kennung, die kein Konto trifft, wird verworfen.
+    foreach (['tech', 'booking'] as $art) {
+      $wer = (int) ($_POST['rider_contact_' . $art . '_user'] ?? 0);
+      if ($wer > 0 && !row('SELECT id FROM users WHERE id = ?', [$wer])) $wer = 0;
+      set_setting('rider_contact_' . $art . '_user', (string) $wer);
     }
     flash(t('fl_rider_saved'));
     redirect('/intern/stagerider');

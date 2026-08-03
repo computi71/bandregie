@@ -90,15 +90,23 @@ $blocks = [
     </table>
   <?php endif; ?>
 
-  <?php if (($settings['rider_contact_tech'] ?? '') !== '' || ($settings['rider_contact_booking'] ?? '') !== ''): ?>
+  <?php // Ansprechpartner: bevorzugt das Mitglied samt aktueller Nummer, sonst
+        // der Freitext. Ein Rider wird verschickt und liegt danach ein Jahr in
+        // irgendeinem Postfach — eine Nummer, die sich mitpflegt, ist mehr wert
+        // als eine abgetippte.
+        $riderKontakte = ['tech' => rider_contact('tech', $settings), 'booking' => rider_contact('booking', $settings)]; ?>
+  <?php if ($riderKontakte['tech']['name'] !== '' || $riderKontakte['tech']['zeilen']
+         || $riderKontakte['booking']['name'] !== '' || $riderKontakte['booking']['zeilen']): ?>
     <h2><?= e(t('rider_contacts')) ?></h2>
     <div class="contacts">
-      <?php if (($settings['rider_contact_tech'] ?? '') !== ''): ?>
-        <div><strong><?= e(t('rider_contact_tech_lbl')) ?></strong><br><?= e($settings['rider_contact_tech']) ?></div>
-      <?php endif; ?>
-      <?php if (($settings['rider_contact_booking'] ?? '') !== ''): ?>
-        <div><strong><?= e(t('rider_contact_booking_lbl')) ?></strong><br><?= e($settings['rider_contact_booking']) ?></div>
-      <?php endif; ?>
+      <?php foreach ($riderKontakte as $riderArt => $riderWer): ?>
+        <?php if ($riderWer['name'] === '' && !$riderWer['zeilen']) continue; ?>
+        <div>
+          <strong><?= e(t('rider_contact_' . $riderArt . '_lbl')) ?></strong><br>
+          <?php if ($riderWer['name'] !== ''): ?><?= e($riderWer['name']) ?><br><?php endif; ?>
+          <?php foreach ($riderWer['zeilen'] as $riderZeile): ?><?= e(trim($riderZeile)) ?><br><?php endforeach; ?>
+        </div>
+      <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </div>

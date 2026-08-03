@@ -33,6 +33,22 @@
       </select>
     </label>
     <label class="span2"><?= e(t('prof_avatar_lbl')) ?><input type="file" name="avatar" accept="image/*"></label>
+    <?php // Die Figur im Bühnenplan (#183). Bewusst eine Auswahl und kein
+          // Geschlechtsfeld: Für ein Symbol muss das niemand hinterlegen. Wer
+          // sein Foto nimmt, steht mit Gesicht auf dem Plan — das erkennt die
+          // Band schneller als jedes Strichmännchen. ?>
+    <label class="span2"><?= e(t('stage_figure')) ?>
+      <select name="stage_figure">
+        <?php foreach (STAGE_FIGURES as $sfKey => $sfSym): ?>
+          <option value="<?= e($sfKey) ?>" <?= ($profile['stage_figure'] ?? '') === $sfKey ? 'selected' : '' ?>>
+            <?= $sfSym ?> <?= e(t('stage_figure_' . ($sfKey === '' ? 'neutral' : $sfKey))) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('stage_figure_hint')) ?></span>
+    </label>
+    <label class="checkbox span2"><input type="checkbox" name="on_stage" value="1" <?= (int) ($profile['on_stage'] ?? 1) === 1 ? 'checked' : '' ?>> 🎭 <?= e(t('prof_on_stage')) ?></label>
+    <p class="muted small span2"><?= e(t('prof_on_stage_hint')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
   <p class="muted small"><?= e(t('prof_pw_hint')) ?> <a href="/intern/mitglieder"><?= e(t('mem_title')) ?> →</a></p>

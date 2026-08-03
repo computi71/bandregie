@@ -946,6 +946,28 @@ Zeile zwei
   'stagekind_musiker' => 'Musiker', 'stagekind_amp' => 'Verstärker', 'stagekind_podest' => 'Podest',
   'stagekind_keyboard' => 'Keyboard', 'stagekind_monitor' => 'Monitor', 'stagekind_di' => 'DI-Box',
   'stagekind_strom' => 'Strom', 'stagekind_sonstiges' => 'Sonstiges',
+  'stagekind_stagebox' => 'Stagebox',
+  'stagekind_schlagzeug' => 'Schlagzeug',
+  'stage_size' => 'Bühnenmaß',
+  'stage_width_m' => 'Breite in Metern',
+  'stage_depth_m' => 'Tiefe in Metern',
+  'stage_size_hint' => 'Acht auf sechs Meter ist die Vorgabe — das reicht für die meisten Vereins- und Zeltbühnen. Die Positionen stehen in Prozent, ein anderes Maß rückt also nichts durcheinander, sondern ändert nur den Maßstab und das Meterraster.',
+  'stage_w' => 'Breite (cm)',
+  'stage_d' => 'Tiefe (cm)',
+  'stage_size_default' => 'leer = übliches Maß',
+  'stage_scale_hint' => 'Podeste, Verstärker, Monitore und Boxen werden maßstäblich gezeichnet. Ein Podest ist üblicherweise 2 × 1 m; drei davon nebeneinander ergeben die 3 × 2 m, auf denen das Schlagzeug steht. Wer ein anderes Maß hat, trägt es ein.',
+  'stage_figure' => 'Figur im Bühnenplan',
+  'stage_figure_neutral' => 'Neutral',
+  'stage_figure_w' => 'Weiblich',
+  'stage_figure_m' => 'Männlich',
+  'stage_figure_avatar' => 'Mein Foto',
+  'stage_figure_hint' => 'Nur für das Symbol im Bühnenplan. Mit „Mein Foto" steht dort dein Profilbild — dann erkennt die Band sich auf dem Plan sofort wieder. Ohne Profilbild gilt wieder die Figur.',
+  'stage_member' => 'Mitglied',
+  'stage_member_none' => 'niemand bestimmter',
+  'stage_stagebox_power' => 'Strom an der Stagebox',
+  'stage_podest_modules' => 'aus 3 Modulen 2 × 1 m',
+  'prof_on_stage' => 'Ich stehe auf der Bühne',
+  'prof_on_stage_hint' => 'Nur für den Bühnenplan. Wer die Band begleitet, ohne zu spielen — Technik, Fahrdienst, Management —, hakt das aus und wird von der Vorlage nicht mehr aufgestellt.',
   'fl_stage_saved' => 'Bühnenplan gespeichert.', 'fl_stage_deleted' => 'Vom Plan genommen.',
   'rider_positions_lbl' => 'Bühnenaufstellung (Text)',
   'rider_positions_ph' => "z. B.
@@ -954,6 +976,10 @@ Bass: hinten links
 Gitarre: vorne rechts",
   'rider_contacts' => 'Ansprechpartner',
   'rider_contact_tech_lbl' => 'Technik', 'rider_contact_booking_lbl' => 'Booking',
+  'rider_contact_member' => 'Mitglied',
+  'rider_contact_none' => 'niemand',
+  'rider_contact_free' => 'oder abweichend eintragen',
+  'rider_contact_hint' => 'Ein Mitglied ist die bessere Angabe als getippter Text: Ändert sich seine Nummer, ändert sich der Rider mit. Der Freitext bleibt für Technik, die von außen kommt und hier kein Konto hat.',
   'rider_inputs' => 'Inputliste', 'rider_inputs_from' => 'Kanalbelegung bearbeiten',
   'rider_inputs_empty' => 'Noch keine Kanäle hinterlegt — die Inputliste bleibt leer.',
   'rider_print' => 'Druckansicht', 'rider_empty_hint' => 'Leere Felder werden im Ausdruck weggelassen.',
@@ -1239,9 +1265,54 @@ const PERM_TEMPLATES = [
  * Datenbank, das Zeichen im Plan.
  */
 const STAGE_KINDS = [
-  'musiker'  => '🧍', 'amp' => '🔊', 'podest' => '⬛', 'keyboard' => '🎹',
-  'monitor'  => '📢', 'di' => '🔌', 'strom' => '⚡', 'sonstiges' => '▫',
+  'musiker'  => '🧍', 'schlagzeug' => '🥁', 'amp' => '🔊', 'podest' => '⬛',
+  'keyboard' => '🎹', 'monitor'  => '📢', 'di' => '🔌', 'stagebox' => '🎛',
+  'strom' => '⚡', 'sonstiges' => '▫',
 ];
+
+/**
+ * Wie groß die Dinge wirklich sind, in Zentimetern [Breite, Tiefe].
+ *
+ * Gezeichnet wird maßstäblich, und dafür muss der Plan die Maße kennen. Ein
+ * Podest, das aussieht wie ein Verstärker, hilft keinem Veranstalter beim
+ * Aufbau — und ob drei Podeste nebeneinander auf die Bühne passen, sieht man
+ * erst, wenn sie die Fläche einnehmen, die sie tatsächlich brauchen.
+ *
+ * Null heißt: kein Grundriss, nur ein Zeichen an dieser Stelle. Ein Mensch und
+ * eine Steckdose belegen keine planbare Fläche.
+ */
+const STAGE_SIZES = [
+  // Ein Schlagzeug ist kein Punkt: Ein fünfteiliges Set mit Becken braucht
+  // gute zwei auf knapp zwei Meter. Genau daran sieht man, ob das Podest reicht.
+  'musiker' => [0, 0], 'schlagzeug' => [200, 180], 'amp' => [60, 35], 'podest' => [200, 100],
+  'keyboard' => [140, 40], 'monitor' => [50, 35], 'di' => [14, 11],
+  'stagebox' => [60, 60], 'strom' => [0, 0], 'sonstiges' => [0, 0],
+];
+
+/**
+ * Die Figur eines Mitglieds im Bühnenplan.
+ *
+ * Bewusst eine Auswahl und kein Geschlechtsfeld: Für ein Symbol im Plan muss
+ * niemand sein Geschlecht in eine Datenbank schreiben. Wer sich wiedererkennen
+ * will, wählt aus — oder nimmt sein Foto, dann steht auf der Bühne das Gesicht
+ * statt eines Strichmännchens.
+ */
+const STAGE_FIGURES = ['' => '🧍', 'w' => '🧍‍♀️', 'm' => '🧍‍♂️', 'avatar' => '🙂'];
+
+/** Das Bühnenmaß in Metern [Breite, Tiefe]. Acht auf sechs ist die Vorgabe. */
+function stage_size(): array {
+  $b = (int) setting('stage_width_m', '8');
+  $t = (int) setting('stage_depth_m', '6');
+  return [max(2, min(30, $b ?: 8)), max(2, min(20, $t ?: 6))];
+}
+
+/** Grundriss eines Eintrags in Zentimetern — eigenes Maß, sonst das seiner Art. */
+function stage_footprint(array $it): array {
+  [$kb, $kt] = STAGE_SIZES[$it['kind'] ?? ''] ?? [0, 0];
+  $b = $it['width_cm'] ?? null;
+  $t = $it['depth_cm'] ?? null;
+  return [$b !== null ? max(0, (int) $b) : $kb, $t !== null ? max(0, (int) $t) : $kt];
+}
 
 /**
  * Standardaufstellung aus der Mitgliederliste. Schlagzeug hinten Mitte, Bass
@@ -1249,6 +1320,9 @@ const STAGE_KINDS = [
  * Verschieben, kein Anspruch auf Richtigkeit.
  */
 function stage_default_items(array $members): array {
+  // Nur wer auf die Bühne gehört. Die Aufrufer geben die ganze Mitgliederliste
+  // herein; gefiltert wird hier, damit keine Route das vergessen kann.
+  $members = array_values(array_filter($members, fn($m) => !array_key_exists('on_stage', $m) || (int) $m['on_stage'] === 1));
   // Grobe Zuordnung vom Instrument auf einen Platz [x, y]; y = 0 ist hinten
   $spots = [
     'schlagzeug' => [50, 12], 'drums' => [50, 12], 'percussion' => [70, 18],
@@ -1273,15 +1347,45 @@ function stage_default_items(array $members): array {
       $x = max(4, min(96, $x + ($try % 2 ? -1 : 1) * 15 * (int) ceil(($try + 1) / 2)));
     }
     $taken[] = [$x, $y];
+    // Der Verweis aufs Mitglied macht die Figur und das Foto möglich — ohne ihn
+    // wäre der Eintrag nur ein Name, und der Plan wüsste nicht, wer dort steht.
     $items[] = ['kind' => 'musiker', 'label' => $m['stage_name'] ?: $m['name'],
-                'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? '')];
+                'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? ''),
+                'user_id' => (int) ($m['id'] ?? 0) ?: null];
   }
+
+  // Das Schlagzeugpodest: 3 × 2 m, hinten in der Mitte. Zusammengesetzt wird es
+  // aus drei Modulen von 2 × 1 m, quer gestellt — das steht in der Notiz, denn
+  // beim Aufbau zählt, wie viele Teile gebraucht werden.
+  //
+  // Ein Eintrag und nicht drei: Die Positionen sind ganze Prozent, und ein
+  // Meter ist auf einer Achtmeterbühne 12,5 % — nicht darstellbar. Drei
+  // Module lägen dann bei 38, 50 und 63 Prozent, also mit vier Zentimeter
+  // Lücke auf der einen und vier Zentimeter Überlappung auf der anderen
+  // Seite. Als eine Fläche stimmt das Maß exakt.
+  //
+  // y = 18 statt weiter hinten, weil 2 m Tiefe auf einer 6-m-Bühne ein Drittel
+  // ausmachen: Die Mitte muss mindestens 17 % vom Rand weg liegen, sonst ragt
+  // das Podest hinten heraus.
+  $items[] = ['kind' => 'podest', 'label' => '', 'note' => t('stage_podest_modules'),
+              'x' => 50, 'y' => 18, 'width_cm' => 300, 'depth_cm' => 200];
+
+  // Das Schlagzeug steht auf dem Podest, und zwar als eigenes Ding: Erst wenn
+  // seine Fläche im Plan liegt, sieht man, ob 3 × 2 m reichen — der
+  // Schlagzeuger allein sagt darüber nichts.
+  $items[] = ['kind' => 'schlagzeug', 'label' => t('stagekind_schlagzeug'), 'note' => '',
+              'x' => 50, 'y' => 20];
+
   // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach.
   // Die Beschriftung kommt aus den Übersetzungen: der Plan wird verschickt,
   // und zwar an Veranstalter, die nicht zwingend Deutsch lesen.
   $power = t('stagekind_strom');
-  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 8, 'y' => 8, 'note' => '230 V'];
-  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 92, 'y' => 8, 'note' => '230 V'];
+  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 8, 'y' => 6, 'note' => '230 V'];
+  $items[] = ['kind' => 'strom', 'label' => $power, 'x' => 92, 'y' => 6, 'note' => '230 V'];
+  // Die Stagebox steht seitlich hinten, wo das Multicore ankommt. Strom hängt
+  // fest an ihr, deshalb braucht sie keinen eigenen Blitz daneben.
+  $items[] = ['kind' => 'stagebox', 'label' => t('stagekind_stagebox'),
+              'x' => 6, 'y' => 30, 'note' => t('stage_stagebox_power')];
   return $items;
 }
 
@@ -1865,6 +1969,30 @@ function push_topics(?array $user): array {
 if (!column_exists('users', 'offline_scope')) {
   $db->exec("ALTER TABLE users ADD COLUMN offline_scope VARCHAR(190) NOT NULL DEFAULT ''");
 }
+// Bühnenplan (#183): Grundriss je Eintrag, damit maßstäblich gezeichnet werden
+// kann, und der Verweis aufs Mitglied — nur so kommt das Foto in den Plan.
+// NULL beim Maß heißt „nimm das Übliche seiner Art"; ein eigenes Maß hat nur,
+// was vom Üblichen abweicht (ein 3x2-Podest aus drei Modulen etwa).
+foreach ([
+  'width_cm' => 'INT NULL',
+  'depth_cm' => 'INT NULL',
+  'user_id'  => 'INT NULL',
+] as $siCol => $siDdl) {
+  if (!column_exists('stage_items', $siCol)) $db->exec("ALTER TABLE stage_items ADD COLUMN `$siCol` $siDdl");
+}
+// Die Figur, mit der jemand im Plan steht. Kein Geschlechtsfeld: Für ein
+// Symbol muss das niemand hinterlegen, gewählt wird selbst.
+if (!column_exists('users', 'stage_figure')) {
+  $db->exec("ALTER TABLE users ADD COLUMN stage_figure VARCHAR(16) NOT NULL DEFAULT ''");
+}
+// Wer überhaupt auf der Bühne steht. Ein Techniker, ein Manager, ein Fahrer
+// gehören zur Band, aber nicht in den Bühnenplan — die Vorlage hat sie bisher
+// mitaufgestellt. Neu ist an, damit sich für bestehende Installationen nichts
+// ändert; wer nicht draufgehört, wird ausgehakt.
+if (!column_exists('users', 'on_stage')) {
+  $db->exec('ALTER TABLE users ADD COLUMN on_stage TINYINT(1) NOT NULL DEFAULT 1');
+}
+
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
 // das Geheimnis, ob es je bestätigt wurde, und die Rückwege. Ohne das
 // Bestätigungsdatum sperrt sich aus, wer den QR-Code scannt und die App
@@ -2831,6 +2959,46 @@ function song_status_label(string $k): string { return t('songstatus_' . $k) !==
 function fin_category_label(string $k): string { return t('fincat_' . $k) !== 'fincat_' . $k ? t('fincat_' . $k) : $k; }
 function production_label(string $k): string { return $k === '' ? '' : (t('prod_' . $k) !== 'prod_' . $k ? t('prod_' . $k) : $k); }
 function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqcat_' . $k ? t('eqcat_' . $k) : $k; }
+/**
+ * Wer im Rider als Ansprechpartner steht — Mitglied oder Freitext.
+ *
+ * Ein Mitglied ist die bessere Angabe: Ändert sich seine Nummer, ändert sich
+ * der Rider mit, statt dass irgendwo eine alte Handynummer steht, die der
+ * Veranstalter am Konzerttag anruft. Der Freitext bleibt für die Fälle, in
+ * denen die Technik von außen kommt und niemandes Konto hier existiert.
+ *
+ * @return array{name: string, zeilen: array<string>}
+ */
+function rider_contact(string $art, array $settings): array {
+  $id = (int) ($settings['rider_contact_' . $art . '_user'] ?? 0);
+  if ($id > 0) {
+    $u = row('SELECT name, stage_name, phone, mobile, email FROM users WHERE id = ?', [$id]);
+    if ($u) {
+      $zeilen = array_values(array_filter([
+        (string) ($u['mobile'] ?? ''), (string) ($u['phone'] ?? ''), (string) ($u['email'] ?? ''),
+      ], fn($z) => trim($z) !== ''));
+      return ['name' => (string) ($u['stage_name'] ?: $u['name']), 'zeilen' => $zeilen];
+    }
+  }
+  $frei = trim((string) ($settings['rider_contact_' . $art] ?? ''));
+  return ['name' => '', 'zeilen' => $frei !== '' ? preg_split('~?
+~', $frei) : []];
+}
+
+/**
+ * Wer ist die Technik? Geraten, nicht hinterlegt: Am Instrument steht bei
+ * solchen Konten „Ton", „FOH", „Technik" oder „Mischer". Das ist ein Vorschlag
+ * für die Auswahl, keine Festlegung — überschrieben wird er mit einem Klick.
+ */
+function rider_tech_guess(array $members): int {
+  foreach ($members as $m) {
+    if (preg_match('~technik|ton|foh|sound|misch|licht~i', (string) ($m['instrument'] ?? ''))) {
+      return (int) $m['id'];
+    }
+  }
+  return 0;
+}
+
 /** Beschriftung für den Anschaffungszustand; leer bleibt leer. */
 function eq_acquired_label(string $k): string {
   return isset(EQ_ACQUIRED[$k]) ? t('eq_acq_' . $k) : '';

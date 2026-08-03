@@ -5,14 +5,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const svg = document.querySelector('.stage-plot[data-stageedit]');
   if (!svg) return;
 
+  // Die Maße kommen vom SVG und stehen nicht mehr hier: Das Bühnenmaß ist
+  // einstellbar, und zwei Stellen mit denselben Zahlen laufen auseinander,
+  // sobald jemand eine davon ändert.
+  const ox = +svg.dataset.ox, oy = +svg.dataset.oy;
+  const sw = +svg.dataset.sw, sh = +svg.dataset.sh;
+
   // Umgekehrt zur Zeichnung: Bildpunkt zurück auf Prozent rechnen
   const toPercent = (px, py) => ({
-    x: Math.max(0, Math.min(100, Math.round(((px - 60) / 880) * 100))),
-    y: Math.max(0, Math.min(100, Math.round(((py - 80) / 480) * 100))),
+    x: Math.max(0, Math.min(100, Math.round(((px - ox) / sw) * 100))),
+    y: Math.max(0, Math.min(100, Math.round(((py - oy) / sh) * 100))),
   });
 
   const place = (item, x, y) => {
-    item.setAttribute('transform', `translate(${60 + (x / 100) * 880},${80 + (y / 100) * 480})`);
+    item.setAttribute('transform', `translate(${ox + (x / 100) * sw},${oy + (y / 100) * sh})`);
   };
 
   let dragged = null;
@@ -20,8 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const pointIn = event => {
     const box = svg.getBoundingClientRect();
     return {
-      px: ((event.clientX - box.left) / box.width) * 1000,
-      py: ((event.clientY - box.top) / box.height) * 620,
+      px: ((event.clientX - box.left) / box.width) * (+svg.dataset.vw),
+      py: ((event.clientY - box.top) / box.height) * (+svg.dataset.vh),
     };
   };
 
