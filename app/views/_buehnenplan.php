@@ -208,13 +208,20 @@ $vbT  = $flT + 2 * $rand;
               // worauf sie steht — beim Schlagzeuger das Schlagzeug samt eigener
               // Beschriftung, und zwei Texte übereinander liest niemand. ?>
         <?php
-          $obenDrueber = ($it['kind'] ?? '') === 'musiker';
           $hatNote = ($it['note'] ?? '') !== '' && !$notizVerbraucht;
           // Über der Figur stapeln sich Name und Instrument nach oben, mit
           // Abstand von der Symbolhöhe statt einem festen Wert. Ohne Instrument
           // rückt der Name näher heran, sonst schwebt er.
-          $noteY  = $obenDrueber ? -($kopf + 8) : round($unten + 16);
-          $labelY = $obenDrueber ? -($kopf + ($hatNote ? 24 : 8)) : round($unten);
+          $obenDrueber = ($it['kind'] ?? '') === 'musiker';
+          // ... aber nur, wenn oben Platz ist. Wer weit hinten steht, hätte seinen
+          // Namen sonst außerhalb der Zeichnung — und mit einem Foto von 80 cm
+          // reicht das weiter hinauf als mit einem Zeichen. Dann eben darunter:
+          // schlechter platziert als über der Figur, aber lesbar (#187).
+          // Maßstab ist die Bühnenkante, nicht der Rand der Zeichnung: Im Rand
+          // steht „hinten", und der Name gehört auf die Bühne, wo er hingehört.
+          if ($obenDrueber && $iy - ($kopf + ($hatNote ? 26 : 10)) < $rand + 4) $obenDrueber = false;
+          $noteY  = $obenDrueber ? -($kopf + 8) : round(($it['kind'] === 'musiker' ? $kopf + 18 : $unten) + 16);
+          $labelY = $obenDrueber ? -($kopf + ($hatNote ? 24 : 8)) : round($it['kind'] === 'musiker' ? $kopf + 18 : $unten);
         ?>
         <?php if (($it['label'] ?? '') !== ''): ?>
           <text text-anchor="middle" y="<?= $labelY ?>" font-size="15" fill="<?= $stroke ?>"><?= e($it['label']) ?></text>

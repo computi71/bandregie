@@ -1353,8 +1353,9 @@ function stage_default_items(array $members): array {
   $spots = [
     // Der Schlagzeuger steht hinter seinem Set, nicht darin: Bei gleichem y lief
     // seine Beschriftung über den Umriss des Schlagzeugs. Nicht weiter nach
-    // hinten, sonst liegt sein Name auf der Kante des Podests.
-    'schlagzeug' => [50, 11], 'drums' => [50, 11], 'percussion' => [70, 18],
+    // hinten, weil ein Profilfoto von 80 cm die Beschriftung höher schiebt als
+    // ein Zeichen — sonst stünde der Name über der Bühnenkante.
+    'schlagzeug' => [50, 13], 'drums' => [50, 13], 'percussion' => [70, 18],
     'bass'       => [22, 25], 'keyboard' => [78, 30], 'keys' => [78, 30],
     'gitarre'    => [25, 60], 'e-gitarre' => [25, 60], 'guitar' => [25, 60],
     'gesang'     => [50, 78], 'vocals' => [50, 78], 'saxophon' => [75, 62],
