@@ -195,10 +195,20 @@ async function pkFrageStellen(nurDieser, mediation) {
  * nicht. Ohne autocomplete="current-password" erkennt der Safe das Gebilde
  * nicht mehr als Anmeldeformular und füllt nichts mehr aus.
  *
- * Zusätzlich der Notausgang unten: Wer das Passwortfeld anfasst, bekommt die
- * Anfrage abgebrochen. Ein zweiter Anmeldeweg darf den ersten nie blockieren —
- * lieber kein Passkey-Vorschlag als ein Formular, in das man nichts eintragen
- * kann.
+ * Hier hing danach ein Notausgang: Wer das Passwortfeld anfasste, bekam die
+ * Anfrage abgebrochen. Der ist wieder weg, denn er hat genau den Weg zerstört,
+ * den er schützen sollte. Ein Passwortmanager rückt beim Aufklappen seiner
+ * Vorschlagsliste das Formular an — LastPass setzt den Fokus ins Passwortfeld.
+ * Damit brach der Abbruch die laufende Anfrage ab, während der Vorschlag noch
+ * auf dem Bildschirm stand. Ein Klick darauf löste dann nichts mehr aus: Das
+ * Gerät hätte geantwortet, nur horchte niemand mehr. Im Log stand die
+ * Zufallsfrage und danach nichts.
+ *
+ * Der Notausgang war ohnehin nur eine zweite Sicherung gegen ein Problem,
+ * dessen Ursache oben steht und behoben ist. Eine laufende Passkey-Anfrage
+ * blockiert kein Formular: Wer tippt, tippt; wer absendet, navigiert, und die
+ * Anfrage endet von selbst. Sollte der Passwortsafe wieder nichts ausfüllen,
+ * ist das Formular die Stelle zum Nachsehen, nicht dieser Code.
  */
 async function pkBereitstehen(meldung) {
   if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) return false;
@@ -207,20 +217,12 @@ async function pkBereitstehen(meldung) {
   } catch (e) {
     return false;
   }
-  // Der Notausgang wird vor der Anfrage scharf gemacht, nicht danach: Sonst
-  // gäbe es einen Moment, in dem sie schon läuft und noch niemand sie stoppen
-  // kann.
-  const pw = document.querySelector('input[type="password"]');
-  if (pw) {
-    const frei = () => { if (pkLaufend) { pkLaufend.abort(); pkLaufend = null; } };
-    pw.addEventListener('focus', frei, { once: true });
-    pw.addEventListener('input', frei);
-  }
   try {
     const cred = await pkFrageStellen(null, 'conditional');
     if (cred) await pkAbsenden(cred, meldung);
   } catch (e) {
-    // Abbruch ist hier der Normalfall — wer tippt, will kein Passkey-Fenster.
+    // Ein Abbruch bleibt möglich — der Knopf löst ihn aus, wenn jemand die
+    // Bereitschaft nicht abwartet. Das ist kein Fehler, sondern seine Absicht.
   }
   return true;
 }
