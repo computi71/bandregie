@@ -1678,14 +1678,16 @@ if (str_starts_with($path, '/intern')) {
            $it['width_cm'] ?? null, $it['depth_cm'] ?? null, $it['user_id'] ?? null]);
       }
     } elseif ($m[1] === 'add') {
+      $neuArt = array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges';
+      $neuWer = ((int) ($_POST['user_id'] ?? 0)) ?: null;
       q('INSERT INTO stage_items (kind, label, x, y, note, position, width_cm, depth_cm, user_id) VALUES (?,?,?,?,?,?,?,?,?)', [
-        array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges',
-        trim($_POST['label'] ?? ''),
+        $neuArt,
+        ($neuArt === 'musiker' && $neuWer) ? '' : trim($_POST['label'] ?? ''),
         max(0, min(100, (int) ($_POST['x'] ?? 50))), max(0, min(100, (int) ($_POST['y'] ?? 50))),
         trim($_POST['note'] ?? ''),
         (int) (row('SELECT COALESCE(MAX(position), 0) + 1 AS p FROM stage_items')['p'] ?? 1),
         $stageMass($_POST['width_cm'] ?? ''), $stageMass($_POST['depth_cm'] ?? ''),
-        ((int) ($_POST['user_id'] ?? 0)) ?: null,
+        $neuWer,
       ]);
     } elseif ($m[1] === 'update' && ($_POST['remove'] ?? '') !== '') {
       // Der Löschknopf steckt im selben Formular; ein eigenes wäre verschachtelt
@@ -1695,13 +1697,20 @@ if (str_starts_with($path, '/intern')) {
     } elseif ($m[1] === 'update') {
       // Alle Einträge auf einmal — beim Ziehen im Plan ändern sich mehrere
       foreach ((array) ($_POST['item'] ?? []) as $id => $vals) {
+        $stageArt  = array_key_exists($vals['kind'] ?? '', STAGE_KINDS) ? $vals['kind'] : 'sonstiges';
+        $stageWer  = ((int) ($vals['user_id'] ?? 0)) ?: null;
+        // Steht ein Mitglied dahinter, ist sein Name der Name. Der getippte wird
+        // dann geleert statt mitgeschleppt: Zwei Namen in einer Zeile, von denen
+        // nur einer zählt, liest sich wie ein Fehler — und ist einer, sobald sich
+        // der Name des Mitglieds ändert (#187).
+        $stageText = ($stageArt === 'musiker' && $stageWer) ? '' : trim($vals['label'] ?? '');
         q('UPDATE stage_items SET kind = ?, label = ?, x = ?, y = ?, note = ?, width_cm = ?, depth_cm = ?, user_id = ? WHERE id = ?', [
-          array_key_exists($vals['kind'] ?? '', STAGE_KINDS) ? $vals['kind'] : 'sonstiges',
-          trim($vals['label'] ?? ''),
+          $stageArt,
+          $stageText,
           max(0, min(100, (int) ($vals['x'] ?? 50))), max(0, min(100, (int) ($vals['y'] ?? 50))),
           trim($vals['note'] ?? ''),
           $stageMass($vals['width_cm'] ?? ''), $stageMass($vals['depth_cm'] ?? ''),
-          ((int) ($vals['user_id'] ?? 0)) ?: null,
+          $stageWer,
           (int) $id,
         ]);
       }
@@ -1811,9 +1820,15 @@ if (str_starts_with($path, '/intern')) {
         $anteil = perm_allows($me, 'kasse')
           ? (isset($_POST['profit_share']) ? 1 : 0)
           : (int) (row('SELECT profit_share FROM users WHERE id = ?', [$m[1]])['profit_share'] ?? 1);
+        // Figur und Bühnenzugehörigkeit sind Angaben für den Bühnenplan, und den
+        // pflegt die Verwaltung. Sie hier zu setzen erspart es, jedes Mitglied um
+        // einen Klick im eigenen Profil zu bitten — sonst sehen im Plan alle
+        // gleich aus (#187). Ein unbekannter Wert wird auf „nicht gewählt"
+        // gebracht statt übernommen.
+        $figur = array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? (string) $_POST['stage_figure'] : '';
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
-                            substitute_rank=?, profit_share=? WHERE id=?', [
+                            substitute_rank=?, profit_share=?, stage_figure=?, on_stage=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
                        row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
@@ -1822,6 +1837,8 @@ if (str_starts_with($path, '/intern')) {
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
           max(0, min(99, (int) ($_POST['substitute_rank'] ?? 0))),
           $anteil,
+          $figur,
+          isset($_POST['on_stage']) ? 1 : 0,
           $m[1],
         ]);
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus).

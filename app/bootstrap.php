@@ -957,6 +957,7 @@ Zeile zwei
   'stage_size_default' => 'leer = übliches Maß',
   'stage_scale_hint' => 'Podeste, Verstärker, Monitore und Boxen werden maßstäblich gezeichnet. Ein Podest ist üblicherweise 2 × 1 m; drei davon nebeneinander ergeben die 3 × 2 m, auf denen das Schlagzeug steht. Wer ein anderes Maß hat, trägt es ein.',
   'stage_figure' => 'Figur im Bühnenplan',
+  'stage_figure_auto' => 'Foto, wenn eines da ist',
   'stage_figure_neutral' => 'Neutral',
   'stage_figure_w' => 'Weiblich',
   'stage_figure_m' => 'Männlich',
@@ -1297,7 +1298,32 @@ const STAGE_SIZES = [
  * will, wählt aus — oder nimmt sein Foto, dann steht auf der Bühne das Gesicht
  * statt eines Strichmännchens.
  */
-const STAGE_FIGURES = ['' => '🧍', 'w' => '🧍‍♀️', 'm' => '🧍‍♂️', 'avatar' => '🙂'];
+// Der leere Schlüssel heißt „nicht gewählt" und nicht „neutral": Ohne Wahl steht
+// das Profilfoto im Plan, sofern eines da ist — sonst sähen alle Mitglieder gleich
+// aus, und niemand geht in sechs Profile, um ein Symbol auszusuchen. Wer sein
+// Gesicht nicht auf dem Rider haben will, wählt ausdrücklich „neutral"; deshalb
+// braucht das einen eigenen Wert (#187).
+const STAGE_FIGURES = ['' => '🧍', 'neutral' => '🧍', 'w' => '🧍‍♀️', 'm' => '🧍‍♂️', 'avatar' => '🙂'];
+
+// Radius des Profilfotos im Bühnenplan, in Zeichnungseinheiten (1 = 1 cm). 40
+// heißt 80 cm — mehr als ein Mensch breit ist, aber ein Gesicht muss auf einem
+// Plan zu erkennen sein, der über eine ganze Bühne geht. Bei 30 war es ein Punkt.
+const STAGE_FOTO_R = 40;
+
+/**
+ * Was im Bühnenplan für dieses Mitglied steht: ['foto' => bool, 'figur' => string].
+ *
+ * Eine Stelle für die Regel, weil sie an drei Orten gebraucht wird — Plan,
+ * Druckansicht und Mitgliederliste — und drei Kopien davon auseinanderlaufen.
+ */
+function stage_figure_for(?array $member): array {
+  $gewaehlt = (string) ($member['stage_figure'] ?? '');
+  $hatFoto  = !empty($member['avatar_file']);
+  return [
+    'foto'  => $hatFoto && ($gewaehlt === 'avatar' || $gewaehlt === ''),
+    'figur' => STAGE_FIGURES[$gewaehlt] ?? STAGE_FIGURES[''],
+  ];
+}
 
 /** Das Bühnenmaß in Metern [Breite, Tiefe]. Acht auf sechs ist die Vorgabe. */
 function stage_size(): array {
@@ -1352,7 +1378,9 @@ function stage_default_items(array $members): array {
     $taken[] = [$x, $y];
     // Der Verweis aufs Mitglied macht die Figur und das Foto möglich — ohne ihn
     // wäre der Eintrag nur ein Name, und der Plan wüsste nicht, wer dort steht.
-    $items[] = ['kind' => 'musiker', 'label' => $m['stage_name'] ?: $m['name'],
+    // Kein getippter Name: Der Verweis aufs Mitglied trägt ihn, und zwei Namen
+    // in einer Zeile lesen sich wie ein Fehler (#187).
+    $items[] = ['kind' => 'musiker', 'label' => '',
                 'x' => $x, 'y' => $y, 'note' => (string) ($m['instrument'] ?? ''),
                 'user_id' => (int) ($m['id'] ?? 0) ?: null];
   }
@@ -2995,7 +3023,8 @@ function rider_contact(string $art, array $settings): array {
     }
   }
   $frei = trim((string) ($settings['rider_contact_' . $art] ?? ''));
-  return ['name' => '', 'zeilen' => $frei !== '' ? preg_split('~?
+  return ['name' => '', 'zeilen' => $frei !== '' ? preg_split('~
+?
 ~', $frei) : []];
 }
 

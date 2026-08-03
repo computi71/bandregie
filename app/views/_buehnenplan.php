@@ -100,24 +100,28 @@ $vbT  = $flT + 2 * $rand;
 
         <?php elseif ($it['kind'] === 'musiker'): ?>
           <?php
-            // Foto, wenn das Mitglied es so gewählt hat und eines da ist —
-            // sonst die gewählte Figur. Ein Gesicht erkennt die Band schneller
-            // als jedes Strichmännchen.
+            // Foto, wenn eines da ist und das Mitglied nichts anderes gewählt
+            // hat — ein Gesicht erkennt die Band schneller als jedes
+            // Strichmännchen, und der Veranstalter weiß, wer ihm gegenübersteht.
             $mg = !empty($it['user_id'])
-              ? row('SELECT stage_figure, avatar_file FROM users WHERE id = ?', [(int) $it['user_id']])
+              ? row('SELECT stage_figure, avatar_file, stage_name, name FROM users WHERE id = ?', [(int) $it['user_id']])
               : null;
-            $figur = STAGE_FIGURES[$mg['stage_figure'] ?? ''] ?? STAGE_FIGURES[''];
-            $foto  = ($mg['stage_figure'] ?? '') === 'avatar' && !empty($mg['avatar_file']);
+            ['foto' => $foto, 'figur' => $figur] = stage_figure_for($mg);
+            // Steht ein Mitglied dahinter, gilt sein Name und nicht der getippte:
+            // Sonst stehen beide in der Zeile und der Plan zeigt den alten Stand,
+            // wenn sich der Name ändert (#187).
+            if ($mg) $it['label'] = $mg['stage_name'] ?: $mg['name'];
             // Wie hoch das Symbol über seinen Mittelpunkt reicht. Danach richtet
-            // sich der Abstand der Beschriftung: Ein Foto ist doppelt so hoch wie
+            // sich der Abstand der Beschriftung: Ein Foto ist deutlich höher als
             // ein Zeichen, und bei festem Abstand stand das Instrument im Gesicht.
-            $kopf = $foto ? 32 : 16;
+            $kopf = $foto ? STAGE_FOTO_R + 4 : 16;
           ?>
           <?php if ($foto): ?>
-            <clipPath id="stagepic-<?= (int) $it['id'] ?>"><circle r="30"/></clipPath>
-            <image href="/uploads/<?= e($mg['avatar_file']) ?>" x="-30" y="-30" width="60" height="60"
+            <?php $r = STAGE_FOTO_R; ?>
+            <clipPath id="stagepic-<?= (int) $it['id'] ?>"><circle r="<?= $r ?>"/></clipPath>
+            <image href="/uploads/<?= e($mg['avatar_file']) ?>" x="<?= -$r ?>" y="<?= -$r ?>" width="<?= 2 * $r ?>" height="<?= 2 * $r ?>"
                    preserveAspectRatio="xMidYMid slice" clip-path="url(#stagepic-<?= (int) $it['id'] ?>)"/>
-            <circle r="30" fill="none" stroke="<?= $stroke ?>" stroke-width="2" opacity="0.5"/>
+            <circle r="<?= $r ?>" fill="none" stroke="<?= $stroke ?>" stroke-width="2" opacity="0.5"/>
           <?php else: ?>
             <?php // fill="transparent": Ein unsichtbarer Griff, damit sich die
                   // Figur beim Ziehen auch dort anfassen lässt, wo das Zeichen

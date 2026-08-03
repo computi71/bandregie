@@ -78,6 +78,20 @@
             <input name="instrument" value="<?= e($mFull['instrument']) ?>" list="instrument-list">
             <span class="muted small"><?= e($instruments ? t('mem_instrument_pick') : t('mem_instrument_free')) ?></span>
           </label>
+          <?php // Figur und Bühnenzugehörigkeit gehören zum Bühnenplan und stehen
+                // deshalb hier bei der Verwaltung — im eigenen Profil steht
+                // dasselbe, aber dort setzt es nur, wer sich selbst einloggt (#187). ?>
+          <label><?= e(t('stage_figure')) ?>
+            <select name="stage_figure">
+              <?php foreach (STAGE_FIGURES as $sfKey => $sfSym): ?>
+                <option value="<?= e($sfKey) ?>" <?= (string) ($mFull['stage_figure'] ?? '') === (string) $sfKey ? 'selected' : '' ?>>
+                  <?= $sfSym ?> <?= e(t('stage_figure_' . ($sfKey === '' ? 'auto' : $sfKey))) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <span class="muted small"><?= e(t('stage_figure_hint')) ?></span>
+          </label>
+          <label class="checkbox"><input type="checkbox" name="on_stage" value="1" <?= (int) ($mFull['on_stage'] ?? 1) === 1 ? 'checked' : '' ?>> 🎭 <?= e(t('prof_on_stage')) ?></label>
           <label><?= e(t('mem_substitute_for')) ?>
             <select name="substitute_for">
               <option value=""><?= e(t('mem_substitute_none')) ?></option>
