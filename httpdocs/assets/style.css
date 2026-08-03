@@ -365,6 +365,14 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .file-thumb { max-height: 3.2rem; max-width: 5rem; border-radius: 6px; vertical-align: middle;
               margin-right: 0.5rem; border: 1px solid var(--border); }
 
+/* Anhang im Rahmen der App. Höhe am Fenster statt am Inhalt, weil eine PDF
+   sonst entweder auf eine Zeile schrumpft oder endlos wächst. */
+.file-view { padding: 0; overflow: hidden; }
+.file-view object { width: 100%; height: min(75vh, 900px); border: 0; display: block; }
+.file-view img { width: 100%; height: auto; display: block; background: #fff; }
+.file-view audio { width: 100%; display: block; margin: 1rem 0; }
+.file-view p { padding: 1rem; margin: 0; }
+
 /* Vorschau in der Geräteliste. Weißer Grund, weil Produktfotos freigestellt
    sind — auf dunklem Grund verschwindet sonst das halbe Gerät. Feste Höhe,
    damit die Zeilen nicht bei jedem Bild anders hoch werden. */

@@ -12,13 +12,15 @@ $fmtSize = function (int $b): string {
   <ul class="task-list">
     <?php foreach ($attachFiles as $f): ?>
       <?php $isImage = in_array(strtolower(pathinfo($f['original_name'], PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp'], true); ?>
+      <?php // Nicht in ein neues Fenster: In der installierten App gibt es dort
+            // kein Zurück. Die Ansichtsseite trägt den Weg zurück im Inhalt (#183). ?>
       <li>
         <?php if ($isImage): ?>
-          <a href="/intern/datei/<?= $f['id'] ?>" target="_blank">
+          <a href="/intern/datei/<?= $f['id'] ?>/ansicht">
             <img class="file-thumb" src="/intern/datei/<?= $f['id'] ?>" alt="<?= e($f['original_name']) ?>" loading="lazy">
           </a>
         <?php endif; ?>
-        <a href="/intern/datei/<?= $f['id'] ?>" target="_blank"><?= e($f['original_name']) ?></a>
+        <a href="/intern/datei/<?= $f['id'] ?>/ansicht"><?= e($f['original_name']) ?></a>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
         <?php if ((int) $f['uploaded_by'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
           <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>

@@ -1386,7 +1386,22 @@ if (str_starts_with($path, '/intern')) {
       http_response_code(404);
       exit('Datei nicht gefunden');
     }
-    file_serve($f);
+    file_serve($f, isset($_GET['speichern']));
+  }
+  // Anhang mit Rahmen: In der installierten App gibt es kein Zurück, wenn eine
+  // PDF das Fenster übernimmt. Diese Seite trägt den Weg zurück im Inhalt.
+  if (preg_match('~^/intern/datei/(\d+)/ansicht$~', $path, $m) && $method === 'GET') {
+    $f = row('SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
+              WHERE f.id = ?', [$m[1]]);
+    if (!$f || !may_see_file($me, $f) || !is_file(FILES_DIR . '/' . $f['filename'])) {
+      http_response_code(404);
+      exit('Datei nicht gefunden');
+    }
+    view('intern/datei', [
+      'title'    => $f['original_name'],
+      'file'     => $f,
+      'backUrl'  => file_entity_url($f),
+    ]);
   }
 
   // ---------- Veranstalter-Downloads verwalten ----------
@@ -3210,13 +3225,16 @@ function noten_stage_entry(array $song, int $meId): array {
   }
   return ['id' => (int) $song['id'], 'title' => $song['title'], 'bpm' => song_bpm($song['tempo']), 'musicians' => $musicians];
 }
-function file_serve(array $f): never {
+function file_serve(array $f, bool $alsDownload = false): never {
   $abs = FILES_DIR . '/' . $f['filename'];
   $ext = strtolower(pathinfo($f['original_name'], PATHINFO_EXTENSION));
   $mime = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
            'gif' => 'image/gif', 'webp' => 'image/webp', 'txt' => 'text/plain', 'mp3' => 'audio/mpeg',
            'wav' => 'audio/wav', 'zip' => 'application/zip'][$ext] ?? 'application/octet-stream';
-  $disposition = in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'txt', 'mp3', 'wav'], true) ? 'inline' : 'attachment';
+  // Speichern statt anzeigen, wenn die Ansicht darum bittet: Ein Betrachter, der
+  // die Datei nicht darstellen kann, soll sie wenigstens herausgeben können.
+  $disposition = !$alsDownload
+    && in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'txt', 'mp3', 'wav'], true) ? 'inline' : 'attachment';
   header("Content-Type: $mime");
   header("Content-Disposition: $disposition; filename=\"" . rawurlencode($f['original_name']) . '"');
   // Verschlüsselt abgelegte Anhänge werden hier geöffnet — nach der

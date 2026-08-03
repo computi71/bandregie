@@ -506,6 +506,10 @@ const UI_STRINGS = [
   // Dateien
   'files_word' => 'Dateien',
   'files_none' => 'Noch keine Dateien — Verträge, Rechnungen, Rider, Aufnahmen ... (max. 20 MB pro Datei)',
+  'file_back' => 'Zurück',
+  'file_no_preview' => 'Diese Datei lässt sich hier nicht anzeigen — speichern oder in einem neuen Tab öffnen.',
+  'file_save' => 'Speichern',
+  'file_open_tab' => 'In neuem Tab öffnen',
   'files_multi' => 'Rechnung für mehrere Geräte',
   'files_multi_hint' => 'Eine Rechnung zählt selten nur ein Gerät auf. Lade sie hier einmal hoch und hake an, wozu sie gehört — gespeichert wird sie trotzdem nur einmal, sie erscheint aber bei jedem angehakten Gerät.',
   'files_multi_pick' => 'Gehört zu',
@@ -2420,6 +2424,27 @@ function may_see_setlist(?array $user, int $setlistId): bool {
 function may_see_song(?array $user, int $songId): bool {
   $ids = visible_song_ids($user);
   return $ids === null || in_array($songId, $ids, true);
+}
+
+/**
+ * Zu welcher Seite gehört ein Anhang? Die installierte App läuft als eigenes
+ * Fenster ohne Zurück-Pfeil (`display: standalone`), deshalb muss der Weg
+ * zurück im Inhalt stehen und darf nicht dem Browser überlassen bleiben.
+ */
+function file_entity_url(array $file): string {
+  $id = (int) $file['entity_id'];
+  return match ($file['entity_type']) {
+    'event'     => '/intern/termine/' . $id,
+    'song'      => '/intern/songs/' . $id,
+    'venue'     => '/intern/orte/' . $id,
+    'setlist'   => '/intern/setlists/' . $id,
+    'equipment' => '/intern/equipment/' . $id . '/detail',
+    'invoice'   => '/intern/equipment',
+    'finance'   => '/intern/kasse',
+    'download'  => '/intern/downloads',
+    // Ein künftiger Anhang-Typ landet auf der Übersicht statt im Nichts.
+    default     => '/intern',
+  };
 }
 
 /**
