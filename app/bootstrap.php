@@ -980,6 +980,30 @@ Gitarre: vorne rechts",
   // Equipment
   'inav_equipment' => 'Equipment',
   'eq_new' => 'Neues Equipment', 'eq_cat' => 'Kategorie',
+  // Rechnungen (#180)
+  'inv_title' => 'Rechnungen',
+  'inv_hint' => 'Eine Rechnung wird einmal erfasst, auch wenn zwanzig Geräte darauf stehen. Am Gerät wird sie dann nur ausgewählt — so bleibt der Beleg an einer Stelle, und ein angehängtes PDF liegt nicht zwanzigmal auf der Platte.',
+  'inv_new' => 'Rechnung erfassen',
+  'inv_supplier' => 'Händler',
+  'inv_supplier_ph' => 'Thomann, Just Music, privat …',
+  'inv_order_no' => 'Auftragsnummer',
+  'inv_invoice_no' => 'Belegnummer',
+  'inv_date' => 'Rechnungsdatum',
+  'inv_total' => 'Rechnungssumme',
+  'inv_no_short' => 'Beleg',
+  'inv_order_short' => 'Auftrag',
+  'inv_untitled' => 'Rechnung ohne Angaben',
+  'inv_none' => 'Noch keine Rechnung erfasst.',
+  'inv_pick' => 'Rechnung',
+  'inv_pick_none' => 'keine',
+  'inv_items' => '%1 Geräte auf diesem Beleg',
+  'inv_items_one' => '1 Gerät auf diesem Beleg',
+  'inv_article_no' => 'Artikelnummer beim Händler',
+  'inv_saved' => 'Rechnung gespeichert.',
+  'inv_needs_something' => 'Ohne Händler, Auftrags- oder Belegnummer lässt sich die Rechnung später nicht zuordnen — mindestens eines davon bitte eintragen.',
+  'inv_deleted' => 'Rechnung gelöscht. Die Geräte bleiben, nur der Verweis ist weg.',
+  'inv_delete_hint' => 'Löschen entfernt nur den Beleg und seine Anhänge — kein Gerät verschwindet dadurch.',
+  'inv_privacy' => 'Auf einer Händlerrechnung stehen Anschrift und Zahlungsmittel des Käufers. Wer ein Gerät besitzt, sieht dessen Rechnung immer. Sonst sieht sie nur die Kassenführung — und auch das nur, wenn ausschließlich Bandeigentum darauf steht: Sobald ein persönliches Gerät auf dem Beleg ist, bleibt er beim Besitzer.',
   'eq_acquired' => 'Angeschafft als',
   'eq_acquired_unknown' => 'nicht erfasst',
   'eq_acq_neu' => 'Neu', 'eq_acq_bware' => 'B-Ware', 'eq_acq_gebraucht' => 'Gebraucht',
@@ -1118,6 +1142,11 @@ const PERM_ENTITY_MODULES = [
   'event' => 'termine', 'song' => 'songs', 'venue' => 'orte',
   'equipment' => 'equipment', 'setlist' => 'setlists',
   'finance' => 'kasse', 'download' => 'downloads',
+  // Anhängen darf, wer Geräte pflegt — Papierkram gehört zur Gerätepflege, und
+  // wer die Rechnung in der Hand hat, ist meist der Käufer selbst. Wer sie
+  // danach lesen darf, entscheidet may_see_invoice() strenger: Anschrift und
+  // Zahlungsmittel des Käufers gehen nicht jeden an, der Geräte pflegt.
+  'invoice' => 'equipment',
 ];
 
 /**
@@ -1462,6 +1491,29 @@ $tables = [
     INDEX idx_equipment (equipment_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  /*
+   * Rechnungen zu Anschaffungen (#180).
+   *
+   * Eine eigene Zeile und nicht ein Textfeld am Gerät: Eine Rechnung über
+   * zwanzig Positionen ist ein Beleg, nicht zwanzig. Sie zwanzigmal
+   * abzuschreiben heißt, sie zwanzigmal pflegen zu müssen und neunzehnmal zu
+   * vergessen — und ein PDF zwanzigmal abzulegen kostet zwanzigmal Platz.
+   *
+   * Der Händler steht hier und nicht am Gerät, denn er gehört zum Beleg. Die
+   * Artikelnummer steht am Gerät, denn die gilt je Ding.
+   */
+  "CREATE TABLE IF NOT EXISTS invoices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier VARCHAR(120) NOT NULL DEFAULT '',
+    order_no VARCHAR(40) NOT NULL DEFAULT '',
+    invoice_no VARCHAR(40) NOT NULL DEFAULT '',
+    invoice_date DATE NULL,
+    total_cents INT NULL,
+    notes VARCHAR(500) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_supplier_order (supplier, order_no)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS equipment_deadlines (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
@@ -1641,6 +1693,13 @@ foreach ([
   // Neu, B-Ware oder gebraucht angeschafft. Leer heißt „nicht erfasst" — bei
   // Altbestand weiß das niemand mehr, und geraten wäre schlechter als offen.
   'acquired_as'   => "VARCHAR(12) NOT NULL DEFAULT ''",
+  // Die Nummer, unter der der Händler dieses Ding führt. Eigene Spalte statt
+  // Freitext in den Notizen: Danach lässt sich suchen und vergleichen, und ein
+  // zweiter Kauf desselben Artikels ist am Feld erkennbar statt an Textsuche.
+  'article_no'    => "VARCHAR(40) NOT NULL DEFAULT ''",
+  // Der Beleg, auf dem dieses Gerät steht. Mehrere Geräte zeigen auf dieselbe
+  // Rechnung — genau darum ist sie eine eigene Zeile.
+  'invoice_id'    => 'INT NULL',
 ] as $eqCol => $eqDdl) {
   if (!column_exists('equipment', $eqCol)) $db->exec("ALTER TABLE equipment ADD COLUMN `$eqCol` $eqDdl");
 }
@@ -2346,6 +2405,9 @@ function may_see_file(?array $user, array $file): bool {
     // Ein Kassenbeleg gehört zu seiner Buchung: private Auslagen sieht nur,
     // wer die Buchung selbst sehen darf.
     'finance' => may_see_finance_file($user, $id),
+    // Eine Händlerrechnung trägt Anschrift und Zahlungsmittel des Käufers —
+    // strenger als der Bereich, an dem sie hängt.
+    'invoice' => may_see_invoice($user, $id),
     // Diese drei hängen an ihrem Bereich, den der Frontcontroller schon prüft.
     'venue', 'equipment', 'download' => true,
     // Unbekannter Typ heißt nein. Andersherum wäre jeder künftige Anhang-Typ
@@ -2625,6 +2687,88 @@ function eq_category_label(string $k): string { return t('eqcat_' . $k) !== 'eqc
 /** Beschriftung für den Anschaffungszustand; leer bleibt leer. */
 function eq_acquired_label(string $k): string {
   return isset(EQ_ACQUIRED[$k]) ? t('eq_acq_' . $k) : '';
+}
+
+/**
+ * Darf jemand diese Rechnung sehen?
+ *
+ * Nicht das Bereichsrecht allein entscheidet, sondern auch der Besitz — in
+ * beide Richtungen:
+ *
+ * Wer ein Gerät besitzt, sieht dessen Rechnung. Es ist sein Kauf, seine
+ * Anschrift, sein Geld; ihn davon auszuschließen wäre absurd.
+ *
+ * Umgekehrt reicht das Kassenrecht nicht für jeden Beleg. Steht auf einer
+ * Rechnung auch nur ein Gerät, das jemandem persönlich gehört, dann ist es
+ * eine private Rechnung mit privater Anschrift und privatem Zahlungsmittel —
+ * die geht die Kassenführung nichts an. Nur bei reinem Bandeigentum ist der
+ * Beleg ein Bandbeleg.
+ *
+ * Ein Beleg ohne jedes Gerät (gerade erfasst, noch nichts zugeordnet) ist
+ * Bandsache: Er kann noch niemandem gehören.
+ */
+function may_see_invoice(?array $user, int $invoiceId): bool {
+  if (($user['role'] ?? '') === 'admin') return true;
+  $uid = (int) ($user['id'] ?? 0);
+  $eigner = rows('SELECT DISTINCT owner_id FROM equipment WHERE invoice_id = ?', [$invoiceId]);
+  $privat = false;
+  foreach ($eigner as $e) {
+    if ($e['owner_id'] === null) continue;
+    if ((int) $e['owner_id'] === $uid) return true;
+    $privat = true;
+  }
+  return !$privat && perm_allows($user, 'kasse', 'read');
+}
+
+/**
+ * Der Beleg aus einem Formular, geprüft — oder null.
+ *
+ * Es genügt nicht, dass die Zahl eine Rechnung trifft: Wer einen Beleg nicht
+ * sehen darf, darf auch kein Gerät daran hängen. Sonst wäre die Zuordnung ein
+ * Weg, an fremde Privatrechnungen zu kommen, ohne sie je aufzurufen — es reicht
+ * dann, ein eigenes Gerät danebenzuhängen.
+ */
+function eq_invoice_input(mixed $eingabe, ?array $user): ?int {
+  $id = (int) ($eingabe ?? 0);
+  if ($id <= 0) return null;
+  if (!row('SELECT id FROM invoices WHERE id = ?', [$id])) return null;
+  return may_see_invoice($user, $id) ? $id : null;
+}
+
+/**
+ * Rechnungen, absteigend nach Datum — für die Auswahl am Gerät.
+ *
+ * Ohne Datum zuletzt: Ein Beleg, dem noch das Datum fehlt, ist unfertig und
+ * gehört nicht an den Anfang der Liste.
+ */
+function invoice_list(?array $user = null): array {
+  $alle = rows('SELECT * FROM invoices ORDER BY invoice_date IS NULL, invoice_date DESC, id DESC');
+  if ($user === null) return $alle;
+  return array_values(array_filter($alle, fn($inv) => may_see_invoice($user, (int) $inv['id'])));
+}
+
+/**
+ * Eine Rechnung in einer Zeile: Händler, Nummern, Datum, Summe.
+ *
+ * Was fehlt, wird weggelassen statt als Lücke gezeigt — ein Beleg, von dem nur
+ * die Auftragsnummer bekannt ist, soll trotzdem lesbar dastehen.
+ */
+function invoice_label(array $inv): string {
+  $teile = [];
+  if ($inv['supplier'] !== '') $teile[] = $inv['supplier'];
+  if (($inv['invoice_no'] ?? '') !== '') $teile[] = t('inv_no_short') . ' ' . $inv['invoice_no'];
+  elseif (($inv['order_no'] ?? '') !== '') $teile[] = t('inv_order_short') . ' ' . $inv['order_no'];
+  if (!empty($inv['invoice_date'])) $teile[] = fmt_date($inv['invoice_date']);
+  if ($inv['total_cents'] !== null) $teile[] = fmt_money((int) $inv['total_cents']);
+  return $teile ? implode(' · ', $teile) : t('inv_untitled');
+}
+
+/**
+ * Wie viele Geräte auf diesem Beleg stehen. Genau das ist der Grund, warum es
+ * die Tabelle gibt — also soll man es auch sehen.
+ */
+function invoice_item_count(int $invoiceId): int {
+  return (int) (row('SELECT COUNT(*) AS n FROM equipment WHERE invoice_id = ?', [$invoiceId])['n'] ?? 0);
 }
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 

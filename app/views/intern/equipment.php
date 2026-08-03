@@ -41,6 +41,15 @@
         <?php endforeach; ?>
       </select>
     </label>
+    <label><?= e(t('inv_article_no')) ?><input name="article_no"></label>
+    <label><?= e(t('inv_pick')) ?>
+      <select name="invoice_id">
+        <option value=""><?= e(t('inv_pick_none')) ?></option>
+        <?php foreach ($invoices as $invOpt): ?>
+          <option value="<?= (int) $invOpt['id'] ?>"><?= e(invoice_label($invOpt)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
     <label><?= e(t('eq_count')) ?><input type="number" name="count" value="1" min="1" max="99"></label>
     <label class="checkbox"><input type="checkbox" name="is_standard" value="1"> 📦 <?= e(t('eq_standard')) ?></label>
     <p class="muted span2"><?= e(t('eq_count_hint')) ?></p>
@@ -48,6 +57,10 @@
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
   </form>
 </details>
+
+<?php // Rechnungen (#180): eigener Abschnitt, weil ein Beleg über zwanzig
+      // Positionen einmal existiert und nicht zwanzigmal. ?>
+<?php require BASE_DIR . '/app/views/intern/_rechnungen.php'; ?>
 
 <?php // Eine Rechnung aus dem Musikhaus zählt selten ein Gerät auf. Sie steht
       // deshalb einmal für die ganze Seite und nicht in jedem Geräteformular:

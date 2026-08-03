@@ -1905,6 +1905,14 @@ if (str_starts_with($path, '/intern')) {
     foreach (rows('SELECT * FROM equipment_deadlines ORDER BY due_date') as $dl) {
       $deadlinesByEq[$dl['equipment_id']][] = $dl;
     }
+    // Rechnungen und ihre Anhaenge: bereits nach Sichtbarkeit gefiltert, damit
+    // die Ansicht nicht selbst entscheiden muss, was sie zeigen darf.
+    $invList = invoice_list($me);
+    $invFiles = [];
+    foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
+                   WHERE f.entity_type = 'invoice'") as $invF) {
+      $invFiles[(int) $invF['entity_id']][] = $invF;
+    }
     view('intern/equipment', [
       'title' => t('inav_equipment'),
       'items' => rows('SELECT e.*, u.name AS owner_name, p.name AS parent_name FROM equipment e
@@ -1915,6 +1923,8 @@ if (str_starts_with($path, '/intern')) {
       'bookingsByEq' => eq_bookings_by_equipment($me),
       'deadlinesByEq' => $deadlinesByEq,
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
+      'invoices' => $invList,
+      'invoicesFiles' => $invFiles,
     ]);
   }
   // Der Bearbeiten-Block eines einzelnen Geräts. Die Liste holt ihn nach,
@@ -1936,6 +1946,9 @@ if (str_starts_with($path, '/intern')) {
       // Ohne die Buchungen hielte das Formular jedes Gerät für ungekauft und
       // böte den Kauf ein zweites Mal an.
       'bookingsByEq' => [(int) $detailEq['id'] => eq_bookings((int) $detailEq['id'], $me)],
+      // Zur Auswahl der Rechnung — gefiltert, damit die Liste keinen fremden
+      // Privatbeleg verrät, indem sie ihn zur Auswahl anbietet.
+      'invoices' => invoice_list($me),
       // Für die Auswahl des übergeordneten Geräts und den Schleifenschutz
       'items' => rows('SELECT id, name, parent_id FROM equipment ORDER BY name'),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
@@ -1950,7 +1963,7 @@ if (str_starts_with($path, '/intern')) {
       $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
       $name  = trim($_POST['name']);
       for ($i = 1; $i <= $count; $i++) {
-        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [
+        q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
           $count > 1 ? $name . ' #' . $i : $name,
           array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
           $ownerId,
@@ -1963,6 +1976,10 @@ if (str_starts_with($path, '/intern')) {
           price_to_cents((string) ($_POST['price'] ?? '')),
           tax_afa_years_input($_POST['afa_years'] ?? null),
           array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '',
+          trim((string) ($_POST['article_no'] ?? '')),
+          // Nur ein Beleg, den dieser Mensch auch sehen darf — sonst haengte
+          // sich ein Geraet an eine fremde Privatrechnung.
+          eq_invoice_input($_POST['invoice_id'] ?? null, $me),
         ]);
       }
       flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
@@ -2008,6 +2025,57 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_eq_reactivated'));
     redirect('/intern/equipment');
   }
+  /**
+   * Rechnungen erfassen und ändern (#180).
+   *
+   * Unter /intern/equipment/, damit das Bereichsrecht der Geräte greift: Wer
+   * Geräte pflegen darf, darf auch ihre Belege eintragen. Wer einen Beleg
+   * hinterher lesen darf, ist eine andere und strengere Frage —
+   * may_see_invoice() beantwortet sie über den Besitz.
+   */
+  if ($path === '/intern/equipment/rechnung' && $method === 'POST') {
+    deny_in_demo('/intern/equipment');
+    $invId = (int) ($_POST['invoice_id'] ?? 0);
+    $invFelder = [
+      trim((string) ($_POST['supplier'] ?? '')),
+      trim((string) ($_POST['order_no'] ?? '')),
+      trim((string) ($_POST['invoice_no'] ?? '')),
+      trim((string) ($_POST['invoice_date'] ?? '')) ?: null,
+      price_to_cents((string) ($_POST['total'] ?? '')),
+      trim((string) ($_POST['notes'] ?? '')),
+    ];
+    // Ein Beleg ohne jede Angabe ist kein Beleg, sondern eine leere Zeile, die
+    // hinterher niemand zuordnen kann.
+    if ($invFelder[0] === '' && $invFelder[1] === '' && $invFelder[2] === '') {
+      flash(t('inv_needs_something'));
+      redirect('/intern/equipment');
+    }
+    if ($invId && ($invAlt = row('SELECT * FROM invoices WHERE id = ?', [$invId]))) {
+      if (!may_see_invoice($me, $invId)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+      q('UPDATE invoices SET supplier=?, order_no=?, invoice_no=?, invoice_date=?, total_cents=?, notes=? WHERE id=?',
+        [...$invFelder, $invId]);
+    } else {
+      q('INSERT INTO invoices (supplier, order_no, invoice_no, invoice_date, total_cents, notes) VALUES (?,?,?,?,?,?)', $invFelder);
+    }
+    flash(t('inv_saved'));
+    redirect('/intern/equipment');
+  }
+  if (preg_match('~^/intern/equipment/rechnung/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/equipment');
+    $invId = (int) $m[1];
+    if (!may_see_invoice($me, $invId)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
+    // Die Geräte bleiben. Nur der Verweis fällt weg — ein gelöschter Beleg darf
+    // kein Gerät aus dem Inventar reißen.
+    q('UPDATE equipment SET invoice_id = NULL WHERE invoice_id = ?', [$invId]);
+    foreach (rows("SELECT * FROM files WHERE entity_type = 'invoice' AND entity_id = ?", [$invId]) as $invFile) {
+      @unlink(FILES_DIR . '/' . $invFile['filename']);
+      q('DELETE FROM files WHERE id = ?', [(int) $invFile['id']]);
+    }
+    q('DELETE FROM invoices WHERE id = ?', [$invId]);
+    flash(t('inv_deleted'));
+    redirect('/intern/equipment');
+  }
+
   // Eine Zeile, die für mehrere gleiche Geräte steht, in einzelne aufteilen.
   // Nur bei Geräten ohne Bestandteile: was in einem Rack steckt, mitzukopieren
   // hieße raten, welches Zubehör mitgehört.
@@ -2026,13 +2094,14 @@ if (str_starts_with($path, '/intern')) {
     $baseSlot = eq_strip_quantity((string) $eq['slot']);
     q('UPDATE equipment SET name = ?, slot = ? WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
     for ($i = 2; $i <= $count; $i++) {
-      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', [
+      q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
         $baseName . ' #' . $i, $eq['category'], $eq['owner_id'], $eq['location'],
         $eq['is_standard'], $eq['notes'], $eq['parent_id'], $baseSlot,
         // Zehn aufgeteilte Kabel kamen aus derselben Bestellung: Datum, Preis
         // und Zustand gelten für jedes einzelne.
         $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'], $eq['acquired_as'],
+        $eq['article_no'], $eq['invoice_id'],
       ]);
     }
     flash(sprintf(t('fl_eq_split'), $count));
@@ -2063,7 +2132,7 @@ if (str_starts_with($path, '/intern')) {
         ? ((int) ($_POST['owner_id'] ?? 0) ?: null)
         : ($eqBefore['owner_id'] !== null ? (int) $eqBefore['owner_id'] : null);
       [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
-      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=? WHERE id=?', [
+      q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=?, article_no=?, invoice_id=? WHERE id=?', [
         trim($_POST['name']),
         array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
         $ownerId,
@@ -2082,6 +2151,8 @@ if (str_starts_with($path, '/intern')) {
         $mayOwn
           ? (array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '')
           : (string) $eqBefore['acquired_as'],
+        $mayOwn ? trim((string) ($_POST['article_no'] ?? '')) : (string) $eqBefore['article_no'],
+        $mayOwn ? eq_invoice_input($_POST['invoice_id'] ?? null, $me) : ($eqBefore['invoice_id'] !== null ? (int) $eqBefore['invoice_id'] : null),
         $m[1],
       ]);
       // Ändert sich der Besitzer eines Geräts, ziehen seine Bestandteile mit —

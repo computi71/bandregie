@@ -48,6 +48,18 @@ $eqSeePrice = eq_may_see_price($formEq, $user);
     <?php // Neben Datum und Preis, weil es zur Anschaffung gehört und dieselbe
           // Sichtbarkeitsregel hat: Was ein Gerät gekostet hat und in welchem
           // Zustand es kam, geht dieselben Leute etwas an. ?>
+    <?php // Artikelnummer und Beleg gehören zur Anschaffung und stehen deshalb
+          // hier. Die Nummer gilt je Gerät, die Rechnung wird nur ausgewählt —
+          // erfasst wird sie einmal in der Rechnungsliste. ?>
+    <label><?= e(t('inv_article_no')) ?><input name="article_no" value="<?= e($formEq['article_no'] ?? '') ?>" <?= $eqLock ?>></label>
+    <label><?= e(t('inv_pick')) ?>
+      <select name="invoice_id" <?= $eqLock ?>>
+        <option value=""><?= e(t('inv_pick_none')) ?></option>
+        <?php foreach ($invoices ?? [] as $invOpt): ?>
+          <option value="<?= (int) $invOpt['id'] ?>" <?= (int) ($formEq['invoice_id'] ?? 0) === (int) $invOpt['id'] ? 'selected' : '' ?>><?= e(invoice_label($invOpt)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
     <label class="span2"><?= e(t('eq_acquired')) ?>
       <select name="acquired_as" <?= $eqLock ?>>
         <option value=""><?= e(t('eq_acquired_unknown')) ?></option>

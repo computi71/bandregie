@@ -29,6 +29,24 @@
   </form>
 </details>
 
+<?php // Der Beleg zum Gerät. Angezeigt nur, wenn dieser Mensch ihn sehen darf —
+      // die Zuordnung allein macht eine fremde Privatrechnung nicht öffentlich.
+      $detailInv = !empty($detailEq['invoice_id']) && may_see_invoice($user, (int) $detailEq['invoice_id'])
+        ? row('SELECT * FROM invoices WHERE id = ?', [(int) $detailEq['invoice_id']])
+        : null; ?>
+<?php if ($detailInv): ?>
+  <p class="muted small">🧾 <?= e(t('inv_pick')) ?>: <strong><?= e(invoice_label($detailInv)) ?></strong>
+    <?php $detailInvAnzahl = invoice_item_count((int) $detailInv['id']); ?>
+    <?= e($detailInvAnzahl === 1 ? t('inv_items_one') : str_replace('%1', (string) $detailInvAnzahl, t('inv_items'))) ?>
+    <?php foreach (rows("SELECT * FROM files WHERE entity_type = 'invoice' AND entity_id = ?", [(int) $detailInv['id']]) as $detailInvFile): ?>
+      · <a href="/intern/datei/<?= (int) $detailInvFile['id'] ?>" target="_blank">📄 <?= e($detailInvFile['original_name']) ?></a>
+    <?php endforeach; ?>
+  </p>
+<?php endif; ?>
+<?php if (($detailEq['article_no'] ?? '') !== ''): ?>
+  <p class="muted small"><?= e(t('inv_article_no')) ?>: <code><?= e($detailEq['article_no']) ?></code></p>
+<?php endif; ?>
+
 <?php $attachFiles = $filesByEq[$detailEq['id']] ?? []; $attachType = 'equipment'; $attachId = $detailEq['id'];
       require BASE_DIR . '/app/views/_dateien.php'; ?>
 
