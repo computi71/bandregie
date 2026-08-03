@@ -3171,6 +3171,25 @@ function eq_strip_quantity(string $text): string {
 }
 
 /**
+ * Das erste Bild unter den Anhängen eines Geräts, für die Vorschau in der Liste.
+ *
+ * Eine Liste aus hundert Zeilen wie „Cordial CFY 3 VPP" sagt niemandem, was
+ * dort im Regal liegt. Ein Bild daneben schon — deshalb steht es in der
+ * Übersicht und nicht erst zwei Klicks tiefer im Anhang-Block.
+ *
+ * Erkannt wird an der Endung des ursprünglichen Namens, nicht am gespeicherten
+ * Dateinamen: Der ist bewusst zufällig, und bei eingeschalteter Verschlüsselung
+ * trägt er ohnehin keine Endung mehr.
+ */
+function eq_thumb(array $files): ?array {
+  foreach ($files as $f) {
+    $endung = strtolower(pathinfo((string) ($f['original_name'] ?? ''), PATHINFO_EXTENSION));
+    if (in_array($endung, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) return $f;
+  }
+  return null;
+}
+
+/**
  * Was ein Gerät gekostet hat und wann es gekauft wurde, geht die Band nur bei
  * ihrem eigenen Material etwas an. Was jemandem persönlich gehört, sieht sein
  * Besitzer — und die Verwaltung, die die Werte pflegen können muss.

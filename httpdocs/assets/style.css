@@ -365,6 +365,16 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
 .file-thumb { max-height: 3.2rem; max-width: 5rem; border-radius: 6px; vertical-align: middle;
               margin-right: 0.5rem; border: 1px solid var(--border); }
 
+/* Vorschau in der Geräteliste. Weißer Grund, weil Produktfotos freigestellt
+   sind — auf dunklem Grund verschwindet sonst das halbe Gerät. Feste Höhe,
+   damit die Zeilen nicht bei jedem Bild anders hoch werden. */
+.eq-thumb {
+  height: 2.6rem; width: 2.6rem; object-fit: contain; background: #fff;
+  border-radius: 6px; border: 1px solid var(--border); padding: 2px;
+  flex: 0 0 auto; align-self: center;
+}
+.eq-thumb-small { height: 1.8rem; width: 1.8rem; vertical-align: middle; margin-right: 0.3rem; }
+
 /* Ausgeblendete Formularfelder sollen auch im Raster verschwinden */
 [hidden] { display: none !important; }
 

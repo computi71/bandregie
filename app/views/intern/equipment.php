@@ -96,6 +96,12 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
   <details class="card acc" name="eqacc" <?= $eqFirst ? 'open' : '' ?>>
     <?php $eqFirst = false; ?>
     <summary class="eq-summary">
+      <?php // Ein Bild sagt in einer Liste aus hundert Typenbezeichnungen mehr
+            // als der Name. loading="lazy", damit eine lange Liste nicht
+            // hundert Anfragen auf einmal auslöst. ?>
+      <?php if ($eqThumb = eq_thumb($filesByEq[$eq['id']] ?? [])): ?>
+        <img class="eq-thumb" src="/intern/datei/<?= (int) $eqThumb['id'] ?>" alt="" loading="lazy">
+      <?php endif; ?>
       <strong><?= e($eq['name']) ?></strong>
       <?php if (!empty($eq['disposed_on'])): ?><span class="badge">📦 <?= e(sprintf(t('eqb_disposed_on'), fmt_date($eq['disposed_on']))) ?></span><?php endif; ?>
       <?php if ($eq['is_standard'] && empty($eq['disposed_on'])): ?><span class="badge public">📦 <?= e(t('eq_standard_badge')) ?></span><?php endif; ?>
