@@ -68,6 +68,10 @@ $vbT  = $flT + 2 * $rand;
         // ein paar Formen dazwischen, und links klebten fünf Beschriftungen
         // ineinander.
         $unten = $tf > 0 ? $tf / 2 + 17 : 26;
+        // Höhe des Symbols über seinem Mittelpunkt; der Musiker-Zweig setzt sie
+        // je nach Figur oder Foto neu. Steht hier, damit sie nicht vom
+        // vorherigen Eintrag übrig ist.
+        $kopf = 16;
       ?>
       <g class="stage-item" data-id="<?= (int) $it['id'] ?>" transform="translate(<?= round($ix, 1) ?>,<?= round($iy, 1) ?>)">
         <?php if ($it['kind'] === 'podest'): ?>
@@ -90,6 +94,10 @@ $vbT  = $flT + 2 * $rand;
               : null;
             $figur = STAGE_FIGURES[$mg['stage_figure'] ?? ''] ?? STAGE_FIGURES[''];
             $foto  = ($mg['stage_figure'] ?? '') === 'avatar' && !empty($mg['avatar_file']);
+            // Wie hoch das Symbol über seinen Mittelpunkt reicht. Danach richtet
+            // sich der Abstand der Beschriftung: Ein Foto ist doppelt so hoch wie
+            // ein Zeichen, und bei festem Abstand stand das Instrument im Gesicht.
+            $kopf = $foto ? 32 : 16;
           ?>
           <?php if ($foto): ?>
             <clipPath id="stagepic-<?= (int) $it['id'] ?>"><circle r="30"/></clipPath>
@@ -177,12 +185,20 @@ $vbT  = $flT + 2 * $rand;
         <?php // Bei Menschen steht der Name über der Figur: Unter ihr liegt das,
               // worauf sie steht — beim Schlagzeuger das Schlagzeug samt eigener
               // Beschriftung, und zwei Texte übereinander liest niemand. ?>
-        <?php $obenDrueber = ($it['kind'] ?? '') === 'musiker'; ?>
+        <?php
+          $obenDrueber = ($it['kind'] ?? '') === 'musiker';
+          $hatNote = ($it['note'] ?? '') !== '';
+          // Über der Figur stapeln sich Name und Instrument nach oben, mit
+          // Abstand von der Symbolhöhe statt einem festen Wert. Ohne Instrument
+          // rückt der Name näher heran, sonst schwebt er.
+          $noteY  = $obenDrueber ? -($kopf + 8) : round($unten + 16);
+          $labelY = $obenDrueber ? -($kopf + ($hatNote ? 24 : 8)) : round($unten);
+        ?>
         <?php if (($it['label'] ?? '') !== ''): ?>
-          <text text-anchor="middle" y="<?= $obenDrueber ? -30 : round($unten) ?>" font-size="15" fill="<?= $stroke ?>"><?= e($it['label']) ?></text>
+          <text text-anchor="middle" y="<?= $labelY ?>" font-size="15" fill="<?= $stroke ?>"><?= e($it['label']) ?></text>
         <?php endif; ?>
-        <?php if (($it['note'] ?? '') !== ''): ?>
-          <text text-anchor="middle" y="<?= $obenDrueber ? -14 : round($unten + 16) ?>" font-size="12" fill="<?= $stroke ?>" opacity="0.65"><?= e($it['note']) ?></text>
+        <?php if ($hatNote): ?>
+          <text text-anchor="middle" y="<?= $noteY ?>" font-size="12" fill="<?= $stroke ?>" opacity="0.65"><?= e($it['note']) ?></text>
         <?php endif; ?>
       </g>
     <?php endforeach; ?>
