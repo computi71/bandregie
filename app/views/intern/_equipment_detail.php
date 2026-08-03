@@ -50,6 +50,8 @@
 <?php $attachFiles = $filesByEq[$detailEq['id']] ?? []; $attachType = 'equipment'; $attachId = $detailEq['id'];
       require BASE_DIR . '/app/views/_dateien.php'; ?>
 
+<?php require BASE_DIR . '/app/views/intern/_equipment_photo_pick.php'; ?>
+
 <details class="subsection" open>
   <summary>✏️ <?= e(t('edit')) ?></summary>
   <?php $formEq = $detailEq; require BASE_DIR . '/app/views/intern/_equipment_form.php'; ?>

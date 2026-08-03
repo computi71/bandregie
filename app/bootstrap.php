@@ -506,6 +506,11 @@ const UI_STRINGS = [
   // Dateien
   'files_word' => 'Dateien',
   'files_none' => 'Noch keine Dateien — Verträge, Rechnungen, Rider, Aufnahmen ... (max. 20 MB pro Datei)',
+  'eq_photo_reuse' => 'Vorhandenes Bild übernehmen',
+  'eq_photo_reuse_hint' => 'Gleiche Geräte sind einzelne Einträge, also fängt das zweite ohne Foto an. Hier steht, was schon im Inventar liegt — Geräte mit derselben Artikelnummer zuerst. Die Datei wird nicht kopiert; löschst du das Bild an einem Gerät, bleibt es am anderen.',
+  'eq_photo_take' => 'Bild übernehmen',
+  'fl_eq_photo_taken' => 'Bild übernommen.',
+  'fl_eq_photo_failed' => 'Das Bild ließ sich nicht übernehmen.',
   'file_back' => 'Zurück',
   'file_no_preview' => 'Diese Datei lässt sich hier nicht anzeigen — speichern oder in einem neuen Tab öffnen.',
   'file_save' => 'Speichern',
@@ -2427,6 +2432,45 @@ function may_see_song(?array $user, int $songId): bool {
 }
 
 /**
+ * Bilder, die schon im Inventar liegen und an diesem Gerät noch fehlen (#184).
+ * Zwei gleiche Geräte sind zwei Einträge, also fängt das zweite ohne Foto an —
+ * dieselbe Datei ein zweites Mal hochzuladen wäre die einzige Alternative.
+ *
+ * Vorn stehen die Bilder von Geräten mit derselben Artikelnummer: Das ist der
+ * Zwilling, um den es fast immer geht. Danach die mit gleichem Namensanfang,
+ * denn Altbestände haben oft keine Artikelnummer.
+ */
+function eq_photo_choices(int $eqId, int $limit = 60): array {
+  $eq = row('SELECT article_no, name FROM equipment WHERE id = ?', [$eqId]);
+  if (!$eq) return [];
+  // Namensanfang bis zum Zählsuffix: „Shure KSM9 HS #2" sucht „Shure KSM9 HS".
+  $stamm = trim(preg_replace('~\s*#\d+\s*$~', '', (string) $eq['name']));
+  $treffer = rows(
+    "SELECT f.id, f.filename, f.original_name, f.size, e.id AS eq_id, e.name AS eq_name,
+            (e.article_no <> '' AND e.article_no = ?) AS gleiche_nummer,
+            (? <> '' AND e.name LIKE CONCAT(?, '%')) AS gleicher_name
+       FROM files f
+       JOIN equipment e ON e.id = f.entity_id
+      WHERE f.entity_type = 'equipment'
+        AND e.id <> ?
+        AND LOWER(SUBSTRING_INDEX(f.original_name, '.', -1)) IN ('jpg','jpeg','png','gif','webp')
+        -- Was hier schon hängt, muss nicht angeboten werden.
+        AND NOT EXISTS (SELECT 1 FROM files x WHERE x.entity_type = 'equipment'
+                          AND x.entity_id = ? AND x.filename = f.filename)
+      ORDER BY gleiche_nummer DESC, gleicher_name DESC, e.name, f.original_name",
+    [(string) $eq['article_no'], $stamm, $stamm, $eqId, $eqId]);
+  // Dasselbe Bild hängt oft an mehreren Geräten. Entdoppelt wird hier und nicht
+  // per GROUP BY: mit ONLY_FULL_GROUP_BY dürfte die Abfrage sonst nicht laufen.
+  $auswahl = [];
+  foreach ($treffer as $t) {
+    if (isset($auswahl[$t['filename']])) continue;
+    $auswahl[$t['filename']] = $t;
+    if (count($auswahl) >= $limit) break;
+  }
+  return array_values($auswahl);
+}
+
+/**
  * Wohin ein Anhang zurückführt: [Tabelle, eigene Seite, Übersicht]. Nicht jede
  * Sache hat eine eigene Seite — Termine, Orte, Buchungen und Rechnungen leben
  * auf ihrer Liste. Dann führt der Weg zurück eben dorthin.
@@ -2509,6 +2553,8 @@ function perm_module_for(string $path): ?string {
   if ($path === '/intern/dateien') {
     return PERM_ENTITY_MODULES[$_POST['entity_type'] ?? ''] ?? null;
   }
+  // Ein vorhandenes Bild übernehmen ist eine Änderung am Gerät (#184).
+  if ($path === '/intern/dateien/uebernehmen') return 'equipment';
   if (preg_match('~^/intern/datei/(\d+)~', $path, $m)) {
     $f = row('SELECT entity_type FROM files WHERE id = ?', [$m[1]]);
     return PERM_ENTITY_MODULES[$f['entity_type'] ?? ''] ?? null;

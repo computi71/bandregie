@@ -1378,6 +1378,29 @@ if (str_starts_with($path, '/intern')) {
     }
     back('/intern');
   }
+  // Ein Bild übernehmen, das schon im Inventar liegt (#184). Die Datei bleibt
+  // eine: Sie bekommt nur eine zweite Zeile. Beim Löschen zählt die Route unten
+  // die Verweise, deshalb verliert der Zwilling sein Foto nicht.
+  if ($path === '/intern/dateien/uebernehmen' && $method === 'POST') {
+    $zielId = (int) ($_POST['entity_id'] ?? 0);
+    $quelle = row("SELECT f.* FROM files f WHERE f.id = ? AND f.entity_type = 'equipment'",
+      [(int) ($_POST['file_id'] ?? 0)]);
+    $ziel = $zielId ? row('SELECT id FROM equipment WHERE id = ?', [$zielId]) : null;
+    // Nur aus dem eigenen Inventar und nur ein Bild — und nichts, was hier
+    // schon hängt. Sonst sammeln sich Zeilen auf dieselbe Datei.
+    $istBild = $quelle && in_array(strtolower(pathinfo($quelle['original_name'], PATHINFO_EXTENSION)),
+      ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
+    $schonDa = $quelle && $ziel && row("SELECT id FROM files WHERE entity_type = 'equipment'
+        AND entity_id = ? AND filename = ?", [$zielId, $quelle['filename']]);
+    if (!$quelle || !$ziel || !$istBild || $schonDa) {
+      flash(t('fl_eq_photo_failed'));
+    } else {
+      q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
+        ['equipment', $zielId, $quelle['filename'], $quelle['original_name'], (int) $quelle['size'], $me['id']]);
+      flash(t('fl_eq_photo_taken'));
+    }
+    back('/intern/equipment/' . $zielId . '/detail');
+  }
   if (preg_match('~^/intern/datei/(\d+)$~', $path, $m) && $method === 'GET') {
     $f = row('SELECT * FROM files WHERE id = ?', [$m[1]]);
     // Der Anhang erbt die Sichtbarkeit seines Gegenstands; unbekannt und
