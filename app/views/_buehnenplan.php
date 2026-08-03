@@ -219,7 +219,9 @@ $vbT  = $flT + 2 * $rand;
           // schlechter platziert als über der Figur, aber lesbar (#187).
           // Maßstab ist die Bühnenkante, nicht der Rand der Zeichnung: Im Rand
           // steht „hinten", und der Name gehört auf die Bühne, wo er hingehört.
-          if ($obenDrueber && $iy - ($kopf + ($hatNote ? 26 : 10)) < $rand + 4) $obenDrueber = false;
+          // +12 für die Höhe der Buchstaben über ihrer Schriftlinie: Ohne das
+          // prüft man die Grundlinie und die Oberkante ragt trotzdem heraus.
+          if ($obenDrueber && $iy - ($kopf + ($hatNote ? 26 : 10)) - 12 < $rand + 2) $obenDrueber = false;
           $noteY  = $obenDrueber ? -($kopf + 8) : round(($it['kind'] === 'musiker' ? $kopf + 18 : $unten) + 16);
           $labelY = $obenDrueber ? -($kopf + ($hatNote ? 24 : 8)) : round($it['kind'] === 'musiker' ? $kopf + 18 : $unten);
         ?>
