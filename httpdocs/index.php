@@ -18,7 +18,17 @@ require dirname(__DIR__) . '/app/mischpult.php';
 // einer verunglückten Anfrage bekam so einen 500er statt einer normalen Antwort.
 $rohPfad = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $path = rtrim(is_string($rohPfad) ? $rohPfad : '/', '/') ?: '/';
-$method = $_SERVER['REQUEST_METHOD'];
+// HEAD soll genau das antworten, was GET antworten würde — nur ohne Rumpf.
+// Jede Route prüft auf 'GET', also fiel bisher jede HEAD-Anfrage durch bis auf
+// die 404-Seite: Suchmaschinen, Linkprüfer und Überwachungsdienste bekamen für
+// eine tadellose Startseite „gibt es nicht" zu hören. Ein Wächter hätte die
+// Seite als ausgefallen gemeldet, während sie einwandfrei lief.
+//
+// Der Rumpf wird nicht weggeworfen, sondern gar nicht erst erzeugt: head_only()
+// steigt an den Stellen aus, die Dateien ausliefern. Sonst würde eine
+// versiegelte Datei für eine Anfrage entschlüsselt, deren Antwort ohnehin nur
+// aus Kopfzeilen besteht.
+$method = $_SERVER['REQUEST_METHOD'] === 'HEAD' ? 'GET' : $_SERVER['REQUEST_METHOD'];
 $today = date('Y-m-d');
 
 // Sicherheitskopfzeilen. Viele setzt schon der Webserver, aber die Anwendung
@@ -233,6 +243,8 @@ if (preg_match('~^/thumb/([\w.\-]+)$~', $path, $m)) {
        [strtolower(pathinfo($name, PATHINFO_EXTENSION))] ?? 'application/octet-stream')
     : 'image/jpeg'));
   header('Cache-Control: private, max-age=86400');
+  header('Content-Length: ' . filesize($small));
+  if (head_only()) exit;
   readfile($small);
   exit;
 }
@@ -245,6 +257,8 @@ if (preg_match('~^/appicon/(icon-\d+-[a-f0-9]+\.png)$~', $path, $m) && $method =
   if (!is_file($iconFile)) { http_response_code(404); exit('Not found'); }
   header('Content-Type: image/png');
   header('Cache-Control: public, max-age=604800');
+  header('Content-Length: ' . filesize($iconFile));
+  if (head_only()) exit;
   readfile($iconFile);
   exit;
 }
@@ -266,6 +280,8 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
     [strtolower(pathinfo($file, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
   header("Content-Type: $mime");
   header('Cache-Control: public, max-age=86400');
+  header('Content-Length: ' . filesize($file));
+  if (head_only()) exit;
   readfile($file);
   exit;
 }
@@ -3146,6 +3162,10 @@ function file_serve(array $f): never {
   // Rechteprüfung, die den Weg hierher freigegeben hat. Auf der Platte bleibt
   // die Datei versiegelt; entschlüsselt existiert sie nur für diese Antwort.
   if (crypt_is_sealed($abs)) {
+    // Bei HEAD gar nicht entschlüsseln: Die Antwort besteht aus Kopfzeilen, und
+    // die Länge des Klartexts ist nicht die der versiegelten Datei. Eine falsche
+    // Content-Length wäre schlechter als keine.
+    if (head_only()) exit;
     $plain = tempnam(sys_get_temp_dir(), 'brf');
     // Bricht der Browser während der Auslieferung ab, beendet PHP das Skript —
     // das @unlink unten liefe dann nicht, und die entschlüsselte Fassung genau
@@ -3163,6 +3183,7 @@ function file_serve(array $f): never {
     exit;
   }
   header('Content-Length: ' . filesize($abs));
+  if (head_only()) exit;
   readfile($abs);
   exit;
 }

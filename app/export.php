@@ -27,6 +27,8 @@ function export_send_bytes(string $filename, string $mime, string $data): never 
   header('Content-Type: ' . $mime);
   header('Content-Disposition: attachment; filename="' . $filename . '"');
   header('Content-Length: ' . (string) strlen($data));
+  // Bei HEAD stehen die Kopfzeilen, der Rumpf entfällt.
+  if (head_only()) exit;
   echo $data;
   exit;
 }

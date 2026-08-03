@@ -2997,6 +2997,18 @@ function photo_suggest_event(array $photo, array $events): ?array {
   return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
 }
 
+/**
+ * Besteht die Antwort nur aus Kopfzeilen?
+ *
+ * HEAD wird wie GET behandelt (siehe index.php), damit Routen überhaupt
+ * greifen. Wo ein Rumpf teuer ist — eine Datei lesen, eine versiegelte
+ * entschlüsseln —, steigt der Aufrufer hiermit vorher aus. Der Webserver würfe
+ * den Rumpf ohnehin weg; ihn zu erzeugen wäre Arbeit für den Papierkorb.
+ */
+function head_only(): bool {
+  return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD';
+}
+
 function asset(string $path): string {
   return $path . '?v=' . rawurlencode(BANDREGIE_VERSION);
 }
