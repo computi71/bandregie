@@ -1325,7 +1325,9 @@ function stage_default_items(array $members): array {
   $members = array_values(array_filter($members, fn($m) => !array_key_exists('on_stage', $m) || (int) $m['on_stage'] === 1));
   // Grobe Zuordnung vom Instrument auf einen Platz [x, y]; y = 0 ist hinten
   $spots = [
-    'schlagzeug' => [50, 12], 'drums' => [50, 12], 'percussion' => [70, 18],
+    // Der Schlagzeuger steht hinter seinem Set, nicht darin: Bei gleichem y lief
+    // seine Beschriftung über den Umriss des Schlagzeugs.
+    'schlagzeug' => [50, 9], 'drums' => [50, 9], 'percussion' => [70, 18],
     'bass'       => [22, 25], 'keyboard' => [78, 30], 'keys' => [78, 30],
     'gitarre'    => [25, 60], 'e-gitarre' => [25, 60], 'guitar' => [25, 60],
     'gesang'     => [50, 78], 'vocals' => [50, 78], 'saxophon' => [75, 62],
@@ -1374,7 +1376,7 @@ function stage_default_items(array $members): array {
   // seine Fläche im Plan liegt, sieht man, ob 3 × 2 m reichen — der
   // Schlagzeuger allein sagt darüber nichts.
   $items[] = ['kind' => 'schlagzeug', 'label' => t('stagekind_schlagzeug'), 'note' => '',
-              'x' => 50, 'y' => 20];
+              'x' => 50, 'y' => 22];
 
   // Strom gehört auf jeden Plan, sonst fragt der Veranstalter genau danach.
   // Die Beschriftung kommt aus den Übersetzungen: der Plan wird verschickt,

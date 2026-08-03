@@ -72,6 +72,10 @@ $vbT  = $flT + 2 * $rand;
         // je nach Figur oder Foto neu. Steht hier, damit sie nicht vom
         // vorherigen Eintrag übrig ist.
         $kopf = 16;
+        // Manche Symbole setzen ihre Notiz selbst — dann darf der gemeinsame
+        // Block sie nicht wiederholen. Auch das muss je Eintrag zurückgesetzt
+        // werden, sonst verschwindet die Notiz des nächsten Dings.
+        $notizVerbraucht = false;
       ?>
       <g class="stage-item" data-id="<?= (int) $it['id'] ?>" transform="translate(<?= round($ix, 1) ?>,<?= round($iy, 1) ?>)">
         <?php if ($it['kind'] === 'podest'): ?>
@@ -81,8 +85,15 @@ $vbT  = $flT + 2 * $rand;
                 fill="currentColor" fill-opacity="<?= $stagePrint ? '0.06' : '0.10' ?>"
                 stroke="<?= $stroke ?>" stroke-width="2"/>
           <?php // Das Maß in die Ecke, nicht in die Mitte: In der Mitte steht der
-                // Schlagzeuger, und zwei Texte übereinander liest niemand. ?>
-          <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round(-$tf / 2 + 17, 1) ?>" font-size="14" fill="<?= $stroke ?>" opacity="0.6"><?= rtrim(rtrim(number_format($bCm / 100, 2, ',', ''), '0'), ',') ?> × <?= rtrim(rtrim(number_format($tCm / 100, 2, ',', ''), '0'), ',') ?> m</text>
+                // Schlagzeuger, und zwei Texte übereinander liest niemand.
+                //
+                // Die Notiz gehört in dieselbe Zeile und nicht unter das Podest:
+                // Dort steht schon die Beschriftung des Schlagzeugs, das darauf
+                // aufgebaut ist, und zwei Zeilen aus zwei Dingen lesen sich wie
+                // eine. Deshalb wird sie hier verbraucht — $notizVerbraucht sorgt
+                // dafür, dass der gemeinsame Block sie nicht ein zweites Mal setzt. ?>
+          <?php $notizVerbraucht = ($it['note'] ?? '') !== ''; ?>
+          <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round(-$tf / 2 + 17, 1) ?>" font-size="14" fill="<?= $stroke ?>" opacity="0.6"><?= rtrim(rtrim(number_format($bCm / 100, 2, ',', ''), '0'), ',') ?> × <?= rtrim(rtrim(number_format($tCm / 100, 2, ',', ''), '0'), ',') ?> m<?= $notizVerbraucht ? ' · ' . e($it['note']) : '' ?></text>
 
         <?php elseif ($it['kind'] === 'musiker'): ?>
           <?php
@@ -191,7 +202,7 @@ $vbT  = $flT + 2 * $rand;
               // Beschriftung, und zwei Texte übereinander liest niemand. ?>
         <?php
           $obenDrueber = ($it['kind'] ?? '') === 'musiker';
-          $hatNote = ($it['note'] ?? '') !== '';
+          $hatNote = ($it['note'] ?? '') !== '' && !$notizVerbraucht;
           // Über der Figur stapeln sich Name und Instrument nach oben, mit
           // Abstand von der Symbolhöhe statt einem festen Wert. Ohne Instrument
           // rückt der Name näher heran, sonst schwebt er.
