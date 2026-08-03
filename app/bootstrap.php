@@ -2427,24 +2427,36 @@ function may_see_song(?array $user, int $songId): bool {
 }
 
 /**
+ * Wohin ein Anhang zurückführt: [Tabelle, eigene Seite, Übersicht]. Nicht jede
+ * Sache hat eine eigene Seite — Termine, Orte, Buchungen und Rechnungen leben
+ * auf ihrer Liste. Dann führt der Weg zurück eben dorthin.
+ */
+const FILE_ENTITY_PAGES = [
+  'event'     => [null,        null,                          '/intern/termine'],
+  'song'      => ['songs',     '/intern/songs/%d',            '/intern/songs'],
+  'venue'     => [null,        null,                          '/intern/orte'],
+  'setlist'   => ['setlists',  '/intern/setlists/%d',         '/intern/setlists'],
+  'equipment' => ['equipment', '/intern/equipment/%d/detail', '/intern/equipment'],
+  'invoice'   => [null,        null,                          '/intern/equipment'],
+  'finance'   => [null,        null,                          '/intern/kasse'],
+  'download'  => [null,        null,                          '/intern/downloads'],
+];
+
+/**
  * Zu welcher Seite gehört ein Anhang? Die installierte App läuft als eigenes
  * Fenster ohne Zurück-Pfeil (`display: standalone`), deshalb muss der Weg
  * zurück im Inhalt stehen und darf nicht dem Browser überlassen bleiben.
  */
 function file_entity_url(array $file): string {
-  $id = (int) $file['entity_id'];
-  return match ($file['entity_type']) {
-    'event'     => '/intern/termine/' . $id,
-    'song'      => '/intern/songs/' . $id,
-    'venue'     => '/intern/orte/' . $id,
-    'setlist'   => '/intern/setlists/' . $id,
-    'equipment' => '/intern/equipment/' . $id . '/detail',
-    'invoice'   => '/intern/equipment',
-    'finance'   => '/intern/kasse',
-    'download'  => '/intern/downloads',
-    // Ein künftiger Anhang-Typ landet auf der Übersicht statt im Nichts.
-    default     => '/intern',
-  };
+  // Ein künftiger Anhang-Typ landet auf der Übersicht statt im Nichts.
+  [$tabelle, $seite, $liste] = FILE_ENTITY_PAGES[$file['entity_type']] ?? [null, null, '/intern'];
+  if ($seite === null) return $liste;
+  // Ein Zurück-Link, der 404 antwortet, ist dieselbe Sackgasse, die diese Seite
+  // beseitigen soll — also erst nachsehen, ob die Sache noch da ist. Der
+  // Tabellenname steht in FILE_ENTITY_PAGES und kommt nie aus einer Anfrage.
+  return row("SELECT id FROM $tabelle WHERE id = ?", [(int) $file['entity_id']])
+    ? sprintf($seite, (int) $file['entity_id'])
+    : $liste;
 }
 
 /**
