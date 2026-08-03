@@ -2647,9 +2647,70 @@ if (str_starts_with($path, '/intern')) {
     deny_in_demo('/intern/einstellungen');
     set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
     set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
+    set_setting('onedrive_enabled', isset($_POST['onedrive_enabled']) ? '1' : '0');
     flash(t('fl_extern_saved'));
     redirect('/intern/einstellungen');
   }
+  /**
+   * OneDrive: Anwendungsdaten eintragen (#20).
+   *
+   * Das Geheimnis wird nur bei Eingabe ersetzt. Ein leeres Feld heißt behalten,
+   * nie löschen — sonst reicht ein Speichern der Seite, um die Verbindung
+   * unbrauchbar zu machen, ohne dass es jemand merkt. Dasselbe Verhalten wie
+   * bei den Zugangsdaten der Sicherung.
+   */
+  if ($path === '/intern/einstellungen/onedrive' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    set_setting('onedrive_client_id', trim((string) ($_POST['onedrive_client_id'] ?? '')));
+    set_setting('onedrive_tenant', trim((string) ($_POST['onedrive_tenant'] ?? 'common')));
+    $odSecret = trim((string) ($_POST['onedrive_client_secret'] ?? ''));
+    if ($odSecret !== '') {
+      set_setting('onedrive_client_secret', crypt_available() ? crypt_seal($odSecret) : $odSecret);
+    }
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Hin zu Microsoft. Nur als POST, damit kein fremder Link die Anmeldung
+  // auslösen kann.
+  if ($path === '/intern/einstellungen/onedrive/start' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    if (!od_enabled()) { flash(od_configured() ? t('od_needs_enable') : t('od_needs_setup')); redirect('/intern/einstellungen'); }
+    redirect(od_auth_url());
+  }
+  // Und zurück. Diese Adresse steht bei Microsoft in der Registrierung.
+  if ($path === '/intern/einstellungen/onedrive/zurueck' && $method === 'GET') {
+    require_admin();
+    $odState = (string) ($_SESSION['od_state'] ?? '');
+    $odVerifier = (string) ($_SESSION['od_verifier'] ?? '');
+    unset($_SESSION['od_state'], $_SESSION['od_verifier']);
+    // Zustandswert vergleichen, bevor irgendetwas mit dem Code passiert: Ohne
+    // diesen Vergleich könnte jemand eine eigene Rückleitung in einen
+    // angemeldeten Browser schicken und dessen Band mit seinem OneDrive
+    // verbinden.
+    if ($odState === '' || !hash_equals($odState, (string) ($_GET['state'] ?? ''))) {
+      flash(t('od_state_bad'));
+      redirect('/intern/einstellungen');
+    }
+    if (($_GET['error'] ?? '') !== '' || ($_GET['code'] ?? '') === '') {
+      flash(($_GET['error'] ?? '') === 'access_denied'
+        ? t('od_denied')
+        : t('od_denied') . ' ' . mb_substr((string) ($_GET['error_description'] ?? ''), 0, 200));
+      redirect('/intern/einstellungen');
+    }
+    $odRes = od_exchange_code((string) $_GET['code'], $odVerifier);
+    flash($odRes['ok'] ? t('od_ok') : $odRes['message']);
+    redirect('/intern/einstellungen');
+  }
+  if ($path === '/intern/einstellungen/onedrive/loesen' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    od_disconnect();
+    flash(t('od_gone'));
+    redirect('/intern/einstellungen');
+  }
+
   // Zweiter Faktor: ob es ihn gibt, und ob er für alle gilt (#169).
   if ($path === '/intern/einstellungen/zwei-faktor' && $method === 'POST') {
     require_admin();

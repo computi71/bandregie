@@ -26,7 +26,8 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   . "9. Navigation zu Veranstaltungsorten\nTippt ein Mitglied im internen Bereich auf das Navi-Symbol, öffnet sich die Karten-App des Geräts mit dem Ziel. Die Anwendung ruft dabei selbst nichts ab; die Zieladresse verarbeitet ab diesem Moment der Anbieter der gewählten Karten-App nach dessen eigenen Bestimmungen.\n\n"
   . "10. Eingebettete Inhalte\nAuf der öffentlichen Seite können Inhalte Dritter eingebunden sein (z. B. Videos oder Musikdienste). Diese werden erst nach deiner ausdrücklichen Zustimmung geladen; vorher werden keine Daten an den jeweiligen Anbieter übermittelt.\n\n"
   . "11. Sicherungen (nur wenn eingerichtet)\nWir sichern Datenbank und hochgeladene Dateien regelmäßig; die Sicherung liegt zunächst auf demselben Server. Ist zusätzlich ein auswärtiges Ziel eingerichtet, wird sie dorthin übertragen: [Name und Anschrift des Ziels]. Sie enthält alle oben genannten Daten. Ist ein Verschlüsselungsschlüssel gesetzt, verlässt sie den Server nur verschlüsselt und lässt sich ohne diesen Schlüssel nirgends öffnen. Rechtsgrundlage ist unser berechtigtes Interesse an einem wiederherstellbaren Betrieb (Art. 6 Abs. 1 lit. f DSGVO); alte Sicherungen werden nach der eingestellten Aufbewahrungszahl gelöscht.\n\n"
-  . "12. Deine Rechte\nDu hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch (Art. 15–21 DSGVO) sowie Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO). Eine erteilte Einwilligung kannst du jederzeit widerrufen.";
+  . "12. OneDrive (nur wenn verbunden)\nIst die Verbindung zu OneDrive eingerichtet, meldet sich unser Server mit einem von Microsoft ausgestellten Zeichen an, um verknüpfte Ordner zu lesen. Übermittelt werden dabei dieses Zeichen und die Anfrage, welche Dateien in einem Ordner liegen; empfangen werden Dateinamen, Größen, Änderungszeitpunkte und die Dateien selbst, soweit sie angezeigt werden. Anbieter ist die Microsoft Ireland Operations Ltd. (Irland), die dabei die IP-Adresse unseres Servers und den Zeitpunkt der Anfrage verarbeitet. Dein Browser nimmt daran nicht teil, und deine IP-Adresse wird nicht übermittelt. Verknüpfte Dateien werden nicht kopiert, sondern nur angezeigt; sie bleiben dort liegen, wo sie sind. Gespeichert werden bei uns der Name und die Adresse des verbundenen Microsoft-Kontos sowie die Zeichen für den Zugang, letztere verschlüsselt, sofern ein Schlüssel gesetzt ist. Angefragt wird ausschließlich Leserecht. Rechtsgrundlage ist unser berechtigtes Interesse an einer Ablage ohne doppelte Datenhaltung (Art. 6 Abs. 1 lit. f DSGVO). Die Verbindung lässt sich in den Einstellungen jederzeit lösen; die Zeichen werden dann gelöscht. Die Zustimmung im Microsoft-Konto selbst ist dort zu entziehen.\n\n"
+  . "13. Deine Rechte\nDu hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch (Art. 15–21 DSGVO) sowie Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO). Eine erteilte Einwilligung kannst du jederzeit widerrufen.";
 ?>
 <h1><?= e(t('inav_einstellungen')) ?></h1>
 
@@ -340,6 +341,67 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <p class="muted small"><?= e(t('set_crypt_law')) ?></p>
 </details>
 
+<?php // OneDrive (#20): Anwendungsdaten und der Stand der Verbindung. Eigener
+      // Abschnitt, weil das Eintragen einer Anwendung bei Microsoft ein Vorgang
+      // für sich ist — der Schalter oben entscheidet nur, ob überhaupt etwas
+      // hinausgeht. ?>
+<details class="card acc" name="setacc">
+  <summary>☁ <?= e(t('od_title')) ?></summary>
+  <?php $odVerb = od_connection(); ?>
+  <p class="muted small"><?= e(t('od_hint')) ?></p>
+
+  <?php if ($odVerb['connected']): ?>
+    <p><strong>✅ <?= e($odVerb['name'] !== '' || $odVerb['email'] !== ''
+      ? str_replace('%1', trim($odVerb['name'] . ($odVerb['email'] !== '' ? ' · ' . $odVerb['email'] : '')), t('od_connected_as'))
+      : t('od_connected')) ?></strong>
+      <?php if ($odVerb['drive'] !== ''): ?><span class="muted">☁ <?= e($odVerb['drive']) ?></span><?php endif; ?>
+      <?php if ($odVerb['since'] !== ''): ?><span class="muted small"><?= e(str_replace('%1', fmt_date(substr($odVerb['since'], 0, 10)), t('od_since'))) ?></span><?php endif; ?>
+    </p>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('od_not_connected')) ?></p>
+  <?php endif; ?>
+
+  <?php if ($odVerb['error'] !== ''): ?>
+    <p class="warn small"><strong><?= e(t('od_error_lbl')) ?>:</strong> <?= e($odVerb['error']) ?></p>
+  <?php endif; ?>
+
+  <div class="row-buttons">
+    <?php if (od_enabled()): ?>
+      <form method="post" action="/intern/einstellungen/onedrive/start" class="inline"><?= csrf_field() ?>
+        <button class="btn btn-primary btn-small">☁ <?= e($odVerb['connected'] ? t('od_reconnect') : t('od_connect')) ?></button>
+      </form>
+    <?php else: ?>
+      <span class="muted small">⚠ <?= e(od_configured() ? t('od_needs_enable') : t('od_needs_setup')) ?></span>
+    <?php endif; ?>
+    <?php if ($odVerb['connected']): ?>
+      <form method="post" action="/intern/einstellungen/onedrive/loesen" class="inline"
+            data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+        <button class="btn btn-ghost btn-small"><?= e(t('od_disconnect')) ?></button>
+      </form>
+    <?php endif; ?>
+  </div>
+  <?php if ($odVerb['connected']): ?><p class="muted small">🔓 <?= e(t('od_disconnect_hint')) ?></p><?php endif; ?>
+
+  <details class="subsection">
+    <summary>⚙ <?= e(t('od_setup')) ?></summary>
+    <p class="muted small"><?= e(t('od_setup_hint')) ?></p>
+    <p class="muted small"><strong><?= e(t('od_redirect_lbl')) ?>:</strong><br><code><?= e(od_redirect_uri()) ?></code></p>
+    <p class="muted small"><strong><?= e(t('od_scopes_lbl')) ?>:</strong> <code><?= e(OD_SCOPES) ?></code><br><?= e(t('od_scopes_hint')) ?></p>
+    <form method="post" action="/intern/einstellungen/onedrive" class="form-grid"><?= csrf_field() ?>
+      <label class="span2"><?= e(t('od_client_id')) ?><input name="onedrive_client_id" value="<?= e(setting('onedrive_client_id')) ?>" autocomplete="off"></label>
+      <?php // Nie zurückschreiben, nur anzeigen, dass eines liegt. ?>
+      <label class="span2"><?= e(t('od_client_secret')) ?>
+        <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
+        <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
+      </label>
+      <label class="span2"><?= e(t('od_tenant')) ?><input name="onedrive_tenant" value="<?= e(setting('onedrive_tenant', 'common')) ?>">
+        <span class="muted small"><?= e(t('od_tenant_hint')) ?></span>
+      </label>
+      <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+    </form>
+  </details>
+</details>
+
 <?php // Zweiter Faktor (#169): eine Auswahl aus dreien statt zweier Haken —
       // „freiwillig" und „vorgeschrieben" schließen einander aus, und zwei
       // Kästchen ließen den unmöglichen vierten Fall zu. ?>
@@ -497,6 +559,10 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 
     <label class="checkbox"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
     <p class="muted small"><?= e(t('set_geocoding_hint')) ?></p>
+
+    <label class="checkbox"><input type="checkbox" name="onedrive_enabled" value="1" <?= setting('onedrive_enabled') === '1' ? 'checked' : '' ?>> ☁ <?= e(t('set_onedrive')) ?></label>
+    <p class="muted small"><?= e(t('set_onedrive_hint')) ?></p>
+    <?php if (!od_configured()): ?><p class="muted small">⚠ <?= e(t('od_needs_setup')) ?></p><?php endif; ?>
 
     <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>
     <button class="btn btn-primary"><?= e(t('save')) ?></button>

@@ -47,6 +47,7 @@ require_once __DIR__ . '/steuer.php';
 require_once __DIR__ . '/passkey.php';
 require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/qr.php';
+require_once __DIR__ . '/onedrive.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -854,6 +855,36 @@ Zeile zwei
   'taxr_neutral' => 'Einlagen und Ausschüttungen (nicht im Ergebnis)',
   'taxr_neutral_hint' => 'Geld zwischen Band und Mitgliedern ist kein Betriebsergebnis: Eine Einlage ist kein Gewinn, eine Ausschüttung keine Betriebsausgabe. Beides steht unten in der Liste, zählt hier oben aber nicht mit.',
   'set_extern' => 'Verbindungen nach außen',
+  // OneDrive (#20)
+  'od_title' => 'OneDrive',
+  'od_hint' => 'Fotos und Dateien liegen bei vielen Bands längst in OneDrive. Verknüpfen heißt darauf zeigen, nicht kopieren — der Platz wird nicht doppelt belegt, und es gibt keine zweite Fassung, von der niemand weiß, welche die richtige ist. Der Upload von hier bleibt daneben bestehen.',
+  'od_setup' => 'Anwendung bei Microsoft eintragen',
+  'od_setup_hint' => 'Damit sich diese Installation überhaupt anmelden darf, muss sie bei Microsoft als Anwendung registriert sein. Das macht einmal ein Mensch mit dem Konto, dem das OneDrive gehört; heraus kommen eine Kennung und ein Geheimnis, die hier eingetragen werden.',
+  'od_redirect_lbl' => 'Diese Rückleitung muss dort eingetragen sein',
+  'od_client_id' => 'Anwendungskennung (Client ID)',
+  'od_client_secret' => 'Geheimnis (Client Secret)',
+  'od_secret_kept' => 'Ein Geheimnis ist eingetragen. Leer lassen heißt behalten — nur eine Eingabe ersetzt es.',
+  'od_tenant' => 'Mandant',
+  'od_tenant_hint' => '„common" lässt private und geschäftliche Microsoft-Konten herein. Wer eine eigene Organisation hat, trägt deren Kennung ein und sperrt damit alle anderen aus.',
+  'od_scopes_lbl' => 'Angefragte Rechte',
+  'od_scopes_hint' => 'Nur Lesen. Zum Verknüpfen von Ordnern genügt das, und ein Recht, das niemand braucht, gilt im Schadensfall trotzdem.',
+  'od_connect' => 'Mit OneDrive verbinden',
+  'od_reconnect' => 'Neu verbinden',
+  'od_disconnect' => 'Verbindung lösen',
+  'od_connected' => 'Verbunden',
+  'od_connected_as' => 'Verbunden als %1',
+  'od_since' => 'seit %1',
+  'od_not_connected' => 'Noch nicht verbunden.',
+  'od_needs_setup' => 'Ohne Anwendungskennung und Geheimnis lässt sich nichts verbinden.',
+  'od_needs_enable' => 'OneDrive ist unter „Verbindungen nach außen" ausgeschaltet.',
+  'od_disconnect_hint' => 'Das löscht die Zeichen hier. Die Zustimmung bei Microsoft selbst bleibt bestehen — die entziehst du im Microsoft-Konto unter „Apps und Dienste, auf die du zugegriffen hast".',
+  'od_state_bad' => 'Die Rückleitung passt nicht zu dieser Sitzung — bitte noch einmal von hier aus verbinden.',
+  'od_denied' => 'Die Anmeldung bei Microsoft wurde abgebrochen.',
+  'od_ok' => 'Mit OneDrive verbunden.',
+  'od_gone' => 'Verbindung gelöst.',
+  'od_error_lbl' => 'Letzter Fehler von Microsoft',
+  'set_onedrive' => 'OneDrive verbinden (Dateien und Fotos verknüpfen)',
+  'set_onedrive_hint' => 'Erlaubt dieser Installation, sich bei Microsoft anzumelden und Ordner zu lesen. Ohne diesen Schalter geht keine Anfrage hinaus.',
   'set_extern_hint' => 'Alles, was diese Installation nach außen tun kann, steht hier zusammen — abschaltbar, jedes für sich. Ist etwas aus, findet die Verbindung nicht statt.',
   'fl_extern_saved' => 'Verbindungen nach außen gespeichert.',
   'set_push_hint' => 'Aus: es gibt keine Mitteilungen, und der Bereich im Profil erscheint nicht. An: Mitglieder können je Thema und Gerät selbst entscheiden. Die Zustellung läuft über den Dienst des jeweiligen Browserherstellers; der Inhalt ist dabei verschlüsselt.',
