@@ -87,13 +87,18 @@ $vbT  = $flT + 2 * $rand;
           <?php // Das Maß in die Ecke, nicht in die Mitte: In der Mitte steht der
                 // Schlagzeuger, und zwei Texte übereinander liest niemand.
                 //
-                // Die Notiz gehört in dieselbe Zeile und nicht unter das Podest:
-                // Dort steht schon die Beschriftung des Schlagzeugs, das darauf
+                //
+                // Die Notiz kommt in die untere Ecke, nicht unter das Podest:
+                // Dort steht die Beschriftung des Schlagzeugs, das darauf
                 // aufgebaut ist, und zwei Zeilen aus zwei Dingen lesen sich wie
-                // eine. Deshalb wird sie hier verbraucht — $notizVerbraucht sorgt
-                // dafür, dass der gemeinsame Block sie nicht ein zweites Mal setzt. ?>
+                // eine. Beide Texte links am Rand, denn in der Mitte stehen der
+                // Schlagzeuger und sein Set. $notizVerbraucht sorgt dafür, dass
+                // der gemeinsame Block die Notiz nicht ein zweites Mal setzt. ?>
           <?php $notizVerbraucht = ($it['note'] ?? '') !== ''; ?>
-          <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round(-$tf / 2 + 17, 1) ?>" font-size="14" fill="<?= $stroke ?>" opacity="0.6"><?= rtrim(rtrim(number_format($bCm / 100, 2, ',', ''), '0'), ',') ?> × <?= rtrim(rtrim(number_format($tCm / 100, 2, ',', ''), '0'), ',') ?> m<?= $notizVerbraucht ? ' · ' . e($it['note']) : '' ?></text>
+          <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round(-$tf / 2 + 17, 1) ?>" font-size="14" fill="<?= $stroke ?>" opacity="0.6"><?= rtrim(rtrim(number_format($bCm / 100, 2, ',', ''), '0'), ',') ?> × <?= rtrim(rtrim(number_format($tCm / 100, 2, ',', ''), '0'), ',') ?> m</text>
+          <?php if ($notizVerbraucht): ?>
+            <text x="<?= round(-$b / 2 + 6, 1) ?>" y="<?= round($tf / 2 - 8, 1) ?>" font-size="12" fill="<?= $stroke ?>" opacity="0.55"><?= e($it['note']) ?></text>
+          <?php endif; ?>
 
         <?php elseif ($it['kind'] === 'musiker'): ?>
           <?php
