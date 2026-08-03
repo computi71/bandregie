@@ -92,7 +92,8 @@ foreach ($items as $it) {
   // Was abgegeben ist, gehört nicht mehr zum Bestand.
   if (!empty($it['disposed_on'])) continue;
   if (!eq_may_see_price($it, $user)) { $eqHidden++; continue; }
-  $eqValue += (int) ($it['price_cents'] ?? 0);
+  // Mal der Menge — der Preis gilt je Stück (#185).
+  $eqValue += (int) ($it['price_cents'] ?? 0) * max(1, (int) ($it['quantity'] ?? 1));
 }
 ?>
 <?php if ($eqValue > 0): ?>

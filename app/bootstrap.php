@@ -3786,7 +3786,10 @@ function eq_tree_value(array $eq, array $items, ?array $user): int {
     if (!$item || !empty($item['disposed_on'])
         || $item['price_cents'] === null || $item['price_cents'] === ''
         || !eq_may_see_price($item, $user)) continue;
-    $sum += (int) $item['price_cents'];
+    // Mal der Menge: Der Preis gilt je Stück, und eine Zeile über zehn Tüllen
+    // ist zehn Tüllen wert. Vor der eigenen Spalte stand die Zahl im Namen und
+    // fiel bei jeder Summe unter den Tisch (#185).
+    $sum += (int) $item['price_cents'] * max(1, (int) ($item['quantity'] ?? 1));
   }
   return $sum;
 }
