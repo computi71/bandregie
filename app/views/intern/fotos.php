@@ -13,9 +13,34 @@
   </form>
 </div>
 
-<div class="photo-grid large">
+<?php // Viele Fotos auf einen Termin. Das Formular steht hier für sich und
+      // umschließt das Raster NICHT: In den Kacheln stecken eigene Formulare,
+      // und ein Formular im Formular ist ungültiges HTML — der Browser verwirft
+      // dann die inneren. Die Häkchen unten hängen über form="fotos-termin" an
+      // diesem hier, dafür gibt es das Attribut. ?>
+<form method="post" action="/intern/fotos/termin" id="fotos-termin" class="card photo-mass"><?= csrf_field() ?>
+  <strong>📅 <?= e(t('photo_mass')) ?></strong>
+  <span class="muted small"><?= e(t('photo_mass_hint')) ?></span>
+  <div class="row-buttons">
+    <button type="button" class="btn btn-ghost btn-small" data-massall><?= e(t('photo_mass_all')) ?></button>
+    <button type="button" class="btn btn-ghost btn-small" data-massnone><?= e(t('photo_mass_none')) ?></button>
+    <select name="event_id" aria-label="<?= e(t('photo_mass')) ?>">
+      <option value="">– <?= e(t('photo_no_event')) ?> –</option>
+      <?php foreach ($events as $ev): ?>
+        <option value="<?= $ev['id'] ?>"><?= fmt_date($ev['date']) ?> · <?= e($ev['title']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button class="btn btn-small"><?= e(t('photo_mass_go')) ?></button>
+  </div>
+  <span class="muted small" data-masscount data-template="<?= e(t('photo_mass_count')) ?>"></span>
+  <span class="warn small" data-massempty hidden><?= e(t('fl_photo_mass_nothing')) ?></span>
+</form>
+
+<div class="photo-grid large" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
   <?php foreach ($photos as $photo): ?>
     <figure class="photo-admin">
+      <?php // Das Häkchen gehört sichtbar an die Kachel, nicht in die Beschriftung. ?>
+      <label class="photo-tick"><input type="checkbox" form="fotos-termin" name="pick[]" value="<?= (int) $photo['id'] ?>"> <span class="muted small"><?= e(t('photo_mass_pick')) ?></span></label>
       <?php // Kachel lädt die verkleinerte Fassung; das Original zeigt erst die Lupe ?>
       <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"
            alt="<?= e($photo['caption']) ?>" loading="lazy">
@@ -49,4 +74,5 @@
   <?php endforeach; ?>
 </div>
 <?php if (!$photos): ?><p class="muted center"><?= e(t('photos_none_intern')) ?></p><?php endif; ?>
+<script src="<?= e(asset('/assets/fotos.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

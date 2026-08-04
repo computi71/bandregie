@@ -3,7 +3,7 @@
 <?php if (!$photos): ?>
   <div class="card"><p class="muted"><?= e(t('photos_none')) ?></p></div>
 <?php endif; ?>
-<div class="photo-grid large">
+<div class="photo-grid large" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
   <?php foreach ($photos as $photo): ?>
     <figure>
       <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"

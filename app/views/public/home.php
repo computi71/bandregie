@@ -32,7 +32,7 @@
 <?php if ($photos): ?>
 <section class="card">
   <h2><?= e(t('home_impressions')) ?></h2>
-  <div class="photo-grid">
+  <div class="photo-grid" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
     <?php foreach ($photos as $photo): ?>
       <figure><img src="/uploads/<?= e($photo['filename']) ?>" alt="<?= e($photo['caption'] ?: $settings['band_name']) ?>" loading="lazy"></figure>
     <?php endforeach; ?>

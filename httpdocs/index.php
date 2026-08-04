@@ -1192,6 +1192,28 @@ if (str_starts_with($path, '/intern')) {
     q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
     redirect('/intern/fotos');
   }
+  // Viele Fotos auf einen Termin. Von einem Auftritt kommen dreißig Bilder, und
+  // dreißigmal dieselbe Auswahl zu treffen ist keine Arbeit, die ein Mensch tun
+  // sollte. Angehakt wird oben, der Termin einmal gewählt.
+  if ($path === '/intern/fotos/termin' && $method === 'POST') {
+    $eid = (int) ($_POST['event_id'] ?? 0);
+    if ($eid && !row('SELECT 1 FROM events WHERE id = ?', [$eid])) $eid = 0;
+    // Nur Zahlen, nur vorhandene Fotos: Was im Formular steht, entscheidet nicht.
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['pick'] ?? [])))));
+    $wieViele = 0;
+    if ($ids) {
+      $platz = implode(',', array_fill(0, count($ids), '?'));
+      $echte = array_column(rows("SELECT id FROM photos WHERE id IN ($platz)", $ids), 'id');
+      foreach ($echte as $pid) {
+        q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, (int) $pid]);
+        $wieViele++;
+      }
+    }
+    flash($wieViele
+      ? str_replace('%1', (string) $wieViele, $eid ? t('fl_photo_mass') : t('fl_photo_mass_none'))
+      : t('fl_photo_mass_nothing'));
+    redirect('/intern/fotos');
+  }
   if ($path === '/intern/fotos' && $method === 'POST') {
     foreach ($_FILES['photos']['tmp_name'] ?? [] as $i => $tmp) {
       if (upload_rejected((int) ($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK))) continue;

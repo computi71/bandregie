@@ -269,6 +269,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 .lightbox-overlay { position: fixed; inset: 0; background: rgba(10, 8, 6, 0.94); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; z-index: 100; cursor: zoom-out; padding: 1.5rem; }
 .lightbox-overlay img { max-width: 95vw; max-height: 88vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
 .lightbox-caption { color: var(--muted); font-size: 0.95rem; }
+/* Blättern in der Großansicht: die Knöpfe liegen über dem Bild an den Rändern,
+   nicht darunter — mit dem Daumen erreicht man den Rand, nicht die Mitte. */
+.lightbox-nav, .lightbox-show { position: fixed; background: rgba(0,0,0,0.5); color: #fff;
+  border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; cursor: pointer;
+  line-height: 1; z-index: 101; }
+.lightbox-nav { top: 50%; transform: translateY(-50%); width: 3rem; height: 3rem; font-size: 2rem; }
+.lightbox-nav.prev { left: 0.8rem; }
+.lightbox-nav.next { right: 0.8rem; }
+.lightbox-show { bottom: 1rem; right: 1rem; width: 2.6rem; height: 2.6rem; font-size: 1.1rem; }
+.lightbox-nav:hover, .lightbox-show:hover { background: rgba(0,0,0,0.8); }
+
+/* Mehrere Fotos auf einen Termin: die Leiste über dem Raster. */
+.photo-mass { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+/* Das Häkchen sitzt an der Kachel und bleibt sichtbar, ohne sie zu verdecken. */
+.photo-tick { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
 .photo-grid figcaption { font-size: 0.85rem; color: var(--muted); padding-top: 0.25rem; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 .embed-16x9 { position: relative; aspect-ratio: 16 / 9; }
