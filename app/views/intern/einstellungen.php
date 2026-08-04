@@ -374,6 +374,9 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <span class="muted small">⚠ <?= e(od_configured() ? t('od_needs_enable') : t('od_needs_setup')) ?></span>
     <?php endif; ?>
     <?php if ($odVerb['connected']): ?>
+      <?php // Das Durchsehen ist eine eigene Seite: Es lebt vom Klicken durch die
+            // Ebenen und hätte zwischen den Formularen hier nichts gewonnen (#20). ?>
+      <a class="btn btn-small" href="/intern/einstellungen/onedrive/ordner">📁 <?= e(t('od_browse_open')) ?></a>
       <form method="post" action="/intern/einstellungen/onedrive/loesen" class="inline"
             data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
         <button class="btn btn-ghost btn-small"><?= e(t('od_disconnect')) ?></button>

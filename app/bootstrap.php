@@ -891,6 +891,32 @@ Zeile zwei
   'od_denied' => 'Die Anmeldung bei Microsoft wurde abgebrochen.',
   'od_ok' => 'Mit OneDrive verbunden.',
   'od_gone' => 'Verbindung gelöst.',
+  // Ordner durchsehen und verknüpfen (#20)
+  'od_browse_title' => 'OneDrive-Ordner',
+  'od_browse_intro' => 'Klick dich zu dem Ordner, in dem euer Material liegt, und verknüpfe ihn. Kopiert wird nichts — Bandregie merkt sich nur, welcher Ordner gemeint ist, und sieht hinein. Bei Microsoft bleibt alles, wo es ist.',
+  'od_browse_open' => 'Ordner durchsehen',
+  'od_root' => 'Oberste Ebene',
+  'od_folder' => 'Ordner',
+  'od_empty' => 'Hier liegt nichts.',
+  'od_files_here' => '%1 Dateien in diesem Ordner',
+  'od_link_this' => 'Diesen Ordner verknüpfen',
+  'od_already_linked' => 'Dieser Ordner ist schon verknüpft.',
+  'od_linked_title' => 'Verknüpfte Ordner',
+  'od_linked_hint' => 'Was hier steht, ist ein Verweis. Löst du die Verknüpfung, verschwindet nur der Verweis — die Dateien bei Microsoft bleiben unberührt.',
+  'od_linked_none' => 'Noch kein Ordner verknüpft.',
+  'od_items_count' => '%1 Dateien bekannt',
+  'od_items_missing' => '%1 fehlen',
+  'od_missing_since' => 'fehlt seit %1',
+  'od_checked_at' => 'zuletzt nachgesehen %1',
+  'od_refresh' => 'Nachsehen',
+  'od_refreshed' => 'Nachgesehen: %1 neu, %2 geändert, %3 verschwunden.',
+  'od_unreachable' => 'OneDrive antwortet gerade nicht. Es wurde nichts als verschwunden vermerkt — ein Ausfall ist kein Verlust.',
+  'od_not_connected' => 'Noch keine Verbindung zu OneDrive. Die richtest du in den Einstellungen ein.',
+  'od_linked' => 'Ordner verknüpft.',
+  'od_link_failed' => 'Der Ordner ließ sich nicht verknüpfen.',
+  'od_unlink' => 'Verknüpfung lösen',
+  'od_unlink_confirm' => 'Nur den Verweis lösen? Die Dateien bei Microsoft bleiben liegen.',
+  'od_unlinked' => 'Verknüpfung gelöst. Die Dateien bei Microsoft sind unberührt.',
   'od_error_lbl' => 'Letzter Fehler von Microsoft',
   'set_onedrive' => 'OneDrive verbinden (Dateien und Fotos verknüpfen)',
   'set_onedrive_hint' => 'Erlaubt dieser Installation, sich bei Microsoft anzumelden und Ordner zu lesen. Ohne diesen Schalter geht keine Anfrage hinaus.',
@@ -1604,6 +1630,38 @@ $tables = [
 
   // Bühnenplan: was wo steht. x und y sind Prozent der Bühnenfläche, damit
   // der Plan bei jeder Bühnengröße stimmt.
+  // Verknüpfte OneDrive-Ordner (#20). Verknüpft, nicht kopiert: Gespeichert wird
+  // nur, welcher Ordner gemeint ist — die Dateien bleiben, wo sie liegen.
+  "CREATE TABLE IF NOT EXISTS od_folders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id VARCHAR(190) NOT NULL,
+    name VARCHAR(190) NOT NULL DEFAULT '',
+    path VARCHAR(400) NOT NULL DEFAULT '',
+    linked_by INT NULL,
+    linked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    checked_at DATETIME NULL,
+    UNIQUE KEY uniq_item (item_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Was in einem verknüpften Ordner gesehen wurde. Ein Zwischenstand, kein
+  // Besitz: Er erlaubt es, eine Seite ohne Netz zu zeigen und zu erkennen, was
+  // seit dem letzten Blick verschwunden ist. Verschwundenes wird vermerkt und
+  // nicht gelöscht — sonst fällt niemandem auf, dass etwas fehlt.
+  "CREATE TABLE IF NOT EXISTS od_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    folder_id INT NOT NULL,
+    item_id VARCHAR(190) NOT NULL,
+    name VARCHAR(190) NOT NULL DEFAULT '',
+    size BIGINT NOT NULL DEFAULT 0,
+    mime VARCHAR(120) NOT NULL DEFAULT '',
+    modified_at DATETIME NULL,
+    web_url VARCHAR(600) NOT NULL DEFAULT '',
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    missing_since DATETIME NULL,
+    UNIQUE KEY uniq_folder_item (folder_id, item_id),
+    KEY idx_folder (folder_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS stage_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     kind VARCHAR(20) NOT NULL DEFAULT 'musiker',

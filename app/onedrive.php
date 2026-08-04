@@ -273,6 +273,153 @@ function od_connection(): array {
 }
 
 /**
+ * Der Inhalt eines Ordners im Laufwerk. null heißt: nicht erreichbar.
+ *
+ * @param string $itemId Kennung des Ordners, leer für die Wurzel
+ * @return array{folders: array<int, array>, files: array<int, array>}|null
+ */
+function od_children(string $itemId = ''): ?array {
+  $pfad = $itemId === ''
+    ? '/me/drive/root/children'
+    : '/me/drive/items/' . rawurlencode($itemId) . '/children';
+  // Nur die Felder, die gebraucht werden. Graph liefert sonst je Eintrag ein
+  // Vielfaches davon, und über eine Fotosammlung summiert sich das.
+  $antwort = od_graph($pfad . '?$top=200&$select=id,name,size,file,folder,webUrl,lastModifiedDateTime,parentReference');
+  if ($antwort === null) return null;
+  $ordner = $dateien = [];
+  foreach ((array) ($antwort['value'] ?? []) as $eintrag) {
+    $satz = [
+      'id'       => (string) ($eintrag['id'] ?? ''),
+      'name'     => (string) ($eintrag['name'] ?? ''),
+      'size'     => (int) ($eintrag['size'] ?? 0),
+      'mime'     => (string) ($eintrag['file']['mimeType'] ?? ''),
+      'modified' => (string) ($eintrag['lastModifiedDateTime'] ?? ''),
+      'web_url'  => (string) ($eintrag['webUrl'] ?? ''),
+      'path'     => (string) ($eintrag['parentReference']['path'] ?? ''),
+    ];
+    if ($satz['id'] === '') continue;
+    if (isset($eintrag['folder'])) {
+      $satz['count'] = (int) ($eintrag['folder']['childCount'] ?? 0);
+      $ordner[] = $satz;
+    } elseif (isset($eintrag['file'])) {
+      $dateien[] = $satz;
+    }
+  }
+  return ['folders' => $ordner, 'files' => $dateien];
+}
+
+/** Die verknüpften Ordner, der zuletzt verknüpfte zuerst. */
+function od_folders(): array {
+  return rows('SELECT f.*, u.name AS linked_by_name FROM od_folders f
+               LEFT JOIN users u ON u.id = f.linked_by ORDER BY f.name, f.id');
+}
+
+/**
+ * Einen Ordner verknüpfen. Zweimal derselbe legt keinen zweiten an — der
+ * Schlüssel auf der Kennung sorgt dafür, und wer zweimal klickt, meint einmal.
+ */
+function od_folder_link(string $itemId, string $name, string $path, ?int $wer): void {
+  q('INSERT INTO od_folders (item_id, name, path, linked_by) VALUES (?,?,?,?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), path = VALUES(path)',
+    [$itemId, mb_substr($name, 0, 190), mb_substr($path, 0, 400), $wer]);
+}
+
+/** Die Verknüpfung lösen. Die Dateien bei Microsoft bleiben unberührt. */
+function od_folder_unlink(int $id): void {
+  q('DELETE FROM od_items WHERE folder_id = ?', [$id]);
+  q('DELETE FROM od_folders WHERE id = ?', [$id]);
+}
+
+/**
+ * Den Zwischenstand eines Ordners mit einer frischen Liste abgleichen.
+ *
+ * Absichtlich ohne Datenbank und ohne Netz: Der Vergleich ist die eigentliche
+ * Entscheidung — was ist neu, was hat sich geändert, was ist verschwunden, was
+ * ist wieder da — und die will prüfbar sein, ohne ein Microsoft-Konto zu haben.
+ *
+ * @param array<int, array> $bekannt Zeilen aus od_items
+ * @param array<int, array> $frisch  Einträge aus od_children()['files']
+ * @param string $jetzt              Zeitpunkt als 'Y-m-d H:i:s'
+ * @return array{neu: array, geaendert: array, fehlt: array, zurueck: array}
+ */
+function od_reconcile(array $bekannt, array $frisch, string $jetzt): array {
+  $nachId = [];
+  foreach ($bekannt as $b) $nachId[(string) $b['item_id']] = $b;
+  $frischNachId = [];
+  foreach ($frisch as $f) $frischNachId[(string) $f['id']] = $f;
+
+  $neu = $geaendert = $fehlt = $zurueck = [];
+  foreach ($frischNachId as $id => $f) {
+    $alt = $nachId[$id] ?? null;
+    if (!$alt) { $neu[] = $f; continue; }
+    // Wieder aufgetaucht: Der Vermerk muss weg, sonst steht „fehlt" an einer
+    // Datei, die man gerade sieht.
+    if (($alt['missing_since'] ?? null) !== null) $zurueck[] = $f;
+    // Nur melden, was sich wirklich geändert hat — sonst schreibt jeder Blick
+    // jede Zeile neu und der Zwischenstand sagt nichts mehr über Bewegung.
+    if ((int) $alt['size'] !== (int) $f['size']
+        || (string) $alt['name'] !== (string) $f['name']
+        || od_zeit((string) $f['modified']) !== ($alt['modified_at'] ?? null)) {
+      $geaendert[] = $f;
+    }
+  }
+  foreach ($nachId as $id => $b) {
+    // Schon als fehlend vermerkt? Dann bleibt der erste Zeitpunkt stehen: Er
+    // sagt, seit wann es fehlt, und das ist die nützlichere Angabe.
+    if (!isset($frischNachId[$id]) && ($b['missing_since'] ?? null) === null) $fehlt[] = $b;
+  }
+  return ['neu' => $neu, 'geaendert' => $geaendert, 'fehlt' => $fehlt, 'zurueck' => $zurueck];
+}
+
+/** Graphs Zeitangabe (ISO 8601, UTC) als Datenbankzeit. Leer bleibt null. */
+function od_zeit(string $iso): ?string {
+  if (trim($iso) === '') return null;
+  $t = strtotime($iso);
+  return $t === false ? null : date('Y-m-d H:i:s', $t);
+}
+
+/**
+ * Einen verknüpften Ordner frisch ansehen und den Zwischenstand nachziehen.
+ *
+ * @return array{ok: bool, neu: int, geaendert: int, fehlt: int, zurueck: int}
+ */
+function od_folder_refresh(int $folderId): array {
+  $ordner = row('SELECT * FROM od_folders WHERE id = ?', [$folderId]);
+  if (!$ordner) return ['ok' => false, 'neu' => 0, 'geaendert' => 0, 'fehlt' => 0, 'zurueck' => 0];
+  $inhalt = od_children((string) $ordner['item_id']);
+  // Nicht erreichbar heißt nicht verschwunden: Ohne Antwort wird nichts als
+  // fehlend vermerkt, sonst meldete ein Netzausfall den ganzen Ordner als weg.
+  if ($inhalt === null) return ['ok' => false, 'neu' => 0, 'geaendert' => 0, 'fehlt' => 0, 'zurueck' => 0];
+
+  $jetzt = date('Y-m-d H:i:s');
+  $bekannt = rows('SELECT * FROM od_items WHERE folder_id = ?', [$folderId]);
+  $d = od_reconcile($bekannt, $inhalt['files'], $jetzt);
+
+  foreach ([...$d['neu'], ...$d['geaendert']] as $f) {
+    q('INSERT INTO od_items (folder_id, item_id, name, size, mime, modified_at, web_url, seen_at, missing_since)
+       VALUES (?,?,?,?,?,?,?,?,NULL)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), size = VALUES(size), mime = VALUES(mime),
+         modified_at = VALUES(modified_at), web_url = VALUES(web_url), seen_at = VALUES(seen_at),
+         missing_since = NULL',
+      [$folderId, $f['id'], mb_substr((string) $f['name'], 0, 190), (int) $f['size'],
+       mb_substr((string) $f['mime'], 0, 120), od_zeit((string) $f['modified']),
+       mb_substr((string) $f['web_url'], 0, 600), $jetzt]);
+  }
+  foreach ($d['zurueck'] as $f) {
+    q('UPDATE od_items SET missing_since = NULL, seen_at = ? WHERE folder_id = ? AND item_id = ?',
+      [$jetzt, $folderId, $f['id']]);
+  }
+  foreach ($d['fehlt'] as $b) {
+    q('UPDATE od_items SET missing_since = ? WHERE id = ?', [$jetzt, (int) $b['id']]);
+  }
+  q('UPDATE od_folders SET checked_at = ?, name = ?, path = ? WHERE id = ?',
+    [$jetzt, $ordner['name'], $ordner['path'], $folderId]);
+
+  return ['ok' => true, 'neu' => count($d['neu']), 'geaendert' => count($d['geaendert']),
+          'fehlt' => count($d['fehlt']), 'zurueck' => count($d['zurueck'])];
+}
+
+/**
  * Verbindung lösen.
  *
  * Die Zeichen werden gelöscht, nicht nur vergessen: Ein Erneuerungszeichen, das
@@ -284,4 +431,7 @@ function od_disconnect(): void {
   foreach (['onedrive_access', 'onedrive_refresh', 'onedrive_expires', 'onedrive_account', 'onedrive_error'] as $k) {
     set_setting($k, '');
   }
+  // Die Verknüpfungen bleiben stehen: Wer die Verbindung erneuert, will seine
+  // Ordner wiederfinden und nicht von vorn anfangen. Ohne Zeichen ist ohnehin
+  // nichts davon erreichbar, und der Zwischenstand verrät keine Dateiinhalte.
 }

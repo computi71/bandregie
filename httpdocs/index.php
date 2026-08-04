@@ -2820,6 +2820,51 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/einstellungen');
   }
 
+  // Das Laufwerk durchsehen und Ordner verknüpfen (#20). Eine eigene Seite und
+  // nicht ein Block in den Einstellungen: Durchsehen heißt klicken, und jeder
+  // Klick lädt eine Ebene nach — das gehört nicht zwischen die Formulare.
+  if ($path === '/intern/einstellungen/onedrive/ordner' && $method === 'GET') {
+    require_admin();
+    $odItem = trim((string) ($_GET['id'] ?? ''));
+    view('intern/onedrive_ordner', [
+      'title'    => t('od_browse_title'),
+      'odItem'   => $odItem,
+      'odName'   => trim((string) ($_GET['name'] ?? '')),
+      // Ohne Verbindung gar nicht erst fragen: Die Seite soll erklären, was
+      // fehlt, statt eine leere Liste zu zeigen.
+      'odInhalt' => od_connection()['connected'] ? od_children($odItem) : null,
+      'odLinked' => od_folders(),
+      'odWeg'    => array_values(array_filter(array_map('trim', explode('/', (string) ($_GET['weg'] ?? ''))))),
+    ]);
+  }
+  if ($path === '/intern/einstellungen/onedrive/ordner/verknuepfen' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $odItem = trim((string) ($_POST['item_id'] ?? ''));
+    if ($odItem === '') { flash(t('od_link_failed')); back('/intern/einstellungen'); }
+    od_folder_link($odItem, (string) ($_POST['name'] ?? ''), (string) ($_POST['path'] ?? ''), (int) $me['id']);
+    // Gleich nachsehen, was drin liegt: Ein verknüpfter Ordner ohne Inhalt sagt
+    // nichts darüber, ob die Verknüpfung getroffen hat.
+    $odNeu = row('SELECT id FROM od_folders WHERE item_id = ?', [$odItem]);
+    if ($odNeu) od_folder_refresh((int) $odNeu['id']);
+    flash(t('od_linked'));
+    back('/intern/einstellungen/onedrive/ordner');
+  }
+  if (preg_match('~^/intern/einstellungen/onedrive/ordner/(\d+)/(aktualisieren|loesen)$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    if ($m[2] === 'loesen') {
+      od_folder_unlink((int) $m[1]);
+      flash(t('od_unlinked'));
+    } else {
+      $odStand = od_folder_refresh((int) $m[1]);
+      flash($odStand['ok']
+        ? str_replace(['%1', '%2', '%3'], [$odStand['neu'], $odStand['geaendert'], $odStand['fehlt']], t('od_refreshed'))
+        : t('od_unreachable'));
+    }
+    back('/intern/einstellungen/onedrive/ordner');
+  }
+
   // Zweiter Faktor: ob es ihn gibt, und ob er für alle gilt (#169).
   if ($path === '/intern/einstellungen/zwei-faktor' && $method === 'POST') {
     require_admin();
