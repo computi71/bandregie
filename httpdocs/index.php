@@ -1276,9 +1276,13 @@ if (str_starts_with($path, '/intern')) {
         // gingen sie mit jedem öffentlichen Foto mit hinaus — und ein
         // Proberaum ist oft eine Privatadresse.
         photo_strip_exif(UPLOADS_DIR . '/' . $safe);
-        q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng) VALUES (?,?,?,?,?,?,?)',
+        // Die Herkunft mitschreiben (#197). Der Browser liefert den Dateinamen;
+        // wählt jemand einen ganzen Ordner, steht der relative Pfad daneben und
+        // wird bevorzugt — dann sieht man, aus welchem Ordner das Bild kam.
+        $herkunft = trim((string) ($_POST['paths'][$i] ?? '')) ?: (string) $_FILES['photos']['name'][$i];
+        q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source) VALUES (?,?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
-           $exif['taken_at'], $exif['lat'], $exif['lng']]);
+           $exif['taken_at'], $exif['lat'], $exif['lng'], mb_substr($herkunft, 0, 400)]);
         $fotoOk++;
       } else {
         $fotoFehler++;

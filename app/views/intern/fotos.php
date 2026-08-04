@@ -6,7 +6,7 @@
     <?php // Die Grenzen kommen vom Server, nicht aus dem Text: Sie ändern sich
           // mit der PHP-Einrichtung, und eine feste Zahl wäre spätestens beim
           // nächsten Umzug eine Lüge (#194). ?>
-    <label><?= e(str_replace(['%1', '%2'], [fmt_bytes($limits['per_file']), (string) $limits['max_files']], t('photos_upload_lbl_lim'))) ?><input type="file" name="photos[]" accept="image/*" multiple required></label>
+    <label><?= e(str_replace(['%1', '%2'], [fmt_bytes($limits['per_file']), (string) $limits['max_files']], t('photos_upload_lbl_lim'))) ?><input type="file" name="photos[]" accept="image/*" multiple required data-paths></label>
     <label><?= e(t('photos_caption')) ?><input name="caption" placeholder="<?= e(t('optional')) ?>"></label>
     <label class="checkbox span2"><input type="checkbox" name="is_public" value="1"> <?= e(t('photos_public_now')) ?></label>
     <?php // Warum manche Fotos keinen Termin-Vorschlag bekommen: Messenger und
@@ -66,6 +66,11 @@
            alt="<?= e($photo['caption']) ?>" loading="lazy">
       <figcaption>
         <?= $photo['caption'] ? e($photo['caption']) . ' · ' : '' ?><span class="muted"><?= e($photo['uploader'] ?? '') ?></span>
+        <?php // Die Herkunft leise darunter: eine Angabe für den, der sie sucht,
+              // kein Schmuck. Bei Altbestand ist sie leer und steht dann nicht da. ?>
+        <?php if (($photo['source'] ?? '') !== ''): ?>
+          <span class="photo-source" title="<?= e(t('photo_source')) ?>">📄 <?= e($photo['source']) ?></span>
+        <?php endif; ?>
         <div class="row-buttons">
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
             <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>

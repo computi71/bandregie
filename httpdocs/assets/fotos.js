@@ -46,3 +46,26 @@
 
   zaehlen();
 })();
+
+// Herkunftspfad mitschicken (#197). Der Browser nennt im Formular nur den
+// Dateinamen; wählt jemand einen ganzen Ordner, kennt er zusätzlich den relativen
+// Pfad darin. Den reichen wir in verborgenen Feldern nach — in derselben
+// Reihenfolge wie die Dateien, sonst gehörte der Pfad zum falschen Bild.
+(function () {
+  var feld = document.querySelector('input[type=file][data-paths]');
+  if (!feld || !feld.form) return;
+  feld.addEventListener('change', function () {
+    feld.form.querySelectorAll('input[data-pathfor]').forEach(function (el) { el.remove(); });
+    Array.prototype.forEach.call(feld.files || [], function (datei, i) {
+      // Ohne Ordnerwahl ist webkitRelativePath leer — dann bleibt es beim
+      // Dateinamen, den der Server ohnehin hat.
+      if (!datei.webkitRelativePath) return;
+      var h = document.createElement('input');
+      h.type = 'hidden';
+      h.name = 'paths[' + i + ']';
+      h.value = datei.webkitRelativePath;
+      h.setAttribute('data-pathfor', String(i));
+      feld.form.appendChild(h);
+    });
+  });
+})();

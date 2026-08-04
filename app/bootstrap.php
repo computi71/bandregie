@@ -857,6 +857,7 @@ Zeile zwei
   'photo_mass_pick' => 'auswählen',
   // Neu-Markierung (#195) und ehrliche Grenzen beim Hochladen (#194)
   'photo_new' => 'NEU',
+  'photo_source' => 'Herkunft',
   'photo_folder_none' => 'Noch keinem Termin zugeordnet',
   'photo_folder_count' => 'Bilder: %1',
   'photos_upload_lbl_lim' => 'Bilder (max. %1 je Datei, %2 auf einmal)',
@@ -2143,6 +2144,13 @@ if (!column_exists('users', 'on_stage')) {
 // etwas als neu zu zeigen.
 if (!column_exists('users', 'photos_seen_at')) {
   $db->exec('ALTER TABLE users ADD COLUMN photos_seen_at DATETIME NULL');
+}
+// Woher ein Bild kommt (#197). Beim Hochladen der ursprüngliche Dateiname, bei
+// einem verknüpften Bild später der Ordnerpfad. Eine Spalte für beides, denn die
+// Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
+// die Angabe ist verloren und wird nicht erfunden.
+if (!column_exists('photos', 'source')) {
+  $db->exec("ALTER TABLE photos ADD COLUMN source VARCHAR(400) NOT NULL DEFAULT ''");
 }
 
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:

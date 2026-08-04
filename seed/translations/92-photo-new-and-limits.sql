@@ -62,3 +62,12 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','photo_folder_none','Non ancora assegnate a una data'),
 ('it','photo_folder_count','Immagini: %1')
 ON DUPLICATE KEY UPDATE value = value;
+
+-- Woher ein Bild kommt (#197)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','photo_source','Origin'),
+('nl','photo_source','Herkomst'),
+('fr','photo_source','Origine'),
+('es','photo_source','Origen'),
+('it','photo_source','Provenienza')
+ON DUPLICATE KEY UPDATE value = value;

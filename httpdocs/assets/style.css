@@ -283,6 +283,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 /* Mehrere Fotos auf einen Termin: die Leiste über dem Raster. */
 .photo-mass { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 /* Das Häkchen sitzt an der Kachel und bleibt sichtbar, ohne sie zu verdecken. */
+/* Die Herkunft steht klein und umbrechend unter dem Bild: Pfade sind lang, und
+   ein langer Pfad darf die Kachel nicht in die Breite ziehen. */
+.photo-source { display: block; font-size: 0.75rem; color: var(--muted);
+  overflow-wrap: anywhere; opacity: 0.8; }
+
 /* Ordnerüberschrift über jedem Raster: klar abgesetzt, damit man beim Scrollen
    sieht, wo ein Termin anfängt und der nächste aufhört. */
 .photo-folder { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
