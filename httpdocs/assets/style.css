@@ -283,6 +283,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 /* Mehrere Fotos auf einen Termin: die Leiste über dem Raster. */
 .photo-mass { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 /* Das Häkchen sitzt an der Kachel und bleibt sichtbar, ohne sie zu verdecken. */
+/* Ordnerüberschrift über jedem Raster: klar abgesetzt, damit man beim Scrollen
+   sieht, wo ein Termin anfängt und der nächste aufhört. */
+.photo-folder { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+  margin: 1.4rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+
 /* Häkchen und Neu-Markierung liegen über dem Bild in seinen Ecken: Sie sollen
    die Kachel nicht höher machen, und in der Ecke verdecken sie am wenigsten. */
 .photo-admin { position: relative; }

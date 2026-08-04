@@ -1171,7 +1171,7 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Fotos ----------
   if ($path === '/intern/fotos' && $method === 'GET') {
-    $photos = rows('SELECT p.*, u.name AS uploader, e.title AS event_title
+    $photos = rows('SELECT p.*, u.name AS uploader, e.title AS event_title, e.date AS event_date
                     FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
                     LEFT JOIN events e ON e.id = p.event_id ORDER BY p.created_at DESC');
     $photoEvents = rows('SELECT e.id, e.title, e.date, v.lat, v.lng FROM events e
@@ -1192,8 +1192,24 @@ if (str_starts_with($path, '/intern')) {
     unset($phN);
     // Erst nach dem Berechnen setzen, sonst wäre schon der eigene Aufruf zu spät.
     q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
+    // Nach Termin gruppieren (#196): Was zugeordnet ist, gehört in seinen Ordner.
+    // Die Unzugeordneten stehen oben, denn das ist der Stapel, an dem gearbeitet
+    // wird. Innerhalb eines Ordners bleibt die Reihenfolge nach Datum.
+    $photoOrdner = ['' => ['title' => null, 'date' => null, 'photos' => []]];
+    foreach ($photos as $ph) {
+      $schluessel = $ph['event_id'] ? (string) (int) $ph['event_id'] : '';
+      if (!isset($photoOrdner[$schluessel])) {
+        $photoOrdner[$schluessel] = ['title' => $ph['event_title'], 'date' => $ph['event_date'], 'photos' => []];
+      }
+      $photoOrdner[$schluessel]['photos'][] = $ph;
+    }
+    // Ohne unzugeordnete Bilder auch keinen leeren Ordner dafür zeigen.
+    if (!$photoOrdner['']['photos']) unset($photoOrdner['']);
+    // Die Ordner nach Termindatum, das Neueste zuerst; die Unzugeordneten bleiben
+    // oben, weil sie kein Datum haben und die Arbeit sind.
+    uasort($photoOrdner, fn($a, $b) => ($b['date'] ?? '9999') <=> ($a['date'] ?? '9999'));
     view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents,
-                          'limits' => upload_limits()]);
+                          'limits' => upload_limits(), 'ordner' => $photoOrdner]);
   }
   if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {
     $eid = (int) ($_POST['event_id'] ?? 0);

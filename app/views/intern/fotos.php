@@ -39,8 +39,20 @@
   <span class="warn small" data-massempty hidden><?= e(t('fl_photo_mass_nothing')) ?></span>
 </form>
 
+<?php foreach ($ordner as $ordSchluessel => $ord): ?>
+  <?php // Je Ordner ein eigenes Raster: Das Blättern in der Großansicht
+        // bleibt dadurch innerhalb eines Termins — vom letzten Bild eines
+        // Auftritts zum ersten eines anderen ist nicht „weiter" (#196). ?>
+  <h2 class="photo-folder">
+    <?php if ($ordSchluessel === ''): ?>
+      📂 <?= e(t('photo_folder_none')) ?>
+    <?php else: ?>
+      📁 <?= e($ord['title'] ?? '') ?><?php if ($ord['date']): ?> <span class="muted small"><?= e(fmt_date($ord['date'])) ?></span><?php endif; ?>
+    <?php endif; ?>
+    <span class="muted small"><?= e(str_replace('%1', (string) count($ord['photos']), t('photo_folder_count'))) ?></span>
+  </h2>
 <div class="photo-grid large" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
-  <?php foreach ($photos as $photo): ?>
+  <?php foreach ($ord['photos'] as $photo): ?>
     <figure class="photo-admin">
       <?php // Häkchen in die Ecke des Bildes und ohne Beschriftung: Es soll die
             // Kachel nicht länger machen, und was es tut, sagt die Leiste oben. ?>
@@ -81,6 +93,7 @@
     </figure>
   <?php endforeach; ?>
 </div>
+<?php endforeach; ?>
 <?php if (!$photos): ?><p class="muted center"><?= e(t('photos_none_intern')) ?></p><?php endif; ?>
 <script src="<?= e(asset('/assets/fotos.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
