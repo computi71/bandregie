@@ -1182,7 +1182,18 @@ if (str_starts_with($path, '/intern')) {
       $ph['suggested'] = (!$ph['event_id'] && $ph['taken_at']) ? photo_suggest_event($ph, $photoEvents) : null;
     }
     unset($ph);
-    view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents]);
+    // Neu-Markierung (#195): neu ist, was seit dem letzten Besuch dieses
+    // Mitglieds dazugekommen ist. Beim allerersten Besuch wird nichts markiert —
+    // sonst wäre die ganze Galerie neu, und das sagt nichts.
+    $photoSeen = $me['photos_seen_at'] ?? row('SELECT photos_seen_at FROM users WHERE id = ?', [$me['id']])['photos_seen_at'] ?? null;
+    foreach ($photos as &$phN) {
+      $phN['is_new'] = $photoSeen !== null && $phN['created_at'] > $photoSeen;
+    }
+    unset($phN);
+    // Erst nach dem Berechnen setzen, sonst wäre schon der eigene Aufruf zu spät.
+    q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
+    view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents,
+                          'limits' => upload_limits()]);
   }
   if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {
     $eid = (int) ($_POST['event_id'] ?? 0);
@@ -1215,12 +1226,26 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/fotos');
   }
   if ($path === '/intern/fotos' && $method === 'POST') {
+    // Zu große Absendung: PHP hat $_POST und $_FILES weggeworfen, wir bekommen
+    // einen leeren POST. Ohne diesen Zweig täte die Seite schlicht nichts (#194).
+    if (upload_too_big()) {
+      $gr = upload_limits();
+      flash(str_replace('%1', fmt_bytes($gr['per_request']), t('fl_photo_too_big_request')));
+      redirect('/intern/fotos');
+    }
+    // Gezählt wird, was ankommt, was zu groß war und was kein Bild ist. Stilles
+    // Überspringen war der eigentliche Fehler: Die Seite kam erfolgreich zurück,
+    // und dass die Hälfte fehlte, merkte man nur durch Nachzählen (#194).
+    $fotoOk = $fotoGross = $fotoKeinBild = $fotoFehler = 0;
+    $fotoGrenze = upload_limits()['per_file'];
     foreach ($_FILES['photos']['tmp_name'] ?? [] as $i => $tmp) {
-      if (upload_rejected((int) ($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
-      if (!is_uploaded_file($tmp)) continue;
-      if (($_FILES['photos']['size'][$i] ?? 0) > 10 * 1024 * 1024) continue;
+      $fehler = (int) ($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK);
+      if ($fehler === UPLOAD_ERR_INI_SIZE || $fehler === UPLOAD_ERR_FORM_SIZE) { $fotoGross++; continue; }
+      if (upload_rejected($fehler)) { $fotoFehler++; continue; }
+      if (!is_uploaded_file($tmp)) { $fotoFehler++; continue; }
+      if ($fotoGrenze > 0 && ($_FILES['photos']['size'][$i] ?? 0) > $fotoGrenze) { $fotoGross++; continue; }
       $mime = mime_content_type($tmp) ?: '';
-      if (!str_starts_with($mime, 'image/')) continue;
+      if (!str_starts_with($mime, 'image/')) { $fotoKeinBild++; continue; }
       // Der Name sagt nichts: die Zugriffsprüfung ist der Schutz, aber ein
       // sprechender Name wäre eine zweite Tür, falls sie je umgangen wird.
       // Wie die Datei ursprünglich hieß, steht in der Bildunterschrift.
@@ -1238,8 +1263,23 @@ if (str_starts_with($path, '/intern')) {
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng) VALUES (?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
            $exif['taken_at'], $exif['lat'], $exif['lng']]);
+        $fotoOk++;
+      } else {
+        $fotoFehler++;
       }
     }
+    // Eine Meldung, die zählt statt zu beruhigen. Der Hinweis auf die Grenze der
+    // Dateizahl kommt nur, wenn genau sie erreicht wurde — dann hat der Browser
+    // mehr geschickt, als PHP annimmt, und der Rest ist gar nicht angekommen.
+    $meldung = [str_replace('%1', (string) $fotoOk, t('fl_photo_stored'))];
+    if ($fotoGross) $meldung[] = str_replace(['%1', '%2'], [(string) $fotoGross, fmt_bytes($fotoGrenze)], t('fl_photo_skipped_big'));
+    if ($fotoKeinBild) $meldung[] = str_replace('%1', (string) $fotoKeinBild, t('fl_photo_skipped_nonimage'));
+    if ($fotoFehler) $meldung[] = str_replace('%1', (string) $fotoFehler, t('fl_photo_skipped_error'));
+    $fotoGesamt = count($_FILES['photos']['tmp_name'] ?? []);
+    if ($fotoGesamt >= upload_limits()['max_files']) {
+      $meldung[] = str_replace('%1', (string) upload_limits()['max_files'], t('fl_photo_cap'));
+    }
+    flash(implode(' ', $meldung));
     redirect('/intern/fotos');
   }
   if (preg_match('~^/intern/fotos/(\d+)/hintergrund$~', $path, $m) && $method === 'POST') {

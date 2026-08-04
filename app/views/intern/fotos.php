@@ -3,7 +3,10 @@
 
 <div class="card">
   <form method="post" action="/intern/fotos" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('photos_upload_lbl')) ?><input type="file" name="photos[]" accept="image/*" multiple required></label>
+    <?php // Die Grenzen kommen vom Server, nicht aus dem Text: Sie ändern sich
+          // mit der PHP-Einrichtung, und eine feste Zahl wäre spätestens beim
+          // nächsten Umzug eine Lüge (#194). ?>
+    <label><?= e(str_replace(['%1', '%2'], [fmt_bytes($limits['per_file']), (string) $limits['max_files']], t('photos_upload_lbl_lim'))) ?><input type="file" name="photos[]" accept="image/*" multiple required></label>
     <label><?= e(t('photos_caption')) ?><input name="caption" placeholder="<?= e(t('optional')) ?>"></label>
     <label class="checkbox span2"><input type="checkbox" name="is_public" value="1"> <?= e(t('photos_public_now')) ?></label>
     <?php // Warum manche Fotos keinen Termin-Vorschlag bekommen: Messenger und
@@ -39,8 +42,13 @@
 <div class="photo-grid large" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
   <?php foreach ($photos as $photo): ?>
     <figure class="photo-admin">
-      <?php // Das Häkchen gehört sichtbar an die Kachel, nicht in die Beschriftung. ?>
-      <label class="photo-tick"><input type="checkbox" form="fotos-termin" name="pick[]" value="<?= (int) $photo['id'] ?>"> <span class="muted small"><?= e(t('photo_mass_pick')) ?></span></label>
+      <?php // Häkchen in die Ecke des Bildes und ohne Beschriftung: Es soll die
+            // Kachel nicht länger machen, und was es tut, sagt die Leiste oben. ?>
+      <label class="photo-tick" title="<?= e(t('photo_mass_pick')) ?>">
+        <input type="checkbox" form="fotos-termin" name="pick[]" value="<?= (int) $photo['id'] ?>"
+               aria-label="<?= e(t('photo_mass_pick')) ?>">
+      </label>
+      <?php if (!empty($photo['is_new'])): ?><span class="photo-new"><?= e(t('photo_new')) ?></span><?php endif; ?>
       <?php // Kachel lädt die verkleinerte Fassung; das Original zeigt erst die Lupe ?>
       <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"
            alt="<?= e($photo['caption']) ?>" loading="lazy">

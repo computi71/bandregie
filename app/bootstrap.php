@@ -472,7 +472,7 @@ const UI_STRINGS = [
   'task_add' => 'Aufgabe anlegen', 'task_toggle' => 'Status wechseln',
   'task_none' => 'Keine Aufgaben — entweder sehr gut organisiert oder sehr entspannt. 🍹',
   // Fotos
-  'photos_upload_lbl' => 'Bilder (max. 10 MB pro Datei)', 'photos_caption' => 'Beschreibung',
+  'photos_caption' => 'Beschreibung',
   'photos_public_now' => 'Direkt öffentlich auf der Website zeigen',
   'photo_intern' => 'intern', 'photo_bg' => 'Hintergrund',
   'photo_bg_title' => 'Als Website-Hintergrund verwenden',
@@ -855,6 +855,15 @@ Zeile zwei
   'photo_mass_none' => 'Keins',
   'photo_mass_go' => 'Angehakte zuordnen',
   'photo_mass_pick' => 'auswählen',
+  // Neu-Markierung (#195) und ehrliche Grenzen beim Hochladen (#194)
+  'photo_new' => 'NEU',
+  'photos_upload_lbl_lim' => 'Bilder (max. %1 je Datei, %2 auf einmal)',
+  'fl_photo_stored' => '%1 Fotos gespeichert.',
+  'fl_photo_skipped_big' => '%1 waren größer als %2 und kamen nicht an.',
+  'fl_photo_skipped_nonimage' => '%1 waren keine Bilder.',
+  'fl_photo_skipped_error' => 'Bei %1 ging beim Übertragen etwas schief.',
+  'fl_photo_cap' => 'Der Server nimmt nur %1 Dateien je Absendung — wähle den Rest in einem zweiten Schwung.',
+  'fl_photo_too_big_request' => 'Die Absendung war zusammen größer als %1 und wurde vom Server verworfen — es ist nichts angekommen. Nimm weniger Bilder auf einmal.',
   'photo_mass_count' => '%1 angehakt',
   'fl_photo_mass' => '%1 Fotos zugeordnet.',
   'fl_photo_mass_none' => 'Bei %1 Fotos die Zuordnung entfernt.',
@@ -2124,6 +2133,15 @@ if (!column_exists('users', 'stage_figure')) {
 if (!column_exists('users', 'on_stage')) {
   $db->exec('ALTER TABLE users ADD COLUMN on_stage TINYINT(1) NOT NULL DEFAULT 1');
 }
+// Wann jemand die Fotos zuletzt angesehen hat (#195). Je Mitglied, denn „neu"
+// ist keine Eigenschaft des Bildes, sondern eine des Betrachters: Wer vier
+// Wochen nicht hineingesehen hat, dem ist mehr neu als dem, der gestern da war.
+// NULL heißt „noch nie" — dann ist alles neu, und das ist beim ersten Besuch
+// nicht hilfreich, deshalb setzt die Seite den Zeitpunkt beim ersten Mal, ohne
+// etwas als neu zu zeigen.
+if (!column_exists('users', 'photos_seen_at')) {
+  $db->exec('ALTER TABLE users ADD COLUMN photos_seen_at DATETIME NULL');
+}
 
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
 // das Geheimnis, ob es je bestätigt wurde, und die Rückwege. Ohne das
@@ -2768,6 +2786,50 @@ function eq_photo_choices(int $eqId, int $limit = 60): array {
     if (count($auswahl) >= $limit) break;
   }
   return array_values($auswahl);
+}
+
+/**
+ * Was der Server beim Hochladen wirklich zulässt (#194).
+ *
+ * Gelesen und nicht hingeschrieben: Die Grenzen stehen in der PHP-Einrichtung
+ * und ändern sich mit ihr. Eine Zahl im Text wäre spätestens beim nächsten
+ * Serverumzug eine Lüge — und die Lüge war der eigentliche Fehler: Die Seite
+ * versprach 10 MB, wo der Server 2 MB annahm, und verlor den Rest schweigend.
+ *
+ * @return array{per_file: int, per_request: int, max_files: int}
+ */
+function upload_limits(): array {
+  $byte = static function (string $wert): int {
+    $wert = trim($wert);
+    if ($wert === '' || $wert === '-1') return 0;   // 0 heißt hier: keine Grenze
+    $zahl = (int) $wert;
+    return match (strtolower(substr($wert, -1))) {
+      'g' => $zahl * 1024 * 1024 * 1024,
+      'm' => $zahl * 1024 * 1024,
+      'k' => $zahl * 1024,
+      default => $zahl,
+    };
+  };
+  $jeDatei = $byte((string) ini_get('upload_max_filesize'));
+  $jeAnfrage = $byte((string) ini_get('post_max_size'));
+  // Die kleinere Grenze gewinnt: Eine Datei kann nicht größer sein als die
+  // Anfrage, die sie trägt.
+  if ($jeAnfrage > 0 && ($jeDatei === 0 || $jeDatei > $jeAnfrage)) $jeDatei = $jeAnfrage;
+  return ['per_file' => $jeDatei, 'per_request' => $jeAnfrage,
+          'max_files' => max(1, (int) ini_get('max_file_uploads'))];
+}
+
+/**
+ * Wurde die Anfrage von PHP verworfen, weil sie zu groß war?
+ *
+ * Bei überschrittenem post_max_size wirft PHP $_POST UND $_FILES weg. Die Seite
+ * bekommt einen POST ohne Inhalt und täte sonst schlicht nichts — der stillste
+ * aller Fehler. Erkennbar ist es nur an der Länge, die der Browser gemeldet hat.
+ */
+function upload_too_big(): bool {
+  return ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && !$_POST && !$_FILES
+    && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0;
 }
 
 /**
