@@ -148,7 +148,11 @@ if (setting('public_mode') === 'redirect' && $method === 'GET') {
   // /appicon und das Manifest bleiben erreichbar: ein Handy holt das Symbol
   // für den Startbildschirm ohne Sitzung, und wer weitergeleitet wird, hat
   // sonst das Zeichen einer fremden Seite auf dem Bildschirm.
-  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/uploads/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/', '/appicon/', '/manifest.webmanifest'];
+  // /thumb/ gehört dazu wie /uploads/: Es liefert dieselben Bilder, nur klein.
+  // Ohne diesen Eintrag wurde jede Vorschau im Bandbereich zu Facebook geleitet,
+  // während das große Bild daneben lud — die Fotoseite bestand aus kaputten
+  // Kästchen. Wer ein Bild sehen darf, entscheidet die Route selbst.
+  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/uploads/', '/thumb/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/', '/appicon/', '/manifest.webmanifest'];
   $keep = false;
   foreach ($keepPrefixes as $prefix) {
     if ($path === rtrim($prefix, '/') || str_starts_with($path, $prefix)) { $keep = true; break; }
