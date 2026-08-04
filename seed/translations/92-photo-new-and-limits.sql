@@ -52,13 +52,13 @@ ON DUPLICATE KEY UPDATE value = value;
 -- Ordner je Termin (#196)
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','photo_folder_none','Not assigned to an event yet'),
-('en','photo_folder_count','%1 pictures'),
+('en','photo_folder_count','Pictures: %1'),
 ('nl','photo_folder_none','Nog niet aan een agendapunt toegewezen'),
-('nl','photo_folder_count','%1 afbeeldingen'),
+('nl','photo_folder_count','Afbeeldingen: %1'),
 ('fr','photo_folder_none','Pas encore affectées à une date'),
-('fr','photo_folder_count','%1 images'),
+('fr','photo_folder_count','Images : %1'),
 ('es','photo_folder_none','Aún sin asignar a una fecha'),
-('es','photo_folder_count','%1 imágenes'),
+('es','photo_folder_count','Imágenes: %1'),
 ('it','photo_folder_none','Non ancora assegnate a una data'),
-('it','photo_folder_count','%1 immagini')
+('it','photo_folder_count','Immagini: %1')
 ON DUPLICATE KEY UPDATE value = value;

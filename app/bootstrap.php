@@ -858,7 +858,7 @@ Zeile zwei
   // Neu-Markierung (#195) und ehrliche Grenzen beim Hochladen (#194)
   'photo_new' => 'NEU',
   'photo_folder_none' => 'Noch keinem Termin zugeordnet',
-  'photo_folder_count' => '%1 Bilder',
+  'photo_folder_count' => 'Bilder: %1',
   'photos_upload_lbl_lim' => 'Bilder (max. %1 je Datei, %2 auf einmal)',
   'fl_photo_stored' => 'Gespeichert: %1',
   'fl_photo_skipped_big' => 'Zu groß für %2 und nicht angekommen: %1',
