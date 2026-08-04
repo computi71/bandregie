@@ -44,7 +44,13 @@ if (!headers_sent()) {
     . "script-src 'self'; style-src 'self' 'unsafe-inline'; "
     . "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
     . "frame-src https://www.youtube-nocookie.com https://open.spotify.com; "
-    . "frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'");
+    // form-action gilt auch für das Ziel einer Weiterleitung nach dem Absenden.
+    // Der Knopf „Mit OneDrive verbinden" schickt an uns, und wir antworten mit
+    // 302 zur Anmeldung bei Microsoft — mit 'self' allein bricht der Browser das
+    // ab, ohne etwas anzuzeigen: der Knopf tat nichts. Deshalb steht genau diese
+    // eine Adresse hier, und keine weitere.
+    . "frame-ancestors 'self'; base-uri 'self'; "
+    . "form-action 'self' https://login.microsoftonline.com; object-src 'none'");
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: SAMEORIGIN');
   header('Referrer-Policy: same-origin');
