@@ -907,6 +907,26 @@ Zeile zwei
   'od_denied' => 'Die Anmeldung bei Microsoft wurde abgebrochen.',
   'od_ok' => 'Mit OneDrive verbunden.',
   'od_gone' => 'Verbindung gelöst.',
+  // Aufräumen (#193)
+  'clean_title' => 'Aufräumen',
+  'clean_open' => 'Nach Resten sehen',
+  'clean_intro' => 'Hier steht, was an toten Verweisen liegen geblieben ist — Anhänge zu gelöschten Dingen, Zeilen ohne Datei, Dateien ohne Zeile. Nichts davon ist irgendwo sichtbar, und Platz belegt es trotzdem. Gelöscht wird erst auf Klick, und nur was hier steht.',
+  'clean_nothing' => 'Nichts zu tun — es liegt nichts herum.',
+  'clean_entity_gone' => '%1 Anhänge an gelöschten Dingen',
+  'clean_entity_gone_hint' => 'Die Sache, an der sie hingen, gibt es nicht mehr. Angezeigt werden sie nirgends, denn es gibt keine Seite, die sie noch auflisten würde.',
+  'clean_file_missing' => '%1 Zeilen ohne Datei',
+  'clean_file_missing_hint' => 'Der Anhang steht in der Liste, die Datei auf der Platte fehlt. So ein Eintrag führt beim Öffnen ins Leere.',
+  'clean_photo_missing' => '%1 Fotos ohne Bilddatei',
+  'clean_photo_missing_hint' => 'Das Foto steht in der Galerie, die Bilddatei fehlt. Im Raster ist das ein leeres Kästchen.',
+  'clean_files_extra' => '%1 Dateien ohne Zeile',
+  'clean_files_extra_hint' => 'Dateien im Anhang-Ordner, auf die kein Eintrag mehr zeigt. Hier ist die Zuordnung eindeutig, deshalb lassen sie sich sicher entfernen.',
+  'clean_more' => '… und %1 weitere',
+  'clean_sum' => 'Zusammen %1 Reste, davon %2 belegter Platz.',
+  'clean_go' => 'Aufräumen',
+  'clean_confirm' => 'Die aufgeführten Reste endgültig entfernen? Es wird nur gelöscht, was oben steht.',
+  'fl_cleaned' => 'Aufgeräumt: %1 Zeilen, %2 Fotos, %3 Dateien entfernt.',
+  'clean_uploads_extra' => '%1 Bilddateien, auf die nichts zeigt',
+  'clean_uploads_extra_hint' => 'Im Bilder-Ordner. Diese werden bewusst nicht gelöscht: Dorthin verweisen Fotos, Profilbilder und das Hintergrundbild, und eine einzige übersehene Quelle würde echte Bilder vernichten. Wer sicher ist, räumt sie von Hand weg.',
   // Ordner durchsehen und verknüpfen (#20)
   'od_browse_title' => 'OneDrive-Ordner',
   'od_browse_intro' => 'Klick dich zu dem Ordner, in dem euer Material liegt, und verknüpfe ihn. Kopiert wird nichts — Bandregie merkt sich nur, welcher Ordner gemeint ist, und sieht hinein. Bei Microsoft bleibt alles, wo es ist.',
@@ -2748,6 +2768,136 @@ function eq_photo_choices(int $eqId, int $limit = 60): array {
     if (count($auswahl) >= $limit) break;
   }
   return array_values($auswahl);
+}
+
+/**
+ * Welche Anhang-Art zu welcher Tabelle gehört. Grundlage fürs Aufräumen: Eine
+ * Zeile, deren Gegenstand es nicht mehr gibt, zeigt ins Leere.
+ */
+const FILE_ENTITY_TABLES = [
+  'event' => 'events', 'song' => 'songs', 'venue' => 'venues', 'setlist' => 'setlists',
+  'equipment' => 'equipment', 'invoice' => 'invoices', 'finance' => 'finances',
+  // „download" hängt an keiner Tabelle — das sind die Dateien für Veranstalter.
+  'download' => null,
+];
+
+/**
+ * Nachsehen, was an toten Verweisen herumliegt. Ändert nichts (#193).
+ *
+ * Vier Arten, und sie sind unterschiedlich gefährlich:
+ *  - entity_gone: Anhang zeigt auf einen Gegenstand, den es nicht mehr gibt
+ *  - file_missing: die Zeile ist da, die Datei auf der Platte fehlt
+ *  - photo_missing: dasselbe bei einem Foto
+ *  - files_extra: Datei im Anhang-Ordner, auf die keine Zeile mehr zeigt
+ *
+ * Für den Bilder-Ordner wird nur gezählt und nicht gelöscht: Dort verweisen
+ * Fotos, Profilbilder und das Hintergrundbild hinein, und eine einzige
+ * vergessene Quelle würde beim Aufräumen echte Bilder vernichten.
+ *
+ * @return array{entity_gone: array, file_missing: array, photo_missing: array, files_extra: array, uploads_extra: int}
+ */
+function orphan_scan(): array {
+  $entityGone = [];
+  foreach (FILE_ENTITY_TABLES as $typ => $tabelle) {
+    if ($tabelle === null) continue;
+    foreach (rows("SELECT id, entity_id, original_name, filename FROM files f
+                   WHERE entity_type = ?
+                     AND NOT EXISTS (SELECT 1 FROM $tabelle t WHERE t.id = f.entity_id)", [$typ]) as $f) {
+      $entityGone[] = $f + ['entity_type' => $typ];
+    }
+  }
+  // Unbekannte Anhang-Art zählt auch als tot: Sie kann von keiner Seite mehr
+  // angezeigt werden, weil may_see_file() sie ablehnt.
+  $bekannt = array_keys(FILE_ENTITY_TABLES);
+  $platz = implode(',', array_fill(0, count($bekannt), '?'));
+  foreach (rows("SELECT id, entity_type, entity_id, original_name, filename FROM files
+                 WHERE entity_type NOT IN ($platz)", $bekannt) as $f) {
+    $entityGone[] = $f;
+  }
+
+  $fileMissing = [];
+  foreach (rows('SELECT id, entity_type, entity_id, original_name, filename FROM files') as $f) {
+    if (!is_file(FILES_DIR . '/' . $f['filename'])) $fileMissing[] = $f;
+  }
+  $photoMissing = [];
+  foreach (rows('SELECT id, filename, caption FROM photos') as $p) {
+    if (!is_file(UPLOADS_DIR . '/' . $p['filename'])) $photoMissing[] = $p;
+  }
+
+  // Im Anhang-Ordner ist files.filename die einzige Quelle — dort lässt sich
+  // sicher sagen, was niemand mehr braucht.
+  $benutzt = array_flip(array_column(rows('SELECT DISTINCT filename FROM files'), 'filename'));
+  $filesExtra = [];
+  foreach (glob(FILES_DIR . '/*') ?: [] as $pfad) {
+    if (!is_file($pfad)) continue;
+    $name = basename($pfad);
+    if (!isset($benutzt[$name])) $filesExtra[] = ['filename' => $name, 'size' => filesize($pfad)];
+  }
+
+  // Im Bilder-Ordner nur zählen. Quellen: Fotos, Profilbilder, Hintergrundbild.
+  $bilderBenutzt = array_flip(array_merge(
+    array_column(rows('SELECT DISTINCT filename FROM photos'), 'filename'),
+    array_column(rows("SELECT DISTINCT avatar_file FROM users WHERE avatar_file IS NOT NULL AND avatar_file <> ''"), 'avatar_file'),
+    array_filter([setting('background_file')])
+  ));
+  $uploadsExtra = 0;
+  foreach (glob(UPLOADS_DIR . '/*') ?: [] as $pfad) {
+    if (is_file($pfad) && !isset($bilderBenutzt[basename($pfad)])) $uploadsExtra++;
+  }
+
+  return ['entity_gone' => $entityGone, 'file_missing' => $fileMissing,
+          'photo_missing' => $photoMissing, 'files_extra' => $filesExtra,
+          'uploads_extra' => $uploadsExtra];
+}
+
+/**
+ * Aufräumen, was der Fund benennt. Nur die drei sicheren Arten — der
+ * Bilder-Ordner wird nie angefasst.
+ *
+ * @return array{rows: int, files: int, photos: int}
+ */
+function orphan_clean(): array {
+  $fund = orphan_scan();
+  $zeilen = $dateien = $fotos = 0;
+
+  foreach ([...$fund['entity_gone'], ...$fund['file_missing']] as $f) {
+    q('DELETE FROM files WHERE id = ?', [(int) $f['id']]);
+    $zeilen++;
+  }
+  foreach ($fund['photo_missing'] as $p) {
+    q('DELETE FROM photos WHERE id = ?', [(int) $p['id']]);
+    $fotos++;
+  }
+  // Erst nach dem Löschen der Zeilen erneut sehen, was übrig ist: Eine Datei,
+  // deren letzte Zeile gerade wegfiel, gehört jetzt dazu.
+  foreach (orphan_scan()['files_extra'] as $d) {
+    if (@unlink(FILES_DIR . '/' . $d['filename'])) $dateien++;
+  }
+  return ['rows' => $zeilen, 'files' => $dateien, 'photos' => $fotos];
+}
+
+/**
+ * Anhänge einer Sache entfernen — Zeilen und, wenn niemand sie mehr braucht,
+ * die Datei selbst.
+ *
+ * Die Datei wird erst gelöscht, wenn keine Zeile mehr auf sie zeigt: Dieselbe
+ * Datei hängt an mehreren Stellen, sobald eine Rechnung mehrere Geräte nennt
+ * oder ein Gerät das Foto seines Zwillings übernommen hat (#184). Ohne diese
+ * Zählung verliert der Zwilling sein Bild (#188).
+ *
+ * @return int Wie viele Zeilen entfernt wurden
+ */
+function files_purge(string $entityType, int $entityId): int {
+  $weg = 0;
+  foreach (rows('SELECT id, filename FROM files WHERE entity_type = ? AND entity_id = ?',
+                [$entityType, $entityId]) as $f) {
+    q('DELETE FROM files WHERE id = ?', [(int) $f['id']]);
+    $weg++;
+    if (!row('SELECT id FROM files WHERE filename = ?', [$f['filename']])) {
+      @unlink(FILES_DIR . '/' . $f['filename']);   // schon weg ist auch in Ordnung
+    }
+  }
+  return $weg;
 }
 
 /**

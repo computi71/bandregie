@@ -384,6 +384,13 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <?php endif; ?>
   </div>
   <?php if ($odVerb['connected']): ?><p class="muted small">🔓 <?= e(t('od_disconnect_hint')) ?></p><?php endif; ?>
+</div>
+
+<?php // Aufräumen: eigene Seite, weil sie erst zeigt und dann löscht (#193). ?>
+<div class="card">
+  <h2>🧹 <?= e(t('clean_title')) ?></h2>
+  <p class="muted small"><?= e(t('clean_intro')) ?></p>
+  <a class="btn btn-small" href="/intern/einstellungen/aufraeumen"><?= e(t('clean_open')) ?></a>
 
   <details class="subsection">
     <summary>⚙ <?= e(t('od_setup')) ?></summary>

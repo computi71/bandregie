@@ -2251,6 +2251,10 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/equipment/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'delete') {
+      // Die Anhänge gehen mit. Ohne das blieben Zeilen auf eine Gerätenummer
+      // zeigen, die es nicht mehr gibt, und die Datei auf der Platte dazu —
+      // unsichtbar, denn nichts listet sie mehr auf (#188).
+      files_purge('equipment', (int) $m[1]);
       q('DELETE FROM equipment WHERE id = ?', [$m[1]]);
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
@@ -2850,6 +2854,21 @@ if (str_starts_with($path, '/intern')) {
     od_disconnect();
     flash(t('od_gone'));
     redirect('/intern/einstellungen');
+  }
+
+  // Aufräumen: tote Verweise finden und entfernen (#193). Zwei Schritte, nie
+  // einer — erst zeigen, was gefunden wurde, dann auf Klick löschen. Ein Knopf,
+  // der ohne Vorschau löscht, ist bei Dateien der falsche Knopf.
+  if ($path === '/intern/einstellungen/aufraeumen' && $method === 'GET') {
+    require_admin();
+    view('intern/aufraeumen', ['title' => t('clean_title'), 'fund' => orphan_scan()]);
+  }
+  if ($path === '/intern/einstellungen/aufraeumen' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $weg = orphan_clean();
+    flash(str_replace(['%1', '%2', '%3'], [$weg['rows'], $weg['photos'], $weg['files']], t('fl_cleaned')));
+    redirect('/intern/einstellungen/aufraeumen');
   }
 
   // Das Laufwerk durchsehen und Ordner verknüpfen (#20). Eine eigene Seite und
