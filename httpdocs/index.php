@@ -167,7 +167,7 @@ if ($path === '/' && $method === 'GET') {
   view('public/home', [
     'title' => t('nav_start'),
     'gigs' => rows("SELECT * FROM events WHERE type='gig' AND is_public=1 AND status='bestaetigt' AND date >= ? ORDER BY date, time LIMIT 3", [$today]),
-    'photos' => rows('SELECT * FROM photos WHERE is_public=1 ORDER BY created_at DESC LIMIT 6'),
+    'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC LIMIT 6'),
   ]);
 }
 
@@ -200,7 +200,9 @@ if ($path === '/musik' && $method === 'GET') {
 }
 
 if ($path === '/fotos' && $method === 'GET') {
-  view('public/fotos', ['title' => t('nav_fotos'), 'photos' => rows('SELECT * FROM photos WHERE is_public=1 ORDER BY created_at DESC')]);
+  // Archiviertes ist auch öffentlich weg (#200): aus der Galerie genommen heißt
+  // aus jeder Galerie genommen — die Datei bleibt, aber gezeigt wird sie nicht.
+  view('public/fotos', ['title' => t('nav_fotos'), 'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC')]);
 }
 
 if ($path === '/kontakt' && $method === 'GET') {
@@ -1171,9 +1173,15 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Fotos ----------
   if ($path === '/intern/fotos' && $method === 'GET') {
+    // Archiv (#200): Die Galerie zeigt das Unarchivierte; ?archiv=1 zeigt nur
+    // das Archiv. Zwei Sichten, keine Mischung — halb sichtbare Bilder gibt es
+    // nicht, und die Zahl am Umschalter sagt, was auf der anderen Seite liegt.
+    $imArchiv = ($_GET['archiv'] ?? '') === '1';
     $photos = rows('SELECT p.*, u.name AS uploader, e.title AS event_title, e.date AS event_date
                     FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
-                    LEFT JOIN events e ON e.id = p.event_id ORDER BY p.created_at DESC');
+                    LEFT JOIN events e ON e.id = p.event_id
+                    WHERE p.archived_at IS ' . ($imArchiv ? 'NOT NULL' : 'NULL') . '
+                    ORDER BY p.created_at DESC');
     $photoEvents = rows('SELECT e.id, e.title, e.date, v.lat, v.lng FROM events e
                          LEFT JOIN venues v ON v.id = e.venue_id ORDER BY e.date DESC');
     // Vorschlag je unzugeordnetem Foto mit Aufnahmedatum: der Termin an dem Tag,
@@ -1216,9 +1224,11 @@ if (str_starts_with($path, '/intern')) {
       $photoOrdner[$s]['total'] = count($o['photos']);
       $photoOrdner[$s]['photos'] = stacks_collapse($o['photos']);
     }
-    view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents,
+    view('intern/fotos', ['title' => $imArchiv ? t('photo_archive_title') : t('inav_fotos'),
+                          'photos' => $photos, 'events' => $photoEvents,
                           'limits' => upload_limits(), 'ordner' => $photoOrdner,
-                          'herkunft' => photo_folder_agg($photos)]);
+                          'herkunft' => photo_folder_agg($photos), 'im_archiv' => $imArchiv,
+                          'archiv_zahl' => (int) row('SELECT COUNT(*) n FROM photos WHERE archived_at IS ' . ($imArchiv ? 'NULL' : 'NOT NULL'))['n']]);
   }
   // Eine Serie aufmachen (#198). Eigene Seite statt Aufklappen: Die Kacheln
   // haben je eigene Formulare, und das Blättern in der Großansicht bleibt so
@@ -1246,6 +1256,43 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_photo_stack_cover'));
       redirect('/intern/fotos/stapel/' . $neu);
     }
+    redirect('/intern/fotos');
+  }
+  // Archivieren und Zurückholen (#200). Eine Kachel, die für eine Serie steht,
+  // archiviert die Serie — wie bei der Termin-Zuordnung: Was zu sehen war, wird
+  // gefasst, nicht ein unsichtbarer Teil davon.
+  if (preg_match('~^/intern/fotos/(\d+)/archiv$~', $path, $m) && $method === 'POST') {
+    $foto = row('SELECT id, stack_id, archived_at FROM photos WHERE id = ?', [$m[1]]);
+    if ($foto && $foto['archived_at'] !== null) {
+      photo_archive((int) $foto['id'], false);
+      flash(t('fl_photo_restored'));
+      back('/intern/fotos?archiv=1');
+    }
+    if ($foto) {
+      $glieder = (!empty($_POST['whole_stack']) && $foto['stack_id'])
+        ? array_map(fn($r) => (int) $r['id'], rows('SELECT id FROM photos WHERE stack_id = ?', [(int) $foto['stack_id']]))
+        : [(int) $foto['id']];
+      foreach ($glieder as $gid) photo_archive($gid, true);
+      flash(str_replace('%1', (string) count($glieder), t('fl_photo_archived')));
+    }
+    back('/intern/fotos');
+  }
+  // Viele auf einmal ins Archiv — für den Tag, an dem 116 Messenger-Kopien
+  // neben ihren Originalen liegen. Angehakte Titelbilder meinen ihre Serie.
+  if ($path === '/intern/fotos/massenarchiv' && $method === 'POST') {
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['pick'] ?? [])))));
+    $zahl = 0;
+    if ($ids) {
+      $platz = implode(',', array_fill(0, count($ids), '?'));
+      $echte = array_map(fn($r) => (int) $r['id'],
+        rows("SELECT id FROM photos WHERE id IN ($platz)", $ids));
+      $serie = array_map(fn($r) => (int) $r['id'],
+        rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids));
+      foreach (array_unique(array_merge($echte, $serie)) as $pid) {
+        if (photo_archive($pid, true)) $zahl++;
+      }
+    }
+    flash($zahl ? str_replace('%1', (string) $zahl, t('fl_photo_archived')) : t('fl_photo_mass_nothing'));
     redirect('/intern/fotos');
   }
   if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {

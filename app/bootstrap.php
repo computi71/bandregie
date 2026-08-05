@@ -869,6 +869,16 @@ Zeile zwei
   'fl_photo_too_big_request' => 'Die Absendung war zusammen größer als %1 und wurde vom Server verworfen — es ist nichts angekommen. Nimm weniger Bilder auf einmal.',
   'photo_mass_count' => '%1 angehakt',
   // Ordnerweise zuordnen (#208)
+  // Archiv (#200)
+  'photo_archive' => 'Archivieren',
+  'photo_restore' => 'Zurückholen',
+  'photo_archive_view' => 'Archiv: %1',
+  'photo_archive_title' => 'Archiv',
+  'photo_archive_back' => 'Zurück zur Galerie',
+  'photo_archive_empty' => 'Das Archiv ist leer.',
+  'photo_archive_hint' => 'Archivierte Bilder sind aus der Galerie genommen, aber nicht gelöscht — hier liegen sie weiter.',
+  'fl_photo_archived' => '%1 Bilder archiviert.',
+  'fl_photo_restored' => 'Bild zurückgeholt.',
   'photo_folder_assign' => 'Ordner zuordnen',
   'photo_folder_assign_hint' => 'Alle Bilder aus diesem Herkunftsordner — samt Unterordnern — bekommen den Termin.',
   'photo_folder_pick' => '– Ordner wählen –',
@@ -2233,6 +2243,12 @@ if (!column_exists('photos', 'od_item_id')) {
     ADD COLUMN img_h INT NOT NULL DEFAULT 0");
   $db->exec('CREATE INDEX idx_photos_od ON photos (od_item_id)');
 }
+// Archiv (#200): aus der Galerie nehmen, ohne zu zerstören. Löschen können die
+// Mitglieder einer Band einander nicht zumuten — ein Bild, das jemand anderes
+// braucht, wäre endgültig weg. Archiviert heißt: nicht mehr im Weg, aber da.
+if (!column_exists('photos', 'archived_at')) {
+  $db->exec('ALTER TABLE photos ADD COLUMN archived_at DATETIME NULL');
+}
 // Doppelte finden (#199). Eine Prüfsumme des Dateiinhalts, keine Ähnlichkeit:
 // Sie erkennt exakte Kopien mit Sicherheit und neu komprimierte gar nicht. Das
 // ist eine bewusste Grenze und keine halbe Lösung — was ein Messenger neu
@@ -2988,7 +3004,9 @@ function orphan_scan(): array {
     if (!is_file(FILES_DIR . '/' . $f['filename'])) $fileMissing[] = $f;
   }
   $photoMissing = [];
-  foreach (rows('SELECT id, filename, caption FROM photos') as $p) {
+  // Archivierte bleiben unangetastet (#200): Wer etwas ins Archiv legt, hat
+  // entschieden, dass es bleibt — das Aufräumen widerspricht dem nicht.
+  foreach (rows('SELECT id, filename, caption FROM photos WHERE archived_at IS NULL') as $p) {
     if (!is_file(UPLOADS_DIR . '/' . $p['filename'])) $photoMissing[] = $p;
   }
 
@@ -3848,7 +3866,10 @@ function stacks_group(array $fotos): array {
  * @return int Zahl der Bilder in Stapeln
  */
 function stacks_rebuild(?array $quellen = null): int {
-  $alle = rows('SELECT id, taken_at, source, uploaded_by, stack_id, stack_cover FROM photos');
+  // Archivierte bleiben draußen (#200): Sie sind nicht mehr in der Galerie, und
+  // eine Serie, deren Mitglieder man nicht sieht, zählte falsch.
+  $alle = rows('SELECT id, taken_at, source, uploaded_by, stack_id, stack_cover FROM photos
+                WHERE archived_at IS NULL');
   $betroffen = $quellen === null ? null : array_flip($quellen);
   $fotos = $betroffen === null
     ? $alle
@@ -4008,6 +4029,27 @@ function photo_duplicates(): array {
 }
 
 /**
+ * Ein Bild archivieren oder zurückholen (#200).
+ *
+ * Beim Archivieren verlässt es seine Serie — die Kachelzahl der Serie muss
+ * stimmen, und ein unsichtbares Mitglied zählte falsch. Beim Zurückholen wird
+ * seine Quelle neu gruppiert, damit es seine Serie wiederfindet.
+ */
+function photo_archive(int $id, bool $hinein): bool {
+  $p = row('SELECT id, stack_id, source, uploaded_by, archived_at FROM photos WHERE id = ?', [$id]);
+  if (!$p) return false;
+  if ($hinein === ($p['archived_at'] !== null)) return true; // schon so
+  if ($hinein) {
+    q('UPDATE photos SET archived_at = NOW(), stack_id = NULL, stack_cover = 0 WHERE id = ?', [$id]);
+    stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
+  } else {
+    q('UPDATE photos SET archived_at = NULL WHERE id = ?', [$id]);
+    stacks_rebuild([stack_key($p)]);
+  }
+  return true;
+}
+
+/**
  * Ein Bild samt Datei entfernen und den Stapel dahinter richten.
  *
  * Die Datei nur löschen, wenn sie niemand sonst nennt: Zwei Zeilen auf denselben
@@ -4076,8 +4118,10 @@ function may_see_upload(?array $user, string $name): bool {
   ]);
   if (in_array($name, $branding, true)) return true;
 
-  $photo = row('SELECT is_public FROM photos WHERE filename = ?', [$name]);
-  if ((int) ($photo['is_public'] ?? 0) === 1) return true;
+  $photo = row('SELECT is_public, archived_at FROM photos WHERE filename = ?', [$name]);
+  // Archiviert zählt nicht mehr als öffentlich (#200): Die Adresse eines Bildes,
+  // das jemand aus der Galerie genommen hat, soll nicht weiter für alle gelten.
+  if ((int) ($photo['is_public'] ?? 0) === 1 && ($photo['archived_at'] ?? null) === null) return true;
   if (!$user) return false;
   return !$photo || perm_allows($user, 'fotos');
 }

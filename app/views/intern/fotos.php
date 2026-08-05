@@ -1,6 +1,18 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
-<h1><?= e(t('inav_fotos')) ?></h1>
+<h1><?= $im_archiv ? '📦 ' . e(t('photo_archive_title')) : e(t('inav_fotos')) ?></h1>
 
+<?php // Der Umschalter zwischen Galerie und Archiv (#200), mit der Zahl der
+      // anderen Seite — sonst wüsste niemand, dass dort etwas liegt. ?>
+<p>
+  <?php if ($im_archiv): ?>
+    <a class="btn btn-ghost btn-small" href="/intern/fotos">← <?= e(t('photo_archive_back')) ?></a>
+    <span class="muted small"><?= e(t('photo_archive_hint')) ?></span>
+  <?php elseif ($archiv_zahl > 0): ?>
+    <a class="btn btn-ghost btn-small" href="/intern/fotos?archiv=1">📦 <?= e(str_replace('%1', (string) $archiv_zahl, t('photo_archive_view'))) ?></a>
+  <?php endif; ?>
+</p>
+
+<?php if (!$im_archiv): ?>
 <div class="card">
   <form method="post" action="/intern/fotos" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
     <?php // Die Grenzen kommen vom Server, nicht aus dem Text: Sie ändern sich
@@ -34,6 +46,9 @@
       <?php endforeach; ?>
     </select>
     <button class="btn btn-small"><?= e(t('photo_mass_go')) ?></button>
+    <?php // Angehaktes ins Archiv (#200) — derselbe Haken, anderes Ziel. formaction
+          // statt zweitem Formular: Die Häkchen hängen ohnehin an diesem hier. ?>
+    <button class="btn btn-small btn-ghost" formaction="/intern/fotos/massenarchiv">📦 <?= e(t('photo_archive')) ?></button>
   </div>
   <span class="muted small" data-masscount data-template="<?= e(t('photo_mass_count')) ?>"></span>
   <span class="warn small" data-massempty hidden><?= e(t('fl_photo_mass_nothing')) ?></span>
@@ -66,6 +81,8 @@
   </div>
 </form>
 <?php endif; ?>
+<?php endif; // Ende des Galerie-Formularbereichs — im Archiv gibt es nichts
+             // hochzuladen und nichts zuzuordnen, nur anzusehen und zurückzuholen. ?>
 
 <?php foreach ($ordner as $ordSchluessel => $ord): ?>
   <?php // Je Ordner ein eigenes Raster: Das Blättern in der Großansicht
@@ -84,10 +101,15 @@
     <figure class="photo-admin">
       <?php // Häkchen in die Ecke des Bildes und ohne Beschriftung: Es soll die
             // Kachel nicht länger machen, und was es tut, sagt die Leiste oben. ?>
+      <?php // Im Archiv keine Haken: Das Formular, an dem sie hängen, steht
+            // dort nicht — ein Haken ohne Wirkung wäre ein Versprechen ohne
+            // Einlösung. ?>
+      <?php if (!$im_archiv): ?>
       <label class="photo-tick" title="<?= e(t('photo_mass_pick')) ?>">
         <input type="checkbox" form="fotos-termin" name="pick[]" value="<?= (int) $photo['id'] ?>"
                aria-label="<?= e(t('photo_mass_pick')) ?>">
       </label>
+      <?php endif; ?>
       <?php if (!empty($photo['is_new'])): ?><span class="photo-new"><?= e(t('photo_new')) ?></span><?php endif; ?>
       <?php // Serie (#198): Die Kachel steht für alle ihre Bilder. Die Zahl sagt
             // wie viele, der Klick macht die Serie auf. ?>
@@ -118,17 +140,28 @@
           </span>
         <?php endif; ?>
         <div class="row-buttons">
+          <?php if (!$im_archiv): ?>
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
             <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
           </form>
           <?php if ($user['role'] === 'admin'): ?>
             <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/hintergrund"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost" title="<?= e(t('photo_bg_title')) ?>">🖼 <?= e(t('photo_bg')) ?></button></form>
           <?php endif; ?>
+          <?php endif; ?>
+          <?php // Archivieren statt löschen (#200) — eine Serie-Kachel nimmt ihre
+                // Serie mit, wie bei der Termin-Zuordnung. Im Archiv wird daraus
+                // das Zurückholen. ?>
+          <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/archiv"><?= csrf_field() ?>
+            <?php if (!$im_archiv && !empty($photo['stack_count'])): ?><input type="hidden" name="whole_stack" value="1"><?php endif; ?>
+            <button class="btn btn-tiny btn-ghost">📦 <?= e($im_archiv ? t('photo_restore') : t('photo_archive')) ?></button>
+          </form>
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         </div>
         <?php // Termin-Zuordnung: der Vorschlag (Aufnahmedatum, bei mehreren am
               // Tag der nächste Ort per GPS) ist vorgewählt — zugeordnet wird
-              // aber erst auf Klick, nie automatisch. ?>
+              // aber erst auf Klick, nie automatisch. Im Archiv nicht: Erst
+              // zurückholen, dann zuordnen. ?>
+        <?php if (!$im_archiv): ?>
         <form class="inline photo-event" method="post" action="/intern/fotos/<?= $photo['id'] ?>/event"><?= csrf_field() ?>📅
           <?php if (!empty($photo['stack_count'])): ?>
             <input type="hidden" name="whole_stack" value="1">
@@ -146,11 +179,12 @@
           <button class="btn btn-tiny"><?= e($photo['event_id'] ? t('save') : t('photo_assign')) ?></button>
           <?php if (!$photo['event_id'] && !empty($photo['suggested'])): ?><span class="muted small">💡 <?= e(t('photo_suggested')) ?></span><?php endif; ?>
         </form>
+        <?php endif; ?>
       </figcaption>
     </figure>
   <?php endforeach; ?>
 </div>
 <?php endforeach; ?>
-<?php if (!$photos): ?><p class="muted center"><?= e(t('photos_none_intern')) ?></p><?php endif; ?>
+<?php if (!$photos): ?><p class="muted center"><?= e($im_archiv ? t('photo_archive_empty') : t('photos_none_intern')) ?></p><?php endif; ?>
 <script src="<?= e(asset('/assets/fotos.js')) ?>" defer></script>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
