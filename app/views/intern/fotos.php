@@ -108,7 +108,9 @@
           <?php endif; ?>
           <select name="event_id">
             <option value="">– <?= e(t('photo_no_event')) ?> –</option>
-            <?php foreach ($events as $ev): ?>
+            <?php // Der naheliegendste Termin zuerst (#207): Was die Anwendung
+                  // weiß, soll oben stehen, nicht vorgewählt in der Mitte. ?>
+            <?php foreach (events_by_closeness($events, $photo['taken_at'] ?? null) as $ev): ?>
               <?php $sel = $photo['event_id'] ? (int) $photo['event_id'] === (int) $ev['id'] : (($photo['suggested']['id'] ?? null) == $ev['id']); ?>
               <option value="<?= $ev['id'] ?>" <?= $sel ? 'selected' : '' ?>><?= fmt_date($ev['date']) ?> · <?= e($ev['title']) ?></option>
             <?php endforeach; ?>

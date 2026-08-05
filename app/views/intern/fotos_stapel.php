@@ -30,7 +30,8 @@
         <form class="inline photo-event" method="post" action="/intern/fotos/<?= $photo['id'] ?>/event"><?= csrf_field() ?>📅
           <select name="event_id">
             <option value="">– <?= e(t('photo_no_event')) ?> –</option>
-            <?php foreach ($events as $ev): ?>
+            <?php // Auch hier der naheliegendste zuerst (#207). ?>
+            <?php foreach (events_by_closeness($events, $photo['taken_at'] ?? null) as $ev): ?>
               <option value="<?= $ev['id'] ?>" <?= (int) $photo['event_id'] === (int) $ev['id'] ? 'selected' : '' ?>><?= fmt_date($ev['date']) ?> · <?= e($ev['title']) ?></option>
             <?php endforeach; ?>
           </select>

@@ -3727,6 +3727,27 @@ function photo_suggest_event(array $photo, array $events): ?array {
   return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
 }
 
+/**
+ * Die Terminliste für ein Bild, der naheliegendste zuerst (#207).
+ *
+ * Die Anwendung weiß, welcher Termin zum Aufnahmedatum passt — dann soll er
+ * auch oben stehen und nicht vorgewählt in der Mitte einer langen Liste. Bei
+ * gleichem Abstand gewinnt der jüngere Termin; ohne Aufnahmedatum bleibt die
+ * Liste, wie sie ist, denn dann gibt es nichts, dem etwas nahe sein könnte.
+ */
+function events_by_closeness(array $events, ?string $takenAt): array {
+  $tag = substr((string) $takenAt, 0, 10);
+  if ($tag === '') return $events;
+  $anker = strtotime($tag);
+  if ($anker === false) return $events;
+  usort($events, function ($a, $b) use ($anker) {
+    $da = abs(strtotime(substr((string) $a['date'], 0, 10)) - $anker);
+    $db = abs(strtotime(substr((string) $b['date'], 0, 10)) - $anker);
+    return $da <=> $db ?: strcmp((string) $b['date'], (string) $a['date']);
+  });
+  return $events;
+}
+
 // Stapel (#198). Eine Serie ist mehr als ein Bild vom selben Augenblick: Ein
 // Fotograf drückt vierzig Mal ab, und vierzig Kacheln begraben jeden anderen
 // Auftritt darunter. Zusammen gehört, was aus derselben Quelle kommt und
