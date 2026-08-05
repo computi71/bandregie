@@ -967,7 +967,19 @@ Zeile zwei
   'od_missing_since' => 'fehlt seit %1',
   'od_checked_at' => 'zuletzt nachgesehen %1',
   'od_refresh' => 'Nachsehen',
-  'od_refreshed' => 'Nachgesehen: %1 neu, %2 geändert, %3 verschwunden.',
+  'od_refreshed' => 'Nachgesehen in %4 Ordnern: %1 neu, %2 geändert, %3 verschwunden.',
+  // Grenzen des Durchgangs (#205)
+  'od_capped' => 'Bei %1 Dateien abgebrochen — es liegt mehr darin, als ein Durchgang schafft.',
+  'od_too_deep' => '%1 Ordner liegen tiefer als %2 Ebenen und wurden nicht angesehen:',
+  'od_part_unreachable' => '%1 Ordner haben nicht geantwortet — ihre Dateien bleiben unverändert.',
+  'od_taken' => 'mit Aufnahmedatum',
+  // Verknüpfte Bilder in die Galerie holen (#206)
+  'od_import' => '%1 von %2 Bildern holen',
+  'od_imported' => '%1 Bilder übernommen (%2).',
+  'od_import_left' => 'Noch %1 offen — noch einmal drücken macht weiter.',
+  'od_import_failed' => 'Bei %1 Bildern kam keine Fassung an.',
+  'od_open_original' => 'Original bei OneDrive',
+  'od_open_original_title' => 'Hier liegt nur ein Vorschaubild — das Original bleibt bei OneDrive.',
   'od_unreachable' => 'OneDrive antwortet gerade nicht. Es wurde nichts als verschwunden vermerkt — ein Ausfall ist kein Verlust.',
   'od_not_connected' => 'Noch keine Verbindung zu OneDrive. Die richtest du in den Einstellungen ein.',
   'od_linked' => 'Ordner verknüpft.',
@@ -2170,6 +2182,41 @@ if (!column_exists('photos', 'stack_id')) {
   $db->exec('ALTER TABLE photos ADD COLUMN stack_id INT NULL,
                                 ADD COLUMN stack_cover TINYINT(1) NOT NULL DEFAULT 0');
   $db->exec('CREATE INDEX idx_photos_stack ON photos (stack_id)');
+}
+// Der Weg einer Datei im verknüpften Ordner (#205). Er ist die eigentliche
+// Auskunft: „Bilder/2026/AKF/Sven Löffler" sagt Termin und Fotograf, und das ist
+// mehr, als diese Anwendung je erraten könnte. Das Aufnahmedatum kommt aus
+// derselben Antwort von Graph mit — ohne es lässt sich keine Serie bilden (#198).
+if (!column_exists('od_items', 'rel_path')) {
+  $db->exec("ALTER TABLE od_items ADD COLUMN rel_path VARCHAR(400) NOT NULL DEFAULT '',
+                                  ADD COLUMN taken_at DATETIME NULL");
+}
+// Was Graph über ein Bild weiß, an der Verknüpfung festhalten (#206). Microsoft
+// hat das EXIF beim Hochladen gelesen und gibt es heraus — Kamera, Ort, Maße und
+// eine Prüfsumme. Dieselbe Auskunft aus einer 15-MB-Datei zu holen wäre
+// tausendfacher Aufwand für dasselbe Ergebnis.
+if (!column_exists('od_items', 'camera')) {
+  $db->exec("ALTER TABLE od_items
+    ADD COLUMN camera VARCHAR(120) NOT NULL DEFAULT '',
+    ADD COLUMN lat DECIMAL(9,6) NULL,
+    ADD COLUMN lng DECIMAL(9,6) NULL,
+    ADD COLUMN img_w INT NOT NULL DEFAULT 0,
+    ADD COLUMN img_h INT NOT NULL DEFAULT 0,
+    ADD COLUMN sha256 CHAR(64) NOT NULL DEFAULT '',
+    ADD COLUMN imported_at DATETIME NULL");
+}
+// Ein Galeriebild, das auf eine Datei bei OneDrive zeigt (#206). Lokal liegt nur
+// die gerechnete Fassung; das Original bleibt, wo es ist, und wird verlinkt.
+// Eine gerechnete Fassung trägt kein EXIF — ein öffentliches Bild ist damit von
+// sich aus metadatenfrei, ohne dass etwas entfernt werden muss.
+if (!column_exists('photos', 'od_item_id')) {
+  $db->exec("ALTER TABLE photos
+    ADD COLUMN od_item_id VARCHAR(190) NOT NULL DEFAULT '',
+    ADD COLUMN od_web_url VARCHAR(600) NOT NULL DEFAULT '',
+    ADD COLUMN camera VARCHAR(120) NOT NULL DEFAULT '',
+    ADD COLUMN img_w INT NOT NULL DEFAULT 0,
+    ADD COLUMN img_h INT NOT NULL DEFAULT 0");
+  $db->exec('CREATE INDEX idx_photos_od ON photos (od_item_id)');
 }
 // Der Bestand wird einmal gruppiert; danach macht das jeder Upload für seine
 // eigene Quelle. Ohne diesen Lauf blieben die vorhandenen Bilder für immer

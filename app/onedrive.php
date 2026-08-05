@@ -37,6 +37,13 @@ const OD_SCOPES = 'offline_access User.Read Files.Read.All';
 /** Wie lange vor dem Ablauf schon erneuert wird. Eine Minute Vorlauf genügt. */
 const OD_REFRESH_MARGIN = 60;
 
+// Grenzen für das Absteigen (#205). Sechs Ebenen decken „Bilder/Jahr/Termin/
+// Fotograf" mit Luft ab; zweitausend Dateien und zwanzig Seiten je Ordner
+// halten einen Durchgang in einer Zeit, die ein Aufruf im Netz aushält.
+const OD_MAX_DEPTH = 6;
+const OD_MAX_FILES = 2000;
+const OD_MAX_PAGES = 20;
+
 /**
  * Der Mandant. „common" lässt sowohl geschäftliche als auch private
  * Microsoft-Konten herein — und ein Bandkonto ist meistens ein privates.
@@ -283,29 +290,109 @@ function od_children(string $itemId = ''): ?array {
     ? '/me/drive/root/children'
     : '/me/drive/items/' . rawurlencode($itemId) . '/children';
   // Nur die Felder, die gebraucht werden. Graph liefert sonst je Eintrag ein
-  // Vielfaches davon, und über eine Fotosammlung summiert sich das.
-  $antwort = od_graph($pfad . '?$top=200&$select=id,name,size,file,folder,webUrl,lastModifiedDateTime,parentReference');
-  if ($antwort === null) return null;
+  // Vielfaches davon, und über eine Fotosammlung summiert sich das. `photo`
+  // bringt das Aufnahmedatum mit — dieselbe Antwort, kein zweiter Aufruf, und
+  // ohne dieses Datum lässt sich später keine Serie bilden (#198).
+  // `photo` bringt Aufnahmedatum und Kamera, `location` das GPS, `image` die
+  // Maße, `file` die Prüfsumme. Alles aus derselben Antwort — Microsoft hat das
+  // EXIF beim Hochladen schon gelesen, und es ein zweites Mal aus einer 15-MB-
+  // Datei zu holen wäre dieselbe Auskunft für tausendfachen Aufwand (#206).
+  $frage = $pfad . '?$top=200&$select=id,name,size,file,folder,photo,location,image,webUrl,lastModifiedDateTime';
   $ordner = $dateien = [];
-  foreach ((array) ($antwort['value'] ?? []) as $eintrag) {
-    $satz = [
-      'id'       => (string) ($eintrag['id'] ?? ''),
-      'name'     => (string) ($eintrag['name'] ?? ''),
-      'size'     => (int) ($eintrag['size'] ?? 0),
-      'mime'     => (string) ($eintrag['file']['mimeType'] ?? ''),
-      'modified' => (string) ($eintrag['lastModifiedDateTime'] ?? ''),
-      'web_url'  => (string) ($eintrag['webUrl'] ?? ''),
-      'path'     => (string) ($eintrag['parentReference']['path'] ?? ''),
-    ];
-    if ($satz['id'] === '') continue;
-    if (isset($eintrag['folder'])) {
-      $satz['count'] = (int) ($eintrag['folder']['childCount'] ?? 0);
-      $ordner[] = $satz;
-    } elseif (isset($eintrag['file'])) {
-      $dateien[] = $satz;
+  // Graph gibt höchstens eine Seite und verweist auf die nächste. Ein Ordner mit
+  // 200 Bildern sah deshalb aus wie ein Ordner mit genau 200 Bildern — und die
+  // 201. Datei fehlte, ohne dass es jemand gemerkt hätte.
+  $seiten = 0;
+  while ($frage !== '' && $seiten < OD_MAX_PAGES) {
+    $antwort = od_graph($frage);
+    if ($antwort === null) return null;
+    $seiten++;
+    foreach ((array) ($antwort['value'] ?? []) as $eintrag) {
+      $satz = [
+        'id'       => (string) ($eintrag['id'] ?? ''),
+        'name'     => (string) ($eintrag['name'] ?? ''),
+        'size'     => (int) ($eintrag['size'] ?? 0),
+        'mime'     => (string) ($eintrag['file']['mimeType'] ?? ''),
+        'modified' => (string) ($eintrag['lastModifiedDateTime'] ?? ''),
+        'taken'    => (string) ($eintrag['photo']['takenDateTime'] ?? ''),
+        'web_url'  => (string) ($eintrag['webUrl'] ?? ''),
+        'camera'   => trim((string) ($eintrag['photo']['cameraMake'] ?? '')
+                     . ' ' . (string) ($eintrag['photo']['cameraModel'] ?? '')),
+        'lat'      => $eintrag['location']['latitude'] ?? null,
+        'lng'      => $eintrag['location']['longitude'] ?? null,
+        'width'    => (int) ($eintrag['image']['width'] ?? 0),
+        'height'   => (int) ($eintrag['image']['height'] ?? 0),
+        // Privates OneDrive liefert sha256, geschäftliches nur quickXorHash.
+        // Ohne sha256 lässt sich ein verknüpftes Bild nicht gegen ein
+        // hochgeladenes vergleichen (#199) — leer ist hier also eine Aussage.
+        'sha256'   => strtolower((string) ($eintrag['file']['hashes']['sha256Hash'] ?? '')),
+      ];
+      if ($satz['id'] === '') continue;
+      if (isset($eintrag['folder'])) {
+        $satz['count'] = (int) ($eintrag['folder']['childCount'] ?? 0);
+        $ordner[] = $satz;
+      } elseif (isset($eintrag['file'])) {
+        $dateien[] = $satz;
+      }
     }
+    // Der Verweis kommt als vollständige Adresse; od_graph() erwartet den Teil
+    // hinter der Version.
+    $weiter = (string) ($antwort['@odata.nextLink'] ?? '');
+    $frage = $weiter === '' ? '' : (string) preg_replace('~^https://graph\.microsoft\.com/v1\.0~', '', $weiter);
+    if ($frage === $weiter) $frage = ''; // unerwartete Adresse: lieber aufhören
   }
   return ['folders' => $ordner, 'files' => $dateien];
+}
+
+/**
+ * Alle Dateien unterhalb eines Ordners, samt ihrem Weg dorthin.
+ *
+ * Ohne Absteigen war das Merkmal wirkungslos: Niemand legt Bilder direkt in den
+ * obersten Ordner, und ein verknüpfter Ordner, in dem nur Unterordner liegen,
+ * ergab null Einträge (#205).
+ *
+ * Das Auflisten kommt als Rückruf herein, nicht als Aufruf von od_children() —
+ * so lässt sich der Lauf mit einem erfundenen Baum prüfen, ohne ein Konto bei
+ * Microsoft zu haben. Genau dieselbe Überlegung wie bei od_reconcile().
+ *
+ * Grenzen sind Pflicht, nicht Vorsicht: Ein verknüpftes Laufwerk mit
+ * fünfzigtausend Dateien würde einen einzigen Aufruf zur halben Stunde machen.
+ * Was ausgelassen wurde, steht im Ergebnis — stilles Abschneiden liest sich wie
+ * Vollständigkeit.
+ *
+ * @param callable(string): ?array $liste  Kennung -> ['folders'=>…, 'files'=>…]
+ * @return array{files: list<array>, folders: int, deep: list<string>, capped: bool, unreachable: list<string>}
+ */
+function od_walk(callable $liste, string $wurzelId, int $maxTiefe = OD_MAX_DEPTH, int $maxDateien = OD_MAX_FILES): array {
+  $dateien = [];
+  $zuTief = [];
+  $unerreichbar = [];
+  $ordnerZahl = 0;
+  $voll = false;
+  // Eigene Schlange statt Rekursion: Die Grenze für die Zahl der Dateien lässt
+  // sich so an einer Stelle prüfen, und ein tiefer Baum kostet keinen Stapel.
+  $schlange = [['id' => $wurzelId, 'weg' => '', 'tiefe' => 0]];
+  while ($schlange) {
+    $jetzt = array_shift($schlange);
+    $inhalt = $liste($jetzt['id']);
+    if ($inhalt === null) { $unerreichbar[] = $jetzt['weg'] === '' ? '/' : $jetzt['weg']; continue; }
+    $ordnerZahl++;
+    foreach ($inhalt['files'] as $f) {
+      if (count($dateien) >= $maxDateien) { $voll = true; break; }
+      $f['rel_path'] = $jetzt['weg'];
+      $dateien[] = $f;
+    }
+    if ($voll) break;
+    foreach ($inhalt['folders'] as $u) {
+      $weg = $jetzt['weg'] === '' ? (string) $u['name'] : $jetzt['weg'] . '/' . $u['name'];
+      // Zu tief heißt nicht „leer": Der Weg wird gemeldet, damit man weiß, wo
+      // noch etwas liegt, das nicht angesehen wurde.
+      if ($jetzt['tiefe'] + 1 > $maxTiefe) { $zuTief[] = $weg; continue; }
+      $schlange[] = ['id' => (string) $u['id'], 'weg' => $weg, 'tiefe' => $jetzt['tiefe'] + 1];
+    }
+  }
+  return ['files' => $dateien, 'folders' => $ordnerZahl, 'deep' => $zuTief,
+          'capped' => $voll, 'unreachable' => $unerreichbar];
 }
 
 /** Die verknüpften Ordner, der zuletzt verknüpfte zuerst. */
@@ -384,25 +471,45 @@ function od_zeit(string $iso): ?string {
  * @return array{ok: bool, neu: int, geaendert: int, fehlt: int, zurueck: int}
  */
 function od_folder_refresh(int $folderId): array {
+  $leer = ['ok' => false, 'neu' => 0, 'geaendert' => 0, 'fehlt' => 0, 'zurueck' => 0,
+           'folders' => 0, 'deep' => [], 'capped' => false, 'unreachable' => []];
   $ordner = row('SELECT * FROM od_folders WHERE id = ?', [$folderId]);
-  if (!$ordner) return ['ok' => false, 'neu' => 0, 'geaendert' => 0, 'fehlt' => 0, 'zurueck' => 0];
-  $inhalt = od_children((string) $ordner['item_id']);
-  // Nicht erreichbar heißt nicht verschwunden: Ohne Antwort wird nichts als
-  // fehlend vermerkt, sonst meldete ein Netzausfall den ganzen Ordner als weg.
-  if ($inhalt === null) return ['ok' => false, 'neu' => 0, 'geaendert' => 0, 'fehlt' => 0, 'zurueck' => 0];
+  if (!$ordner) return $leer;
+  $lauf = od_walk('od_children', (string) $ordner['item_id']);
+  // Nicht erreichbar heißt nicht verschwunden: Konnte nicht einmal der
+  // verknüpfte Ordner selbst gelesen werden, wird nichts als fehlend vermerkt —
+  // sonst meldete ein Netzausfall den ganzen Ordner als weg.
+  if ($lauf['folders'] === 0) return $leer;
 
   $jetzt = date('Y-m-d H:i:s');
   $bekannt = rows('SELECT * FROM od_items WHERE folder_id = ?', [$folderId]);
-  $d = od_reconcile($bekannt, $inhalt['files'], $jetzt);
+  // Ein Unterordner, der diesmal nicht antwortete, darf seine Dateien nicht als
+  // fehlend erscheinen lassen. Also gilt der Abgleich nur für die Wege, die
+  // wirklich gelesen wurden.
+  $gelesen = [];
+  foreach ($lauf['files'] as $f) $gelesen[(string) $f['rel_path']] = true;
+  foreach ($lauf['unreachable'] as $w) unset($gelesen[$w === '/' ? '' : $w]);
+  $vergleichbar = array_values(array_filter($bekannt,
+    fn($b) => isset($gelesen[(string) ($b['rel_path'] ?? '')])));
+  $d = od_reconcile($vergleichbar, $lauf['files'], $jetzt);
 
   foreach ([...$d['neu'], ...$d['geaendert']] as $f) {
-    q('INSERT INTO od_items (folder_id, item_id, name, size, mime, modified_at, web_url, seen_at, missing_since)
-       VALUES (?,?,?,?,?,?,?,?,NULL)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), size = VALUES(size), mime = VALUES(mime),
-         modified_at = VALUES(modified_at), web_url = VALUES(web_url), seen_at = VALUES(seen_at),
-         missing_since = NULL',
-      [$folderId, $f['id'], mb_substr((string) $f['name'], 0, 190), (int) $f['size'],
+    q('INSERT INTO od_items (folder_id, item_id, name, rel_path, size, mime, modified_at, taken_at,
+                             camera, lat, lng, img_w, img_h, sha256, web_url, seen_at, missing_since)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), rel_path = VALUES(rel_path), size = VALUES(size),
+         mime = VALUES(mime), modified_at = VALUES(modified_at), taken_at = VALUES(taken_at),
+         camera = VALUES(camera), lat = VALUES(lat), lng = VALUES(lng),
+         img_w = VALUES(img_w), img_h = VALUES(img_h), sha256 = VALUES(sha256),
+         web_url = VALUES(web_url), seen_at = VALUES(seen_at), missing_since = NULL',
+      [$folderId, $f['id'], mb_substr((string) $f['name'], 0, 190),
+       mb_substr((string) ($f['rel_path'] ?? ''), 0, 400), (int) $f['size'],
        mb_substr((string) $f['mime'], 0, 120), od_zeit((string) $f['modified']),
+       od_zeit((string) ($f['taken'] ?? '')),
+       mb_substr((string) ($f['camera'] ?? ''), 0, 120),
+       $f['lat'] ?? null, $f['lng'] ?? null,
+       (int) ($f['width'] ?? 0), (int) ($f['height'] ?? 0),
+       (string) ($f['sha256'] ?? ''),
        mb_substr((string) $f['web_url'], 0, 600), $jetzt]);
   }
   foreach ($d['zurueck'] as $f) {
@@ -416,7 +523,149 @@ function od_folder_refresh(int $folderId): array {
     [$jetzt, $ordner['name'], $ordner['path'], $folderId]);
 
   return ['ok' => true, 'neu' => count($d['neu']), 'geaendert' => count($d['geaendert']),
-          'fehlt' => count($d['fehlt']), 'zurueck' => count($d['zurueck'])];
+          'fehlt' => count($d['fehlt']), 'zurueck' => count($d['zurueck']),
+          'folders' => $lauf['folders'], 'deep' => $lauf['deep'],
+          'capped' => $lauf['capped'], 'unreachable' => $lauf['unreachable']];
+}
+
+/**
+ * Welche gerechnete Fassung lokal liegen bleibt (#206).
+ *
+ * Nur das Vorschaubild — das ist der Zweck der Verknüpfung: wenig Webspace.
+ * `large` sind 800 Pixel an der langen Kante; daraus rechnet thumb_file() die
+ * 480er-Kachel, und die Großansicht zeigt eben diese 800. Für 518 Bilder sind
+ * das etwa 50 MB statt 7,3 GB Originale.
+ *
+ * Alles darüber — scharfe Großansicht, Druck, Weitergabe — läuft über den
+ * Verweis zum Original bei OneDrive. Lokal mehr vorzuhalten hieße, den Platz
+ * doch wieder zu verbrauchen, den die Verknüpfung sparen soll.
+ */
+const OD_THUMB_SIZE = 'large';
+
+/** Höchstens so viele Bilder je Durchgang holen. Ein Aufruf im Netz hat ein Ende. */
+const OD_IMPORT_BATCH = 60;
+
+/** Und keine Fassung über dieser Größe annehmen — sonst ist es nicht die Fassung. */
+const OD_THUMB_MAX_BYTES = 4194304;
+
+/**
+ * Die Adresse der gerechneten Fassung. Sie gilt nur etwa eine Stunde, lässt sich
+ * also nicht speichern — deshalb wird sie unmittelbar vor dem Holen erfragt.
+ */
+function od_thumb_url(string $itemId, string $groesse = OD_THUMB_SIZE): string {
+  $a = od_graph('/me/drive/items/' . rawurlencode($itemId) . '/thumbnails?$select=' . rawurlencode($groesse));
+  foreach ((array) ($a['value'] ?? []) as $satz) {
+    if (isset($satz[$groesse]['url'])) return (string) $satz[$groesse]['url'];
+  }
+  return '';
+}
+
+/**
+ * Die Fassung holen und ablegen. Gibt die Zahl der geschriebenen Bytes zurück,
+ * 0 bei Misserfolg — und lässt dann keine halbe Datei liegen.
+ *
+ * Geprüft wird, was ankommt, nicht was versprochen war: Die Adresse zeigt auf
+ * einen Zwischenspeicher von Microsoft, und was von dort kommt, ist so lange
+ * fremde Eingabe wie alles andere aus dem Netz.
+ */
+function od_thumb_fetch(string $url, string $ziel): int {
+  if ($url === '') return 0;
+  $ctx = stream_context_create(['http' => [
+    'method' => 'GET', 'timeout' => 30, 'ignore_errors' => true,
+    'follow_location' => 1, 'max_redirects' => 3,
+  ]]);
+  $roh = @file_get_contents($url, false, $ctx, 0, OD_THUMB_MAX_BYTES + 1);
+  if ($roh === false || $roh === '' || strlen($roh) > OD_THUMB_MAX_BYTES) return 0;
+  if (@file_put_contents($ziel, $roh) === false) return 0;
+  // Kein Bild? Dann liegt es nicht in den Uploads herum.
+  if (!str_starts_with((string) (@mime_content_type($ziel) ?: ''), 'image/')) {
+    @unlink($ziel);
+    return 0;
+  }
+  return strlen($roh);
+}
+
+/**
+ * Aus einer Verknüpfung die Werte für ein Galeriebild.
+ *
+ * Rein rechnend und ohne Netz, damit die Zuordnung prüfbar ist: Sie entscheidet,
+ * was von den Auskünften bei welchem Bild landet, und eine Verwechslung von
+ * Länge und Breite oder von Aufnahme- und Änderungsdatum sieht man einer
+ * Datenbankzeile später nicht mehr an.
+ *
+ * Die Herkunft ist der Weg im Ordner samt Dateinamen (#197) — daraus liest man
+ * Termin und Fotograf ab. Sie ist zugleich der Schlüssel, an dem die Serien
+ * erkennen, was zusammengehört (#198).
+ *
+ * @param array $item Zeile aus od_items
+ * @param string $datei Name der abgelegten Fassung
+ */
+function od_item_photo_row(array $item, string $datei): array {
+  $weg = trim((string) ($item['rel_path'] ?? ''), '/');
+  return [
+    'filename'   => $datei,
+    'caption'    => '',
+    'source'     => mb_substr(($weg === '' ? '' : $weg . '/') . (string) ($item['name'] ?? ''), 0, 400),
+    'taken_at'   => $item['taken_at'] ?? null,
+    'lat'        => $item['lat'] ?? null,
+    'lng'        => $item['lng'] ?? null,
+    'camera'     => mb_substr((string) ($item['camera'] ?? ''), 0, 120),
+    'img_w'      => (int) ($item['img_w'] ?? 0),
+    'img_h'      => (int) ($item['img_h'] ?? 0),
+    'od_item_id' => (string) ($item['item_id'] ?? ''),
+    'od_web_url' => mb_substr((string) ($item['web_url'] ?? ''), 0, 600),
+  ];
+}
+
+/**
+ * Verknüpfte Bilder in die Galerie holen: Fassung herunter, Auskünfte daneben,
+ * Original verlinkt (#206).
+ *
+ * In Schritten und nicht auf einmal: Fünfhundert Aufrufe zu Microsoft sind kein
+ * Seitenaufruf. Was übrig ist, steht im Ergebnis, damit der nächste Druck
+ * weitermacht statt von vorn anzufangen.
+ *
+ * Ein Bild, das hier schon einmal geholt wurde, kommt nicht wieder — auch dann
+ * nicht, wenn es in der Galerie gelöscht wurde. Löschen ist eine Entscheidung,
+ * und der nächste Durchgang darf sie nicht rückgängig machen.
+ *
+ * @return array{done: int, left: int, failed: int, bytes: int}
+ */
+function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
+  $offen = rows("SELECT * FROM od_items
+                 WHERE folder_id = ? AND imported_at IS NULL AND missing_since IS NULL
+                   AND mime LIKE 'image/%'
+                 ORDER BY taken_at, name", [$folderId]);
+  $getan = $misslungen = $vermerkt = $bytes = 0;
+  foreach ($offen as $item) {
+    if ($getan + $misslungen >= $hoechstens) break;
+    // Schon als Bild vorhanden? Dann nur vermerken, nicht ein zweites Mal holen.
+    if (row('SELECT 1 FROM photos WHERE od_item_id = ?', [(string) $item['item_id']])) {
+      q('UPDATE od_items SET imported_at = NOW() WHERE id = ?', [(int) $item['id']]);
+      $vermerkt++;
+      continue;
+    }
+    $endung = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo((string) $item['name'], PATHINFO_EXTENSION) ?: 'jpg'));
+    $datei = 'od_' . bin2hex(random_bytes(12)) . '.' . ($endung ?: 'jpg');
+    $n = od_thumb_fetch(od_thumb_url((string) $item['item_id']), UPLOADS_DIR . '/' . $datei);
+    if ($n === 0) { $misslungen++; continue; }
+    $w = od_item_photo_row($item, $datei);
+    q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source,
+                           camera, img_w, img_h, od_item_id, od_web_url, created_at)
+       VALUES (?,?,0,NULL,?,?,?,?,?,?,?,?,?,NOW())',
+      [$w['filename'], $w['caption'], $w['taken_at'], $w['lat'], $w['lng'], $w['source'],
+       $w['camera'], $w['img_w'], $w['img_h'], $w['od_item_id'], $w['od_web_url']]);
+    q('UPDATE od_items SET imported_at = NOW() WHERE id = ?', [(int) $item['id']]);
+    $getan++;
+    $bytes += $n;
+  }
+  // Serien erst danach, und nur einmal: Jedes Bild einzeln zu gruppieren wäre
+  // dieselbe Rechnung sechzigmal (#198).
+  if ($getan) stacks_rebuild();
+  // Was nur vermerkt wurde, ist erledigt und nicht mehr offen — sonst behauptete
+  // die Meldung eine Restarbeit, die es nicht gibt.
+  return ['done' => $getan, 'left' => max(0, count($offen) - $getan - $misslungen - $vermerkt),
+          'failed' => $misslungen, 'bytes' => $bytes];
 }
 
 /**

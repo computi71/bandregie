@@ -3020,6 +3020,19 @@ if (str_starts_with($path, '/intern')) {
     flash(t('od_linked'));
     back('/intern/einstellungen/onedrive/ordner');
   }
+  // Verknüpfte Bilder in die Galerie holen (#206). Eigene Route, eigener Knopf:
+  // Nachsehen und Übernehmen sind zwei Entscheidungen — wer wissen will, was da
+  // liegt, will nicht zwangsläufig fünfhundert Bilder herunterladen.
+  if (preg_match('~^/intern/einstellungen/onedrive/ordner/(\d+)/uebernehmen$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $odHol = od_import((int) $m[1]);
+    $odText = [str_replace(['%1', '%2'], [(string) $odHol['done'], fmt_bytes($odHol['bytes'])], t('od_imported'))];
+    if ($odHol['left']) $odText[] = str_replace('%1', (string) $odHol['left'], t('od_import_left'));
+    if ($odHol['failed']) $odText[] = str_replace('%1', (string) $odHol['failed'], t('od_import_failed'));
+    flash(implode(' ', $odText));
+    back('/intern/einstellungen/onedrive/ordner');
+  }
   if (preg_match('~^/intern/einstellungen/onedrive/ordner/(\d+)/(aktualisieren|loesen)$~', $path, $m) && $method === 'POST') {
     require_admin();
     deny_in_demo('/intern/einstellungen');
@@ -3028,9 +3041,23 @@ if (str_starts_with($path, '/intern')) {
       flash(t('od_unlinked'));
     } else {
       $odStand = od_folder_refresh((int) $m[1]);
-      flash($odStand['ok']
-        ? str_replace(['%1', '%2', '%3'], [$odStand['neu'], $odStand['geaendert'], $odStand['fehlt']], t('od_refreshed'))
-        : t('od_unreachable'));
+      if (!$odStand['ok']) {
+        flash(t('od_unreachable'));
+      } else {
+        // Was der Durchgang gesehen hat, und was er nicht gesehen hat. Eine
+        // Grenze, die niemand nennt, liest sich wie Vollständigkeit (#205).
+        $odText = [str_replace(['%1', '%2', '%3', '%4'],
+          [$odStand['neu'], $odStand['geaendert'], $odStand['fehlt'], $odStand['folders']], t('od_refreshed'))];
+        if ($odStand['capped']) $odText[] = str_replace('%1', (string) OD_MAX_FILES, t('od_capped'));
+        if ($odStand['deep']) {
+          $odText[] = str_replace(['%1', '%2'], [(string) count($odStand['deep']), (string) OD_MAX_DEPTH], t('od_too_deep'))
+            . ' ' . implode(', ', array_slice($odStand['deep'], 0, 3));
+        }
+        if ($odStand['unreachable']) {
+          $odText[] = str_replace('%1', (string) count($odStand['unreachable']), t('od_part_unreachable'));
+        }
+        flash(implode(' ', $odText));
+      }
     }
     back('/intern/einstellungen/onedrive/ordner');
   }

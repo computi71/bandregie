@@ -82,12 +82,27 @@ require BASE_DIR . '/app/views/_header.php';
         <?php endif; ?>
         <?php if ($odL['checked_at']): ?> · <?= e(str_replace('%1', fmt_date($odL["checked_at"]), t('od_checked_at'))) ?><?php endif; ?>
       </p>
+      <?php // Was der Weg verrät, ist der eigentliche Gewinn: Ordner = Termin,
+            // Unterordner = Fotograf. Deshalb steht hier die Aufteilung und
+            // nicht nur eine Gesamtzahl (#205). ?>
+      <?php $odWege = rows('SELECT rel_path, COUNT(*) n, SUM(taken_at IS NOT NULL) mitDatum
+                            FROM od_items WHERE folder_id = ? AND missing_since IS NULL
+                            GROUP BY rel_path ORDER BY rel_path LIMIT 30', [(int) $odL['id']]); ?>
+      <?php if (count($odWege) > 1 || ($odWege && $odWege[0]['rel_path'] !== '')): ?>
+        <ul class="task-list">
+          <?php foreach ($odWege as $odP): ?>
+            <li><span class="muted">📂 <?= e($odP['rel_path'] !== '' ? $odP['rel_path'] : '/') ?></span>
+              <span class="muted small"><?= e(str_replace('%1', (string) (int) $odP['n'], t('od_items_count'))) ?><?php
+                if ((int) $odP['mitDatum'] > 0): ?>, <?= (int) $odP['mitDatum'] ?> <?= e(t('od_taken')) ?><?php endif; ?></span></li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
       <?php // Verschwundenes namentlich: „drei fehlen" hilft beim Suchen nicht. ?>
-      <?php $odWeg2 = rows('SELECT name, missing_since FROM od_items WHERE folder_id = ? AND missing_since IS NOT NULL ORDER BY name LIMIT 20', [(int) $odL['id']]); ?>
+      <?php $odWeg2 = rows('SELECT name, rel_path, missing_since FROM od_items WHERE folder_id = ? AND missing_since IS NOT NULL ORDER BY rel_path, name LIMIT 20', [(int) $odL['id']]); ?>
       <?php if ($odWeg2): ?>
         <ul class="task-list">
           <?php foreach ($odWeg2 as $odW): ?>
-            <li><span class="muted">🚫 <?= e($odW['name']) ?></span>
+            <li><span class="muted">🚫 <?= e($odW['rel_path'] !== '' ? $odW['rel_path'] . '/' : '') ?><?= e($odW['name']) ?></span>
               <span class="muted small"><?= e(str_replace('%1', fmt_date($odW["missing_since"]), t('od_missing_since'))) ?></span></li>
           <?php endforeach; ?>
         </ul>
@@ -95,6 +110,18 @@ require BASE_DIR . '/app/views/_header.php';
       <form method="post" action="/intern/einstellungen/onedrive/ordner/<?= (int) $odL['id'] ?>/aktualisieren" class="inline"><?= csrf_field() ?>
         <button class="btn btn-small">↻ <?= e(t('od_refresh')) ?></button>
       </form>
+      <?php // Übernehmen ist die zweite Entscheidung und braucht einen eigenen
+            // Knopf: Nachsehen kostet nichts, fünfhundert Bilder holen schon.
+            // Deshalb steht daneben, wie viele noch offen sind (#206). ?>
+      <?php $odOffen = (int) row("SELECT COUNT(*) n FROM od_items
+              WHERE folder_id = ? AND imported_at IS NULL AND missing_since IS NULL
+                AND mime LIKE 'image/%'", [(int) $odL['id']])['n']; ?>
+      <?php if ($odOffen > 0): ?>
+        <form method="post" action="/intern/einstellungen/onedrive/ordner/<?= (int) $odL['id'] ?>/uebernehmen" class="inline"><?= csrf_field() ?>
+          <button class="btn btn-primary btn-small">⬇ <?= e(str_replace(['%1', '%2'],
+            [(string) min($odOffen, OD_IMPORT_BATCH), (string) $odOffen], t('od_import'))) ?></button>
+        </form>
+      <?php endif; ?>
       <form method="post" action="/intern/einstellungen/onedrive/ordner/<?= (int) $odL['id'] ?>/loesen" class="inline"
             data-confirm="<?= e(t('od_unlink_confirm')) ?>"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('od_unlink')) ?></button>

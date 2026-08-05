@@ -77,6 +77,18 @@
         <?php if (($photo['source'] ?? '') !== ''): ?>
           <span class="photo-source" title="<?= e(t('photo_source')) ?>">📄 <?= e($photo['source']) ?></span>
         <?php endif; ?>
+        <?php // Bei einem verknüpften Bild liegt hier nur die gerechnete Fassung;
+              // das Original steht bei OneDrive und wird verlinkt (#206). Was das
+              // EXIF hergab, steht daneben — es ist die Auskunft, die man sucht,
+              // wenn man wissen will, von welcher Kamera ein Bild kommt. ?>
+        <?php if (($photo['od_web_url'] ?? '') !== ''): ?>
+          <span class="photo-source">
+            <a href="<?= e($photo['od_web_url']) ?>" target="_blank" rel="noopener noreferrer"
+               title="<?= e(t('od_open_original_title')) ?>">☁ <?= e(t('od_open_original')) ?></a>
+            <?php if (($photo['camera'] ?? '') !== ''): ?> · <?= e($photo['camera']) ?><?php endif; ?>
+            <?php if ((int) ($photo['img_w'] ?? 0) > 0): ?> · <?= (int) $photo['img_w'] ?>×<?= (int) $photo['img_h'] ?><?php endif; ?>
+          </span>
+        <?php endif; ?>
         <div class="row-buttons">
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
             <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
