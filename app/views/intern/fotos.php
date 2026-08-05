@@ -10,7 +10,42 @@
   <?php elseif ($archiv_zahl > 0): ?>
     <a class="btn btn-ghost btn-small" href="/intern/fotos?archiv=1">📦 <?= e(str_replace('%1', (string) $archiv_zahl, t('photo_archive_view'))) ?></a>
   <?php endif; ?>
+  <?php if (!$im_archiv && $presse_zahl > 0 && !$f_presse): ?>
+    <a class="btn btn-ghost btn-small" href="/intern/fotos?presse=1">📣 <?= e(str_replace('%1', (string) $presse_zahl, t('photo_press_filter'))) ?></a>
+  <?php endif; ?>
 </p>
+
+<?php // Ein Suchfeld über alles (#204): Beschreibung, Herkunft, Termin,
+      // Schlagwort, Person. Kein eigener Filterbaukasten — tippen, finden. ?>
+<form method="get" action="/intern/fotos" class="card photo-mass">
+  <div class="row-buttons">
+    🔍 <input type="search" name="q" value="<?= e($f_suche) ?>" placeholder="<?= e(t('photo_search_ph')) ?>" maxlength="100">
+    <button class="btn btn-small"><?= e(t('photo_search')) ?></button>
+    <?php if ($gefiltert): ?>
+      <a class="btn btn-ghost btn-small" href="/intern/fotos"><?= e(t('photo_filter_off')) ?></a>
+    <?php endif; ?>
+  </div>
+  <?php // Was gerade eingrenzt, steht benannt da — ein Filter, den man nicht
+        // sieht, erklärt eine leere Galerie nicht. ?>
+  <?php if ($gefiltert): ?>
+    <span class="muted small">
+      <?php if ($f_suche !== ''): ?><?= e(str_replace(['%1', '%2'], [(string) count($photos), $f_suche], t('photo_search_count'))) ?><?php endif; ?>
+      <?php if ($f_tag !== ''): ?>🏷 <?= e(str_replace('%1', $f_tag, t('photo_tag_filter'))) ?><?php endif; ?>
+      <?php if ($f_presse): ?>📣 <?= e(str_replace('%1', (string) count($photos), t('photo_press_filter'))) ?><?php endif; ?>
+      <?php if ($f_person > 0): ?>
+        <?php foreach ($members as $mg) { if ((int) $mg['id'] === $f_person) { ?>👤 <?= e(str_replace('%1', $mg['name'], t('photo_person_filter'))) ?><?php } } ?>
+      <?php endif; ?>
+    </span>
+  <?php endif; ?>
+</form>
+
+<?php // Vorschlagsliste für alle Schlagwort-Eingaben auf der Seite: die
+      // vergebenen Wörter plus eine Grundmenge, solange sie unbenutzt ist. ?>
+<datalist id="tagliste">
+  <?php foreach ($alle_tags as $tg): ?>
+    <option value="<?= e($tg['tag']) ?>"><?= $tg['count'] > 0 ? e($tg['tag'] . ' (' . $tg['count'] . ')') : '' ?></option>
+  <?php endforeach; ?>
+</datalist>
 
 <?php if (!$im_archiv): ?>
 <div class="card">
@@ -49,6 +84,13 @@
     <?php // Angehaktes ins Archiv (#200) — derselbe Haken, anderes Ziel. formaction
           // statt zweitem Formular: Die Häkchen hängen ohnehin an diesem hier. ?>
     <button class="btn btn-small btn-ghost" formaction="/intern/fotos/massenarchiv">📦 <?= e(t('photo_archive')) ?></button>
+  </div>
+  <?php // Schlagwort für alles Angehakte (#201): setzen oder entfernen —
+        // dieselben Haken, drittes Ziel. ?>
+  <div class="row-buttons">
+    🏷 <input name="tag" list="tagliste" maxlength="60" placeholder="<?= e(t('photo_tag')) ?>">
+    <button class="btn btn-small" name="mode" value="set" formaction="/intern/fotos/massentag"><?= e(t('photo_tag_set')) ?></button>
+    <button class="btn btn-small btn-ghost" name="mode" value="unset" formaction="/intern/fotos/massentag"><?= e(t('photo_tag_unset')) ?></button>
   </div>
   <span class="muted small" data-masscount data-template="<?= e(t('photo_mass_count')) ?>"></span>
   <span class="warn small" data-massempty hidden><?= e(t('fl_photo_mass_nothing')) ?></span>
@@ -111,6 +153,9 @@
       </label>
       <?php endif; ?>
       <?php if (!empty($photo['is_new'])): ?><span class="photo-new"><?= e(t('photo_new')) ?></span><?php endif; ?>
+      <?php // Die Suche sieht auch ins Archiv (#204) — dann muss dranstehen,
+            // warum dieses Bild in der Galerie fehlt. ?>
+      <?php if (!$im_archiv && $photo['archived_at'] !== null): ?><span class="photo-new photo-archived">📦 <?= e(t('photo_archived_badge')) ?></span><?php endif; ?>
       <?php // Serie (#198): Die Kachel steht für alle ihre Bilder. Die Zahl sagt
             // wie viele, der Klick macht die Serie auf. ?>
       <?php if (!empty($photo['stack_count'])): ?>
@@ -139,8 +184,30 @@
             <?php if ((int) ($photo['img_w'] ?? 0) > 0): ?> · <?= (int) $photo['img_w'] ?>×<?= (int) $photo['img_h'] ?><?php endif; ?>
           </span>
         <?php endif; ?>
+        <?php // Schlagwörter und Personen als Chips (#201, #203): das Wort
+              // filtert auf Klick, das × daneben entfernt es von diesem Bild.
+              // Dahinter je ein kleines Eingabefeld zum Hinzufügen. ?>
+        <?php if ($photo['tags'] || $photo['people'] || !$im_archiv): ?>
+        <div class="photo-chips">
+          <?php foreach ($photo['tags'] as $ptg): ?>
+            <span class="chip">🏷 <a href="/intern/fotos?tag=<?= urlencode($ptg) ?>"><?= e($ptg) ?></a><?php if (!$im_archiv): ?><form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/tag"><?= csrf_field() ?><input type="hidden" name="tag" value="<?= e($ptg) ?>"><button class="chip-x" name="entfernen" value="1" title="<?= e(t('photo_tag_remove_title')) ?>">×</button></form><?php endif; ?></span>
+          <?php endforeach; ?>
+          <?php foreach ($photo['people'] as $pp): ?>
+            <span class="chip">👤 <a href="/intern/fotos?person=<?= (int) $pp['id'] ?>"><?= e($pp['name']) ?></a><?php if (!$im_archiv): ?><form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/person"><?= csrf_field() ?><input type="hidden" name="user_id" value="<?= (int) $pp['id'] ?>"><button class="chip-x" name="entfernen" value="1" title="<?= e(t('photo_person_remove_title')) ?>">×</button></form><?php endif; ?></span>
+          <?php endforeach; ?>
+          <?php if (!$im_archiv): ?>
+            <form class="inline chip-add" method="post" action="/intern/fotos/<?= $photo['id'] ?>/tag"><?= csrf_field() ?><input name="tag" list="tagliste" maxlength="60" placeholder="🏷"><button class="btn btn-tiny btn-ghost">+</button></form>
+            <form class="inline chip-add" method="post" action="/intern/fotos/<?= $photo['id'] ?>/person"><?= csrf_field() ?><select name="user_id"><option value="">👤</option><?php foreach ($members as $mg): ?><option value="<?= (int) $mg['id'] ?>"><?= e($mg['name']) ?></option><?php endforeach; ?></select><button class="btn btn-tiny btn-ghost">+</button></form>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
         <div class="row-buttons">
           <?php if (!$im_archiv): ?>
+          <?php // Fürs Rausgeben markieren (#202) — bewusst je Bild, nie die
+                // Serie: Aus fünfunddreißig nimmt man das beste, nicht alle. ?>
+          <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/presse"><?= csrf_field() ?>
+            <button class="btn btn-tiny <?= $photo['is_press'] ? '' : 'btn-ghost' ?>" title="<?= e(t('photo_press_title')) ?>">📣 <?= e(t('photo_press')) ?></button>
+          </form>
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
             <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
           </form>

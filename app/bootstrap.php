@@ -869,6 +869,32 @@ Zeile zwei
   'fl_photo_too_big_request' => 'Die Absendung war zusammen größer als %1 und wurde vom Server verworfen — es ist nichts angekommen. Nimm weniger Bilder auf einmal.',
   'photo_mass_count' => '%1 angehakt',
   // Ordnerweise zuordnen (#208)
+  // Schlagwörter (#201)
+  'photo_tag' => 'Schlagwort',
+  'photo_tag_suggest' => 'Bühne,Publikum,Backstage,Technik,Presse,Plakat',
+  'photo_tag_set' => 'Setzen',
+  'photo_tag_unset' => 'Entfernen',
+  'photo_tag_filter' => 'Schlagwort „%1"',
+  'photo_tag_remove_title' => 'Schlagwort von diesem Bild entfernen',
+  'fl_photo_tag' => '%1 Bilder mit „%2" versehen.',
+  'fl_photo_tag_removed' => '„%2" bei %1 Bildern entfernt.',
+  'fl_photo_tag_empty' => 'Kein Schlagwort angegeben — nichts geändert.',
+  // Presse-Auswahl (#202)
+  'photo_press' => 'Presse',
+  'photo_press_title' => 'Gut genug zum Rausgeben — für Veranstalter und Presse',
+  'photo_press_filter' => 'Presse-Auswahl: %1',
+  // Personen (#203)
+  'photo_person_add' => 'Person',
+  'photo_person_filter' => 'Bilder mit %1',
+  'photo_person_remove_title' => 'Person von diesem Bild entfernen',
+  'photo_person_photos' => 'Fotos',
+  // Suche (#204)
+  'photo_search' => 'Suchen',
+  'photo_search_ph' => 'Beschreibung, Herkunft, Termin, Schlagwort, Person …',
+  'photo_search_none' => 'Nichts gefunden zu „%1".',
+  'photo_search_count' => '%1 Treffer zu „%2"',
+  'photo_filter_off' => 'Filter aufheben',
+  'photo_archived_badge' => 'archiviert',
   // Archiv (#200)
   'photo_archive' => 'Archivieren',
   'photo_restore' => 'Zurückholen',
@@ -1693,6 +1719,20 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  "CREATE TABLE IF NOT EXISTS photo_tags (
+    photo_id INT NOT NULL,
+    tag VARCHAR(60) NOT NULL,
+    PRIMARY KEY (photo_id, tag),
+    KEY idx_tag (tag)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS photo_people (
+    photo_id INT NOT NULL,
+    user_id INT NOT NULL,
+    PRIMARY KEY (photo_id, user_id),
+    KEY idx_person (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS media_links (
     id INT AUTO_INCREMENT PRIMARY KEY,
     kind VARCHAR(20) NOT NULL DEFAULT 'other',
@@ -2248,6 +2288,12 @@ if (!column_exists('photos', 'od_item_id')) {
 // braucht, wäre endgültig weg. Archiviert heißt: nicht mehr im Weg, aber da.
 if (!column_exists('photos', 'archived_at')) {
   $db->exec('ALTER TABLE photos ADD COLUMN archived_at DATETIME NULL');
+}
+// Fürs Rausgeben gut genug (#202). Nicht dasselbe wie is_public: Ein Bild kann
+// dem Veranstalter taugen und trotzdem nicht auf die Website gehören — und
+// umgekehrt. Zwei Fragen, zwei Antworten.
+if (!column_exists('photos', 'is_press')) {
+  $db->exec('ALTER TABLE photos ADD COLUMN is_press TINYINT(1) NOT NULL DEFAULT 0');
 }
 // Doppelte finden (#199). Eine Prüfsumme des Dateiinhalts, keine Ähnlichkeit:
 // Sie erkennt exakte Kopien mit Sicherheit und neu komprimierte gar nicht. Das
@@ -3920,6 +3966,37 @@ function stack_repair(?int $stapel): void {
 }
 
 /**
+ * Ein Schlagwort in seine gespeicherte Form bringen (#201). Getrimmt und auf
+ * eine Länge begrenzt; Groß und Klein bleiben, wie eingegeben — „Bühne" soll
+ * „Bühne" heißen. Verglichen wird über die Datenbank-Kollation, die Groß und
+ * Klein gleichsetzt, sodass „bühne" kein zweites Wort wird.
+ */
+function tag_norm(string $tag): string {
+  return mb_substr(trim(preg_replace('~\s+~u', ' ', $tag) ?? ''), 0, 60);
+}
+
+/**
+ * Alle vergebenen Schlagwörter mit ihrer Zahl, fürs Filtern und für die
+ * Vorschlagsliste. Dazu eine kleine Grundmenge, solange sie unbenutzt ist —
+ * damit die ersten Wörter nicht vierzig private Erfindungen werden. Wird ein
+ * Wort nirgends mehr benutzt, verschwindet es von selbst: Es gibt keinen Stamm,
+ * in dem es weiterlebte.
+ *
+ * @return list<array{tag: string, count: int}>
+ */
+function photo_tags_all(): array {
+  $vergeben = rows('SELECT tag, COUNT(*) AS count FROM photo_tags GROUP BY tag ORDER BY tag');
+  $da = array_map('mb_strtolower', array_column($vergeben, 'tag'));
+  foreach (explode(',', t('photo_tag_suggest')) as $vorschlag) {
+    $vorschlag = tag_norm($vorschlag);
+    if ($vorschlag !== '' && !in_array(mb_strtolower($vorschlag), $da, true)) {
+      $vergeben[] = ['tag' => $vorschlag, 'count' => 0];
+    }
+  }
+  return $vergeben;
+}
+
+/**
  * Die Herkunftsordner der Galerie, auf jeder Ebene, mit Zahl und Datum (#208).
  *
  * Aus „Bilder/2026/AKF/Sven Löffler/094A1704.jpg" werden vier wählbare Ordner:
@@ -4060,6 +4137,8 @@ function photo_remove(int $id): bool {
   $p = row('SELECT id, filename, stack_id FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
   q('DELETE FROM photos WHERE id = ?', [$id]);
+  q('DELETE FROM photo_tags WHERE photo_id = ?', [$id]);
+  q('DELETE FROM photo_people WHERE photo_id = ?', [$id]);
   if (!row('SELECT 1 FROM photos WHERE filename = ?', [$p['filename']])) {
     @unlink(UPLOADS_DIR . '/' . $p['filename']);
   }
@@ -4575,6 +4654,7 @@ function user_purge(int $userId): void {
   // wäre das Gegenteil einer Löschung.
   q('UPDATE finances SET private_for = NULL WHERE private_for = ?', [$userId]);
   q('UPDATE photos SET uploaded_by = NULL WHERE uploaded_by = ?', [$userId]);
+  q('DELETE FROM photo_people WHERE user_id = ?', [$userId]);
   q('UPDATE files SET uploaded_by = NULL WHERE uploaded_by = ?', [$userId]);
   q('UPDATE topics SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('DELETE FROM topic_posts WHERE user_id = ?', [$userId]);

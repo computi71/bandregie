@@ -40,6 +40,11 @@
       <span class="badge <?= $m['role'] === 'admin' ? 'public' : '' ?>"><?= e(t('role_' . ($m['role'] === 'ersatz' ? 'ersatz' : ($m['role'] === 'admin' ? 'admin' : 'member')))) ?></span>
       <?php if (perm_allows($m, 'kasse', 'write')): ?><span class="badge">💰 <?= e(t('fin_badge')) ?></span><?php endif; ?>
       <span class="row-buttons">
+        <?php // Von der Person zu ihren Bildern (#203): Der Link zeigt die
+              // Galerie gefiltert auf dieses Mitglied — nur wenn es Bilder gibt,
+              // ein Knopf ins Leere verspricht sonst etwas, das nicht da ist. ?>
+        <?php $mFotos = (int) row('SELECT COUNT(*) n FROM photo_people WHERE user_id = ?', [(int) $m['id']])['n']; ?>
+        <?php if ($mFotos > 0): ?><a class="btn btn-tiny btn-ghost" href="/intern/fotos?person=<?= (int) $m['id'] ?>">📷 <?= e(t('photo_person_photos')) ?> (<?= $mFotos ?>)</a><?php endif; ?>
         <?php if ((int) $m['id'] === (int) $user['id']): ?><a class="btn btn-tiny" href="/intern/profil">✏️ <?= e(t('mem_my_profile')) ?></a><?php endif; ?>
         <?php if (((int) $m['id'] === (int) $user['id'] || $user['role'] === 'admin') && !is_demo()): ?>
           <details class="inline-details">

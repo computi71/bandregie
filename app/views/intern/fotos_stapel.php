@@ -22,6 +22,11 @@
           <?php else: ?>
             <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/titelbild"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost">⭐ <?= e(t('photo_stack_cover')) ?></button></form>
           <?php endif; ?>
+          <?php // Die Presse-Auswahl gehört gerade HIERHER (#202): Aus einer
+                // Serie nimmt man das beste Bild, und das sieht man nur hier. ?>
+          <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/presse"><?= csrf_field() ?>
+            <button class="btn btn-tiny <?= $photo['is_press'] ? '' : 'btn-ghost' ?>" title="<?= e(t('photo_press_title')) ?>">📣 <?= e(t('photo_press')) ?></button>
+          </form>
           <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
             <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
           </form>

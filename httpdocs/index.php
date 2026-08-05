@@ -1177,11 +1177,55 @@ if (str_starts_with($path, '/intern')) {
     // das Archiv. Zwei Sichten, keine Mischung — halb sichtbare Bilder gibt es
     // nicht, und die Zahl am Umschalter sagt, was auf der anderen Seite liegt.
     $imArchiv = ($_GET['archiv'] ?? '') === '1';
+    // Filter und Suche (#201–#204). Alles serverseitig und additiv: Jede
+    // Bedingung engt ein, und was im Formular steht, entscheidet nicht — ein
+    // unbekanntes Mitglied oder Schlagwort filtert schlicht auf nichts.
+    $fTag = tag_norm((string) ($_GET['tag'] ?? ''));
+    $fPresse = ($_GET['presse'] ?? '') === '1';
+    $fPerson = (int) ($_GET['person'] ?? 0);
+    $fSuche = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 100);
+    $gefiltert = $fTag !== '' || $fPresse || $fPerson > 0 || $fSuche !== '';
+    $wo = [];
+    $werte = [];
+    // Die Suche sieht auch ins Archiv (#204): aus der Galerie genommen heißt
+    // nicht aus dem Gedächtnis genommen. Ohne Suche gelten die zwei Sichten.
+    if ($fSuche === '') $wo[] = 'p.archived_at IS ' . ($imArchiv ? 'NOT NULL' : 'NULL');
+    if ($fTag !== '') { $wo[] = 'EXISTS (SELECT 1 FROM photo_tags ft WHERE ft.photo_id = p.id AND ft.tag = ?)'; $werte[] = $fTag; }
+    if ($fPresse) $wo[] = 'p.is_press = 1';
+    if ($fPerson > 0) { $wo[] = 'EXISTS (SELECT 1 FROM photo_people fp WHERE fp.photo_id = p.id AND fp.user_id = ?)'; $werte[] = $fPerson; }
+    if ($fSuche !== '') {
+      $like = '%' . addcslashes($fSuche, '\\%_') . '%';
+      $wo[] = '(p.caption LIKE ? OR p.source LIKE ? OR e.title LIKE ?
+                OR EXISTS (SELECT 1 FROM photo_tags qt WHERE qt.photo_id = p.id AND qt.tag LIKE ?)
+                OR EXISTS (SELECT 1 FROM photo_people qp JOIN users qu ON qu.id = qp.user_id
+                           WHERE qp.photo_id = p.id AND qu.name LIKE ?))';
+      array_push($werte, $like, $like, $like, $like, $like);
+    }
     $photos = rows('SELECT p.*, u.name AS uploader, e.title AS event_title, e.date AS event_date
                     FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
                     LEFT JOIN events e ON e.id = p.event_id
-                    WHERE p.archived_at IS ' . ($imArchiv ? 'NOT NULL' : 'NULL') . '
-                    ORDER BY p.created_at DESC');
+                    WHERE ' . implode(' AND ', $wo) . '
+                    ORDER BY p.created_at DESC', $werte);
+    // Schlagwörter und Personen der gezeigten Bilder in einem Griff — eine
+    // Abfrage je Bild wären bei sechshundert Bildern sechshundert Abfragen.
+    $photoIds = array_map(fn($r) => (int) $r['id'], $photos);
+    $tagsJe = [];
+    $leuteJe = [];
+    if ($photoIds) {
+      $ph = implode(',', array_fill(0, count($photoIds), '?'));
+      foreach (rows("SELECT photo_id, tag FROM photo_tags WHERE photo_id IN ($ph) ORDER BY tag", $photoIds) as $z) {
+        $tagsJe[(int) $z['photo_id']][] = $z['tag'];
+      }
+      foreach (rows("SELECT pp.photo_id, pp.user_id, u.name FROM photo_people pp
+                     JOIN users u ON u.id = pp.user_id WHERE pp.photo_id IN ($ph) ORDER BY u.name", $photoIds) as $z) {
+        $leuteJe[(int) $z['photo_id']][] = ['id' => (int) $z['user_id'], 'name' => $z['name']];
+      }
+    }
+    foreach ($photos as &$phM) {
+      $phM['tags'] = $tagsJe[(int) $phM['id']] ?? [];
+      $phM['people'] = $leuteJe[(int) $phM['id']] ?? [];
+    }
+    unset($phM);
     $photoEvents = rows('SELECT e.id, e.title, e.date, v.lat, v.lng FROM events e
                          LEFT JOIN venues v ON v.id = e.venue_id ORDER BY e.date DESC');
     // Vorschlag je unzugeordnetem Foto mit Aufnahmedatum: der Termin an dem Tag,
@@ -1199,7 +1243,9 @@ if (str_starts_with($path, '/intern')) {
     }
     unset($phN);
     // Erst nach dem Berechnen setzen, sonst wäre schon der eigene Aufruf zu spät.
-    q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
+    // Und nur in der ungefilterten Galerie: Ein Suchtreffer zeigt nicht alles,
+    // und was nie zu sehen war, darf nicht als gesehen gelten (#204).
+    if (!$gefiltert && !$imArchiv) q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
     // Nach Termin gruppieren (#196): Was zugeordnet ist, gehört in seinen Ordner.
     // Die Unzugeordneten stehen oben, denn das ist der Stapel, an dem gearbeitet
     // wird. Innerhalb eines Ordners bleibt die Reihenfolge nach Datum.
@@ -1222,13 +1268,19 @@ if (str_starts_with($path, '/intern')) {
       // Die Zahl in der Überschrift zählt Bilder, nicht Kacheln — sonst würde
       // ein Ordner mit vierzig Bildern in einer Serie plötzlich „1" behaupten.
       $photoOrdner[$s]['total'] = count($o['photos']);
-      $photoOrdner[$s]['photos'] = stacks_collapse($o['photos']);
+      // Gefiltert wird nicht eingeklappt: Der Treffer kann mitten in einer
+      // Serie liegen, und eine Kachel, die ihn verdeckt, wäre kein Treffer.
+      $photoOrdner[$s]['photos'] = $gefiltert ? $o['photos'] : stacks_collapse($o['photos']);
     }
     view('intern/fotos', ['title' => $imArchiv ? t('photo_archive_title') : t('inav_fotos'),
                           'photos' => $photos, 'events' => $photoEvents,
                           'limits' => upload_limits(), 'ordner' => $photoOrdner,
                           'herkunft' => photo_folder_agg($photos), 'im_archiv' => $imArchiv,
-                          'archiv_zahl' => (int) row('SELECT COUNT(*) n FROM photos WHERE archived_at IS ' . ($imArchiv ? 'NULL' : 'NOT NULL'))['n']]);
+                          'archiv_zahl' => (int) row('SELECT COUNT(*) n FROM photos WHERE archived_at IS ' . ($imArchiv ? 'NULL' : 'NOT NULL'))['n'],
+                          'alle_tags' => photo_tags_all(), 'gefiltert' => $gefiltert,
+                          'f_tag' => $fTag, 'f_presse' => $fPresse, 'f_person' => $fPerson, 'f_suche' => $fSuche,
+                          'presse_zahl' => (int) row('SELECT COUNT(*) n FROM photos WHERE is_press = 1 AND archived_at IS NULL')['n'],
+                          'members' => rows('SELECT id, name FROM users ORDER BY name')]);
   }
   // Eine Serie aufmachen (#198). Eigene Seite statt Aufklappen: Die Kacheln
   // haben je eigene Formulare, und das Blättern in der Großansicht bleibt so
@@ -1257,6 +1309,62 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/fotos/stapel/' . $neu);
     }
     redirect('/intern/fotos');
+  }
+  // Schlagwort an einem Bild setzen oder entfernen (#201).
+  if (preg_match('~^/intern/fotos/(\d+)/tag$~', $path, $m) && $method === 'POST') {
+    $wort = tag_norm((string) ($_POST['tag'] ?? ''));
+    if ($wort !== '' && row('SELECT 1 FROM photos WHERE id = ?', [$m[1]])) {
+      if (isset($_POST['entfernen'])) {
+        q('DELETE FROM photo_tags WHERE photo_id = ? AND tag = ?', [$m[1], $wort]);
+      } else {
+        q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$m[1], $wort]);
+      }
+    }
+    back('/intern/fotos');
+  }
+  // Ein Schlagwort für alles Angehakte (#201) — angehakte Serien-Kacheln meinen
+  // ihre Serie, wie überall.
+  if ($path === '/intern/fotos/massentag' && $method === 'POST') {
+    $wort = tag_norm((string) ($_POST['tag'] ?? ''));
+    $weg = ($_POST['mode'] ?? '') === 'unset';
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['pick'] ?? [])))));
+    if ($wort === '') { flash(t('fl_photo_tag_empty')); redirect('/intern/fotos'); }
+    $zahl = 0;
+    if ($ids) {
+      $platz = implode(',', array_fill(0, count($ids), '?'));
+      $alle = array_unique(array_merge(
+        array_map(fn($r) => (int) $r['id'], rows("SELECT id FROM photos WHERE id IN ($platz)", $ids)),
+        array_map(fn($r) => (int) $r['id'], rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids))));
+      foreach ($alle as $pid) {
+        if ($weg) q('DELETE FROM photo_tags WHERE photo_id = ? AND tag = ?', [$pid, $wort]);
+        else q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$pid, $wort]);
+        $zahl++;
+      }
+    }
+    flash($zahl
+      ? str_replace(['%1', '%2'], [(string) $zahl, $wort], $weg ? t('fl_photo_tag_removed') : t('fl_photo_tag'))
+      : t('fl_photo_mass_nothing'));
+    redirect('/intern/fotos');
+  }
+  // Fürs Rausgeben markieren (#202). Je Bild und ohne Serien-Ausweitung: Die
+  // Presse-Auswahl meint DIESES Foto — aus einer Serie nimmt man das beste,
+  // nicht alle fünfunddreißig.
+  if (preg_match('~^/intern/fotos/(\d+)/presse$~', $path, $m) && $method === 'POST') {
+    q('UPDATE photos SET is_press = 1 - is_press WHERE id = ?', [$m[1]]);
+    back('/intern/fotos');
+  }
+  // Wer ist auf dem Bild (#203). Von Hand und je Bild — kein Erkennen, kein
+  // Raten: Ein falsch benannter Mensch ist schlimmer als ein unbenannter.
+  if (preg_match('~^/intern/fotos/(\d+)/person$~', $path, $m) && $method === 'POST') {
+    $wer = (int) ($_POST['user_id'] ?? 0);
+    if ($wer > 0 && row('SELECT 1 FROM photos WHERE id = ?', [$m[1]]) && row('SELECT 1 FROM users WHERE id = ?', [$wer])) {
+      if (isset($_POST['entfernen'])) {
+        q('DELETE FROM photo_people WHERE photo_id = ? AND user_id = ?', [$m[1], $wer]);
+      } else {
+        q('INSERT IGNORE INTO photo_people (photo_id, user_id) VALUES (?,?)', [$m[1], $wer]);
+      }
+    }
+    back('/intern/fotos');
   }
   // Archivieren und Zurückholen (#200). Eine Kachel, die für eine Serie steht,
   // archiviert die Serie — wie bei der Termin-Zuordnung: Was zu sehen war, wird
