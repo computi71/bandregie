@@ -955,6 +955,14 @@ Zeile zwei
   'clean_confirm' => 'Die aufgeführten Reste endgültig entfernen? Es wird nur gelöscht, was oben steht.',
   'fl_cleaned' => 'Aufgeräumt: %1 Zeilen, %2 Fotos, %3 Dateien entfernt.',
   'clean_uploads_extra' => '%1 Bilddateien, auf die nichts zeigt',
+  // Doppelte Bilder (#199)
+  'clean_dups' => 'Doppelte Bilder: %1 Gruppen',
+  'clean_dups_hint' => 'Inhaltlich identische Dateien, erkannt an der Prüfsumme. Über Messenger geteilte Kopien werden dabei nicht gefunden — die sind neu gerechnet und Byte für Byte etwas anderes.',
+  'clean_dup_keep_hint' => 'Behalte eins je Gruppe — meist das verknüpfte (es kostet fast keinen Platz) oder das älteste.',
+  'clean_dup_linked' => 'verknüpft',
+  'clean_dup_remove' => 'Dieses entfernen',
+  'fl_dup_removed' => 'Bild entfernt.',
+  'clean_checksums_left' => 'Noch %1 Bilder ohne Prüfsumme — beim nächsten Öffnen dieser Seite wird weitergerechnet.',
   'clean_uploads_extra_hint' => 'Im Bilder-Ordner. Diese werden bewusst nicht gelöscht: Dorthin verweisen Fotos, Profilbilder und das Hintergrundbild, und eine einzige übersehene Quelle würde echte Bilder vernichten. Wer sicher ist, räumt sie von Hand weg.',
   // Ordner durchsehen und verknüpfen (#20)
   'od_browse_title' => 'OneDrive-Ordner',
@@ -2224,6 +2232,14 @@ if (!column_exists('photos', 'od_item_id')) {
     ADD COLUMN img_w INT NOT NULL DEFAULT 0,
     ADD COLUMN img_h INT NOT NULL DEFAULT 0");
   $db->exec('CREATE INDEX idx_photos_od ON photos (od_item_id)');
+}
+// Doppelte finden (#199). Eine Prüfsumme des Dateiinhalts, keine Ähnlichkeit:
+// Sie erkennt exakte Kopien mit Sicherheit und neu komprimierte gar nicht. Das
+// ist eine bewusste Grenze und keine halbe Lösung — was ein Messenger neu
+// gerechnet hat, ist Byte für Byte etwas anderes.
+if (!column_exists('photos', 'checksum')) {
+  $db->exec("ALTER TABLE photos ADD COLUMN checksum CHAR(64) NOT NULL DEFAULT ''");
+  $db->exec('CREATE INDEX idx_photos_checksum ON photos (checksum)');
 }
 // Der Bestand wird einmal gruppiert; danach macht das jeder Upload für seine
 // eigene Quelle. Ohne diesen Lauf blieben die vorhandenen Bilder für immer
@@ -3929,6 +3945,84 @@ function photo_folder_agg(array $fotos): array {
     $raus[] = ['path' => $pfad, 'count' => $n, 'date' => $beste];
   }
   return $raus;
+}
+
+/**
+ * Prüfsummen nachtragen (#199). Nicht beim Hochfahren und nicht in einem
+ * beliebigen Aufruf: Ein Bestand von fünfhundert großen Bildern zu lesen dauert,
+ * und diese Wartezeit hätte dann zufällig jemand, der etwas ganz anderes wollte.
+ * Deshalb in Schritten und nur dort, wo jemand die Doppelten sehen will.
+ *
+ * Bilder, deren Datei fehlt, bleiben ohne Prüfsumme — die stehen im Aufräumen
+ * schon als eigene Art. Ohne diese Ausnahme blieben sie für immer offen.
+ *
+ * @return array{done: int, left: int}
+ */
+function checksums_fill(int $hoechstens = 200): array {
+  $offen = rows("SELECT id, filename, od_item_id FROM photos WHERE checksum = '' ORDER BY id");
+  $getan = 0;
+  $fehlend = 0;
+  foreach ($offen as $p) {
+    // Verknüpfte Bilder (#206): Lokal liegt nur die Vorschau, und deren Summe
+    // wäre die falsche Aussage. Die Summe des Originals kennt Graph — sie steht
+    // an der Verknüpfung und macht ein hochgeladenes Duplikat des Originals
+    // erkennbar. Nur geschäftliche Laufwerke geben keine sha256 heraus; dann
+    // bleibt die Vorschau-Summe, die wenigstens doppelte Übernahmen erkennt.
+    $summe = ($p['od_item_id'] ?? '') !== ''
+      ? (string) (row('SELECT sha256 FROM od_items WHERE item_id = ?', [$p['od_item_id']])['sha256'] ?? '')
+      : '';
+    if ($summe === '') {
+      $pfad = UPLOADS_DIR . '/' . $p['filename'];
+      if (!is_file($pfad)) { $fehlend++; continue; }
+      if ($getan >= $hoechstens) break;
+      $summe = hash_file('sha256', $pfad);
+      if ($summe === false) { $fehlend++; continue; }
+    } elseif ($getan >= $hoechstens) {
+      break;
+    }
+    q('UPDATE photos SET checksum = ? WHERE id = ?', [$summe, (int) $p['id']]);
+    $getan++;
+  }
+  return ['done' => $getan, 'left' => max(0, count($offen) - $fehlend - $getan)];
+}
+
+/**
+ * Bilder, die inhaltlich gleich sind, nach Prüfsumme gruppiert.
+ *
+ * @return list<array{checksum: string, photos: list<array>}> je Gruppe das
+ *         älteste Bild zuerst — das ist der naheliegende Kandidat zum Behalten,
+ *         weil an ihm die längere Geschichte hängt.
+ */
+function photo_duplicates(): array {
+  $summen = array_column(rows("SELECT checksum FROM photos WHERE checksum <> ''
+                               GROUP BY checksum HAVING COUNT(*) > 1"), 'checksum');
+  $gruppen = [];
+  foreach ($summen as $s) {
+    $gruppen[] = ['checksum' => $s, 'photos' => rows(
+      'SELECT p.*, u.name AS uploader, e.title AS event_title FROM photos p
+       LEFT JOIN users u ON u.id = p.uploaded_by
+       LEFT JOIN events e ON e.id = p.event_id
+       WHERE p.checksum = ? ORDER BY p.id', [$s])];
+  }
+  return $gruppen;
+}
+
+/**
+ * Ein Bild samt Datei entfernen und den Stapel dahinter richten.
+ *
+ * Die Datei nur löschen, wenn sie niemand sonst nennt: Zwei Zeilen auf denselben
+ * Dateinamen entstehen beim Hochladen nicht, aber wer das später einführt, soll
+ * hier keine Bilder verlieren.
+ */
+function photo_remove(int $id): bool {
+  $p = row('SELECT id, filename, stack_id FROM photos WHERE id = ?', [$id]);
+  if (!$p) return false;
+  q('DELETE FROM photos WHERE id = ?', [$id]);
+  if (!row('SELECT 1 FROM photos WHERE filename = ?', [$p['filename']])) {
+    @unlink(UPLOADS_DIR . '/' . $p['filename']);
+  }
+  stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
+  return true;
 }
 
 /**

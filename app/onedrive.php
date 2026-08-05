@@ -650,11 +650,14 @@ function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
     $n = od_thumb_fetch(od_thumb_url((string) $item['item_id']), UPLOADS_DIR . '/' . $datei);
     if ($n === 0) { $misslungen++; continue; }
     $w = od_item_photo_row($item, $datei);
+    // Die Prüfsumme des ORIGINALS, nicht der Vorschau (#199): Sie macht ein
+    // später hochgeladenes Duplikat desselben Originals erkennbar.
     q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source,
-                           camera, img_w, img_h, od_item_id, od_web_url, created_at)
-       VALUES (?,?,0,NULL,?,?,?,?,?,?,?,?,?,NOW())',
+                           camera, img_w, img_h, od_item_id, od_web_url, checksum, created_at)
+       VALUES (?,?,0,NULL,?,?,?,?,?,?,?,?,?,?,NOW())',
       [$w['filename'], $w['caption'], $w['taken_at'], $w['lat'], $w['lng'], $w['source'],
-       $w['camera'], $w['img_w'], $w['img_h'], $w['od_item_id'], $w['od_web_url']]);
+       $w['camera'], $w['img_w'], $w['img_h'], $w['od_item_id'], $w['od_web_url'],
+       (string) ($item['sha256'] ?? '')]);
     q('UPDATE od_items SET imported_at = NOW() WHERE id = ?', [(int) $item['id']]);
     $getan++;
     $bytes += $n;

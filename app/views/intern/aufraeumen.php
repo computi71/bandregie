@@ -62,6 +62,40 @@ require BASE_DIR . '/app/views/_header.php';
   </div>
 <?php endif; ?>
 
+<?php // Doppelte Bilder (#199): je Gruppe nebeneinander, mit allem, was die
+      // Entscheidung trägt — wer hat es hochgeladen, wo hängt es, ist es nur
+      // die verknüpfte Vorschau. Entfernt wird einzeln und je Bild: Welches
+      // bleibt, ist eine Entscheidung, und die trifft keine Schleife. ?>
+<?php if (!empty($doppelte)): ?>
+  <div class="card">
+    <h2><?= e(str_replace('%1', (string) count($doppelte), t('clean_dups'))) ?></h2>
+    <p class="muted small"><?= e(t('clean_dups_hint')) ?> <?= e(t('clean_dup_keep_hint')) ?></p>
+    <?php foreach ($doppelte as $gr): ?>
+      <div class="subsection dup-group">
+        <?php foreach ($gr['photos'] as $dp): ?>
+          <figure class="dup-photo">
+            <img src="/thumb/<?= e($dp['filename']) ?>" alt="<?= e($dp['caption']) ?>" loading="lazy">
+            <figcaption class="muted small">
+              #<?= (int) $dp['id'] ?>
+              <?php if (($dp['od_item_id'] ?? '') !== ''): ?> · ☁ <?= e(t('clean_dup_linked')) ?><?php endif; ?>
+              <?php if (($dp['uploader'] ?? '') !== '' && $dp['uploader'] !== null): ?> · <?= e($dp['uploader']) ?><?php endif; ?>
+              <?php if (($dp['event_title'] ?? '') !== '' && $dp['event_title'] !== null): ?> · 📅 <?= e($dp['event_title']) ?><?php endif; ?>
+              <?php if (($dp['source'] ?? '') !== ''): ?><br>📄 <?= e($dp['source']) ?><?php endif; ?>
+            </figcaption>
+            <form method="post" action="/intern/einstellungen/aufraeumen/foto/<?= (int) $dp['id'] ?>"
+                  data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+              <button class="btn btn-tiny btn-danger">🗑 <?= e(t('clean_dup_remove')) ?></button>
+            </form>
+          </figure>
+        <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
+<?php endif; ?>
+<?php if (!empty($nachtrag['left'])): ?>
+  <p class="muted small"><?= e(str_replace('%1', (string) $nachtrag['left'], t('clean_checksums_left'))) ?></p>
+<?php endif; ?>
+
 <?php // Der Bilder-Ordner wird gezählt, aber nie angefasst — die Zahl gehört
       // trotzdem hierher, sonst wundert sich jemand über belegten Platz. ?>
 <?php if ($fund['uploads_extra'] > 0): ?>

@@ -1346,6 +1346,11 @@ if (str_starts_with($path, '/intern')) {
         // Aufnahmedatum und GPS aus den EXIF-Daten mitnehmen — für den Vorschlag,
         // welchem Termin das Foto gehört. Zugeordnet wird nie automatisch.
         $exif = photo_exif(UPLOADS_DIR . '/' . $safe);
+        // Die Prüfsumme VOR dem Entfernen der EXIF-Daten (#199): So ist sie die
+        // Summe der Datei, wie sie ankam — und stimmt mit der überein, die
+        // OneDrive für dasselbe Original nennt (#206). Nach dem Entfernen wäre
+        // es die Summe einer Datei, die es nur hier gibt.
+        $fotoSumme = (string) (hash_file('sha256', UPLOADS_DIR . '/' . $safe) ?: '');
         // Erst auslesen, dann aus der Datei entfernen: die Angaben stehen ab
         // jetzt in der Datenbank und sind nur intern sichtbar. In der Datei
         // gingen sie mit jedem öffentlichen Foto mit hinaus — und ein
@@ -1355,9 +1360,9 @@ if (str_starts_with($path, '/intern')) {
         // wählt jemand einen ganzen Ordner, steht der relative Pfad daneben und
         // wird bevorzugt — dann sieht man, aus welchem Ordner das Bild kam.
         $herkunft = trim((string) ($_POST['paths'][$i] ?? '')) ?: (string) $_FILES['photos']['name'][$i];
-        q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source) VALUES (?,?,?,?,?,?,?,?)',
+        q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source, checksum) VALUES (?,?,?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
-           $exif['taken_at'], $exif['lat'], $exif['lng'], mb_substr($herkunft, 0, 400)]);
+           $exif['taken_at'], $exif['lat'], $exif['lng'], mb_substr($herkunft, 0, 400), $fotoSumme]);
         $fotoQuellen[] = stack_key(['source' => $herkunft, 'uploaded_by' => $me['id']]);
         $fotoOk++;
       } else {
@@ -1404,14 +1409,9 @@ if (str_starts_with($path, '/intern')) {
     if ($m[2] === 'toggle') {
       q('UPDATE photos SET is_public = 1 - is_public WHERE id = ?', [$m[1]]);
     } else {
-      $p = row('SELECT * FROM photos WHERE id = ?', [$m[1]]);
-      if ($p) {
-        q('DELETE FROM photos WHERE id = ?', [$p['id']]);
-        @unlink(UPLOADS_DIR . '/' . $p['filename']);
-        // War das Bild Titelbild einer Serie, zeigten die übrigen sonst auf ein
-        // Titelbild, das es nicht mehr gibt — und wären in der Galerie unsichtbar.
-        stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
-      }
+      // photo_remove löscht die Datei nur, wenn keine zweite Zeile sie nennt,
+      // und richtet die Serie dahinter (#199).
+      photo_remove((int) $m[1]);
     }
     back('/intern/fotos');
   }
@@ -3003,7 +3003,19 @@ if (str_starts_with($path, '/intern')) {
   // der ohne Vorschau löscht, ist bei Dateien der falsche Knopf.
   if ($path === '/intern/einstellungen/aufraeumen' && $method === 'GET') {
     require_admin();
-    view('intern/aufraeumen', ['title' => t('clean_title'), 'fund' => orphan_scan()]);
+    // Prüfsummen hier nachtragen, nicht beim Hochfahren (#199): Die Wartezeit
+    // trägt, wer die Doppelten sehen will — nicht wer gerade etwas anderes tut.
+    $nachtrag = checksums_fill();
+    view('intern/aufraeumen', ['title' => t('clean_title'), 'fund' => orphan_scan(),
+                               'doppelte' => photo_duplicates(), 'nachtrag' => $nachtrag]);
+  }
+  // Eines aus einer Doppelten-Gruppe entfernen (#199). Einzeln und je Bild:
+  // Welches bleibt, ist eine Entscheidung — die trifft keine Schleife.
+  if (preg_match('~^/intern/einstellungen/aufraeumen/foto/(\d+)$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    if (photo_remove((int) $m[1])) flash(t('fl_dup_removed'));
+    redirect('/intern/einstellungen/aufraeumen');
   }
   if ($path === '/intern/einstellungen/aufraeumen' && $method === 'POST') {
     require_admin();
