@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v30';
+const VERSION = 'bandregie-v31';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
