@@ -38,7 +38,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, photos, file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, and what disappears there is marked as missing instead of quietly vanishing from the list — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, a photo library (bursts share one tile, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, and what disappears there is marked as missing instead of quietly vanishing from the list — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -227,6 +227,22 @@ the stored file** (needs the `gd` extension), so coordinates —
 a rehearsal room is often somebody's home — do not travel with a published
 photo. Only originals straight from a device carry metadata at all; copies
 shared through messengers or social platforms have already lost it.
+
+**The photo library** organises itself around three facts a picture brings
+along: its origin path (folder = gig, subfolder = photographer), its capture
+date, and its content checksum. Pictures from one source taken within moments
+of each other collapse into a single burst tile carrying their count; a whole
+origin folder can be assigned to an event in one step. Instead of deleting
+there is an archive — out of every gallery, including the public page and
+direct file access, but never destroyed. Tags, press picks (fit to hand out —
+deliberately separate from website visibility) and hand-linked people make
+pictures findable through one search field that also looks into the archive.
+Exact duplicate files show up side by side on the cleanup page; recompressed
+messenger copies deliberately do not, because a checksum cannot vouch for
+them. From linked OneDrive folders only an 800-px preview is stored locally;
+the original stays at OneDrive, linked on the tile with camera and true
+dimensions, and its checksum from Graph makes a re-uploaded original
+recognisable as a duplicate without downloading anything.
 
 **Privacy policy**: the shipped template covers every one of these processing
 activities, including the optional ones, with bracket placeholders to fill in.
