@@ -2587,13 +2587,14 @@ if (setting('help_texts_2026_08') !== '1') {
      ('app_install_offline','app_install_push','help_songs','help_orte','help_fotos')");
   set_setting('help_texts_2026_08', '1');
 }
-// Der Fotobereich kann inzwischen mehr, als sein Hilfetext wusste: Serien,
-// Archiv, Schlagwörter, Presse-Auswahl, Personen, Suche, Doppelte und die
-// OneDrive-Vorschauen (v1.197–v1.203). Der alte Text muss weg, damit der neue
-// aus dem Seed greift — der früheste Seed gewinnt sonst.
-if (setting('help_fotos_2026_08b') !== '1') {
+// Der Fotobereich kann inzwischen mehr, als sein Hilfetext wusste (v1.197 bis
+// v1.203). Der neue Text steht in Seed 16 SELBST — ein späterer Seed erreicht
+// ihn nie, weil das Neueinspielen alle Seeds der Reihe nach laufen lässt und
+// der früheste gewinnt. Genau daran ist der erste Versuch (Wächter …08b)
+// gescheitert: weggeräumt, und Seed 16 setzte den alten Text zurück.
+if (setting('help_fotos_2026_08c') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_fotos'");
-  set_setting('help_fotos_2026_08b', '1');
+  set_setting('help_fotos_2026_08c', '1');
 }
 if (setting('push_help_fixed') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'app_install_push'
