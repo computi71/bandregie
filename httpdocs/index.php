@@ -1217,7 +1217,8 @@ if (str_starts_with($path, '/intern')) {
       $photoOrdner[$s]['photos'] = stacks_collapse($o['photos']);
     }
     view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents,
-                          'limits' => upload_limits(), 'ordner' => $photoOrdner]);
+                          'limits' => upload_limits(), 'ordner' => $photoOrdner,
+                          'herkunft' => photo_folder_agg($photos)]);
   }
   // Eine Serie aufmachen (#198). Eigene Seite statt Aufklappen: Die Kacheln
   // haben je eigene Formulare, und das Blättern in der Großansicht bleibt so
@@ -1290,6 +1291,28 @@ if (str_starts_with($path, '/intern')) {
     flash($wieViele
       ? str_replace('%1', (string) $wieViele, $eid ? t('fl_photo_mass') : t('fl_photo_mass_none'))
       : t('fl_photo_mass_nothing'));
+    redirect('/intern/fotos');
+  }
+  // Einen ganzen Herkunftsordner einem Termin geben (#208). Der Ordner sagt
+  // schon, was zusammengehört — 518 Bilder anzuhaken ist keine Arbeit für
+  // Menschen. Gefasst wird alles in und unter dem Ordner.
+  if ($path === '/intern/fotos/ordner' && $method === 'POST') {
+    $eid = (int) ($_POST['event_id'] ?? 0);
+    if ($eid && !row('SELECT 1 FROM events WHERE id = ?', [$eid])) $eid = 0;
+    $ordner = trim((string) ($_POST['folder'] ?? ''), '/');
+    // Nur ein Ordner, den es in den Herkunftspfaden wirklich gibt — was im
+    // Formular steht, entscheidet nicht.
+    $bekannt = array_column(photo_folder_agg(rows('SELECT source, taken_at FROM photos')), 'path');
+    if ($ordner === '' || !in_array($ordner, $bekannt, true)) {
+      flash(t('fl_photo_folder_unknown'));
+      redirect('/intern/fotos');
+    }
+    // LIKE-Zeichen im Ordnernamen sind Zeichen, keine Platzhalter.
+    $muster = addcslashes($ordner, '\%_') . '/%';
+    $treffer = (int) row('SELECT COUNT(*) n FROM photos WHERE source LIKE ?', [$muster])['n'];
+    q('UPDATE photos SET event_id = ? WHERE source LIKE ?', [$eid ?: null, $muster]);
+    flash(str_replace(['%1', '%2'], [(string) $treffer, $ordner],
+      $eid ? t('fl_photo_folder') : t('fl_photo_folder_none')));
     redirect('/intern/fotos');
   }
   if ($path === '/intern/fotos' && $method === 'POST') {

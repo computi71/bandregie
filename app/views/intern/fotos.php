@@ -39,6 +39,34 @@
   <span class="warn small" data-massempty hidden><?= e(t('fl_photo_mass_nothing')) ?></span>
 </form>
 
+<?php // Ordnerweise zuordnen (#208): Der Herkunftsordner sagt schon, was
+      // zusammengehört — ein Griff fasst den ganzen Auftritt oder einen
+      // Fotografen. Eigenes Formular NEBEN der Massenleiste, nicht darin:
+      // ein Formular im Formular verwirft der Browser (#191). Die Wahl des
+      // Ordners wählt per JavaScript den Termin mit dem nächsten Datum vor;
+      // ohne JavaScript trifft man beide Wahlen von Hand. ?>
+<?php if ($herkunft): ?>
+<form method="post" action="/intern/fotos/ordner" class="card photo-mass"><?= csrf_field() ?>
+  <strong>📂 <?= e(t('photo_folder_assign')) ?></strong>
+  <span class="muted small"><?= e(t('photo_folder_assign_hint')) ?></span>
+  <div class="row-buttons">
+    <select name="folder" data-folderpick aria-label="<?= e(t('photo_folder_assign')) ?>">
+      <option value="">– <?= e(t('photo_folder_pick')) ?> –</option>
+      <?php foreach ($herkunft as $hk): ?>
+        <option value="<?= e($hk['path']) ?>" data-datum="<?= e($hk['date']) ?>"><?= e($hk['path']) ?> (<?= (int) $hk['count'] ?>)</option>
+      <?php endforeach; ?>
+    </select>
+    <select name="event_id" data-foldertarget aria-label="<?= e(t('photo_mass')) ?>">
+      <option value="">– <?= e(t('photo_no_event')) ?> –</option>
+      <?php foreach ($events as $ev): ?>
+        <option value="<?= $ev['id'] ?>" data-date="<?= e(substr((string) $ev['date'], 0, 10)) ?>"><?= fmt_date($ev['date']) ?> · <?= e($ev['title']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button class="btn btn-small"><?= e(t('photo_mass_go')) ?></button>
+  </div>
+</form>
+<?php endif; ?>
+
 <?php foreach ($ordner as $ordSchluessel => $ord): ?>
   <?php // Je Ordner ein eigenes Raster: Das Blättern in der Großansicht
         // bleibt dadurch innerhalb eines Termins — vom letzten Bild eines

@@ -868,6 +868,13 @@ Zeile zwei
   'fl_photo_cap' => 'Der Server nimmt nur %1 Dateien je Absendung — wähle den Rest in einem zweiten Schwung.',
   'fl_photo_too_big_request' => 'Die Absendung war zusammen größer als %1 und wurde vom Server verworfen — es ist nichts angekommen. Nimm weniger Bilder auf einmal.',
   'photo_mass_count' => '%1 angehakt',
+  // Ordnerweise zuordnen (#208)
+  'photo_folder_assign' => 'Ordner zuordnen',
+  'photo_folder_assign_hint' => 'Alle Bilder aus diesem Herkunftsordner — samt Unterordnern — bekommen den Termin.',
+  'photo_folder_pick' => '– Ordner wählen –',
+  'fl_photo_folder' => '%1 Bilder aus „%2" zugeordnet.',
+  'fl_photo_folder_none' => 'Bei %1 Bildern aus „%2" die Zuordnung entfernt.',
+  'fl_photo_folder_unknown' => 'Diesen Ordner gibt es nicht — nichts geändert.',
   'fl_photo_mass' => '%1 Fotos zugeordnet.',
   'fl_photo_mass_none' => 'Bei %1 Fotos die Zuordnung entfernt.',
   'fl_photo_mass_nothing' => 'Kein Foto angehakt — nichts geändert.',
@@ -3873,6 +3880,55 @@ function stack_repair(?int $stapel): void {
   if (row('SELECT 1 FROM photos WHERE id = ?', [$stapel])) return; // Titelbild lebt
   $neu = (int) end($reste)['id'];
   q('UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE stack_id = ?', [$neu, $stapel]);
+}
+
+/**
+ * Die Herkunftsordner der Galerie, auf jeder Ebene, mit Zahl und Datum (#208).
+ *
+ * Aus „Bilder/2026/AKF/Sven Löffler/094A1704.jpg" werden vier wählbare Ordner:
+ * Bilder, …/2026, …/AKF und …/AKF/Sven Löffler — wer den Termin zuordnet, will
+ * mal den ganzen Auftritt und mal nur einen Fotografen fassen. Auch die oberste
+ * Ebene steht dabei: Bei „AKF/Sven/…" IST sie der Auftritt, und eine Regel, die
+ * das erraten wollte, hat sich schon einmal geirrt.
+ *
+ * Das Datum je Ordner ist der häufigste Aufnahmetag darunter — er trägt den
+ * Terminvorschlag, wie die Nähe-Ordnung in #207. Rein rechnend, damit prüfbar.
+ *
+ * @param  list<array{source: ?string, taken_at: ?string}> $fotos
+ * @return list<array{path: string, count: int, date: string}> nach Pfad sortiert
+ */
+function photo_folder_agg(array $fotos): array {
+  $zaehl = [];
+  $tage = [];
+  foreach ($fotos as $f) {
+    $quelle = trim((string) ($f['source'] ?? ''), '/');
+    $schnitt = strrpos($quelle, '/');
+    if ($schnitt === false) continue; // nur ein Dateiname — kein Ordner
+    $ordner = substr($quelle, 0, $schnitt);
+    $tag = substr((string) ($f['taken_at'] ?? ''), 0, 10);
+    // Jede Ebene zählt mit, denn jede ist wählbar.
+    $pfad = '';
+    foreach (explode('/', $ordner) as $teil) {
+      $pfad = $pfad === '' ? $teil : $pfad . '/' . $teil;
+      $zaehl[$pfad] = ($zaehl[$pfad] ?? 0) + 1;
+      if ($tag !== '') $tage[$pfad][$tag] = ($tage[$pfad][$tag] ?? 0) + 1;
+    }
+  }
+  ksort($zaehl);
+  $raus = [];
+  foreach ($zaehl as $pfad => $n) {
+    $beste = '';
+    $besteZahl = 0;
+    foreach ($tage[$pfad] ?? [] as $tag => $wie) {
+      // Bei Gleichstand der jüngere Tag — wie überall in der Nähe-Ordnung.
+      if ($wie > $besteZahl || ($wie === $besteZahl && $tag > $beste)) {
+        $beste = $tag;
+        $besteZahl = $wie;
+      }
+    }
+    $raus[] = ['path' => $pfad, 'count' => $n, 'date' => $beste];
+  }
+  return $raus;
 }
 
 /**

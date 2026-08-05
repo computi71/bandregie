@@ -69,3 +69,31 @@
     });
   });
 })();
+
+// Ordnerwahl schlägt den Termin vor (#208): Der häufigste Aufnahmetag des
+// Ordners steht am Eintrag, die Termine tragen ihr Datum — gewählt wird der
+// nächstgelegene. Nur eine Vorwahl: Abgeschickt wird erst auf Klick, und ohne
+// JavaScript trifft man beide Wahlen von Hand.
+(function () {
+  var ordner = document.querySelector('select[data-folderpick]');
+  var ziel = document.querySelector('select[data-foldertarget]');
+  if (!ordner || !ziel) return;
+  ordner.addEventListener('change', function () {
+    var datum = ordner.selectedOptions[0] && ordner.selectedOptions[0].dataset.datum;
+    if (!datum) return;
+    var anker = Date.parse(datum);
+    if (isNaN(anker)) return;
+    var beste = null, besterAbstand = Infinity;
+    Array.prototype.forEach.call(ziel.options, function (o) {
+      if (!o.dataset.date) return;
+      var t = Date.parse(o.dataset.date);
+      if (isNaN(t)) return;
+      var abstand = Math.abs(t - anker);
+      // Bei Gleichstand der jüngere Termin — wie in der Nähe-Ordnung (#207).
+      if (abstand < besterAbstand || (abstand === besterAbstand && beste && t > Date.parse(beste.dataset.date))) {
+        beste = o; besterAbstand = abstand;
+      }
+    });
+    if (beste) ziel.value = beste.value;
+  });
+})();
