@@ -49,7 +49,7 @@
     <?php else: ?>
       📁 <?= e($ord['title'] ?? '') ?><?php if ($ord['date']): ?> <span class="muted small"><?= e(fmt_date($ord['date'])) ?></span><?php endif; ?>
     <?php endif; ?>
-    <span class="muted small"><?= e(str_replace('%1', (string) count($ord['photos']), t('photo_folder_count'))) ?></span>
+    <span class="muted small"><?= e(str_replace('%1', (string) ($ord['total'] ?? count($ord['photos'])), t('photo_folder_count'))) ?></span>
   </h2>
 <div class="photo-grid large" data-prev="<?= e(t('photo_prev')) ?>" data-next="<?= e(t('photo_next')) ?>" data-show-start="<?= e(t('photo_show_start')) ?>" data-show-stop="<?= e(t('photo_show_stop')) ?>">
   <?php foreach ($ord['photos'] as $photo): ?>
@@ -61,6 +61,12 @@
                aria-label="<?= e(t('photo_mass_pick')) ?>">
       </label>
       <?php if (!empty($photo['is_new'])): ?><span class="photo-new"><?= e(t('photo_new')) ?></span><?php endif; ?>
+      <?php // Serie (#198): Die Kachel steht für alle ihre Bilder. Die Zahl sagt
+            // wie viele, der Klick macht die Serie auf. ?>
+      <?php if (!empty($photo['stack_count'])): ?>
+        <a class="photo-stack" href="/intern/fotos/stapel/<?= (int) $photo['stack_id'] ?>"
+           title="<?= e(str_replace('%1', (string) $photo['stack_count'], t('photo_stack_count'))) ?>">🗇 <?= (int) $photo['stack_count'] ?></a>
+      <?php endif; ?>
       <?php // Kachel lädt die verkleinerte Fassung; das Original zeigt erst die Lupe ?>
       <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"
            alt="<?= e($photo['caption']) ?>" loading="lazy">
@@ -84,6 +90,10 @@
               // Tag der nächste Ort per GPS) ist vorgewählt — zugeordnet wird
               // aber erst auf Klick, nie automatisch. ?>
         <form class="inline photo-event" method="post" action="/intern/fotos/<?= $photo['id'] ?>/event"><?= csrf_field() ?>📅
+          <?php if (!empty($photo['stack_count'])): ?>
+            <input type="hidden" name="whole_stack" value="1">
+            <span class="muted small"><?= e(t('photo_stack_whole')) ?></span>
+          <?php endif; ?>
           <select name="event_id">
             <option value="">– <?= e(t('photo_no_event')) ?> –</option>
             <?php foreach ($events as $ev): ?>

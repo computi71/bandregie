@@ -283,6 +283,18 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 /* Mehrere Fotos auf einen Termin: die Leiste über dem Raster. */
 .photo-mass { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 /* Das Häkchen sitzt an der Kachel und bleibt sichtbar, ohne sie zu verdecken. */
+/* Serien-Abzeichen (#198). Unter dem Häkchen links, denn rechts oben sitzt schon
+   die Neu-Markierung (#195) — zwei Abzeichen auf derselben Ecke verdecken sich.
+   Es ist ein Link und darf deshalb nicht wie eine Beschriftung aussehen. */
+.photo-stack { position: absolute; top: 2.3rem; left: 0.4rem; z-index: 2;
+  background: rgba(0, 0, 0, 0.65); color: #fff; text-decoration: none;
+  font-size: 0.8rem; font-weight: 600; line-height: 1;
+  padding: 5px 8px; border-radius: 999px; }
+.photo-stack:hover, .photo-stack:focus { background: rgba(0, 0, 0, 0.85); }
+/* Das Titelbild einer Serie ist keine Schaltfläche, sieht aber wie eine aus,
+   damit die Reihe nicht springt. */
+.is-cover { cursor: default; opacity: 0.75; }
+
 /* Die Herkunft steht klein und umbrechend unter dem Bild: Pfade sind lang, und
    ein langer Pfad darf die Kachel nicht in die Breite ziehen. */
 .photo-source { display: block; font-size: 0.75rem; color: var(--muted);

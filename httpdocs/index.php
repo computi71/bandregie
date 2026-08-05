@@ -1208,16 +1208,61 @@ if (str_starts_with($path, '/intern')) {
     // Die Ordner nach Termindatum, das Neueste zuerst; die Unzugeordneten bleiben
     // oben, weil sie kein Datum haben und die Arbeit sind.
     uasort($photoOrdner, fn($a, $b) => ($b['date'] ?? '9999') <=> ($a['date'] ?? '9999'));
+    // Serien einklappen (#198): Von einem Stapel bleibt das Titelbild mit der
+    // Zahl daran. Erst nach dem Ordnen, damit die Reihenfolge im Ordner steht.
+    foreach ($photoOrdner as $s => $o) {
+      // Die Zahl in der Überschrift zählt Bilder, nicht Kacheln — sonst würde
+      // ein Ordner mit vierzig Bildern in einer Serie plötzlich „1" behaupten.
+      $photoOrdner[$s]['total'] = count($o['photos']);
+      $photoOrdner[$s]['photos'] = stacks_collapse($o['photos']);
+    }
     view('intern/fotos', ['title' => t('inav_fotos'), 'photos' => $photos, 'events' => $photoEvents,
                           'limits' => upload_limits(), 'ordner' => $photoOrdner]);
+  }
+  // Eine Serie aufmachen (#198). Eigene Seite statt Aufklappen: Die Kacheln
+  // haben je eigene Formulare, und das Blättern in der Großansicht bleibt so
+  // innerhalb der Serie. Ohne JavaScript funktioniert es genauso.
+  if (preg_match('~^/intern/fotos/stapel/(\d+)$~', $path, $m) && $method === 'GET') {
+    $stapel = (int) $m[1];
+    $bilder = rows('SELECT p.*, u.name AS uploader, e.title AS event_title, e.date AS event_date
+                    FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
+                    LEFT JOIN events e ON e.id = p.event_id
+                    WHERE p.stack_id = ? ORDER BY p.taken_at, p.id', [$stapel]);
+    if (!$bilder) { flash(t('photo_stack_gone')); redirect('/intern/fotos'); }
+    view('intern/fotos_stapel', ['title' => str_replace('%1', (string) count($bilder), t('photo_stack_title')),
+                                 'photos' => $bilder, 'stack' => $stapel,
+                                 'events' => rows('SELECT id, title, date FROM events ORDER BY date DESC')]);
+  }
+  // Titelbild einer Serie von Hand wählen. Die Markierung überlebt das
+  // Neurechnen, solange das Bild in seiner Serie bleibt.
+  if (preg_match('~^/intern/fotos/(\d+)/titelbild$~', $path, $m) && $method === 'POST') {
+    $foto = row('SELECT id, stack_id FROM photos WHERE id = ?', [$m[1]]);
+    if ($foto && $foto['stack_id']) {
+      $alt = (int) $foto['stack_id'];
+      $neu = (int) $foto['id'];
+      q('UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE stack_id = ?', [$neu, $alt]);
+      q('UPDATE photos SET stack_cover = 1 WHERE id = ?', [$neu]);
+      flash(t('fl_photo_stack_cover'));
+      redirect('/intern/fotos/stapel/' . $neu);
+    }
+    redirect('/intern/fotos');
   }
   if (preg_match('~^/intern/fotos/(\d+)/event$~', $path, $m) && $method === 'POST') {
     $eid = (int) ($_POST['event_id'] ?? 0);
     // Nur echte Termine zuordnen — was im Formular steht, entscheidet nicht.
     // Eine unbekannte ID gilt als "kein Termin".
     if ($eid && !row('SELECT 1 FROM events WHERE id = ?', [$eid])) $eid = 0;
-    q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
-    redirect('/intern/fotos');
+    // Von der Galerie aus steht eine Kachel für die ganze Serie — dort gilt die
+    // Zuordnung für alle. Auf der Serienseite gilt sie für das einzelne Bild,
+    // sonst könnte man ein verrutschtes Foto nie mehr allein zurechtrücken.
+    $ganze = !empty($_POST['whole_stack']);
+    $stapel = $ganze ? (int) (row('SELECT stack_id FROM photos WHERE id = ?', [$m[1]])['stack_id'] ?? 0) : 0;
+    if ($stapel) {
+      q('UPDATE photos SET event_id = ? WHERE stack_id = ?', [$eid ?: null, $stapel]);
+    } else {
+      q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
+    }
+    back('/intern/fotos');
   }
   // Viele Fotos auf einen Termin. Von einem Auftritt kommen dreißig Bilder, und
   // dreißigmal dieselbe Auswahl zu treffen ist keine Arbeit, die ein Mensch tun
@@ -1231,6 +1276,12 @@ if (str_starts_with($path, '/intern')) {
     if ($ids) {
       $platz = implode(',', array_fill(0, count($ids), '?'));
       $echte = array_column(rows("SELECT id FROM photos WHERE id IN ($platz)", $ids), 'id');
+      // Ein angehaktes Titelbild meint die ganze Serie (#198) — die Kachel steht
+      // in der Galerie für alle ihre Bilder, und nur die eine zuzuordnen wäre
+      // etwas anderes als das, was da zu sehen war.
+      $mitSerie = rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids);
+      $echte = array_values(array_unique(array_merge(
+        array_map('intval', $echte), array_map(fn($r) => (int) $r['id'], $mitSerie))));
       foreach ($echte as $pid) {
         q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, (int) $pid]);
         $wieViele++;
@@ -1253,6 +1304,7 @@ if (str_starts_with($path, '/intern')) {
     // Überspringen war der eigentliche Fehler: Die Seite kam erfolgreich zurück,
     // und dass die Hälfte fehlte, merkte man nur durch Nachzählen (#194).
     $fotoOk = $fotoGross = $fotoKeinBild = $fotoFehler = 0;
+    $fotoQuellen = [];
     $fotoGrenze = upload_limits()['per_file'];
     foreach ($_FILES['photos']['tmp_name'] ?? [] as $i => $tmp) {
       $fehler = (int) ($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_OK);
@@ -1283,11 +1335,15 @@ if (str_starts_with($path, '/intern')) {
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source) VALUES (?,?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
            $exif['taken_at'], $exif['lat'], $exif['lng'], mb_substr($herkunft, 0, 400)]);
+        $fotoQuellen[] = stack_key(['source' => $herkunft, 'uploaded_by' => $me['id']]);
         $fotoOk++;
       } else {
         $fotoFehler++;
       }
     }
+    // Serien der eben berührten Quellen neu rechnen (#198). Nur diese, nicht die
+    // ganze Galerie: Ein Upload sagt nichts über Ordner, die er nicht anfasst.
+    if ($fotoOk) stacks_rebuild(array_values(array_unique($fotoQuellen)));
     // Eine Meldung, die zählt statt zu beruhigen. Der Hinweis auf die Grenze der
     // Dateizahl kommt nur, wenn genau sie erreicht wurde — dann hat der Browser
     // mehr geschickt, als PHP annimmt, und der Rest ist gar nicht angekommen.
@@ -1329,9 +1385,12 @@ if (str_starts_with($path, '/intern')) {
       if ($p) {
         q('DELETE FROM photos WHERE id = ?', [$p['id']]);
         @unlink(UPLOADS_DIR . '/' . $p['filename']);
+        // War das Bild Titelbild einer Serie, zeigten die übrigen sonst auf ein
+        // Titelbild, das es nicht mehr gibt — und wären in der Galerie unsichtbar.
+        stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
       }
     }
-    redirect('/intern/fotos');
+    back('/intern/fotos');
   }
 
   // ---------- Veranstaltungsorte ----------

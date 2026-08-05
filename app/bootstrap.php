@@ -871,6 +871,16 @@ Zeile zwei
   'fl_photo_mass' => '%1 Fotos zugeordnet.',
   'fl_photo_mass_none' => 'Bei %1 Fotos die Zuordnung entfernt.',
   'fl_photo_mass_nothing' => 'Kein Foto angehakt — nichts geändert.',
+  // Stapel für Serien (#198)
+  'photo_stack_count' => '%1 Bilder in dieser Serie',
+  'photo_stack_open' => 'Serie öffnen',
+  'photo_stack_title' => 'Serie mit %1 Bildern',
+  'photo_stack_back' => 'Zurück zur Galerie',
+  'photo_stack_cover' => 'Als Titelbild',
+  'photo_stack_is_cover' => 'Titelbild',
+  'photo_stack_whole' => 'Ganze Serie',
+  'photo_stack_gone' => 'Diese Serie gibt es nicht mehr.',
+  'fl_photo_stack_cover' => 'Titelbild der Serie geändert.',
   // Blättern und Diashow in der Großansicht (#192)
   'photo_prev' => 'Vorheriges Bild',
   'photo_next' => 'Nächstes Bild',
@@ -2151,6 +2161,22 @@ if (!column_exists('users', 'photos_seen_at')) {
 // die Angabe ist verloren und wird nicht erfunden.
 if (!column_exists('photos', 'source')) {
   $db->exec("ALTER TABLE photos ADD COLUMN source VARCHAR(400) NOT NULL DEFAULT ''");
+}
+// Serien zu Stapeln (#198). `stack_id` trägt die ID des Titelbildes — das
+// Titelbild also seine eigene. Eine Spalte statt einer Tabelle reicht, weil ein
+// Bild in genau einem Stapel liegt; `stack_cover` merkt sich nur, dass jemand
+// das Titelbild von Hand gewählt hat, damit das Neurechnen es nicht überschreibt.
+if (!column_exists('photos', 'stack_id')) {
+  $db->exec('ALTER TABLE photos ADD COLUMN stack_id INT NULL,
+                                ADD COLUMN stack_cover TINYINT(1) NOT NULL DEFAULT 0');
+  $db->exec('CREATE INDEX idx_photos_stack ON photos (stack_id)');
+}
+// Der Bestand wird einmal gruppiert; danach macht das jeder Upload für seine
+// eigene Quelle. Ohne diesen Lauf blieben die vorhandenen Bilder für immer
+// einzeln, und das Merkmal täte für die bestehende Galerie nichts.
+if (setting('stacks_built') !== '1') {
+  stacks_rebuild();
+  set_setting('stacks_built', '1');
 }
 
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
@@ -3652,6 +3678,155 @@ function photo_suggest_event(array $photo, array $events): ?array {
     if ($best) return $best;
   }
   return $sameDay[0]; // sonst der erste am Tag — bleibt ein Vorschlag
+}
+
+// Stapel (#198). Eine Serie ist mehr als ein Bild vom selben Augenblick: Ein
+// Fotograf drückt vierzig Mal ab, und vierzig Kacheln begraben jeden anderen
+// Auftritt darunter. Zusammen gehört, was aus derselben Quelle kommt und
+// zeitlich dicht beieinander liegt.
+//
+// Die Lücke gilt von Bild zu Bild, nicht zum Anfang des Stapels — eine Serie
+// über drei Minuten ist eine Serie. Damit eine gleichmäßig durchfotografierte
+// Stunde nicht zu einem Stapel von hundertzwanzig wird, ist die Gesamtspanne
+// begrenzt; danach beginnt ein neuer Stapel.
+const STACK_GAP_SEC = 60;
+const STACK_SPAN_SEC = 300;
+
+/**
+ * Der Schlüssel, der „dieselbe Quelle" bedeutet: der Herkunftsordner, wenn es
+ * einen gibt. Beim Altbestand und bei einzeln gewählten Dateien gibt es keinen
+ * (#197) — dann zählt, wer hochgeladen hat. Zwei Leute, die im selben Moment
+ * dieselbe Bühne fotografieren, kommen so nie in einen Stapel; ihre Bilder sind
+ * zwei Blickwinkel und keine Serie.
+ */
+function stack_key(array $foto): string {
+  $ordner = trim((string) ($foto['source'] ?? ''));
+  $schnitt = strrpos($ordner, '/');
+  $ordner = $schnitt === false ? '' : substr($ordner, 0, $schnitt);
+  return $ordner !== '' ? 'o:' . $ordner : 'u:' . (int) ($foto['uploaded_by'] ?? 0);
+}
+
+/**
+ * Teilt Fotos in Serien. Rein rechnend, ohne Datenbank — deshalb prüfbar.
+ *
+ * @param  array $fotos Zeilen mit id, taken_at, source, uploaded_by
+ * @return array<int, list<int>> Gruppen von mindestens zwei IDs, je Gruppe nach
+ *         Aufnahmezeit aufsteigend. Ein Bild ohne Aufnahmezeit kommt in keine
+ *         Gruppe: Eine unbekannte Zeit ist keine Übereinstimmung, und geraten
+ *         wird hier nicht.
+ */
+function stacks_group(array $fotos): array {
+  $nachQuelle = [];
+  foreach ($fotos as $f) {
+    if (empty($f['taken_at'])) continue;
+    $nachQuelle[stack_key($f)][] = ['id' => (int) $f['id'], 'zeit' => strtotime((string) $f['taken_at'])];
+  }
+  $gruppen = [];
+  foreach ($nachQuelle as $reihe) {
+    usort($reihe, fn($a, $b) => $a['zeit'] <=> $b['zeit']);
+    $offen = [];
+    $letzte = null;
+    $anfang = null;
+    foreach ($reihe as $bild) {
+      $passt = $letzte !== null
+        && $bild['zeit'] - $letzte <= STACK_GAP_SEC
+        && $bild['zeit'] - $anfang <= STACK_SPAN_SEC;
+      if (!$passt) {
+        if (count($offen) > 1) $gruppen[] = array_column($offen, 'id');
+        $offen = [];
+        $anfang = $bild['zeit'];
+      }
+      $offen[] = $bild;
+      $letzte = $bild['zeit'];
+    }
+    if (count($offen) > 1) $gruppen[] = array_column($offen, 'id');
+  }
+  return $gruppen;
+}
+
+/**
+ * Schreibt die Stapel in die Datenbank. `stack_id` trägt die ID des Titelbildes,
+ * das Titelbild also seine eigene — dafür braucht es keine zweite Tabelle.
+ *
+ * Neu gerechnet wird immer über alle Bilder derselben Quelle, sonst hinge ein
+ * nachträglich hochgeladenes Bild neben seiner Serie statt darin. Ein von Hand
+ * gewähltes Titelbild (`stack_cover`) überlebt das Neurechnen, solange es in
+ * seiner Gruppe bleibt; sonst gilt wieder das jüngste Bild.
+ *
+ * @param  list<string>|null $quellen Nur diese Schlüssel neu rechnen, null = alle
+ * @return int Zahl der Bilder in Stapeln
+ */
+function stacks_rebuild(?array $quellen = null): int {
+  $alle = rows('SELECT id, taken_at, source, uploaded_by, stack_id, stack_cover FROM photos');
+  $betroffen = $quellen === null ? null : array_flip($quellen);
+  $fotos = $betroffen === null
+    ? $alle
+    : array_values(array_filter($alle, fn($f) => isset($betroffen[stack_key($f)])));
+  if (!$fotos) return 0;
+
+  $vonHand = [];
+  foreach ($fotos as $f) {
+    if ((int) $f['stack_cover'] === 1) $vonHand[(int) $f['id']] = true;
+  }
+  // Erst alles in den betroffenen Quellen lösen, dann neu setzen: Ein Bild, das
+  // aus seiner Serie herausfällt, behielte sonst die alte Zugehörigkeit.
+  $ids = array_map(fn($f) => (int) $f['id'], $fotos);
+  $platz = implode(',', array_fill(0, count($ids), '?'));
+  q("UPDATE photos SET stack_id = NULL, stack_cover = 0 WHERE id IN ($platz)", $ids);
+
+  $inStapeln = 0;
+  foreach (stacks_group($fotos) as $gruppe) {
+    $gewaehlt = array_values(array_filter($gruppe, fn($id) => isset($vonHand[$id])));
+    // Genau eine Wahl gilt; bei mehreren ist die Serie neu zusammengesetzt
+    // worden und die alte Wahl nicht mehr eindeutig — dann das jüngste Bild.
+    $titel = count($gewaehlt) === 1 ? $gewaehlt[0] : (int) end($gruppe);
+    $p = implode(',', array_fill(0, count($gruppe), '?'));
+    q("UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE id IN ($p)", array_merge([$titel], $gruppe));
+    if (count($gewaehlt) === 1) q('UPDATE photos SET stack_cover = 1 WHERE id = ?', [$titel]);
+    $inStapeln += count($gruppe);
+  }
+  return $inStapeln;
+}
+
+/**
+ * Nach dem Löschen eines Bildes: Wer war in seinem Stapel, und steht der noch?
+ * Ohne das zeigten die Reste auf ein Titelbild, das es nicht mehr gibt — sie
+ * wären dann in der Galerie unsichtbar, weil keine Kachel sie mehr aufmacht.
+ */
+function stack_repair(?int $stapel): void {
+  if (!$stapel) return;
+  $reste = rows('SELECT id FROM photos WHERE stack_id = ? ORDER BY taken_at, id', [$stapel]);
+  // Ein Bild allein ist kein Stapel — dann wieder eine gewöhnliche Kachel. Das
+  // gilt auch, wenn das Titelbild noch lebt: eine Kachel mit „1" wäre albern.
+  if (count($reste) < 2) {
+    q('UPDATE photos SET stack_id = NULL, stack_cover = 0 WHERE stack_id = ?', [$stapel]);
+    return;
+  }
+  if (row('SELECT 1 FROM photos WHERE id = ?', [$stapel])) return; // Titelbild lebt
+  $neu = (int) end($reste)['id'];
+  q('UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE stack_id = ?', [$neu, $stapel]);
+}
+
+/**
+ * Stapel-Kacheln statt aller Bilder: Vom Stapel bleibt das Titelbild, mit der
+ * Zahl seiner Mitglieder daran. Bilder ohne Stapel bleiben, wie sie sind.
+ *
+ * @param  list<array> $fotos
+ * @return list<array> dieselbe Reihenfolge, Titelbilder mit stack_count
+ */
+function stacks_collapse(array $fotos): array {
+  $zahl = [];
+  foreach ($fotos as $f) {
+    if ($f['stack_id']) $zahl[(int) $f['stack_id']] = ($zahl[(int) $f['stack_id']] ?? 0) + 1;
+  }
+  $raus = [];
+  foreach ($fotos as $f) {
+    $stapel = (int) ($f['stack_id'] ?? 0);
+    if ($stapel && $stapel !== (int) $f['id']) continue; // Mitglied, nicht Titelbild
+    $f['stack_count'] = $stapel ? ($zahl[$stapel] ?? 1) : 0;
+    $raus[] = $f;
+  }
+  return $raus;
 }
 
 /**
