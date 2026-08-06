@@ -597,7 +597,6 @@ if (str_starts_with($path, '/intern')) {
       od_refresh_all();
     });
   }
-
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
   // war — sie koennen ohnehin nichts aktualisieren.
@@ -3473,6 +3472,16 @@ if (str_starts_with($path, '/intern')) {
     // In einer Demo mit öffentlichen Zugangsdaten wäre das eine Einladung,
     // sich ein Archiv auf den eigenen Server legen zu lassen.
     deny_in_demo('/intern/einstellungen');
+    // Zwei Formulare, eine Route: das FTP- und das OneDrive-Ziel. Wer das eine
+    // speichert, darf das andere nicht auf „aus" zurückwerfen — deshalb sagt
+    // ein verstecktes Feld, welches Formular gesprochen hat (#50).
+    if (isset($_POST['_od_form'])) {
+      set_setting('backup_od_enabled', isset($_POST['backup_od_enabled']) ? '1' : '0');
+      set_setting('backup_od_dir', trim((string) ($_POST['backup_od_dir'] ?? ''), "/ \t"));
+      set_setting('backup_od_keep', (string) max(1, min(365, (int) ($_POST['backup_od_keep'] ?? 14))));
+      flash(t('fl_settings_saved'));
+      redirect('/intern/einstellungen');
+    }
     set_setting('backup_ftp_enabled', isset($_POST['backup_ftp_enabled']) ? '1' : '0');
     foreach (['backup_ftp_host', 'backup_ftp_user', 'backup_ftp_dir'] as $k) {
       set_setting($k, trim($_POST[$k] ?? ''));
@@ -3492,6 +3501,35 @@ if (str_starts_with($path, '/intern')) {
         : $_POST['backup_ftp_pass']);
     }
     flash(t('fl_bk_targets_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Das OneDrive-Ziel mit einer Probedatei prüfen (#50): schreiben, wieder
+  // löschen — der echte Weg, nicht bloß ein Blick auf die Einstellungen.
+  if ($path === '/intern/backup/od-test' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $probe = tempnam(sys_get_temp_dir(), 'bkod');
+    file_put_contents($probe, 'Bandregie Zieltest ' . date('c'));
+    $cfg = backup_od_config();
+    $ordner = od_enabled() ? od_folder_ensure($cfg['dir']) : '';
+    if ($ordner === '') {
+      flash('OneDrive: Zielordner nicht anlegbar — Verbindung, Schreibrecht?');
+    } else {
+      $s = od_graph_send('POST', '/me/drive/items/' . rawurlencode($ordner) . ':/zieltest.txt:/createUploadSession',
+        ['item' => ['@microsoft.graph.conflictBehavior' => 'replace']]);
+      $url = (string) ($s['data']['uploadUrl'] ?? '');
+      $r = $url === '' ? ['ok' => false, 'message' => 'Upload-Sitzung abgelehnt (HTTP ' . $s['status'] . ')'] : od_upload_put($url, $probe);
+      if ($r['ok']) {
+        // Die Probedatei gleich wieder wegräumen — ihre Kennung steht in der
+        // Antwort des letzten Stücks nicht zwingend, also über den Pfad.
+        $item = od_graph('/me/drive/items/' . rawurlencode($ordner) . ':/zieltest.txt');
+        if (isset($item['id'])) od_graph_send('DELETE', '/me/drive/items/' . rawurlencode((string) $item['id']));
+        flash(t('fl_bk_od_ok'));
+      } else {
+        flash('OneDrive: ' . $r['message']);
+      }
+    }
+    @unlink($probe);
     redirect('/intern/einstellungen');
   }
   if ($path === '/intern/backup/ftp-test' && $method === 'POST') {

@@ -28,11 +28,13 @@ declare(strict_types=1);
  * einer Verbindung wird: Ohne dieses Recht gibt es kein Erneuerungszeichen, und
  * die Verbindung wäre nach einer Stunde wieder tot.
  *
- * Files.Read.All statt ReadWrite: Verknüpfen heißt lesen. Schreiben braucht
- * erst das Sicherungsziel (#50), und ein Recht, das niemand nutzt, ist eines,
- * das im Schadensfall trotzdem gilt.
+ * Files.Read.All fürs Verknüpfen, Files.ReadWrite seit dem Sicherungsziel
+ * (#50): Die Sicherung muss schreiben, löschen (Aufbewahrung) und nichts
+ * weiter. Eine Verbindung von vor dem Schreibrecht bleibt fürs Lesen gültig —
+ * erst das Sichern verlangt, einmal neu zu verbinden, und dabei fragt
+ * Microsoft um die neue Zustimmung.
  */
-const OD_SCOPES = 'offline_access User.Read Files.Read.All';
+const OD_SCOPES = 'offline_access User.Read Files.Read.All Files.ReadWrite';
 
 /** Wie lange vor dem Ablauf schon erneuert wird. Eine Minute Vorlauf genügt. */
 const OD_REFRESH_MARGIN = 60;
@@ -259,6 +261,122 @@ function od_graph(string $pfad): ?array {
     return null;
   }
   return $data;
+}
+
+/**
+ * Ein Graph-Aufruf mit Verb und Rumpf — für alles, was nicht nur liest (#50).
+ * Gibt ['status' => int, 'data' => array] zurück; status 0 heißt: gar keine
+ * Antwort. Der Aufrufer entscheidet, was ein Fehlschlag bedeutet — beim
+ * Sichern ist das eine Meldung, nie ein Abbruch der lokalen Sicherung.
+ */
+function od_graph_send(string $methode, string $pfad, ?array $rumpf = null): array {
+  $zeichen = od_access_token();
+  if ($zeichen === '') return ['status' => 0, 'data' => []];
+  $kopf = "Authorization: Bearer $zeichen
+Accept: application/json
+";
+  if ($rumpf !== null) $kopf .= "Content-Type: application/json
+";
+  $ctx = stream_context_create(['http' => [
+    'method' => $methode,
+    'header' => $kopf,
+    'content' => $rumpf === null ? '' : (string) json_encode($rumpf),
+    'timeout' => 30,
+    'ignore_errors' => true,
+    'follow_location' => 0,
+    'max_redirects' => 0,
+  ]]);
+  $roh = @file_get_contents('https://graph.microsoft.com/v1.0' . $pfad, false, $ctx);
+  $status = 0;
+  foreach ($http_response_header ?? [] as $h) {
+    if (preg_match('~^HTTP/\S+\s+(\d{3})~', $h, $m)) $status = (int) $m[1];
+  }
+  if ($roh === false) return ['status' => 0, 'data' => []];
+  $data = json_decode((string) $roh, true);
+  return ['status' => $status, 'data' => is_array($data) ? $data : []];
+}
+
+/**
+ * Einen Ordnerpfad im Laufwerk sicherstellen und seine Kennung liefern (#50).
+ * Segment für Segment: gibt es ihn, wird er genommen; fehlt er, wird er
+ * angelegt. Leerer Rückgabewert heißt: nicht möglich (kein Recht, kein Netz).
+ */
+function od_folder_ensure(string $pfad): string {
+  $pfad = trim($pfad, "/ 	");
+  if ($pfad === '') return '';
+  $eltern = '';
+  foreach (explode('/', $pfad) as $teil) {
+    $teil = trim($teil);
+    if ($teil === '') continue;
+    // od_children statt einer eigenen Liste: Es blättert — eine Wurzel mit
+    // mehr als 200 Einträgen hätte den Zielordner sonst versteckt, und der
+    // Anlege-Versuch wäre am vorhandenen Namen gescheitert (Review 06.08.).
+    $a = od_children($eltern);
+    if ($a === null) return '';
+    $gefunden = '';
+    foreach ($a['folders'] as $e) {
+      if (mb_strtolower((string) $e['name']) === mb_strtolower($teil)) {
+        $gefunden = (string) $e['id'];
+        break;
+      }
+    }
+    if ($gefunden === '') {
+      $r = od_graph_send('POST',
+        $eltern === '' ? '/me/drive/root/children' : '/me/drive/items/' . rawurlencode($eltern) . '/children',
+        ['name' => $teil, 'folder' => new stdClass(), '@microsoft.graph.conflictBehavior' => 'fail']);
+      $gefunden = (string) ($r['data']['id'] ?? '');
+      if ($gefunden === '') return '';
+    }
+    $eltern = $gefunden;
+  }
+  return $eltern;
+}
+
+/**
+ * Eine Datei in Stücken auf eine Upload-Adresse legen (#50).
+ *
+ * Getrennt vom Anlegen der Sitzung, damit genau dieses Stück — das Stückeln,
+ * die Content-Range-Zeilen, das Ende — gegen einen eigenen Server prüfbar ist.
+ * Die Stückgröße ist ein Vielfaches von 320 KiB, wie Graph es verlangt.
+ *
+ * @return array{ok: bool, message: string}
+ */
+function od_upload_put(string $url, string $datei, int $stueck = 10485760): array {
+  if (!is_file($datei)) return ['ok' => false, 'message' => 'Datei fehlt'];
+  $gesamt = (int) filesize($datei);
+  if ($gesamt <= 0) return ['ok' => false, 'message' => 'Datei leer oder unlesbar'];
+  $h = fopen($datei, 'rb');
+  if (!$h) return ['ok' => false, 'message' => 'Datei nicht lesbar'];
+  $ab = 0;
+  while ($ab < $gesamt) {
+    $teil = fread($h, $stueck);
+    if ($teil === false || $teil === '') { fclose($h); return ['ok' => false, 'message' => 'Lesefehler bei Byte ' . $ab]; }
+    $bis = $ab + strlen($teil) - 1;
+    $ctx = stream_context_create(['http' => [
+      'method' => 'PUT',
+      // Kein Authorization-Kopf: Die Upload-Adresse trägt ihre Berechtigung
+      // selbst, und ein zusätzliches Zeichen lehnt Graph ab.
+      'header' => "Content-Length: " . strlen($teil) . "
+"
+                . "Content-Range: bytes $ab-$bis/$gesamt
+",
+      'content' => $teil,
+      'timeout' => 120,
+      'ignore_errors' => true,
+    ]]);
+    $roh = @file_get_contents($url, false, $ctx);
+    $status = 0;
+    foreach ($http_response_header ?? [] as $zeile) {
+      if (preg_match('~^HTTP/\S+\s+(\d{3})~', $zeile, $m)) $status = (int) $m[1];
+    }
+    if ($roh === false || !in_array($status, [200, 201, 202], true)) {
+      fclose($h);
+      return ['ok' => false, 'message' => "Übertragung abgebrochen bei Byte $ab (HTTP $status)"];
+    }
+    $ab = $bis + 1;
+  }
+  fclose($h);
+  return ['ok' => true, 'message' => ''];
 }
 
 /**

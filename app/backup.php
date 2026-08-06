@@ -23,6 +23,15 @@ const BACKUP_INTERVALS = ['daily' => 86400, 'weekly' => 604800];
  * versiegelt, sobald ein Schlüssel gesetzt ist. Es verlässt den Server nur in
  * Richtung des eingetragenen Hosts und wird nie ins Formular zurückgeschrieben.
  */
+/**
+ * Woran diese Anwendung ihre eigenen Archive erkennt. Eine Stelle für FTP und
+ * OneDrive gemeinsam: Was das Muster nicht erfasst, bleibt auf dem Ziel für
+ * immer liegen — das war beim Zweitziel schon einmal passiert (.enc).
+ */
+function backup_archive_pattern(): string {
+  return '~^band(?:regie|roadie)-\d{4}-\d{2}-\d{2}-\d{6}(?:-\d+)?\.tar\.gz(?:\.enc)?$~';
+}
+
 function backup_ftp_config(): array {
   return [
     'enabled' => setting('backup_ftp_enabled') === '1',
@@ -296,9 +305,13 @@ function backup_run(string $trigger = 'auto'): array {
     $ftpEnabled = backup_ftp_config()['enabled'];
     $ftp = backup_ftp_upload($target);
     if ($ftp['message'] !== '') $notes[] = $ftp['message'];
-    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind, ftp_ok) VALUES (?,?,?,?,?,?)',
+    $odEnabled = backup_od_config()['enabled'];
+    $od = backup_od_upload($target);
+    if ($od['message'] !== '') $notes[] = $od['message'];
+    q('INSERT INTO backup_runs (filename, size_bytes, status, message, trigger_kind, ftp_ok, od_ok) VALUES (?,?,?,?,?,?,?)',
       [$name, (int) filesize($target), 'ok', implode(' · ', $notes), $trigger,
-       $ftpEnabled ? ($ftp['ok'] ? 1 : 0) : null]);
+       $ftpEnabled ? ($ftp['ok'] ? 1 : 0) : null,
+       $odEnabled ? ($od['ok'] ? 1 : 0) : null]);
     backup_prune();
   } catch (Throwable $e) {
     @unlink($target . '.part');
@@ -356,7 +369,7 @@ function backup_ftp_upload(string $file): array {
   $mine = [];
   foreach ($remote as $entry) {
     $base = basename($entry);
-    if (preg_match('~^band(?:regie|roadie)-\d{4}-\d{2}-\d{2}-\d{6}(?:-\d+)?\.tar\.gz(?:\.enc)?$~', $base)) {
+    if (preg_match(backup_archive_pattern(), $base)) {
       $mine[] = $base;
     }
   }
@@ -376,6 +389,72 @@ function backup_ftp_upload(string $file): array {
   }
   @ftp_close($conn);
   return ['ok' => true, 'message' => 'FTP: übertragen' . ($dropped ? ", $dropped alte entfernt" : '')];
+}
+
+/** Das OneDrive-Ziel (#50): an, Ordnerpfad im Laufwerk, Aufbewahrungszahl. */
+function backup_od_config(): array {
+  return [
+    'enabled' => setting('backup_od_enabled') === '1',
+    'dir'     => trim(setting('backup_od_dir') !== '' ? setting('backup_od_dir') : 'Sicherungen', "/ \t"),
+    'keep'    => max(1, (int) (setting('backup_od_keep') ?: 14)),
+  ];
+}
+
+/**
+ * Ein fertiges Archiv ins OneDrive der Band legen und dort aufräumen (#50).
+ *
+ * Dieselben Regeln wie beim FTP-Ziel: Übertragen wird nur ein vollständiges
+ * Archiv, ein Fehlschlag lässt die lokale Sicherung gültig und wird nur
+ * vermerkt. Die Upload-Sitzung von Graph macht die Datei erst mit dem letzten
+ * Stück sichtbar — ein abgebrochener Lauf hinterlässt dort kein halbes Archiv
+ * mit gültigem Namen.
+ *
+ * @return array{ok: bool, message: string}
+ */
+function backup_od_upload(string $file): array {
+  $cfg = backup_od_config();
+  if (!$cfg['enabled']) return ['ok' => true, 'message' => ''];
+  if (!od_enabled() || od_access_token() === '') {
+    return ['ok' => false, 'message' => 'OneDrive: keine Verbindung'];
+  }
+  $ordner = od_folder_ensure($cfg['dir']);
+  if ($ordner === '') {
+    // Der häufigste Grund ist das fehlende Schreibrecht einer Verbindung von
+    // vor dem Sicherungsziel — die Meldung sagt gleich, was zu tun ist.
+    return ['ok' => false, 'message' => 'OneDrive: Zielordner nicht anlegbar — fehlt das Schreibrecht? Verbindung einmal lösen und neu verbinden.'];
+  }
+  $name = basename($file);
+  $sitzung = od_graph_send('POST',
+    '/me/drive/items/' . rawurlencode($ordner) . ':/' . rawurlencode($name) . ':/createUploadSession',
+    ['item' => ['@microsoft.graph.conflictBehavior' => 'replace', 'name' => $name]]);
+  $url = (string) ($sitzung['data']['uploadUrl'] ?? '');
+  if ($url === '') {
+    $grund = (string) ($sitzung['data']['error']['message'] ?? ('HTTP ' . $sitzung['status']));
+    return ['ok' => false, 'message' => 'OneDrive: Upload-Sitzung abgelehnt (' . mb_substr($grund, 0, 120) . ')'];
+  }
+  $put = od_upload_put($url, $file);
+  if (!$put['ok']) return ['ok' => false, 'message' => 'OneDrive: ' . $put['message']];
+
+  // Aufbewahrung nach der eigenen Zahl dieses Ziels — Sortierung nach dem
+  // Zeitstempel im Namen, aus demselben Grund wie beim FTP-Ziel.
+  $dropped = 0;
+  $inhalt = od_children($ordner);
+  if ($inhalt !== null) {
+    $meine = [];
+    foreach ($inhalt['files'] as $f) {
+      if (preg_match(backup_archive_pattern(), (string) $f['name'])) $meine[] = $f;
+    }
+    usort($meine, function (array $a, array $b): int {
+      preg_match('~(\d{4}-\d{2}-\d{2}-\d{6})~', (string) $a['name'], $ma);
+      preg_match('~(\d{4}-\d{2}-\d{2}-\d{6})~', (string) $b['name'], $mb);
+      return strcmp($mb[1] ?? '', $ma[1] ?? '');
+    });
+    foreach (array_slice($meine, $cfg['keep']) as $alt) {
+      $r = od_graph_send('DELETE', '/me/drive/items/' . rawurlencode((string) $alt['id']));
+      if (in_array($r['status'], [204, 200], true)) $dropped++;
+    }
+  }
+  return ['ok' => true, 'message' => 'OneDrive: übertragen' . ($dropped ? ", $dropped alte entfernt" : '')];
 }
 
 /**

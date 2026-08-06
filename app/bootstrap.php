@@ -762,6 +762,14 @@ const UI_STRINGS = [
   'bk_ftp_dir' => 'Verzeichnis', 'bk_ftp_tls' => 'Verschlüsselt (FTPS)',
   'bk_ftp_passive' => 'Passiver Modus', 'bk_ftp_keep' => 'Wie viele dort aufheben',
   'bk_ftp_test' => 'Verbindung prüfen',
+  // OneDrive als Sicherungsziel (#50)
+  'bk_warn_od' => 'Die letzte Sicherung kam nicht ins OneDrive:',
+  'bk_od_enabled' => 'Sicherung zusätzlich ins OneDrive der Band legen',
+  'bk_od_dir' => 'Ordner im OneDrive',
+  'bk_od_keep' => 'Aufbewahren (Anzahl)',
+  'bk_od_note' => 'Braucht die eingeschaltete OneDrive-Verbindung und deren Schreibrecht. Eine Verbindung aus der Zeit vor dem Sicherungsziel einmal lösen und neu verbinden — Microsoft fragt dann um die neue Zustimmung.',
+  'bk_od_test' => 'OneDrive-Ziel testen',
+  'fl_bk_od_ok' => 'OneDrive-Ziel funktioniert: Probedatei geschrieben und wieder entfernt.',
   'bk_ftp_note' => 'Das Passwort muss im Klartext gespeichert werden, sonst kann sich die Sicherung nicht anmelden. Es verlässt den Server nur in Richtung des eingetragenen Servers.',
   'bk_warn_ftp' => 'Die Sicherung liegt hier, konnte aber nicht auf den FTP-Server übertragen werden.',
   // Wiederherstellen
@@ -777,7 +785,6 @@ const UI_STRINGS = [
   'fl_bk_upload_failed' => 'Die Datei ließ sich nicht ablegen — bitte Rechte und freien Platz im Sicherungsverzeichnis prüfen. Es wurde nichts eingetragen.',
   'fl_bk_missing' => 'Diese Sicherung liegt nicht mehr auf dem Server.',
   'bk_target_onedrive' => 'OneDrive',
-  'bk_onedrive_pending' => 'Braucht eine Anmeldung bei Microsoft. Sobald die Verbindung für Dateien und Fotos steht, kann die Sicherung sie mitbenutzen.',
   'fl_bk_targets_saved' => 'Ziele gespeichert.',
   'fl_bk_done' => 'Sicherung erstellt.', 'fl_bk_failed' => 'Sicherung fehlgeschlagen:',
   'fl_bk_saved' => 'Einstellungen zur Sicherung gespeichert.', 'fl_bk_deleted' => 'Sicherung gelöscht.',
@@ -2098,6 +2105,11 @@ foreach ([
 // Ergebnis des Zweitziels je Lauf: NULL = nicht eingerichtet, 0 = fehlgeschlagen
 if (!column_exists('backup_runs', 'ftp_ok')) {
   $db->exec('ALTER TABLE backup_runs ADD COLUMN ftp_ok TINYINT(1) NULL');
+}
+// Das OneDrive-Ziel vermerkt seinen Erfolg getrennt (#50), wie das FTP-Ziel:
+// NULL heißt „war nicht eingerichtet", 0 heißt „eingerichtet und gescheitert".
+if (!column_exists('backup_runs', 'od_ok')) {
+  $db->exec('ALTER TABLE backup_runs ADD COLUMN od_ok TINYINT(1) NULL');
 }
 // Woher eine Buchung stammt: von Hand oder aus einem Dauerauftrag. Ohne den
 // Verweis ließe sich ein falscher Betrag später nicht zurückverfolgen.
