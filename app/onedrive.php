@@ -446,7 +446,12 @@ function od_reconcile(array $bekannt, array $frisch, string $jetzt): array {
     // jede Zeile neu und der Zwischenstand sagt nichts mehr über Bewegung.
     if ((int) $alt['size'] !== (int) $f['size']
         || (string) $alt['name'] !== (string) $f['name']
-        || od_zeit((string) $f['modified']) !== ($alt['modified_at'] ?? null)) {
+        || od_zeit((string) $f['modified']) !== ($alt['modified_at'] ?? null)
+        // Auch der Weg zählt (#213): Wird ein Ordner umbenannt, behalten seine
+        // Dateien Kennung, Name und Änderungszeit — nur der Weg ist neu. Ohne
+        // diesen Vergleich stünde der alte Weg fest, bis sich die Datei selbst
+        // ändert, und der Weg ist die Auskunft, um die es geht.
+        || (string) ($alt['rel_path'] ?? '') !== (string) ($f['rel_path'] ?? '')) {
       $geaendert[] = $f;
     }
   }
