@@ -231,7 +231,10 @@ shared through messengers or social platforms have already lost it.
 **The photo library** organises itself around three facts a picture brings
 along: its origin path (folder = gig, subfolder = photographer), its capture
 date, and its content checksum. Pictures from one source taken within moments
-of each other collapse into a single burst tile carrying their count; a whole
+of each other collapse into a single burst tile carrying their count — same
+folder and same camera, because one photographer's folder can hold several
+cameras, and interleaved viewpoints are not a burst. Bursts can be switched
+off in the settings; switching back on regroups everything. A whole
 origin folder can be assigned to an event in one step. Instead of deleting
 there is an archive — out of every gallery, including the public page and
 direct file access, but never destroyed. Tags, press picks (fit to hand out —

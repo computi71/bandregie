@@ -914,6 +914,9 @@ Zeile zwei
   'fl_photo_mass' => '%1 Fotos zugeordnet.',
   'fl_photo_mass_none' => 'Bei %1 Fotos die Zuordnung entfernt.',
   'fl_photo_mass_nothing' => 'Kein Foto angehakt — nichts geändert.',
+  // Serien abschaltbar (#212)
+  'set_stacks' => 'Serien: Bilder aus derselben Quelle, die dicht hintereinander aufgenommen wurden, teilen sich eine Kachel',
+  'set_stacks_hint' => 'Abgeschaltet zeigt die Galerie jedes Bild einzeln. Die Serien gehen dabei nicht verloren — beim Wiedereinschalten gruppiert sich alles neu.',
   // Stapel für Serien (#198)
   'photo_stack_count' => '%1 Bilder in dieser Serie',
   'photo_stack_open' => 'Serie öffnen',
@@ -3863,6 +3866,16 @@ const STACK_GAP_SEC = 60;
 const STACK_SPAN_SEC = 300;
 
 /**
+ * Sind Serien gewünscht? Ein Schalter in den Einstellungen (#212) — manche
+ * wollen jedes Bild als eigene Kachel sehen, und das ist keine falsche
+ * Meinung, sondern eine andere. An ist die Vorgabe, weil fünfhundert Kacheln
+ * ohne Serien niemandem helfen, der sie nicht ausdrücklich will.
+ */
+function stacks_enabled(): bool {
+  return setting('stacks_enabled', '1') === '1';
+}
+
+/**
  * Der Schlüssel, der „dieselbe Quelle" bedeutet: der Herkunftsordner, wenn es
  * einen gibt. Beim Altbestand und bei einzeln gewählten Dateien gibt es keinen
  * (#197) — dann zählt, wer hochgeladen hat. Zwei Leute, die im selben Moment
@@ -4142,7 +4155,7 @@ function photo_archive(int $id, bool $hinein): bool {
     stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
   } else {
     q('UPDATE photos SET archived_at = NULL WHERE id = ?', [$id]);
-    stacks_rebuild([stack_key($p)]);
+    if (stacks_enabled()) stacks_rebuild([stack_key($p)]);
   }
   return true;
 }

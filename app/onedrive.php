@@ -664,7 +664,7 @@ function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
   }
   // Serien erst danach, und nur einmal: Jedes Bild einzeln zu gruppieren wäre
   // dieselbe Rechnung sechzigmal (#198).
-  if ($getan) stacks_rebuild();
+  if ($getan && stacks_enabled()) stacks_rebuild();
   // Was nur vermerkt wurde, ist erledigt und nicht mehr offen — sonst behauptete
   // die Meldung eine Restarbeit, die es nicht gibt.
   return ['done' => $getan, 'left' => max(0, count($offen) - $getan - $misslungen - $vermerkt),

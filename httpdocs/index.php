@@ -589,6 +589,7 @@ if (str_starts_with($path, '/intern')) {
       backup_run('auto');
     });
   }
+
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
   // war — sie koennen ohnehin nichts aktualisieren.
@@ -1270,7 +1271,9 @@ if (str_starts_with($path, '/intern')) {
       $photoOrdner[$s]['total'] = count($o['photos']);
       // Gefiltert wird nicht eingeklappt: Der Treffer kann mitten in einer
       // Serie liegen, und eine Kachel, die ihn verdeckt, wäre kein Treffer.
-      $photoOrdner[$s]['photos'] = $gefiltert ? $o['photos'] : stacks_collapse($o['photos']);
+      // Abgeschaltete Serien (#212) klappen nie ein — dann ist jedes Bild
+      // seine eigene Kachel, und die Abzeichen entstehen gar nicht erst.
+      $photoOrdner[$s]['photos'] = ($gefiltert || !stacks_enabled()) ? $o['photos'] : stacks_collapse($o['photos']);
     }
     view('intern/fotos', ['title' => $imArchiv ? t('photo_archive_title') : t('inav_fotos'),
                           'photos' => $photos, 'events' => $photoEvents,
@@ -1286,6 +1289,7 @@ if (str_starts_with($path, '/intern')) {
   // haben je eigene Formulare, und das Blättern in der Großansicht bleibt so
   // innerhalb der Serie. Ohne JavaScript funktioniert es genauso.
   if (preg_match('~^/intern/fotos/stapel/(\d+)$~', $path, $m) && $method === 'GET') {
+    if (!stacks_enabled()) redirect('/intern/fotos');
     $stapel = (int) $m[1];
     $bilder = rows('SELECT p.*, u.name AS uploader, e.title AS event_title, e.date AS event_date
                     FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
@@ -1299,6 +1303,7 @@ if (str_starts_with($path, '/intern')) {
   // Titelbild einer Serie von Hand wählen. Die Markierung überlebt das
   // Neurechnen, solange das Bild in seiner Serie bleibt.
   if (preg_match('~^/intern/fotos/(\d+)/titelbild$~', $path, $m) && $method === 'POST') {
+    if (!stacks_enabled()) redirect('/intern/fotos');
     $foto = row('SELECT id, stack_id FROM photos WHERE id = ?', [$m[1]]);
     if ($foto && $foto['stack_id']) {
       $alt = (int) $foto['stack_id'];
@@ -1334,7 +1339,9 @@ if (str_starts_with($path, '/intern')) {
       $platz = implode(',', array_fill(0, count($ids), '?'));
       $alle = array_unique(array_merge(
         array_map(fn($r) => (int) $r['id'], rows("SELECT id FROM photos WHERE id IN ($platz)", $ids)),
-        array_map(fn($r) => (int) $r['id'], rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids))));
+        stacks_enabled()
+          ? array_map(fn($r) => (int) $r['id'], rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids))
+          : []));
       foreach ($alle as $pid) {
         if ($weg) q('DELETE FROM photo_tags WHERE photo_id = ? AND tag = ?', [$pid, $wort]);
         else q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$pid, $wort]);
@@ -1377,7 +1384,7 @@ if (str_starts_with($path, '/intern')) {
       back('/intern/fotos?archiv=1');
     }
     if ($foto) {
-      $glieder = (!empty($_POST['whole_stack']) && $foto['stack_id'])
+      $glieder = (!empty($_POST['whole_stack']) && stacks_enabled() && $foto['stack_id'])
         ? array_map(fn($r) => (int) $r['id'], rows('SELECT id FROM photos WHERE stack_id = ?', [(int) $foto['stack_id']]))
         : [(int) $foto['id']];
       foreach ($glieder as $gid) photo_archive($gid, true);
@@ -1394,8 +1401,8 @@ if (str_starts_with($path, '/intern')) {
       $platz = implode(',', array_fill(0, count($ids), '?'));
       $echte = array_map(fn($r) => (int) $r['id'],
         rows("SELECT id FROM photos WHERE id IN ($platz)", $ids));
-      $serie = array_map(fn($r) => (int) $r['id'],
-        rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids));
+      $serie = stacks_enabled() ? array_map(fn($r) => (int) $r['id'],
+        rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids)) : [];
       foreach (array_unique(array_merge($echte, $serie)) as $pid) {
         if (photo_archive($pid, true)) $zahl++;
       }
@@ -1411,7 +1418,7 @@ if (str_starts_with($path, '/intern')) {
     // Von der Galerie aus steht eine Kachel für die ganze Serie — dort gilt die
     // Zuordnung für alle. Auf der Serienseite gilt sie für das einzelne Bild,
     // sonst könnte man ein verrutschtes Foto nie mehr allein zurechtrücken.
-    $ganze = !empty($_POST['whole_stack']);
+    $ganze = !empty($_POST['whole_stack']) && stacks_enabled();
     $stapel = $ganze ? (int) (row('SELECT stack_id FROM photos WHERE id = ?', [$m[1]])['stack_id'] ?? 0) : 0;
     if ($stapel) {
       q('UPDATE photos SET event_id = ? WHERE stack_id = ?', [$eid ?: null, $stapel]);
@@ -1435,7 +1442,7 @@ if (str_starts_with($path, '/intern')) {
       // Ein angehaktes Titelbild meint die ganze Serie (#198) — die Kachel steht
       // in der Galerie für alle ihre Bilder, und nur die eine zuzuordnen wäre
       // etwas anderes als das, was da zu sehen war.
-      $mitSerie = rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids);
+      $mitSerie = stacks_enabled() ? rows("SELECT id FROM photos WHERE stack_id IN ($platz)", $ids) : [];
       $echte = array_values(array_unique(array_merge(
         array_map('intval', $echte), array_map(fn($r) => (int) $r['id'], $mitSerie))));
       foreach ($echte as $pid) {
@@ -1526,7 +1533,7 @@ if (str_starts_with($path, '/intern')) {
     }
     // Serien der eben berührten Quellen neu rechnen (#198). Nur diese, nicht die
     // ganze Galerie: Ein Upload sagt nichts über Ordner, die er nicht anfasst.
-    if ($fotoOk) stacks_rebuild(array_values(array_unique($fotoQuellen)));
+    if ($fotoOk && stacks_enabled()) stacks_rebuild(array_values(array_unique($fotoQuellen)));
     // Eine Meldung, die zählt statt zu beruhigen. Der Hinweis auf die Grenze der
     // Dateizahl kommt nur, wenn genau sie erreicht wurde — dann hat der Browser
     // mehr geschickt, als PHP annimmt, und der Rest ist gar nicht angekommen.
@@ -3277,6 +3284,21 @@ if (str_starts_with($path, '/intern')) {
       'contentAll' => $contentAll,
       'backupRuns' => rows('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 12'),
     ]);
+  }
+  // Serien an oder aus (#212). Beim Einschalten wird sofort neu gruppiert —
+  // sonst zeigte die Galerie den Stand von vor dem Abschalten, und der kann
+  // Wochen alt sein.
+  if ($path === '/intern/einstellungen/serien' && $method === 'POST') {
+    require_admin();
+    // In der Demo gesperrt wie jede dauerhafte Einstellung: Dort ist jeder
+    // Besucher Admin, und der Nächste fände eine Galerie vor, die ein Fremder
+    // umgestellt hat (Review 06.08.).
+    deny_in_demo('/intern/einstellungen');
+    $an = isset($_POST['stacks_enabled']);
+    set_setting('stacks_enabled', $an ? '1' : '0');
+    if ($an) stacks_rebuild();
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen' && $method === 'POST') {
     require_admin();
