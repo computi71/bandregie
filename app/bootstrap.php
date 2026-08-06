@@ -2194,6 +2194,23 @@ if (!column_exists('songs', 'composer')) {
  */
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
+// Diese zwei stehen HIER und nicht bei ihren Funktionen: Der einmalige
+// Serien-Aufbau läuft als Migration mitten in dieser Datei, und PHP zieht
+// Funktionen vor, Konstanten nicht. Standen sie hinter der Migration, starb
+// jeder Seitenaufruf mit „Undefined constant" — Produktion, 06.08.2026, und
+// aufgefallen erst, als zum ersten Mal Bilder MIT Aufnahmedatum da waren.
+// Stapel (#198). Eine Serie ist mehr als ein Bild vom selben Augenblick: Ein
+// Fotograf drückt vierzig Mal ab, und vierzig Kacheln begraben jeden anderen
+// Auftritt darunter. Zusammen gehört, was aus derselben Quelle kommt und
+// zeitlich dicht beieinander liegt.
+//
+// Die Lücke gilt von Bild zu Bild, nicht zum Anfang des Stapels — eine Serie
+// über drei Minuten ist eine Serie. Damit eine gleichmäßig durchfotografierte
+// Stunde nicht zu einem Stapel von hundertzwanzig wird, ist die Gesamtspanne
+// begrenzt; danach beginnt ein neuer Stapel.
+const STACK_GAP_SEC = 60;
+const STACK_SPAN_SEC = 300;
+
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
 const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos'];
 const PUSH_NICHTS = '-';
@@ -3871,17 +3888,6 @@ function events_by_closeness(array $events, ?string $takenAt): array {
   return $events;
 }
 
-// Stapel (#198). Eine Serie ist mehr als ein Bild vom selben Augenblick: Ein
-// Fotograf drückt vierzig Mal ab, und vierzig Kacheln begraben jeden anderen
-// Auftritt darunter. Zusammen gehört, was aus derselben Quelle kommt und
-// zeitlich dicht beieinander liegt.
-//
-// Die Lücke gilt von Bild zu Bild, nicht zum Anfang des Stapels — eine Serie
-// über drei Minuten ist eine Serie. Damit eine gleichmäßig durchfotografierte
-// Stunde nicht zu einem Stapel von hundertzwanzig wird, ist die Gesamtspanne
-// begrenzt; danach beginnt ein neuer Stapel.
-const STACK_GAP_SEC = 60;
-const STACK_SPAN_SEC = 300;
 
 /**
  * Sind Serien gewünscht? Ein Schalter in den Einstellungen (#212) — manche
