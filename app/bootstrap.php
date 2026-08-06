@@ -381,7 +381,7 @@ const UI_STRINGS = [
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult. Der Bühnenplan ist maßstäblich: Vorgabe sind 8 × 6 m, und alles mit echtem Grundriss — Podeste, Verstärker, Monitore, Boxen — wird in seinem Maß gezeichnet. Daran sieht ein Veranstalter, ob die Band auf seine Bühne passt. „Aus der Mitgliederliste erzeugen" stellt eine Vorlage auf: Schlagzeug hinten Mitte auf einem Podest von 3 × 2 m, Bass hinten links, Gesang vorne, dazu Strom und Stagebox. Danach lässt sich alles verschieben oder über die Zahlenfelder eintragen. Wer im Profil „Ich stehe auf der Bühne" aushakt, wird nicht aufgestellt — dort gehört die Technik hin. Welche Figur ein Mitglied im Plan bekommt, wählt es selbst im Profil; mit „Mein Foto" steht dort das Profilbild.',
-  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Bilder aus derselben Quelle, die dicht beieinander aufgenommen wurden, teilen sich als Serie eine Kachel mit Zahl. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme.',
+  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Die Galerie ordnet nach Jahr, Termin und Fotograf — wie der verknüpfte Ordner. Wer mag, schaltet in den Einstellungen Serien ein: Dann teilen sich Bilder aus derselben Quelle, die dicht beieinander aufgenommen wurden, eine Kachel mit Zahl. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
   'help_mitglieder' => 'Wer zur Band gehört, mit Kontaktdaten und Rollen.',
@@ -933,7 +933,7 @@ Zeile zwei
   'fl_photo_mass_nothing' => 'Kein Foto angehakt — nichts geändert.',
   // Serien abschaltbar (#212)
   'set_stacks' => 'Serien: Bilder aus derselben Quelle, die dicht hintereinander aufgenommen wurden, teilen sich eine Kachel',
-  'set_stacks_hint' => 'Abgeschaltet zeigt die Galerie jedes Bild einzeln. Die Serien gehen dabei nicht verloren — beim Wiedereinschalten gruppiert sich alles neu.',
+  'set_stacks_hint' => 'Standardmäßig aus: Die Galerie zeigt jedes Bild einzeln, geordnet nach Jahr, Termin und Fotograf. Eingeschaltet teilen sich Bilder aus derselben Quelle, die dicht hintereinander aufgenommen wurden, eine Kachel — beim Einschalten wird sofort gruppiert.',
   // Stapel für Serien (#198)
   'photo_stack_count' => '%1 Bilder in dieser Serie',
   'photo_stack_open' => 'Serie öffnen',
@@ -2640,9 +2640,16 @@ if (setting('help_texts_2026_08') !== '1') {
 // ihn nie, weil das Neueinspielen alle Seeds der Reihe nach laufen lässt und
 // der früheste gewinnt. Genau daran ist der erste Versuch (Wächter …08b)
 // gescheitert: weggeräumt, und Seed 16 setzte den alten Text zurück.
-if (setting('help_fotos_2026_08c') !== '1') {
+// Der Hinweis am Serien-Schalter beschrieb „an" als Vorgabe (#217). Text im
+// Ursprungs-Seed ersetzt; die Live-Zeilen müssen einmal weg, sonst gewinnt der
+// alte Stand beim Neueinspielen.
+if (setting('stacks_hint_default_off') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'set_stacks_hint'");
+  set_setting('stacks_hint_default_off', '1');
+}
+if (setting('help_fotos_2026_08d') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_fotos'");
-  set_setting('help_fotos_2026_08c', '1');
+  set_setting('help_fotos_2026_08d', '1');
 }
 if (setting('push_help_fixed') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'app_install_push'
@@ -3896,11 +3903,15 @@ function events_by_closeness(array $events, ?string $takenAt): array {
 /**
  * Sind Serien gewünscht? Ein Schalter in den Einstellungen (#212) — manche
  * wollen jedes Bild als eigene Kachel sehen, und das ist keine falsche
- * Meinung, sondern eine andere. An ist die Vorgabe, weil fünfhundert Kacheln
- * ohne Serien niemandem helfen, der sie nicht ausdrücklich will.
+ * Meinung, sondern eine andere.
+ *
+ * Aus ist die Vorgabe (#217). Anfangs war es an, weil fünfhundert Kacheln
+ * unübersichtlich sind — das Problem löst inzwischen der Ordnerbaum (#216),
+ * und eine Kachel, die für fünfunddreißig Bilder steht, verbirgt mehr, als
+ * sie ordnet. Wer Serien will, schaltet sie ein; dabei wird sofort gruppiert.
  */
 function stacks_enabled(): bool {
-  return setting('stacks_enabled', '1') === '1';
+  return setting('stacks_enabled', '0') === '1';
 }
 
 /**
