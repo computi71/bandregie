@@ -3576,6 +3576,10 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/einstellungen/branding' && $method === 'POST') {
     require_admin();
+    // In der Demo gesperrt (#223): Das Bild steht auf der öffentlichen Seite,
+    // und die ist dort eine Domain dieses Projekts. Ein falscher Bandname ist
+    // harmlos, ein fremdes Bild vor dem eigenen Namen nicht.
+    deny_in_demo('/intern/einstellungen');
     foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file'] as $field => $key) {
       if (upload_rejected((int) ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
       $tmp = $_FILES[$field]['tmp_name'] ?? '';
@@ -3597,6 +3601,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/einstellungen/branding/(logo|background|favicon)/delete$~', $path, $m) && $method === 'POST') {
     require_admin();
+    deny_in_demo('/intern/einstellungen');
     $key = $m[1] . '_file';
     $old = setting($key);
     if ($old) @unlink(UPLOADS_DIR . '/' . $old);
