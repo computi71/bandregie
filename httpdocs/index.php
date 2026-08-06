@@ -2367,14 +2367,24 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_eq_booked_already'));
       redirect('/intern/equipment');
     }
-    eq_book($eq, $me, $payer, $m[2], $cents, $date);
+    // Ohne Erlös keine Zeile im Kassenbuch (#224): Ein verschenktes oder
+    // verschrottetes Gerät ist ein Abgang, aber keine Einnahme, und „0,00 €"
+    // ist keine Buchung. Der Kauf verweigert ohne Preis, der Abgang buchte
+    // stattdessen stillschweigend Null — wer den Verkaufspreis vergaß, sah
+    // eine Erfolgsmeldung und hatte das Geld nicht im Buch.
+    $gebucht = $cents > 0;
+    if ($gebucht) eq_book($eq, $me, $payer, $m[2], $cents, $date);
     // Ein Abgang beendet das Gerät im Bestand — die Zeile bleibt als
     // Geschichte stehen, taucht aber auf keiner Packliste mehr auf.
     if ($m[2] === 'abgang') {
       q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
     }
-    flash(t($m[2] === 'kauf' ? 'fl_eq_booked' : 'fl_eq_disposed'));
+    // Die Meldung sagt, was wirklich geschah — sonst merkt niemand, dass keine
+    // Einnahme entstanden ist.
+    flash($m[2] === 'kauf' ? t('fl_eq_booked')
+      : ($gebucht ? str_replace('%1', fmt_money($cents), t('fl_eq_disposed_booked'))
+                  : t('fl_eq_disposed_free')));
     redirect('/intern/equipment');
   }
   // Ein Abgang, der ein Versehen war: Kennzeichen weg, Buchung bleibt stehen.
