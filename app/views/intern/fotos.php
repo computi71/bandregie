@@ -179,12 +179,6 @@
                 <?php // Die Suche sieht auch ins Archiv (#204) — dann muss dranstehen,
                       // warum dieses Bild in der Galerie fehlt. ?>
                 <?php if (!$im_archiv && $photo['archived_at'] !== null): ?><span class="photo-new photo-archived">📦 <?= e(t('photo_archived_badge')) ?></span><?php endif; ?>
-                <?php // Serie (#198): Die Kachel steht für alle ihre Bilder. Die Zahl sagt
-                      // wie viele, der Klick macht die Serie auf. ?>
-                <?php if (!empty($photo['stack_count'])): ?>
-                  <a class="photo-stack" href="/intern/fotos/stapel/<?= (int) $photo['stack_id'] ?>"
-                     title="<?= e(str_replace('%1', (string) $photo['stack_count'], t('photo_stack_count'))) ?>">🗇 <?= (int) $photo['stack_count'] ?></a>
-                <?php endif; ?>
                 <?php // Kachel lädt die verkleinerte Fassung; das Original zeigt erst die Lupe ?>
                 <img src="/thumb/<?= e($photo['filename']) ?>" data-full="/uploads/<?= e($photo['filename']) ?>"
                      alt="<?= e($photo['caption']) ?>" loading="lazy">
@@ -242,7 +236,6 @@
                           // Serie mit, wie bei der Termin-Zuordnung. Im Archiv wird daraus
                           // das Zurückholen. ?>
                     <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/archiv"><?= csrf_field() ?>
-                      <?php if (!$im_archiv && !empty($photo['stack_count'])): ?><input type="hidden" name="whole_stack" value="1"><?php endif; ?>
                       <button class="btn btn-tiny btn-ghost">📦 <?= e($im_archiv ? t('photo_restore') : t('photo_archive')) ?></button>
                     </form>
                     <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
@@ -253,10 +246,6 @@
                         // zurückholen, dann zuordnen. ?>
                   <?php if (!$im_archiv): ?>
                   <form class="inline photo-event" method="post" action="/intern/fotos/<?= $photo['id'] ?>/event"><?= csrf_field() ?>📅
-                    <?php if (!empty($photo['stack_count'])): ?>
-                      <input type="hidden" name="whole_stack" value="1">
-                      <span class="muted small"><?= e(t('photo_stack_whole')) ?></span>
-                    <?php endif; ?>
                     <select name="event_id">
                       <option value="">– <?= e(t('photo_no_event')) ?> –</option>
                       <?php // Der naheliegendste Termin zuerst (#207): Was die Anwendung

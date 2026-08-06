@@ -409,13 +409,6 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <p class="muted small"><?= e(t('clean_intro')) ?></p>
   <a class="btn btn-small" href="/intern/einstellungen/aufraeumen"><?= e(t('clean_open')) ?></a>
 
-  <?php // Serien an/aus (#212): beim Einschalten gruppiert die Route sofort neu. ?>
-  <form method="post" action="/intern/einstellungen/serien" class="stack subsection"><?= csrf_field() ?>
-    <label class="checkbox"><input type="checkbox" name="stacks_enabled" value="1" <?= stacks_enabled() ? 'checked' : '' ?>> 🗇 <?= e(t('set_stacks')) ?></label>
-    <p class="muted small"><?= e(t('set_stacks_hint')) ?></p>
-    <button class="btn btn-small"><?= e(t('save')) ?></button>
-  </form>
-
   <details class="subsection">
     <summary>⚙ <?= e(t('od_setup')) ?></summary>
     <p class="muted small"><?= e(t('od_setup_hint')) ?></p>

@@ -381,7 +381,7 @@ const UI_STRINGS = [
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult. Der Bühnenplan ist maßstäblich: Vorgabe sind 8 × 6 m, und alles mit echtem Grundriss — Podeste, Verstärker, Monitore, Boxen — wird in seinem Maß gezeichnet. Daran sieht ein Veranstalter, ob die Band auf seine Bühne passt. „Aus der Mitgliederliste erzeugen" stellt eine Vorlage auf: Schlagzeug hinten Mitte auf einem Podest von 3 × 2 m, Bass hinten links, Gesang vorne, dazu Strom und Stagebox. Danach lässt sich alles verschieben oder über die Zahlenfelder eintragen. Wer im Profil „Ich stehe auf der Bühne" aushakt, wird nicht aufgestellt — dort gehört die Technik hin. Welche Figur ein Mitglied im Plan bekommt, wählt es selbst im Profil; mit „Mein Foto" steht dort das Profilbild.',
-  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Die Galerie ordnet nach Jahr, Termin und Fotograf — wie der verknüpfte Ordner. Wer mag, schaltet in den Einstellungen Serien ein: Dann teilen sich Bilder aus derselben Quelle, die dicht beieinander aufgenommen wurden, eine Kachel mit Zahl. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme.',
+  'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Die Galerie ordnet nach Jahr, Termin und Fotograf — wie der verknüpfte Ordner. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
   'help_mitglieder' => 'Wer zur Band gehört, mit Kontaktdaten und Rollen.',
@@ -931,19 +931,6 @@ Zeile zwei
   'fl_photo_mass' => '%1 Fotos zugeordnet.',
   'fl_photo_mass_none' => 'Bei %1 Fotos die Zuordnung entfernt.',
   'fl_photo_mass_nothing' => 'Kein Foto angehakt — nichts geändert.',
-  // Serien abschaltbar (#212)
-  'set_stacks' => 'Serien: Bilder aus derselben Quelle, die dicht hintereinander aufgenommen wurden, teilen sich eine Kachel',
-  'set_stacks_hint' => 'Standardmäßig aus: Die Galerie zeigt jedes Bild einzeln, geordnet nach Jahr, Termin und Fotograf. Eingeschaltet teilen sich Bilder aus derselben Quelle, die dicht hintereinander aufgenommen wurden, eine Kachel — beim Einschalten wird sofort gruppiert.',
-  // Stapel für Serien (#198)
-  'photo_stack_count' => '%1 Bilder in dieser Serie',
-  'photo_stack_open' => 'Serie öffnen',
-  'photo_stack_title' => 'Serie mit %1 Bildern',
-  'photo_stack_back' => 'Zurück zur Galerie',
-  'photo_stack_cover' => 'Als Titelbild',
-  'photo_stack_is_cover' => 'Titelbild',
-  'photo_stack_whole' => 'Ganze Serie',
-  'photo_stack_gone' => 'Diese Serie gibt es nicht mehr.',
-  'fl_photo_stack_cover' => 'Titelbild der Serie geändert.',
   // Blättern und Diashow in der Großansicht (#192)
   'photo_prev' => 'Vorheriges Bild',
   'photo_next' => 'Nächstes Bild',
@@ -2198,23 +2185,6 @@ if (!column_exists('songs', 'composer')) {
  */
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
-// Diese zwei stehen HIER und nicht bei ihren Funktionen: Der einmalige
-// Serien-Aufbau läuft als Migration mitten in dieser Datei, und PHP zieht
-// Funktionen vor, Konstanten nicht. Standen sie hinter der Migration, starb
-// jeder Seitenaufruf mit „Undefined constant" — Produktion, 06.08.2026, und
-// aufgefallen erst, als zum ersten Mal Bilder MIT Aufnahmedatum da waren.
-// Stapel (#198). Eine Serie ist mehr als ein Bild vom selben Augenblick: Ein
-// Fotograf drückt vierzig Mal ab, und vierzig Kacheln begraben jeden anderen
-// Auftritt darunter. Zusammen gehört, was aus derselben Quelle kommt und
-// zeitlich dicht beieinander liegt.
-//
-// Die Lücke gilt von Bild zu Bild, nicht zum Anfang des Stapels — eine Serie
-// über drei Minuten ist eine Serie. Damit eine gleichmäßig durchfotografierte
-// Stunde nicht zu einem Stapel von hundertzwanzig wird, ist die Gesamtspanne
-// begrenzt; danach beginnt ein neuer Stapel.
-const STACK_GAP_SEC = 60;
-const STACK_SPAN_SEC = 300;
-
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
 const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos'];
 const PUSH_NICHTS = '-';
@@ -2281,14 +2251,13 @@ if (!column_exists('users', 'photos_seen_at')) {
 if (!column_exists('photos', 'source')) {
   $db->exec("ALTER TABLE photos ADD COLUMN source VARCHAR(400) NOT NULL DEFAULT ''");
 }
-// Serien zu Stapeln (#198). `stack_id` trägt die ID des Titelbildes — das
-// Titelbild also seine eigene. Eine Spalte statt einer Tabelle reicht, weil ein
-// Bild in genau einem Stapel liegt; `stack_cover` merkt sich nur, dass jemand
-// das Titelbild von Hand gewählt hat, damit das Neurechnen es nicht überschreibt.
-if (!column_exists('photos', 'stack_id')) {
-  $db->exec('ALTER TABLE photos ADD COLUMN stack_id INT NULL,
-                                ADD COLUMN stack_cover TINYINT(1) NOT NULL DEFAULT 0');
-  $db->exec('CREATE INDEX idx_photos_stack ON photos (stack_id)');
+// Die Serien sind fort (#218). Die zwei Spalten und ihr Index gehen mit: Ohne
+// die Funktion bedeuten sie nichts, und eine Spalte ohne Bedeutung wird beim
+// nächsten Lesen falsch verstanden. Verloren geht dabei kein Wissen — der
+// Zwischenstand war jederzeit neu errechenbar, solange es die Funktion gab.
+if (column_exists('photos', 'stack_id')) {
+  $db->exec('DROP INDEX idx_photos_stack ON photos');
+  $db->exec('ALTER TABLE photos DROP COLUMN stack_id, DROP COLUMN stack_cover');
 }
 // Der Weg einer Datei im verknüpften Ordner (#205). Er ist die eigentliche
 // Auskunft: „Bilder/2026/AKF/Sven Löffler" sagt Termin und Fotograf, und das ist
@@ -2345,20 +2314,6 @@ if (!column_exists('photos', 'checksum')) {
   $db->exec("ALTER TABLE photos ADD COLUMN checksum CHAR(64) NOT NULL DEFAULT ''");
   $db->exec('CREATE INDEX idx_photos_checksum ON photos (checksum)');
 }
-// Der Bestand wird einmal gruppiert; danach macht das jeder Upload für seine
-// eigene Quelle. Ohne diesen Lauf blieben die vorhandenen Bilder für immer
-// einzeln, und das Merkmal täte für die bestehende Galerie nichts.
-if (setting('stacks_built') !== '1') {
-  stacks_rebuild();
-  set_setting('stacks_built', '1');
-}
-// Einmal neu gruppieren, seit die Kamera zum Schlüssel gehört (#211) — sonst
-// blieben die gemischten Serien stehen, und die Regel gälte nur für Neues.
-if (setting('stacks_built_camera') !== '1') {
-  stacks_rebuild();
-  set_setting('stacks_built_camera', '1');
-}
-
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
 // das Geheimnis, ob es je bestätigt wurde, und die Rückwege. Ohne das
 // Bestätigungsdatum sperrt sich aus, wer den QR-Code scannt und die App
@@ -2640,16 +2595,21 @@ if (setting('help_texts_2026_08') !== '1') {
 // ihn nie, weil das Neueinspielen alle Seeds der Reihe nach laufen lässt und
 // der früheste gewinnt. Genau daran ist der erste Versuch (Wächter …08b)
 // gescheitert: weggeräumt, und Seed 16 setzte den alten Text zurück.
-// Der Hinweis am Serien-Schalter beschrieb „an" als Vorgabe (#217). Text im
-// Ursprungs-Seed ersetzt; die Live-Zeilen müssen einmal weg, sonst gewinnt der
-// alte Stand beim Neueinspielen.
-if (setting('stacks_hint_default_off') !== '1') {
-  q("DELETE FROM translations WHERE tkey = 'set_stacks_hint'");
-  set_setting('stacks_hint_default_off', '1');
+// Die Serien sind fort (#218): ihre Texte auch. Sonst bliebe in sechs Sprachen
+// stehen, was die Anwendung nicht mehr kann — und in den Einstellungen ein
+// Schalter-Zustand, den niemand mehr umlegen kann.
+if (setting('stacks_texts_gone') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN
+     ('set_stacks','set_stacks_hint','photo_stack_count','photo_stack_open','photo_stack_title',
+      'photo_stack_back','photo_stack_cover','photo_stack_is_cover','photo_stack_whole',
+      'photo_stack_gone','fl_photo_stack_cover')");
+  q("DELETE FROM settings WHERE `key` IN ('stacks_enabled','stacks_built','stacks_built_camera',
+      'stacks_hint_default_off')");
+  set_setting('stacks_texts_gone', '1');
 }
-if (setting('help_fotos_2026_08d') !== '1') {
+if (setting('help_fotos_2026_08e') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_fotos'");
-  set_setting('help_fotos_2026_08d', '1');
+  set_setting('help_fotos_2026_08e', '1');
 }
 if (setting('push_help_fixed') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'app_install_push'
@@ -3901,144 +3861,6 @@ function events_by_closeness(array $events, ?string $takenAt): array {
 
 
 /**
- * Sind Serien gewünscht? Ein Schalter in den Einstellungen (#212) — manche
- * wollen jedes Bild als eigene Kachel sehen, und das ist keine falsche
- * Meinung, sondern eine andere.
- *
- * Aus ist die Vorgabe (#217). Anfangs war es an, weil fünfhundert Kacheln
- * unübersichtlich sind — das Problem löst inzwischen der Ordnerbaum (#216),
- * und eine Kachel, die für fünfunddreißig Bilder steht, verbirgt mehr, als
- * sie ordnet. Wer Serien will, schaltet sie ein; dabei wird sofort gruppiert.
- */
-function stacks_enabled(): bool {
-  return setting('stacks_enabled', '0') === '1';
-}
-
-/**
- * Der Schlüssel, der „dieselbe Quelle" bedeutet: der Herkunftsordner, wenn es
- * einen gibt. Beim Altbestand und bei einzeln gewählten Dateien gibt es keinen
- * (#197) — dann zählt, wer hochgeladen hat. Zwei Leute, die im selben Moment
- * dieselbe Bühne fotografieren, kommen so nie in einen Stapel; ihre Bilder sind
- * zwei Blickwinkel und keine Serie.
- */
-function stack_key(array $foto): string {
-  $ordner = trim((string) ($foto['source'] ?? ''));
-  $schnitt = strrpos($ordner, '/');
-  $ordner = $schnitt === false ? '' : substr($ordner, 0, $schnitt);
-  $schluessel = $ordner !== '' ? 'o:' . $ordner : 'u:' . (int) ($foto['uploaded_by'] ?? 0);
-  // Die Kamera gehört mit hinein (#211): Ein Fotografen-Ordner kann Bilder
-  // mehrerer Kameras tragen — zeitlich verzahnt sind das zwei Blickwinkel und
-  // keine Serie, dieselbe Überlegung wie bei zwei Ordnern. Ohne Kameraangabe
-  // (Uploads, Altbestand) bleibt der Schlüssel, wie er war.
-  $kamera = trim((string) ($foto['camera'] ?? ''));
-  return $kamera !== '' ? $schluessel . '|k:' . $kamera : $schluessel;
-}
-
-/**
- * Teilt Fotos in Serien. Rein rechnend, ohne Datenbank — deshalb prüfbar.
- *
- * @param  array $fotos Zeilen mit id, taken_at, source, uploaded_by
- * @return array<int, list<int>> Gruppen von mindestens zwei IDs, je Gruppe nach
- *         Aufnahmezeit aufsteigend. Ein Bild ohne Aufnahmezeit kommt in keine
- *         Gruppe: Eine unbekannte Zeit ist keine Übereinstimmung, und geraten
- *         wird hier nicht.
- */
-function stacks_group(array $fotos): array {
-  $nachQuelle = [];
-  foreach ($fotos as $f) {
-    if (empty($f['taken_at'])) continue;
-    $nachQuelle[stack_key($f)][] = ['id' => (int) $f['id'], 'zeit' => strtotime((string) $f['taken_at'])];
-  }
-  $gruppen = [];
-  foreach ($nachQuelle as $reihe) {
-    usort($reihe, fn($a, $b) => $a['zeit'] <=> $b['zeit']);
-    $offen = [];
-    $letzte = null;
-    $anfang = null;
-    foreach ($reihe as $bild) {
-      $passt = $letzte !== null
-        && $bild['zeit'] - $letzte <= STACK_GAP_SEC
-        && $bild['zeit'] - $anfang <= STACK_SPAN_SEC;
-      if (!$passt) {
-        if (count($offen) > 1) $gruppen[] = array_column($offen, 'id');
-        $offen = [];
-        $anfang = $bild['zeit'];
-      }
-      $offen[] = $bild;
-      $letzte = $bild['zeit'];
-    }
-    if (count($offen) > 1) $gruppen[] = array_column($offen, 'id');
-  }
-  return $gruppen;
-}
-
-/**
- * Schreibt die Stapel in die Datenbank. `stack_id` trägt die ID des Titelbildes,
- * das Titelbild also seine eigene — dafür braucht es keine zweite Tabelle.
- *
- * Neu gerechnet wird immer über alle Bilder derselben Quelle, sonst hinge ein
- * nachträglich hochgeladenes Bild neben seiner Serie statt darin. Ein von Hand
- * gewähltes Titelbild (`stack_cover`) überlebt das Neurechnen, solange es in
- * seiner Gruppe bleibt; sonst gilt wieder das jüngste Bild.
- *
- * @param  list<string>|null $quellen Nur diese Schlüssel neu rechnen, null = alle
- * @return int Zahl der Bilder in Stapeln
- */
-function stacks_rebuild(?array $quellen = null): int {
-  // Archivierte bleiben draußen (#200): Sie sind nicht mehr in der Galerie, und
-  // eine Serie, deren Mitglieder man nicht sieht, zählte falsch.
-  $alle = rows('SELECT id, taken_at, source, uploaded_by, camera, stack_id, stack_cover FROM photos
-                WHERE archived_at IS NULL');
-  $betroffen = $quellen === null ? null : array_flip($quellen);
-  $fotos = $betroffen === null
-    ? $alle
-    : array_values(array_filter($alle, fn($f) => isset($betroffen[stack_key($f)])));
-  if (!$fotos) return 0;
-
-  $vonHand = [];
-  foreach ($fotos as $f) {
-    if ((int) $f['stack_cover'] === 1) $vonHand[(int) $f['id']] = true;
-  }
-  // Erst alles in den betroffenen Quellen lösen, dann neu setzen: Ein Bild, das
-  // aus seiner Serie herausfällt, behielte sonst die alte Zugehörigkeit.
-  $ids = array_map(fn($f) => (int) $f['id'], $fotos);
-  $platz = implode(',', array_fill(0, count($ids), '?'));
-  q("UPDATE photos SET stack_id = NULL, stack_cover = 0 WHERE id IN ($platz)", $ids);
-
-  $inStapeln = 0;
-  foreach (stacks_group($fotos) as $gruppe) {
-    $gewaehlt = array_values(array_filter($gruppe, fn($id) => isset($vonHand[$id])));
-    // Genau eine Wahl gilt; bei mehreren ist die Serie neu zusammengesetzt
-    // worden und die alte Wahl nicht mehr eindeutig — dann das jüngste Bild.
-    $titel = count($gewaehlt) === 1 ? $gewaehlt[0] : (int) end($gruppe);
-    $p = implode(',', array_fill(0, count($gruppe), '?'));
-    q("UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE id IN ($p)", array_merge([$titel], $gruppe));
-    if (count($gewaehlt) === 1) q('UPDATE photos SET stack_cover = 1 WHERE id = ?', [$titel]);
-    $inStapeln += count($gruppe);
-  }
-  return $inStapeln;
-}
-
-/**
- * Nach dem Löschen eines Bildes: Wer war in seinem Stapel, und steht der noch?
- * Ohne das zeigten die Reste auf ein Titelbild, das es nicht mehr gibt — sie
- * wären dann in der Galerie unsichtbar, weil keine Kachel sie mehr aufmacht.
- */
-function stack_repair(?int $stapel): void {
-  if (!$stapel) return;
-  $reste = rows('SELECT id FROM photos WHERE stack_id = ? ORDER BY taken_at, id', [$stapel]);
-  // Ein Bild allein ist kein Stapel — dann wieder eine gewöhnliche Kachel. Das
-  // gilt auch, wenn das Titelbild noch lebt: eine Kachel mit „1" wäre albern.
-  if (count($reste) < 2) {
-    q('UPDATE photos SET stack_id = NULL, stack_cover = 0 WHERE stack_id = ?', [$stapel]);
-    return;
-  }
-  if (row('SELECT 1 FROM photos WHERE id = ?', [$stapel])) return; // Titelbild lebt
-  $neu = (int) end($reste)['id'];
-  q('UPDATE photos SET stack_id = ?, stack_cover = 0 WHERE stack_id = ?', [$neu, $stapel]);
-}
-
-/**
  * Ein Schlagwort in seine gespeicherte Form bringen (#201). Getrimmt und auf
  * eine Länge begrenzt; Groß und Klein bleiben, wie eingegeben — „Bühne" soll
  * „Bühne" heißen. Verglichen wird über die Datenbank-Kollation, die Groß und
@@ -4258,33 +4080,27 @@ function photo_duplicates(): array {
 /**
  * Ein Bild archivieren oder zurückholen (#200).
  *
- * Beim Archivieren verlässt es seine Serie — die Kachelzahl der Serie muss
- * stimmen, und ein unsichtbares Mitglied zählte falsch. Beim Zurückholen wird
- * seine Quelle neu gruppiert, damit es seine Serie wiederfindet.
+ * Aus jeder Galerie genommen, aber nicht zerstört: Datei und Zeile bleiben,
+ * und ein Klick holt das Bild zurück.
  */
 function photo_archive(int $id, bool $hinein): bool {
-  $p = row('SELECT id, stack_id, source, uploaded_by, camera, archived_at FROM photos WHERE id = ?', [$id]);
+  $p = row('SELECT id, archived_at FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
   if ($hinein === ($p['archived_at'] !== null)) return true; // schon so
-  if ($hinein) {
-    q('UPDATE photos SET archived_at = NOW(), stack_id = NULL, stack_cover = 0 WHERE id = ?', [$id]);
-    stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
-  } else {
-    q('UPDATE photos SET archived_at = NULL WHERE id = ?', [$id]);
-    if (stacks_enabled()) stacks_rebuild([stack_key($p)]);
-  }
+  q('UPDATE photos SET archived_at = ? WHERE id = ?',
+    [$hinein ? date('Y-m-d H:i:s') : null, $id]);
   return true;
 }
 
 /**
- * Ein Bild samt Datei entfernen und den Stapel dahinter richten.
+ * Ein Bild samt Datei entfernen.
  *
  * Die Datei nur löschen, wenn sie niemand sonst nennt: Zwei Zeilen auf denselben
  * Dateinamen entstehen beim Hochladen nicht, aber wer das später einführt, soll
  * hier keine Bilder verlieren.
  */
 function photo_remove(int $id): bool {
-  $p = row('SELECT id, filename, stack_id FROM photos WHERE id = ?', [$id]);
+  $p = row('SELECT id, filename FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
   q('DELETE FROM photos WHERE id = ?', [$id]);
   q('DELETE FROM photo_tags WHERE photo_id = ?', [$id]);
@@ -4292,30 +4108,7 @@ function photo_remove(int $id): bool {
   if (!row('SELECT 1 FROM photos WHERE filename = ?', [$p['filename']])) {
     @unlink(UPLOADS_DIR . '/' . $p['filename']);
   }
-  stack_repair($p['stack_id'] === null ? null : (int) $p['stack_id']);
   return true;
-}
-
-/**
- * Stapel-Kacheln statt aller Bilder: Vom Stapel bleibt das Titelbild, mit der
- * Zahl seiner Mitglieder daran. Bilder ohne Stapel bleiben, wie sie sind.
- *
- * @param  list<array> $fotos
- * @return list<array> dieselbe Reihenfolge, Titelbilder mit stack_count
- */
-function stacks_collapse(array $fotos): array {
-  $zahl = [];
-  foreach ($fotos as $f) {
-    if ($f['stack_id']) $zahl[(int) $f['stack_id']] = ($zahl[(int) $f['stack_id']] ?? 0) + 1;
-  }
-  $raus = [];
-  foreach ($fotos as $f) {
-    $stapel = (int) ($f['stack_id'] ?? 0);
-    if ($stapel && $stapel !== (int) $f['id']) continue; // Mitglied, nicht Titelbild
-    $f['stack_count'] = $stapel ? ($zahl[$stapel] ?? 1) : 0;
-    $raus[] = $f;
-  }
-  return $raus;
 }
 
 /**
