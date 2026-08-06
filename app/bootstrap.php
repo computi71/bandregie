@@ -2310,6 +2310,12 @@ if (setting('stacks_built') !== '1') {
   stacks_rebuild();
   set_setting('stacks_built', '1');
 }
+// Einmal neu gruppieren, seit die Kamera zum Schlüssel gehört (#211) — sonst
+// blieben die gemischten Serien stehen, und die Regel gälte nur für Neues.
+if (setting('stacks_built_camera') !== '1') {
+  stacks_rebuild();
+  set_setting('stacks_built_camera', '1');
+}
 
 // Zweiter Faktor (#169). Drei Spalten, denn drei Dinge sind zu unterscheiden:
 // das Geheimnis, ob es je bestätigt wurde, und die Rückwege. Ohne das
@@ -3867,7 +3873,13 @@ function stack_key(array $foto): string {
   $ordner = trim((string) ($foto['source'] ?? ''));
   $schnitt = strrpos($ordner, '/');
   $ordner = $schnitt === false ? '' : substr($ordner, 0, $schnitt);
-  return $ordner !== '' ? 'o:' . $ordner : 'u:' . (int) ($foto['uploaded_by'] ?? 0);
+  $schluessel = $ordner !== '' ? 'o:' . $ordner : 'u:' . (int) ($foto['uploaded_by'] ?? 0);
+  // Die Kamera gehört mit hinein (#211): Ein Fotografen-Ordner kann Bilder
+  // mehrerer Kameras tragen — zeitlich verzahnt sind das zwei Blickwinkel und
+  // keine Serie, dieselbe Überlegung wie bei zwei Ordnern. Ohne Kameraangabe
+  // (Uploads, Altbestand) bleibt der Schlüssel, wie er war.
+  $kamera = trim((string) ($foto['camera'] ?? ''));
+  return $kamera !== '' ? $schluessel . '|k:' . $kamera : $schluessel;
 }
 
 /**
@@ -3923,7 +3935,7 @@ function stacks_group(array $fotos): array {
 function stacks_rebuild(?array $quellen = null): int {
   // Archivierte bleiben draußen (#200): Sie sind nicht mehr in der Galerie, und
   // eine Serie, deren Mitglieder man nicht sieht, zählte falsch.
-  $alle = rows('SELECT id, taken_at, source, uploaded_by, stack_id, stack_cover FROM photos
+  $alle = rows('SELECT id, taken_at, source, uploaded_by, camera, stack_id, stack_cover FROM photos
                 WHERE archived_at IS NULL');
   $betroffen = $quellen === null ? null : array_flip($quellen);
   $fotos = $betroffen === null
@@ -4122,7 +4134,7 @@ function photo_duplicates(): array {
  * seine Quelle neu gruppiert, damit es seine Serie wiederfindet.
  */
 function photo_archive(int $id, bool $hinein): bool {
-  $p = row('SELECT id, stack_id, source, uploaded_by, archived_at FROM photos WHERE id = ?', [$id]);
+  $p = row('SELECT id, stack_id, source, uploaded_by, camera, archived_at FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
   if ($hinein === ($p['archived_at'] !== null)) return true; // schon so
   if ($hinein) {
