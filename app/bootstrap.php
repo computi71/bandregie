@@ -873,6 +873,10 @@ Zeile zwei
   'photo_source' => 'Herkunft',
   'photo_folder_none' => 'Noch keinem Termin zugeordnet',
   'photo_folder_count' => 'Bilder: %1',
+  // Baum aus Jahr, Termin und Fotograf (#216)
+  'photo_source_none' => 'Ohne Herkunftsordner',
+  'photo_tree_open' => 'Alles aufklappen',
+  'photo_tree_hint' => 'Jahr, Termin, Fotograf — wie im verknüpften Ordner.',
   'photos_upload_lbl_lim' => 'Bilder (max. %1 je Datei, %2 auf einmal)',
   'fl_photo_stored' => 'Gespeichert: %1',
   'fl_photo_skipped_big' => 'Zu groß für %2 und nicht angekommen: %1',
@@ -4052,6 +4056,83 @@ function photo_tags_all(): array {
     }
   }
   return $vergeben;
+}
+
+/**
+ * Die Galerie als Baum: Jahr → Termin → Fotograf (#216).
+ *
+ * Seit #196 stand jeder Termin als eigene Überschrift untereinander. Bei 517
+ * Bildern eines Auftritts ist das ein Streifen aus 115 Kacheln — richtig
+ * gruppiert und trotzdem unbrauchbar. Die Form, in der Menschen denken, liegt
+ * längst bei OneDrive und kommt über den Herkunftspfad mit: „Bilder/2026/AKF/
+ * Sven Löffler". Also zeigt die Galerie diese Form.
+ *
+ * Die dritte Ebene entsteht nur, wenn ein Termin wirklich mehrere
+ * Herkunftsordner hat. Ein Auftritt mit einem Fotografen bekommt keine
+ * Zwischenebene, die nichts trennt.
+ *
+ * Rein rechnend, damit prüfbar: Die Einteilung ist die eigentliche Entscheidung.
+ *
+ * @param  list<array> $fotos Zeilen mit event_id, event_title, event_date, source
+ * @return list<array{key: string, label: string, total: int, events: list<array{
+ *         key: string, label: string, date: ?string, total: int,
+ *         groups: list<array{key: string, label: string, photos: list<array>}>}>}>
+ */
+function photo_tree(array $fotos): array {
+  $jahre = [];
+  foreach ($fotos as $f) {
+    $datum = (string) ($f['event_date'] ?? '');
+    // Ohne Termin ein eigener Zweig, und der bleibt oben: Das ist der Stapel,
+    // an dem gearbeitet wird.
+    $jahr = $f['event_id'] && $datum !== '' ? substr($datum, 0, 4) : '';
+    $terminSchl = $f['event_id'] ? (string) (int) $f['event_id'] : '';
+    // Der Fotograf ist der letzte Ordner im Herkunftspfad — nicht der Dateiname.
+    $quelle = trim((string) ($f['source'] ?? ''), '/');
+    $schnitt = strrpos($quelle, '/');
+    $ordner = $schnitt === false ? '' : substr($quelle, 0, $schnitt);
+    $wer = $ordner === '' ? '' : (string) array_slice(explode('/', $ordner), -1)[0];
+
+    $jahre[$jahr]['label'] = $jahr === '' ? t('photo_folder_none') : $jahr;
+    $jahre[$jahr]['events'][$terminSchl]['label'] = $terminSchl === ''
+      ? t('photo_folder_none')
+      : trim(($datum !== '' ? date('d.m.', (int) strtotime($datum)) . ' ' : '') . (string) ($f['event_title'] ?? ''));
+    $jahre[$jahr]['events'][$terminSchl]['date'] = $datum !== '' ? $datum : null;
+    $jahre[$jahr]['events'][$terminSchl]['groups'][$wer][] = $f;
+  }
+
+  // Neueste zuerst; der Zweig ohne Termin bleibt vorn, weil er kein Jahr hat.
+  // Die Umwandlung ist nötig, nicht Zierde: PHP macht aus dem Schlüssel „2026"
+  // die Zahl 2026, und strcmp() nimmt seit PHP 8 keine Zahl mehr an.
+  uksort($jahre, function ($a, $b): int {
+    if ((string) $a === '') return -1;
+    if ((string) $b === '') return 1;
+    return strcmp((string) $b, (string) $a);
+  });
+  $raus = [];
+  foreach ($jahre as $jahrSchl => $jahr) {
+    uasort($jahr['events'], fn($a, $b) => ($b['date'] ?? '9999') <=> ($a['date'] ?? '9999'));
+    $termine = [];
+    $jahrZahl = 0;
+    foreach ($jahr['events'] as $evSchl => $ev) {
+      // Als Text sortieren: Ein Fotografen-Ordner, der „2026" heißt, wäre sonst
+      // eine Zahl und landete vor allen Namen.
+      ksort($ev['groups'], SORT_STRING);
+      $gruppen = [];
+      $evZahl = 0;
+      foreach ($ev['groups'] as $werSchl => $bilder) {
+        $evZahl += count($bilder);
+        $gruppen[] = ['key' => (string) $werSchl,
+                      'label' => $werSchl === '' ? t('photo_source_none') : (string) $werSchl,
+                      'photos' => $bilder];
+      }
+      $jahrZahl += $evZahl;
+      $termine[] = ['key' => (string) $evSchl, 'label' => (string) $ev['label'],
+                    'date' => $ev['date'], 'total' => $evZahl, 'groups' => $gruppen];
+    }
+    $raus[] = ['key' => (string) $jahrSchl, 'label' => (string) $jahr['label'],
+               'total' => $jahrZahl, 'events' => $termine];
+  }
+  return $raus;
 }
 
 /**

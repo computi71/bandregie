@@ -1254,37 +1254,26 @@ if (str_starts_with($path, '/intern')) {
     // Und nur in der ungefilterten Galerie: Ein Suchtreffer zeigt nicht alles,
     // und was nie zu sehen war, darf nicht als gesehen gelten (#204).
     if (!$gefiltert && !$imArchiv) q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
-    // Nach Termin gruppieren (#196): Was zugeordnet ist, gehört in seinen Ordner.
-    // Die Unzugeordneten stehen oben, denn das ist der Stapel, an dem gearbeitet
-    // wird. Innerhalb eines Ordners bleibt die Reihenfolge nach Datum.
-    $photoOrdner = ['' => ['title' => null, 'date' => null, 'photos' => []]];
-    foreach ($photos as $ph) {
-      $schluessel = $ph['event_id'] ? (string) (int) $ph['event_id'] : '';
-      if (!isset($photoOrdner[$schluessel])) {
-        $photoOrdner[$schluessel] = ['title' => $ph['event_title'], 'date' => $ph['event_date'], 'photos' => []];
+    // Als Baum ordnen (#216): Jahr → Termin → Fotograf, wie im verknüpften
+    // OneDrive-Ordner. Die Einteilung selbst steckt in photo_tree(), damit sie
+    // ohne Datenbank prüfbar ist.
+    $photoBaum = photo_tree($photos);
+    // Serien einklappen (#198) je Blatt — erst nach dem Ordnen, damit die
+    // Reihenfolge im Ordner steht. Gefiltert wird nicht eingeklappt: Der Treffer
+    // kann mitten in einer Serie liegen, und eine Kachel, die ihn verdeckt,
+    // wäre kein Treffer. Bei abgeschalteten Serien (#212) ohnehin nie.
+    $photoFalten = !$gefiltert && stacks_enabled();
+    foreach ($photoBaum as $jI => $jahr) {
+      foreach ($jahr['events'] as $eI => $ev) {
+        foreach ($ev['groups'] as $gI => $gr) {
+          $photoBaum[$jI]['events'][$eI]['groups'][$gI]['photos'] =
+            $photoFalten ? stacks_collapse($gr['photos']) : $gr['photos'];
+        }
       }
-      $photoOrdner[$schluessel]['photos'][] = $ph;
-    }
-    // Ohne unzugeordnete Bilder auch keinen leeren Ordner dafür zeigen.
-    if (!$photoOrdner['']['photos']) unset($photoOrdner['']);
-    // Die Ordner nach Termindatum, das Neueste zuerst; die Unzugeordneten bleiben
-    // oben, weil sie kein Datum haben und die Arbeit sind.
-    uasort($photoOrdner, fn($a, $b) => ($b['date'] ?? '9999') <=> ($a['date'] ?? '9999'));
-    // Serien einklappen (#198): Von einem Stapel bleibt das Titelbild mit der
-    // Zahl daran. Erst nach dem Ordnen, damit die Reihenfolge im Ordner steht.
-    foreach ($photoOrdner as $s => $o) {
-      // Die Zahl in der Überschrift zählt Bilder, nicht Kacheln — sonst würde
-      // ein Ordner mit vierzig Bildern in einer Serie plötzlich „1" behaupten.
-      $photoOrdner[$s]['total'] = count($o['photos']);
-      // Gefiltert wird nicht eingeklappt: Der Treffer kann mitten in einer
-      // Serie liegen, und eine Kachel, die ihn verdeckt, wäre kein Treffer.
-      // Abgeschaltete Serien (#212) klappen nie ein — dann ist jedes Bild
-      // seine eigene Kachel, und die Abzeichen entstehen gar nicht erst.
-      $photoOrdner[$s]['photos'] = ($gefiltert || !stacks_enabled()) ? $o['photos'] : stacks_collapse($o['photos']);
     }
     view('intern/fotos', ['title' => $imArchiv ? t('photo_archive_title') : t('inav_fotos'),
                           'photos' => $photos, 'events' => $photoEvents,
-                          'limits' => upload_limits(), 'ordner' => $photoOrdner,
+                          'limits' => upload_limits(), 'baum' => $photoBaum,
                           'herkunft' => photo_folder_agg($photos), 'im_archiv' => $imArchiv,
                           'archiv_zahl' => (int) row('SELECT COUNT(*) n FROM photos WHERE archived_at IS ' . ($imArchiv ? 'NULL' : 'NOT NULL'))['n'],
                           'alle_tags' => photo_tags_all(), 'gefiltert' => $gefiltert,
