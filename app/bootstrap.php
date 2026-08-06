@@ -830,6 +830,7 @@ Zeile zwei
   'push_topic_events' => 'Neue Termine',
   'push_topic_comments' => 'Neue Kommentare',
   'push_topic_attendance' => 'Zusagen und Absagen',
+  'push_topic_photos' => 'Neue Bilder',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
   'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
@@ -843,6 +844,11 @@ Zeile zwei
   'prof_push_failed' => 'Das Abo ließ sich nicht anlegen. Erlaubnis steht, es hakt woanders — neu laden und noch einmal versuchen.',
   'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
   'push_ev_title' => 'Neuer Termin',
+  // Täglicher Blick in die OneDrive-Ordner (#214)
+  'push_od_title' => 'Neue Bilder bei OneDrive',
+  'push_od_body' => '%1 neue Bilder in %2',
+  'set_od_auto' => 'OneDrive-Ordner täglich nachsehen',
+  'set_od_auto_hint' => 'Einmal am Tag, beim ersten Seitenaufruf oder per Cron. Bei neuen Bildern geht eine Mitteilung an alle, die das Thema „Neue Bilder" nicht abgewählt haben. Geholt wird nichts von selbst — das bleibt der Knopf am Ordner.',
   'push_comment_title' => 'Neuer Kommentar',
   'push_att_yes' => '%1 hat für „%2" zugesagt',
   'push_att_no' => '%1 hat für „%2" abgesagt',
@@ -2177,7 +2183,7 @@ if (!column_exists('songs', 'composer')) {
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
-const PUSH_TOPICS = ['events', 'comments', 'attendance'];
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos'];
 const PUSH_NICHTS = '-';
 
 /**

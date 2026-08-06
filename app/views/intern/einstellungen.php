@@ -580,6 +580,11 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label class="checkbox"><input type="checkbox" name="onedrive_enabled" value="1" <?= setting('onedrive_enabled') === '1' ? 'checked' : '' ?>> ☁ <?= e(t('set_onedrive')) ?></label>
     <p class="muted small"><?= e(t('set_onedrive_hint')) ?></p>
 
+    <?php // Der tägliche Blick (#214) steht bei den Verbindungen nach außen,
+          // denn er IST eine: einmal am Tag zu Microsoft, auch ohne Klick. ?>
+    <label class="checkbox"><input type="checkbox" name="od_auto_refresh" value="1" <?= setting('od_auto_refresh', '1') === '1' ? 'checked' : '' ?>> 🔄 <?= e(t('set_od_auto')) ?></label>
+    <p class="muted small"><?= e(t('set_od_auto_hint')) ?></p>
+
     <?php if (!od_configured()): ?><p class="muted small">⚠ <?= e(t('od_needs_setup')) ?></p><?php endif; ?>
 
     <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>

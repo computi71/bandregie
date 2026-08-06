@@ -677,6 +677,60 @@ function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
 }
 
 /**
+ * Ist der tägliche Blick fällig (#214)? Dasselbe Muster wie bei der Sicherung:
+ * ein Fälligkeits-Check, zwei Auslöser — Seitenaufruf (gedrosselt) und Cron.
+ * Nach einem Fehlschlag frühestens nach einer Stunde wieder, sonst hämmert
+ * jeder Seitenaufruf gegen eine Verbindung, die gerade nicht antwortet.
+ */
+function od_refresh_due(): bool {
+  if (is_demo()) return false;
+  if (!od_enabled() || setting('od_auto_refresh', '1') !== '1') return false;
+  if (!row('SELECT 1 FROM od_folders LIMIT 1')) return false;
+  $versuch = (int) setting('od_auto_attempt', '0');
+  if (time() - $versuch < 3600) return false;
+  return (bool) row("SELECT 1 FROM od_folders
+                     WHERE checked_at IS NULL OR checked_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                     LIMIT 1");
+}
+
+/**
+ * Alle fälligen Ordner nachsehen und bei Neuem Bescheid geben (#214).
+ *
+ * Gemeldet wird nur Gefundenes, nicht der Lauf: Eine tägliche Mitteilung
+ * „nichts Neues" wäre nach einer Woche abbestellt — und mit ihr die eine, die
+ * zählt. Geholt wird nichts: Nachsehen kostet nichts, Bilder holen bleibt
+ * eine Entscheidung am Knopf.
+ *
+ * @return array{folders: int, neu: int, fehlt: int, ok: bool}
+ */
+function od_refresh_all(): array {
+  set_setting('od_auto_attempt', (string) time());
+  $neu = $fehlt = $gelaufen = 0;
+  $alleOk = true;
+  $namen = [];
+  foreach (od_folders() as $ordner) {
+    $r = od_folder_refresh((int) $ordner['id']);
+    $gelaufen++;
+    if (!$r['ok']) { $alleOk = false; continue; }
+    $neu += $r['neu'];
+    $fehlt += $r['fehlt'];
+    if ($r['neu'] > 0) $namen[] = (string) $ordner['name'];
+  }
+  if ($neu > 0) {
+    $anzahl = $neu;
+    $wo = implode(', ', array_unique($namen));
+    push_notify('photos', 0, fn(string $lang): array => [
+      'title' => push_t($lang, 'push_od_title'),
+      'body' => str_replace(['%1', '%2'], [(string) $anzahl, $wo], push_t($lang, 'push_od_body')),
+      // In die Galerie, nicht auf die Ordner-Seite: Die Mitteilung geht an
+      // alle Mitglieder, die Ordner-Seite gehört den Admins (Review 06.08.).
+      'url' => '/intern/fotos',
+    ]);
+  }
+  return ['folders' => $gelaufen, 'neu' => $neu, 'fehlt' => $fehlt, 'ok' => $alleOk];
+}
+
+/**
  * Verbindung lösen.
  *
  * Die Zeichen werden gelöscht, nicht nur vergessen: Ein Erneuerungszeichen, das

@@ -589,6 +589,14 @@ if (str_starts_with($path, '/intern')) {
       backup_run('auto');
     });
   }
+  // Der tägliche Blick in die OneDrive-Ordner (#214), nach demselben Muster:
+  // nach dem Ausliefern der Seite, damit niemand auf Microsoft wartet.
+  if ($method === 'GET' && od_refresh_due()) {
+    register_shutdown_function(function () {
+      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+      od_refresh_all();
+    });
+  }
 
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
@@ -3097,6 +3105,7 @@ if (str_starts_with($path, '/intern')) {
     set_setting('push_enabled', isset($_POST['push_enabled']) ? '1' : '0');
     set_setting('geocoding_enabled', isset($_POST['geocoding_enabled']) ? '1' : '0');
     set_setting('onedrive_enabled', isset($_POST['onedrive_enabled']) ? '1' : '0');
+    set_setting('od_auto_refresh', isset($_POST['od_auto_refresh']) ? '1' : '0');
     flash(t('fl_extern_saved'));
     redirect('/intern/einstellungen');
   }

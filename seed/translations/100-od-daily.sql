@@ -1,0 +1,28 @@
+-- Umbenannte Ordner (#213) brauchen keine Texte; der tägliche Blick (#214):
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','push_topic_photos','New pictures'),
+('en','push_od_title','New pictures at OneDrive'),
+('en','push_od_body','%1 new pictures in %2'),
+('en','set_od_auto','Check the OneDrive folders daily'),
+('en','set_od_auto_hint','Once a day, on the first page view or via cron. When new pictures are found, a notification goes to everyone who has not opted out of the "New pictures" topic. Nothing is fetched by itself - that stays with the button on the folder.'),
+('nl','push_topic_photos','Nieuwe foto''s'),
+('nl','push_od_title','Nieuwe foto''s bij OneDrive'),
+('nl','push_od_body','%1 nieuwe foto''s in %2'),
+('nl','set_od_auto','De OneDrive-mappen dagelijks nakijken'),
+('nl','set_od_auto_hint','Eén keer per dag, bij de eerste paginaweergave of via cron. Bij nieuwe foto''s gaat een melding naar iedereen die het onderwerp "Nieuwe foto''s" niet heeft afgemeld. Er wordt niets vanzelf opgehaald - dat blijft de knop bij de map.'),
+('fr','push_topic_photos','Nouvelles photos'),
+('fr','push_od_title','Nouvelles photos sur OneDrive'),
+('fr','push_od_body','%1 nouvelles photos dans %2'),
+('fr','set_od_auto','Vérifier les dossiers OneDrive chaque jour'),
+('fr','set_od_auto_hint','Une fois par jour, au premier affichage de page ou par cron. Si de nouvelles photos sont trouvées, une notification part à tous ceux qui n''ont pas désactivé le sujet « Nouvelles photos ». Rien n''est récupéré tout seul - cela reste le bouton du dossier.'),
+('es','push_topic_photos','Fotos nuevas'),
+('es','push_od_title','Fotos nuevas en OneDrive'),
+('es','push_od_body','%1 fotos nuevas en %2'),
+('es','set_od_auto','Revisar las carpetas de OneDrive a diario'),
+('es','set_od_auto_hint','Una vez al día, con la primera visita o por cron. Si hay fotos nuevas, se avisa a todos los que no hayan desactivado el tema «Fotos nuevas». Nada se descarga solo - eso sigue siendo el botón de la carpeta.'),
+('it','push_topic_photos','Nuove foto'),
+('it','push_od_title','Nuove foto su OneDrive'),
+('it','push_od_body','%1 nuove foto in %2'),
+('it','set_od_auto','Controllare le cartelle OneDrive ogni giorno'),
+('it','set_od_auto_hint','Una volta al giorno, alla prima visita o via cron. Se ci sono nuove foto, parte un avviso a chi non ha disattivato il tema "Nuove foto". Niente viene scaricato da solo - resta il pulsante sulla cartella.')
+ON DUPLICATE KEY UPDATE value = value;
