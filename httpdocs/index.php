@@ -479,7 +479,10 @@ if ($path === '/passwort-vergessen') {
       redirect('/login');
     }
     throttle_note('reset', $email);
-    $u = $email !== '' ? row('SELECT * FROM users WHERE email = ?', [$email]) : null;
+    // Auch der Empfänger geht in eine Kopfzeile. Er kommt aus der Datenbank,
+    // aber der Vergleich davor kommt aus dem Formular — geprüft wird trotzdem.
+    $u = $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)
+      ? row('SELECT * FROM users WHERE email = ?', [$email]) : null;
     if ($u) {
       $token = bin2hex(random_bytes(32));
       q('UPDATE users SET reset_token = ?, reset_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?', [$token, $u['id']]);
@@ -490,11 +493,12 @@ if ($path === '/passwort-vergessen') {
         . "Zum Zurücksetzen hier klicken (1 Stunde gültig):\n$link\n\n"
         . "Wenn du das nicht warst, kannst du diese E-Mail einfach ignorieren.\n\n"
         . "Viele Grüße\n$band";
-      $from = 'no-reply@' . preg_replace('~^www\.~', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
-      $replyTo = setting('contact_email') ? "\r\nReply-To: " . setting('contact_email') : '';
+      $from = mail_from_address();
+      $antwortAn = mail_header_value(setting('contact_email'));
+      $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
       // Der fünfte Parameter setzt den Umschlagabsender. Ohne ihn nimmt PHP den
       // Systembenutzer, und die SPF-Prüfung passt dann nicht zur Absenderdomain.
-      @mail($email, "Passwort zurücksetzen - $band", $body,
+      @mail($email, 'Passwort zurücksetzen - ' . mail_header_value($band, 120), $body,
         "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
     }
     flash(t('pwreset_sent'));
@@ -2149,9 +2153,10 @@ if (str_starts_with($path, '/intern')) {
           . "Beim ersten Login musst du ein eigenes Passwort vergeben.\n\n"
           . "Viele Grüße\n$band";
         // Absender von der eigenen Domain (SPF), Antworten gehen an die Band-Adresse
-        $from = 'no-reply@' . preg_replace('~^www\.~', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
-        $replyTo = setting('contact_email') ? "\r\nReply-To: " . setting('contact_email') : '';
-        $sent = @mail($email, "Dein Zugang zum Bandbereich von $band", $body,
+        $from = mail_from_address();
+        $antwortAn = mail_header_value(setting('contact_email'));
+        $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
+        $sent = @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
           "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
         flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
       } catch (PDOException) {
@@ -3211,7 +3216,22 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/einstellungen' && $method === 'POST') {
     require_admin();
     foreach (['band_name', 'contact_email', 'copyright_text', 'facebook_url', 'instagram_url', 'spotify_url', 'youtube_url', 'site_url'] as $k) {
-      if (isset($_POST[$k])) set_setting($k, trim($_POST[$k]));
+      if (!isset($_POST[$k])) continue;
+      $wert = trim((string) $_POST[$k]);
+      // Bandname und Kontaktadresse landen in Mail-Kopfzeilen (#220). Schon
+      // beim Speichern entschärfen, nicht erst beim Versenden: Der Wert wird an
+      // mehreren Stellen gelesen, und die nächste Verwendung denkt nicht daran.
+      if ($k === 'band_name') $wert = mail_header_value($wert, 120);
+      if ($k === 'contact_email') {
+        $wert = mail_header_value($wert);
+        // Eine Kontaktadresse ist eine Adresse. Was keine ist, wird nicht
+        // gespeichert — sonst steht Unsinn in einer Reply-To-Zeile.
+        if ($wert !== '' && !filter_var($wert, FILTER_VALIDATE_EMAIL)) {
+          flash(t('fl_contact_email_invalid'));
+          continue;
+        }
+      }
+      set_setting($k, $wert);
     }
     if (isset($_POST['_termine_form'])) {
       set_setting('public_show_past', isset($_POST['public_show_past']) ? '1' : '0');

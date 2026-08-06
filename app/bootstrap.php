@@ -650,6 +650,7 @@ const UI_STRINGS = [
   'demo_badge' => 'Demo',
   'fl_translations_saved' => 'Übersetzungen gespeichert.',
   'fl_texts_saved' => 'Texte gespeichert.',
+  'fl_contact_email_invalid' => 'Das ist keine E-Mail-Adresse — die Kontakt-Adresse blieb unverändert.',
   'fl_settings_saved' => 'Einstellungen gespeichert.',
   'fl_img_too_big' => 'Bild zu groß (max. 5 MB).',
   'fl_branding_saved' => 'Branding aktualisiert.',
@@ -4075,6 +4076,38 @@ function photo_duplicates(): array {
        WHERE p.checksum = ? ORDER BY p.id', [$s])];
   }
   return $gruppen;
+}
+
+/**
+ * Ein Wert, der in eine Mail-Kopfzeile darf (#220).
+ *
+ * Zeilenumbrüche entfernen ist hier keine Kosmetik: Ein CR oder LF in einem
+ * Betreff oder in Reply-To beendet die Kopfzeile, und alles danach ist eine
+ * eigene — auch ein „Bcc:". Der Bandname und die Kontaktadresse kommen aus den
+ * Einstellungen, und in der Demo ist jeder Besucher Admin; damit konnte jeder
+ * über die öffentliche Passwort-Vergessen-Seite Mail an beliebige Empfänger
+ * auslösen, verschickt vom Server dieses Projekts.
+ *
+ * Auch der senkrechte Tabulator und das Nullzeichen fliegen: manche
+ * Mail-Programme behandeln sie als Umbruch.
+ */
+function mail_from_address(): string {
+  // Aus site_url und nicht aus dem Host der Anfrage: Der Host kommt vom
+  // Aufrufer. Mit einem gefälschten Host-Kopf trug jede Mail dieser
+  // Installation eine fremde Absenderdomain — dieselbe Überlegung wie bei
+  // od_redirect_uri(). Fällt site_url aus, bleibt der Host als Notnagel.
+  $host = (string) parse_url(setting('site_url'), PHP_URL_HOST);
+  if ($host === '') $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+  $host = preg_replace('~^www\.~', '', $host) ?? $host;
+  // Nur, was in einem Hostnamen vorkommt — der Rest hätte in einer Kopfzeile
+  // nichts zu suchen.
+  $host = preg_replace('~[^A-Za-z0-9.\-]~', '', $host) ?: 'localhost';
+  return 'no-reply@' . $host;
+}
+
+function mail_header_value(string $wert, int $max = 200): string {
+  $sauber = preg_replace('~[\r\n\x00\x0B\x0C]+~', ' ', $wert) ?? '';
+  return mb_substr(trim($sauber), 0, $max);
 }
 
 /**
