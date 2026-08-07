@@ -68,7 +68,9 @@ More: [songs](docs/screenshots/songs.jpg) · [members and permissions](docs/scre
 
 Requirements: PHP 8.1 or newer with `pdo_mysql`, `fileinfo`, `gd` and `exif`
 (the last two strip location data out of uploaded photos and match them to
-events — the system check names what is missing), MariaDB 10.4+
+events), and `imap` if you want the band's mailbox fetched — note that PHP 8.4
+moved that one out of the core, so choose your PHP version knowing it. The
+system check names what is missing and what you lose without it. MariaDB 10.4+
 or MySQL 8, and a web server. The examples use nginx with PHP-FPM on Debian;
 Apache works too (see below).
 

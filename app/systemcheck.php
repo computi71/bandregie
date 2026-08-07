@@ -52,6 +52,7 @@ function system_checks(): array {
     // Beide Funktionen verschwinden lautlos, wenn ihre Voraussetzung fehlt —
     // deshalb gehören sie hierher, mit Klartext, was dann nicht geht.
     'exif'  => [t('sys_opt_exif'), function_exists('exif_read_data')],
+    'imap'  => [t('sys_opt_imap'), function_exists('imap_open')],
     'push'  => [t('sys_opt_push'), push_supported()],
   ] as $ext => [$why, $has]) {
     $groups[t('sys_optional')][] = check_row($ext, $has ? 'ok' : 'warn', $has ? t('sys_ok') : t('sys_missing'), $why);

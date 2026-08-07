@@ -704,6 +704,7 @@ const UI_STRINGS = [
   'sys_opt_zip' => 'Nicht zwingend: Sicherungen werden als tar.gz geschrieben, das geht auch ohne.',
   'sys_opt_openssl' => 'Nötig für verschlüsselte Verbindungen beim Versand und beim FTP-Ziel.',
   'sys_opt_exif' => 'Ohne EXIF-Erweiterung liest die Anwendung kein Aufnahmedatum aus Fotos — der Vorschlag, zu welchem Termin ein Foto gehört, bleibt dann leer.',
+  'sys_opt_imap' => 'Ohne die imap-Erweiterung holt die Anwendung kein Postfach ab — der Posteingang der Band bleibt leer. In PHP 8.4 gehört sie nicht mehr zum Kern und muss eigens nachinstalliert werden.',
   'sys_opt_push' => 'Nötig für Mitteilungen aufs Gerät (Push). Fehlt eine der Voraussetzungen, erscheint der Bereich im Profil gar nicht.',
   'sys_https' => 'Verschlüsselte Verbindung',
   'sys_no_https' => 'aus', 'sys_no_https_hint' => 'Ohne HTTPS gehen Passwörter im Klartext über die Leitung, und die App lässt sich nicht auf dem Handy installieren.',
