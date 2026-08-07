@@ -589,7 +589,18 @@ therefore displays it as "Other".
 
 ## Roadmap
 
-See the GitHub issues and milestones: IMAP import of booking requests, and
-linking a cloud folder for files and photos. No native app is planned — the
-installable web app does the same job without a yearly fee, a review queue on
-every change, and a second codebase to keep alive.
+See the GitHub issues and milestones. What is being worked towards:
+
+- **Attachments out of the mailbox into the event** — a stage plan arrives as a
+  PDF in a booking mail, and it belongs with the gig rather than in somebody's
+  inbox.
+- **One shared app registration for OneDrive**, so a band can link its folders
+  without first registering an application of its own at Microsoft.
+- **Address search without Nominatim** — a self-hosted geocoder, so looking up a
+  venue asks nobody outside the server.
+
+Already done and no longer on this list: the band's mailbox with booking
+requests read into event proposals, and cloud folders linked instead of copied.
+
+No native app is planned — the installable web app does the same job without a
+yearly fee, a review queue on every change, and a second codebase to keep alive.
