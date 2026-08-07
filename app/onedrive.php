@@ -272,11 +272,11 @@ function od_graph(string $pfad): ?array {
 function od_graph_send(string $methode, string $pfad, ?array $rumpf = null): array {
   $zeichen = od_access_token();
   if ($zeichen === '') return ['status' => 0, 'data' => []];
-  $kopf = "Authorization: Bearer $zeichen
-Accept: application/json
-";
-  if ($rumpf !== null) $kopf .= "Content-Type: application/json
-";
+  // Kopfzeilen werden mit CRLF getrennt, und das muss hier als Escape-Folge
+  // stehen: Mit einem echten Umbruch im Quelltext schickt PHP ein zerlegtes
+  // Kopffeld, Graph verwirft die Anfrage mit 400 und ohne Fehlertext (#225).
+  $kopf = "Authorization: Bearer $zeichen\r\nAccept: application/json\r\n";
+  if ($rumpf !== null) $kopf .= "Content-Type: application/json\r\n";
   $ctx = stream_context_create(['http' => [
     'method' => $methode,
     'header' => $kopf,
@@ -356,10 +356,8 @@ function od_upload_put(string $url, string $datei, int $stueck = 10485760): arra
       'method' => 'PUT',
       // Kein Authorization-Kopf: Die Upload-Adresse trägt ihre Berechtigung
       // selbst, und ein zusätzliches Zeichen lehnt Graph ab.
-      'header' => "Content-Length: " . strlen($teil) . "
-"
-                . "Content-Range: bytes $ab-$bis/$gesamt
-",
+      'header' => "Content-Length: " . strlen($teil) . "\r\n"
+                . "Content-Range: bytes $ab-$bis/$gesamt\r\n",
       'content' => $teil,
       'timeout' => 120,
       'ignore_errors' => true,
