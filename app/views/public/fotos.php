@@ -15,7 +15,8 @@
 <?php // Unter den Bildern, nicht darüber: Der Nachweis erklärt, was man gerade
       // gesehen hat. Zeilen siehe demo_image_credits() — festes HTML. ?>
 <?php if ($imageCredits): ?>
-  <p class="muted small center"><?= e(t('legal_credits')) ?>:
-    <?= implode(' · ', $imageCredits) ?></p>
+  <?php // Die Zeile trägt ihre Beschriftung schon ("Bilder in der Galerie:") —
+        // ein zweites „Bildnachweis" davor stünde doppelt. ?>
+  <p class="muted small center"><?= implode(' · ', $imageCredits) ?></p>
 <?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

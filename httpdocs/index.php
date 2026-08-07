@@ -208,7 +208,7 @@ if ($path === '/fotos' && $method === 'GET') {
   require_once BASE_DIR . '/app/demo.php';
   view('public/fotos', ['title' => t('nav_fotos'),
                         'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC'),
-                        'imageCredits' => demo_image_credits()]);
+                        'imageCredits' => demo_image_credits(true)]);
 }
 
 if ($path === '/kontakt' && $method === 'GET') {

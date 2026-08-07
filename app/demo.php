@@ -789,9 +789,11 @@ function demo_cc0_link(): string {
  * ausgibt, gibt sie unmaskiert aus — deshalb kommt hier nichts aus einer
  * Eingabe.
  */
-function demo_image_credits(): array {
+function demo_image_credits(bool $nurGalerie = false): array {
   $zeilen = [];
-  if (str_starts_with(setting('background_file'), 'background_demo_')) {
+  // Auf der Galerieseite hat das Hintergrundbild nichts zu suchen: Dort schaut
+  // jemand die Galerie an. Es steht im Impressum, wo es hingehört.
+  if (!$nurGalerie && str_starts_with(setting('background_file'), 'background_demo_')) {
     $zeilen[] = e(t('legal_credit_background')) . ' '
       . '<a href="https://www.pexels.com/photo/panoramic-view-of-crowd-at-music-concert-248963/" rel="noopener">Pexels</a>'
       . ' · ' . demo_cc0_link();
@@ -800,8 +802,11 @@ function demo_image_credits(): array {
   // bekommt beim Einspielen einen Zufallsnamen, und dieselbe Vorlage kann
   // mehrfach in der Galerie liegen. Erst fragen, dann rechnen — auf einer
   // Installation ohne Demobilder wird hier keine Datei angefasst.
+  // Genannt wird, was auf der Seite steht. Wer nur die öffentliche Galerie
+  // ansieht, sieht drei Bilder — dann dürfen dort nicht sechs Namen stehen.
   $summen = array_column(rows("SELECT DISTINCT checksum FROM photos
-                               WHERE filename LIKE 'foto\\_demo\\_%' AND checksum <> ''"), 'checksum');
+                               WHERE filename LIKE 'foto\\_demo\\_%' AND checksum <> ''"
+                               . ($nurGalerie ? ' AND is_public = 1 AND archived_at IS NULL' : '')), 'checksum');
   if ($summen) {
     $namen = [];
     foreach (DEMO_PHOTO_CREDITS as $datei => [$wer, $fundstelle]) {
