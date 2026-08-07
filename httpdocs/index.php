@@ -9,6 +9,7 @@ if (php_sapi_name() === 'cli-server') {
 
 require dirname(__DIR__) . '/app/bootstrap.php';
 require dirname(__DIR__) . '/app/backup.php';
+require dirname(__DIR__) . '/app/post.php';
 require_once dirname(__DIR__) . '/app/dauerauftrag.php';
 require dirname(__DIR__) . '/app/equipmentbuchung.php';
 require dirname(__DIR__) . '/app/mischpult.php';
@@ -612,6 +613,13 @@ if (str_starts_with($path, '/intern')) {
       od_refresh_all();
     });
   }
+  // Und das Postfach (#219) — dasselbe Muster zum dritten Mal, weil es trägt.
+  if ($method === 'GET' && post_due()) {
+    register_shutdown_function(function () {
+      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+      post_fetch();
+    });
+  }
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
   // war — sie koennen ohnehin nichts aktualisieren.
@@ -1192,6 +1200,109 @@ if (str_starts_with($path, '/intern')) {
     }
     q('DELETE FROM tasks WHERE id = ?', [$m[1]]);
     redirect('/intern/aufgaben');
+  }
+
+  // ---------- Postfach der Band (#219) ----------
+  if ($path === '/intern/post' && $method === 'GET') {
+    $postArchiv = ($_GET['archiv'] ?? '') === '1';
+    view('intern/post', [
+      'title' => t('post_title'),
+      'messages' => rows('SELECT m.*, e.title AS event_title, e.date AS event_date
+                          FROM post_messages m LEFT JOIN events e ON e.id = m.event_id
+                          WHERE m.archived_at IS ' . ($postArchiv ? 'NOT NULL' : 'NULL') . '
+                          ORDER BY m.sent_at DESC, m.id DESC LIMIT 200'),
+      'imArchiv' => $postArchiv,
+      'archivZahl' => (int) row('SELECT COUNT(*) n FROM post_messages WHERE archived_at IS '
+                                . ($postArchiv ? 'NULL' : 'NOT NULL'))['n'],
+      'eingerichtet' => post_configured(),
+      'kannLesen' => function_exists('imap_open'),
+    ]);
+  }
+  if ($path === '/intern/post/abholen' && $method === 'POST') {
+    deny_in_demo('/intern/post');
+    $r = post_fetch();
+    flash($r['ok'] ? str_replace(['%1', '%2'], [(string) $r['neu'], (string) $r['gesehen']], t('post_fetched'))
+                   : $r['message']);
+    redirect('/intern/post');
+  }
+  if (preg_match('~^/intern/post/(\d+)$~', $path, $m) && $method === 'GET') {
+    $nachricht = row('SELECT m.*, e.title AS event_title, e.date AS event_date
+                      FROM post_messages m LEFT JOIN events e ON e.id = m.event_id
+                      WHERE m.id = ?', [$m[1]]);
+    if (!$nachricht) { http_response_code(404); view('404', ['title' => 'Nicht gefunden']); }
+    view('intern/post_nachricht', [
+      'title' => $nachricht['subject'] ?: t('post_title'),
+      'msg' => $nachricht,
+      // Der Vorschlag wird bei jedem Aufruf frisch gelesen und nirgends
+      // gespeichert: Er ist eine Lesart des Textes, kein Datenbestand.
+      'vorschlag' => post_extract((string) $nachricht['body_text']),
+      'replies' => rows('SELECT r.*, u.name AS sender FROM post_replies r
+                         LEFT JOIN users u ON u.id = r.sent_by
+                         WHERE r.message_id = ? ORDER BY r.id', [$m[1]]),
+    ]);
+  }
+  // Aus einer Anfrage einen Termin machen. Angelegt wird, was im Formular
+  // steht — nicht, was der Vorschlag gelesen hat: Dazwischen sitzt ein Mensch.
+  if (preg_match('~^/intern/post/(\d+)/termin$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/post');
+    $nachricht = row('SELECT * FROM post_messages WHERE id = ?', [$m[1]]);
+    $titel = trim((string) ($_POST['title'] ?? ''));
+    $datum = trim((string) ($_POST['date'] ?? ''));
+    if (!$nachricht || $titel === '' || !preg_match('~^\d{4}-\d{2}-\d{2}$~', $datum)) {
+      flash(t('fl_title_date_required'));
+      redirect('/intern/post/' . (int) $m[1]);
+    }
+    q('INSERT INTO events (type, title, date, time, time_end, location, fee, notes, status)
+       VALUES (?,?,?,?,?,?,?,?,?)', [
+      in_array($_POST['type'] ?? '', ['gig', 'probe'], true) ? $_POST['type'] : 'gig',
+      mb_substr($titel, 0, 255), $datum,
+      preg_match('~^\d{2}:\d{2}$~', (string) ($_POST['time'] ?? '')) ? $_POST['time'] : '',
+      preg_match('~^\d{2}:\d{2}$~', (string) ($_POST['time_end'] ?? '')) ? $_POST['time_end'] : '',
+      mb_substr(trim((string) ($_POST['location'] ?? '')), 0, 255),
+      mb_substr(trim((string) ($_POST['fee'] ?? '')), 0, 100),
+      // Die Anfrage selbst als Notiz: Nächstes Jahr fragt jemand, was genau
+      // zugesagt war, und dann steht es beim Termin.
+      trim((string) ($_POST['notes'] ?? '')),
+      'angefragt',
+    ]);
+    $neu = (int) $db->lastInsertId();
+    q('UPDATE post_messages SET event_id = ? WHERE id = ?', [$neu, $m[1]]);
+    flash(t('fl_post_event'));
+    redirect('/intern/termine');
+  }
+  // Antworten. Der Text kommt aus dem Formular, der Empfänger aus der
+  // Nachricht — nie aus der Anfrage, sonst wäre das ein Versandweg für Fremde.
+  if (preg_match('~^/intern/post/(\d+)/antwort$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/post');
+    $nachricht = row('SELECT * FROM post_messages WHERE id = ?', [$m[1]]);
+    $text = trim((string) ($_POST['body'] ?? ''));
+    $an = (string) ($nachricht['from_mail'] ?? '');
+    if (!$nachricht || $text === '' || !filter_var($an, FILTER_VALIDATE_EMAIL)) {
+      flash(t('fl_post_reply_failed'));
+      redirect('/intern/post/' . (int) $m[1]);
+    }
+    $betreff = mail_header_value('Re: ' . preg_replace('~^(Re:\s*)+~i', '', (string) $nachricht['subject']), 200);
+    $from = mail_from_address();
+    $antwortAn = mail_header_value(setting('contact_email'));
+    $kopf = "From: $from" . ($antwortAn !== '' ? "\r\nReply-To: $antwortAn" : '')
+          . "\r\nContent-Type: text/plain; charset=UTF-8";
+    $ok = @mail($an, $betreff, $text, $kopf, '-f' . $from);
+    if ($ok) {
+      q('INSERT INTO post_replies (message_id, sent_by, to_mail, subject, body) VALUES (?,?,?,?,?)',
+        [$m[1], $me['id'], $an, $betreff, $text]);
+      q('UPDATE post_messages SET replied_at = NOW() WHERE id = ?', [$m[1]]);
+    }
+    flash($ok ? str_replace('%1', $an, t('fl_post_replied')) : t('fl_post_reply_failed'));
+    redirect('/intern/post/' . (int) $m[1]);
+  }
+  if (preg_match('~^/intern/post/(\d+)/archiv$~', $path, $m) && $method === 'POST') {
+    $nachricht = row('SELECT id, archived_at FROM post_messages WHERE id = ?', [$m[1]]);
+    if ($nachricht) {
+      q('UPDATE post_messages SET archived_at = ? WHERE id = ?',
+        [$nachricht['archived_at'] === null ? date('Y-m-d H:i:s') : null, $m[1]]);
+      flash(t('fl_post_archived'));
+    }
+    redirect('/intern/post');
   }
 
   // ---------- Fotos ----------
@@ -3437,6 +3548,43 @@ if (str_starts_with($path, '/intern')) {
     set_setting('backup_interval', array_key_exists($_POST['backup_interval'] ?? '', BACKUP_INTERVALS) ? $_POST['backup_interval'] : 'daily');
     set_setting('backup_keep', (string) max(1, min(365, (int) ($_POST['backup_keep'] ?? 7))));
     flash(t('fl_bk_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Zugang zum Postfach (#219). Das Passwort wird nie zurückgeschrieben; ein
+  // leeres Feld heißt „nicht ändern".
+  if ($path === '/intern/einstellungen/postfach' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    set_setting('imap_enabled', isset($_POST['imap_enabled']) ? '1' : '0');
+    foreach (['imap_host', 'imap_user', 'imap_folder'] as $k) {
+      set_setting($k, mb_substr(trim((string) ($_POST[$k] ?? '')), 0, 190));
+    }
+    set_setting('imap_port', (string) max(1, min(65535, (int) ($_POST['imap_port'] ?? 993))));
+    set_setting('imap_tls', isset($_POST['imap_tls']) ? '1' : '0');
+    set_setting('imap_interval_min', (string) max(5, min(1440, (int) ($_POST['imap_interval_min'] ?? 30))));
+    $imapPass = (string) ($_POST['imap_pass'] ?? '');
+    if ($imapPass !== '') {
+      set_setting('imap_pass', crypt_available() ? crypt_seal($imapPass) : $imapPass);
+    }
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Das Postfach prüfen: verbinden, zählen, wieder gehen — nichts verändern.
+  if ($path === '/intern/post/test' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    if (!function_exists('imap_open')) { flash(t('post_no_imap')); redirect('/intern/einstellungen'); }
+    $cfg = post_config();
+    $mbox = @imap_open(post_mailbox($cfg), $cfg['user'], $cfg['pass'], OP_READONLY, 1);
+    if (!$mbox) {
+      $grund = imap_last_error() ?: 'unbekannt';
+      imap_errors();
+      flash(str_replace('%1', mb_substr((string) $grund, 0, 160), t('post_connect_failed')));
+    } else {
+      flash(str_replace('%1', (string) imap_num_msg($mbox), t('fl_imap_ok')));
+      imap_close($mbox);
+      imap_errors();
+    }
     redirect('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen/backup-ziele' && $method === 'POST') {

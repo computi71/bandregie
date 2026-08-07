@@ -38,7 +38,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (first page view of the day, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, the band's mailbox (fetched by IMAP, read-only, with a booking request turned into an event proposal you check before it is created, and replies written and filed in place), a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (first page view of the day, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -242,6 +242,25 @@ them. From linked OneDrive folders only an 800-px preview is stored locally;
 the original stays at OneDrive, linked on the tile with camera and true
 dimensions, and its checksum from Graph makes a re-uploaded original
 recognisable as a duplicate without downloading anything.
+
+**The band's mailbox** is fetched by IMAP on the same pattern as the backup and
+the OneDrive check: one due-check, two triggers — the first page view of the
+interval, or `bin/post-fetch.php` as a cron. Read-only, one configured mailbox
+only, never a member's private one, and nothing is marked as read on the
+server: whoever also has it on their phone finds it untouched. Messages are
+recognised by the server's UID, so nothing is stored twice.
+
+From the text the application proposes an event — date, times, place, fee —
+and shows for each field where in the text it found it, because a number
+without provenance has to be believed. It refuses to guess: no date from "next
+Saturday", no amount without a currency, no address out of prose. The proposal
+only fills the form; the event is created on click, from what stands in the
+form. The request travels into the event's notes, so next year nobody wonders
+what was agreed. Replies go to the sender of the message — never to an address
+from the form — and are filed with it. Attachments are not fetched.
+
+Needs the `imap` extension; without it the feature says so instead of failing
+quietly. Note that PHP 8.4 moved that extension out of the core.
 
 **Privacy policy**: the shipped template covers every one of these processing
 activities, including the optional ones, with bracket placeholders to fill in.

@@ -381,6 +381,7 @@ const UI_STRINGS = [
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult. Der Bühnenplan ist maßstäblich: Vorgabe sind 8 × 6 m, und alles mit echtem Grundriss — Podeste, Verstärker, Monitore, Boxen — wird in seinem Maß gezeichnet. Daran sieht ein Veranstalter, ob die Band auf seine Bühne passt. „Aus der Mitgliederliste erzeugen" stellt eine Vorlage auf: Schlagzeug hinten Mitte auf einem Podest von 3 × 2 m, Bass hinten links, Gesang vorne, dazu Strom und Stagebox. Danach lässt sich alles verschieben oder über die Zahlenfelder eintragen. Wer im Profil „Ich stehe auf der Bühne" aushakt, wird nicht aufgestellt — dort gehört die Technik hin. Welche Figur ein Mitglied im Plan bekommt, wählt es selbst im Profil; mit „Mein Foto" steht dort das Profilbild.',
+  'help_post' => 'Der Posteingang der Band: Anfragen liegen dort, wo aus ihnen ein Termin wird. Die Anwendung holt das eingerichtete Postfach in einem festen Takt ab — nur lesend, und sie markiert im Postfach nichts als gelesen; wer es nebenher im Handy hat, findet es unverändert. Aus dem Text liest sie einen Terminvorschlag: Datum, Uhrzeiten, Ort und Honorar, jeweils mit der Stelle, an der sie es gefunden hat. Der Vorschlag füllt nur das Formular vor — angelegt wird erst auf Klick, und jedes Feld lässt sich vorher ändern. Was sich nicht sicher lesen lässt, bleibt leer, statt geraten zu werden. Die Anfrage wandert als Notiz in den Termin, damit später niemand rätselt, was zugesagt war. Antworten gehen aus der Anwendung an den Absender der Nachricht und bleiben bei ihr stehen. Anhänge holt die Anwendung nicht.',
   'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Die Galerie ordnet nach Jahr, Termin und Fotograf — wie der verknüpfte Ordner. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
@@ -851,6 +852,7 @@ Zeile zwei
   'push_topic_comments' => 'Neue Kommentare',
   'push_topic_attendance' => 'Zusagen und Absagen',
   'push_topic_photos' => 'Neue Bilder',
+  'push_topic_post' => 'Neue Post',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
   'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
@@ -864,6 +866,46 @@ Zeile zwei
   'prof_push_failed' => 'Das Abo ließ sich nicht anlegen. Erlaubnis steht, es hakt woanders — neu laden und noch einmal versuchen.',
   'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
   'push_ev_title' => 'Neuer Termin',
+  // Postfach der Band (#219)
+  'push_post_title' => 'Neue Post',
+  'push_post_body' => '%1 neue Nachricht(en) im Bandpostfach',
+  'inav_post' => 'Post',
+  'post_title' => 'Postfach',
+  'post_intro' => 'Der Posteingang der Band — dort, wo aus einer Anfrage ein Termin wird.',
+  'post_none' => 'Keine Nachrichten.',
+  'post_fetch' => 'Jetzt abholen',
+  'post_fetched' => 'Abgeholt: %1 neu von %2 angesehenen.',
+  'post_no_imap' => 'Diesem Server fehlt die imap-Erweiterung — ohne sie kann die Anwendung kein Postfach lesen.',
+  'post_connect_failed' => 'Das Postfach antwortet nicht: %1',
+  'post_not_set_up' => 'Es ist kein Postfach eingerichtet.',
+  'post_open' => 'Öffnen',
+  'post_back' => 'Zurück zum Postfach',
+  'post_from' => 'Von',
+  'post_proposal' => 'Vorschlag für einen Termin',
+  'post_proposal_hint' => 'Aus dem Text gelesen und nur vorgeschlagen — angelegt wird erst auf Klick, und jedes Feld lässt sich vorher ändern.',
+  'post_evidence' => 'im Text gefunden als',
+  'post_more_dates' => 'Weitere Datumsangaben im Text:',
+  'post_nothing_found' => 'Im Text stand nichts, was sich sicher als Termin lesen ließe — bitte von Hand ausfüllen.',
+  'post_make_event' => 'Termin anlegen',
+  'post_event_linked' => 'Termin dazu:',
+  'post_reply' => 'Antworten',
+  'post_reply_send' => 'Antwort senden',
+  'post_replies' => 'Gesendete Antworten',
+  'post_archive' => 'Ins Archiv',
+  'post_unarchive' => 'Zurückholen',
+  'post_archived_view' => 'Archiv: %1',
+  'fl_post_event' => 'Termin angelegt und mit der Nachricht verbunden.',
+  'fl_post_replied' => 'Antwort an %1 gesendet.',
+  'fl_post_reply_failed' => 'Die Antwort ließ sich nicht senden.',
+  'fl_post_archived' => 'Nachricht ins Archiv gelegt.',
+  'set_imap' => 'Postfach der Band abholen (IMAP)',
+  'set_imap_hint' => 'Nur lesend, und nur dieses eine Postfach — nie ein privates. Die Anwendung markiert nichts als gelesen. Abgeholt wird einmal je Intervall, beim ersten Seitenaufruf oder per Cron.',
+  'set_imap_host' => 'Server', 'set_imap_port' => 'Port', 'set_imap_user' => 'Benutzer',
+  'set_imap_pass' => 'Passwort', 'set_imap_pass_set' => '(gespeichert — leer lassen, um es zu behalten)',
+  'set_imap_folder' => 'Ordner', 'set_imap_tls' => 'Verschlüsselt (TLS)',
+  'set_imap_interval' => 'Abholen alle … Minuten',
+  'set_imap_test' => 'Postfach testen',
+  'fl_imap_ok' => 'Postfach erreichbar: %1 Nachrichten im Ordner.',
   // Täglicher Blick in die OneDrive-Ordner (#214)
   'push_od_title' => 'Neue Bilder bei OneDrive',
   'push_od_body' => '%1 neue Bilder in %2',
@@ -1369,6 +1411,9 @@ const PERM_MODULES = [
   'equipment'     => ['/intern/equipment'],
   'rider'         => ['/intern/stagerider', '/intern/kanaele'],
   'fotos'         => ['/intern/fotos'],
+  // Die Post ist ein eigener Bereich: Wer Termine pflegt, muss nicht das
+  // Postfach der Band lesen dürfen — und umgekehrt (#219).
+  'post'          => ['/intern/post'],
   'musik'         => ['/intern/musik'],
   'downloads'     => ['/intern/downloads'],
   'mitglieder'    => ['/intern/mitglieder'],
@@ -1415,7 +1460,7 @@ const DONATE_URL = 'https://paypal.me/computi71';
 
 const PERM_TEMPLATES = [
   'member' => [
-    'termine' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
+    'termine' => [1, 1], 'post' => [1, 1], 'songs' => [1, 1], 'setlists' => [1, 1], 'orte' => [1, 1],
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
@@ -1425,7 +1470,7 @@ const PERM_TEMPLATES = [
   // Stagerider und die Kanalbelegung gehören dazu: „auf welchem Kanal liegt
   // mein Mikrofon" ist die erste Frage am Aufbautag.
   'ersatz' => [
-    'termine' => [1, 0], 'songs' => [1, 0], 'setlists' => [1, 0], 'orte' => [0, 0],
+    'termine' => [1, 0], 'post' => [0, 0], 'songs' => [1, 0], 'setlists' => [1, 0], 'orte' => [0, 0],
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
@@ -1739,6 +1784,35 @@ $tables = [
     is_public TINYINT(1) NOT NULL DEFAULT 0,
     uploaded_by INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS post_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uid VARCHAR(64) NOT NULL,
+    folder VARCHAR(120) NOT NULL DEFAULT 'INBOX',
+    from_name VARCHAR(190) NOT NULL DEFAULT '',
+    from_mail VARCHAR(190) NOT NULL DEFAULT '',
+    subject VARCHAR(400) NOT NULL DEFAULT '',
+    sent_at DATETIME NULL,
+    body_text MEDIUMTEXT,
+    size_bytes INT NOT NULL DEFAULT 0,
+    event_id INT NULL,
+    replied_at DATETIME NULL,
+    archived_at DATETIME NULL,
+    fetched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_uid (folder, uid),
+    KEY idx_event (event_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS post_replies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    sent_by INT NULL,
+    to_mail VARCHAR(190) NOT NULL,
+    subject VARCHAR(400) NOT NULL DEFAULT '',
+    body TEXT,
+    sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_message (message_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS photo_tags (
@@ -2201,7 +2275,7 @@ if (!column_exists('songs', 'composer')) {
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos'];
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post'];
 const PUSH_NICHTS = '-';
 
 /**
