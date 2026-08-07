@@ -10,6 +10,22 @@
   <p><code id="ical-link"><?= e($icalUrl) ?></code>
   <button class="btn btn-small" data-copy="ical-link" data-copied="<?= e(t('copied')) ?>"><?= e(t('copy')) ?></button></p>
   <p class="warn"><?= e(t('cal_token_warn')) ?></p>
+  <?php // Der Link gehört einem Menschen, nicht der Band (#222): Er zeigt
+        // genau dessen Termine, und er lässt sich einzeln ungültig machen. ?>
+  <p class="muted small">👤 <?= e(t('ical_personal_hint')) ?></p>
+  <form method="post" action="/intern/kalender/neu" class="inline"
+        data-confirm="<?= e(t('ical_new_hint')) ?>"><?= csrf_field() ?>
+    <button class="btn btn-small btn-ghost">🔄 <?= e(t('ical_new')) ?></button>
+  </form>
+  <?php if ($isAdmin && $sharedOn): ?>
+    <p class="warn small"><?= e(t('ical_shared_hint')) ?></p>
+    <form method="post" action="/intern/einstellungen/ical-gemeinsam" class="inline"
+          data-confirm="<?= e(t('ical_shared_hint')) ?>"><?= csrf_field() ?>
+      <button class="btn btn-small btn-danger"><?= e(t('ical_shared_off')) ?></button>
+    </form>
+  <?php elseif ($isAdmin): ?>
+    <p class="muted small">✓ <?= e(t('ical_shared_gone')) ?></p>
+  <?php endif; ?>
 </div>
 
 <div class="card">

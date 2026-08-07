@@ -300,11 +300,22 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
 
 // iCal-Feed zum Abonnieren in Kalender-Apps (geheimer Link)
 if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
-  if (!hash_equals(setting('ical_token'), $m[1])) { http_response_code(404); exit; }
+  // Wessen Kalender ist das (#222)? Ein persönliches Zeichen nennt sein
+  // Mitglied, und dann gilt für den Feed dieselbe Sichtbarkeit wie überall
+  // sonst — ein Ersatzmusiker bekommt hier nicht mehr zu sehen als im
+  // Bandbereich. Das alte gemeinsame Zeichen zeigt weiter alles; es lässt sich
+  // in den Einstellungen abschalten, sobald es niemand mehr braucht.
+  $icalUser = strlen($m[1]) === 32 ? row('SELECT * FROM users WHERE ical_token = ?', [$m[1]]) : null;
+  $icalShared = setting('ical_shared_enabled', '1') === '1'
+    && setting('ical_token') !== '' && hash_equals(setting('ical_token'), $m[1]);
+  if (!$icalUser && !$icalShared) { http_response_code(404); exit; }
+  // Ohne Mitglied (gemeinsamer Link) bleibt es beim bisherigen Umfang.
+  $icalIds = $icalUser ? visible_event_ids($icalUser) : null;
   header('Content-Type: text/calendar; charset=utf-8');
   $band = setting('band_name');
   echo "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//$band//DE\r\nX-WR-CALNAME:$band\r\n";
-  foreach (rows('SELECT * FROM events ORDER BY date') as $ev) {
+  [$icalWhere, $icalArgs] = visible_clause($icalIds);
+  foreach (rows('SELECT * FROM events WHERE 1 = 1' . $icalWhere . ' ORDER BY date', $icalArgs) as $ev) {
     $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandregie.local');
     if ($ev['status'] === 'abgesagt') continue;
     $summary = ($ev['type'] === 'probe' ? 'Probe: ' : 'Gig: ') . $ev['title']
@@ -790,7 +801,7 @@ if (str_starts_with($path, '/intern')) {
       'mine' => my_attendance($ids, $me['id']),
       'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
       'subRequests' => substitute_requests_map($ids),
-      'ical_url' => '/kalender/' . setting('ical_token') . '.ics',
+      'ical_url' => '/kalender/' . ical_token_for((int) $me['id']) . '.ics',
     ]);
   }
 
@@ -1722,7 +1733,8 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Eigenes Profil ----------
   if ($path === '/intern/profil' && $method === 'GET') {
-    view('intern/profil', ['title' => t('mem_my_profile'),
+    view('intern/profil', [
+      'title' => t('mem_my_profile'),
       'profile' => row('SELECT * FROM users WHERE id = ?', [$me['id']])]);
   }
   // Push (#24): Themen-Auswahl (kontoweit) und Geräte-Abos. Ein Abo gehört
@@ -2210,12 +2222,26 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Kalender-Abo mit Einrichtungshilfe ----------
+  // Einen neuen persönlichen Kalender-Link erzeugen (#222) — der alte stirbt
+  // damit sofort. Genau dafür ist er da: ein Handy weg, ein Link zu weit
+  // gegeben.
+  if ($path === '/intern/kalender/neu' && $method === 'POST') {
+    ical_token_for((int) $me['id'], true);
+    flash(t('fl_ical_new'));
+    redirect('/intern/kalender');
+  }
   if ($path === '/intern/kalender' && $method === 'GET') {
-    $icsPath = '/kalender/' . setting('ical_token') . '.ics';
+    // Der persönliche Link (#222): Er zeigt genau die Termine, die dieses
+    // Mitglied auch im Bandbereich sieht. Beim ersten Aufruf entsteht er.
+    $icsPath = '/kalender/' . ical_token_for((int) $me['id']) . '.ics';
     view('intern/kalender', [
       'title' => t('cal_title'),
       'icalUrl' => absolute_url($icsPath),
       'webcalUrl' => preg_replace('~^https?~', 'webcal', absolute_url($icsPath)),
+      // Der alte gemeinsame Link, solange er gilt — nur für Admins sichtbar,
+      // denn nur sie können ihn abschalten.
+      'sharedOn' => setting('ical_shared_enabled', '1') === '1' && setting('ical_token') !== '',
+      'isAdmin' => ($me['role'] ?? '') === 'admin',
     ]);
   }
 
@@ -2342,7 +2368,10 @@ if (str_starts_with($path, '/intern')) {
           eq_quantity_input($_POST['quantity'] ?? null),
         ]);
       }
-      flash($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'));
+      // Auch hier den verstandenen Preis nennen (#221), sofern einer kam.
+      $eqPreis = price_to_cents((string) ($_POST['price'] ?? ''));
+      flash(($count > 1 ? sprintf(t('fl_eq_saved_n'), $count) : t('fl_eq_saved'))
+        . ($eqPreis !== null ? ' ' . str_replace('%1', fmt_money($eqPreis), t('fl_price_understood')) : ''));
     }
     redirect('/intern/equipment');
   }
@@ -2877,7 +2906,11 @@ if (str_starts_with($path, '/intern')) {
         (int) ($_POST['member_id'] ?? 0) ?: null,
         $me['id'],
       ]);
-      flash(t('fl_fin_saved'));
+      // Den verstandenen Betrag zurückmelden (#221): Punkt und Komma bedeuten
+      // je nach Land das Gegenteil, und „1,500" kann 1,50 oder 1500 heißen.
+      // Die Auslegung zu ändern hinge an der Sprache; sie sichtbar zu machen
+      // hilft in jeder — ein Tausendfaches fällt in der Meldung sofort auf.
+      flash(str_replace('%1', fmt_money($amount), t('fl_fin_saved_amount')));
     } else {
       flash(t('fl_fin_invalid'));
     }
@@ -3218,10 +3251,20 @@ if (str_starts_with($path, '/intern')) {
     }
     view('intern/einstellungen', [
       'title' => t('inav_einstellungen'),
-      'ical_url' => absolute_url('/kalender/' . setting('ical_token') . '.ics'),
+      'ical_url' => absolute_url('/kalender/' . ical_token_for((int) $me['id']) . '.ics'),
       'contentAll' => $contentAll,
       'backupRuns' => rows('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 12'),
     ]);
+  }
+  // Den gemeinsamen Kalender-Link abschalten (#222). Nicht löschen, sondern
+  // stilllegen: Wer ihn wieder braucht, schaltet ihn ein, ohne dass alle
+  // persönlichen Links neu verteilt werden müssten.
+  if ($path === '/intern/einstellungen/ical-gemeinsam' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    set_setting('ical_shared_enabled', '0');
+    flash(t('fl_ical_shared_off'));
+    redirect('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen' && $method === 'POST') {
     require_admin();

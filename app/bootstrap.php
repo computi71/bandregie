@@ -651,6 +651,16 @@ const UI_STRINGS = [
   'fl_translations_saved' => 'Übersetzungen gespeichert.',
   'fl_texts_saved' => 'Texte gespeichert.',
   'fl_contact_email_invalid' => 'Das ist keine E-Mail-Adresse — die Kontakt-Adresse blieb unverändert.',
+  // Kalender je Mitglied (#222)
+  'ical_personal' => 'Dein Kalender-Link',
+  'ical_personal_hint' => 'Zeigt genau die Termine, die du auch im Bandbereich siehst. Der Link ist persönlich — nicht weitergeben; wer ihn hat, sieht deine Termine ohne Anmeldung.',
+  'ical_new' => 'Neuen Link erzeugen',
+  'ical_new_hint' => 'Der bisherige hört damit sofort auf zu gelten.',
+  'fl_ical_new' => 'Neuer Kalender-Link erzeugt — der alte gilt nicht mehr.',
+  'ical_shared_off' => 'Gemeinsamen Kalender-Link abschalten',
+  'ical_shared_hint' => 'Der alte, für alle gleiche Link zeigt jedem Termine — auch Ersatzleuten, die sie im Bandbereich nicht sehen. Sobald jeder seinen persönlichen Link eingerichtet hat, kann er weg.',
+  'fl_ical_shared_off' => 'Der gemeinsame Kalender-Link gilt nicht mehr.',
+  'ical_shared_gone' => 'Abgeschaltet.',
   'fl_settings_saved' => 'Einstellungen gespeichert.',
   'fl_img_too_big' => 'Bild zu groß (max. 5 MB).',
   'fl_branding_saved' => 'Branding aktualisiert.',
@@ -733,6 +743,8 @@ const UI_STRINGS = [
   'fincat_equipment' => 'Equipment', 'fincat_gema' => 'GEMA',
   'fincat_fahrt' => 'Fahrtkosten', 'fincat_verpflegung' => 'Verpflegung', 'fincat_sonstiges' => 'Sonstiges',
   'fl_fin_saved' => 'Buchung gespeichert.', 'fl_fin_deleted' => 'Buchung gelöscht.',
+  'fl_fin_saved_amount' => 'Gebucht: %1',
+  'fl_price_understood' => 'Preis verstanden als %1.',
   'fl_fin_invalid' => 'Bitte Datum, Beschreibung und gültigen Betrag angeben.',
   // Produktion (PA/Licht) und Bewertungen
   'prod_pa' => 'PA', 'prod_light' => 'Licht',
@@ -2308,6 +2320,15 @@ if (!column_exists('photos', 'archived_at')) {
 // umgekehrt. Zwei Fragen, zwei Antworten.
 if (!column_exists('photos', 'is_press')) {
   $db->exec('ALTER TABLE photos ADD COLUMN is_press TINYINT(1) NOT NULL DEFAULT 0');
+}
+// Ein Kalender-Zeichen je Mitglied (#222). Bisher gab es genau eines für die
+// ganze Band; damit konnte der Feed nicht wissen, wessen Kalender er füllt —
+// und ein Ersatzmusiker sah über den Link Termine, die ihm die Anwendung
+// verbirgt. Das alte gemeinsame Zeichen bleibt gültig, bis es jemand
+// abschaltet: In irgendeiner Kalender-App läuft es gerade.
+if (!column_exists('users', 'ical_token')) {
+  $db->exec("ALTER TABLE users ADD COLUMN ical_token CHAR(32) NOT NULL DEFAULT ''");
+  $db->exec('CREATE INDEX idx_users_ical ON users (ical_token)');
 }
 // Doppelte finden (#199). Eine Prüfsumme des Dateiinhalts, keine Ähnlichkeit:
 // Sie erkennt exakte Kopien mit Sicherheit und neu komprimierte gar nicht. Das
@@ -4078,6 +4099,22 @@ function photo_duplicates(): array {
        WHERE p.checksum = ? ORDER BY p.id', [$s])];
   }
   return $gruppen;
+}
+
+/**
+ * Das persönliche Kalender-Zeichen eines Mitglieds (#222); wird beim ersten
+ * Hinsehen vergeben. Beim Wechseln entsteht ein neues — der alte Link ist dann
+ * tot, und genau dafür gibt es ihn: ein Handy weg, ein Link zu viel geteilt.
+ */
+function ical_token_for(int $userId, bool $neu = false): string {
+  $u = row('SELECT ical_token FROM users WHERE id = ?', [$userId]);
+  if (!$u) return '';
+  $zeichen = (string) $u['ical_token'];
+  if ($zeichen === '' || $neu) {
+    $zeichen = bin2hex(random_bytes(16));
+    q('UPDATE users SET ical_token = ? WHERE id = ?', [$zeichen, $userId]);
+  }
+  return $zeichen;
 }
 
 /**
