@@ -203,7 +203,12 @@ if ($path === '/musik' && $method === 'GET') {
 if ($path === '/fotos' && $method === 'GET') {
   // Archiviertes ist auch öffentlich weg (#200): aus der Galerie genommen heißt
   // aus jeder Galerie genommen — die Datei bleibt, aber gezeigt wird sie nicht.
-  view('public/fotos', ['title' => t('nav_fotos'), 'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC')]);
+  // Der Bildnachweis gehört auch hierher, nicht nur ins Impressum: Hier sieht
+  // jemand die Bilder und fragt sich, wer sie gemacht hat (#228).
+  require_once BASE_DIR . '/app/demo.php';
+  view('public/fotos', ['title' => t('nav_fotos'),
+                        'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC'),
+                        'imageCredits' => demo_image_credits()]);
 }
 
 if ($path === '/kontakt' && $method === 'GET') {
@@ -214,12 +219,12 @@ if ($path === '/impressum' && $method === 'GET') {
   // Der Bildnachweis gehört ins Impressum, nicht in die Datenschutzerklärung.
   require_once BASE_DIR . '/app/demo.php';
   view('public/rechtliches', ['title' => t('nav_impressum'), 'heading' => t('nav_impressum'),
-                              'text' => content('impressum_text'), 'imageCredit' => demo_background_credit()]);
+                              'text' => content('impressum_text'), 'imageCredits' => demo_image_credits()]);
 }
 
 if ($path === '/datenschutz' && $method === 'GET') {
   view('public/rechtliches', ['title' => t('privacy_title'), 'heading' => t('privacy_title'),
-                              'text' => content('privacy_text'), 'imageCredit' => null]);
+                              'text' => content('privacy_text'), 'imageCredits' => []]);
 }
 
 // Veranstalter-Downloads: öffentlich oder über geheimen Link

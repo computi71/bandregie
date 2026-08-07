@@ -758,15 +758,63 @@ function demo_install_background(): void {
 }
 
 /**
- * Bildnachweis für das mitgelieferte Hintergrundbild — oder null, sobald die
- * Band ihr eigenes eingestellt hat. CC0 verlangt keine Nennung; sie steht
- * trotzdem im Impressum, solange das geschenkte Bild benutzt wird.
+ * Wer die mitgelieferten Bilder gemacht hat. Die Angaben stehen auch in
+ * seed/demo/CREDITS.md — aber die Datei liegt im Repository, und wer die
+ * laufende Seite ansieht, kommt dort nie vorbei (#228).
+ *
+ * Fotograf und Fundstelle je Bild. Geändert wird hier nichts ohne die Datei
+ * daneben: zwei Listen, die auseinanderlaufen, sind schlimmer als eine.
  */
-function demo_background_credit(): ?string {
-  if (!str_starts_with(setting('background_file'), 'background_demo_')) return null;
-  return e(t('legal_credit_background')) . ' '
-    . '<a href="https://www.pexels.com/photo/panoramic-view-of-crowd-at-music-concert-248963/" rel="noopener">Pexels</a>'
-    . ' · <a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener">CC0</a>';
+const DEMO_PHOTO_CREDITS = [
+  'stage-openair.jpg'  => ['Redd Angelo', 'https://commons.wikimedia.org/wiki/File:Concert_in_Gallagher_Park_(Unsplash).jpg'],
+  'stage-bw.jpg'       => ['Felix Russell-Saw', 'https://commons.wikimedia.org/wiki/File:Rock_concert_in_black_and_white_(Unsplash).jpg'],
+  'from-the-stage.jpg' => ['Axel Antas-Bergkvist', 'https://commons.wikimedia.org/wiki/File:Performing_For_The_Crowd_(Unsplash_XUdIi04ohps).jpg'],
+  'crowd-frontrow.jpg' => ['Melanie van Leeuwen', 'https://commons.wikimedia.org/wiki/File:Front_row_audience_(Unsplash).jpg'],
+  'crowd-hands.jpg'    => ['Hannah Rodrigo', 'https://commons.wikimedia.org/wiki/File:Concert_crowd_(Unsplash).jpg'],
+  'mic-studio.jpg'     => ['Kelly Sikkema', 'https://commons.wikimedia.org/wiki/File:Blue_condenser_microphone_(Unsplash).jpg'],
+];
+
+/** Verweis auf die Lizenz, unter der alle mitgelieferten Bilder stehen. */
+function demo_cc0_link(): string {
+  return '<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="noopener">CC0</a>';
+}
+
+/**
+ * Bildnachweise für die mitgelieferten Bilder — je Zeile eine Angabe, und nur
+ * solange das jeweilige Bild wirklich im Einsatz ist. CC0 verlangt keine
+ * Nennung; wer ein Bild verschenkt, darf trotzdem genannt werden. Stellt die
+ * Band ihre eigenen Bilder ein, verschwindet der Hinweis von selbst.
+ *
+ * Die Zeilen sind fertiges HTML: feste Verweise und maskierte Namen. Wer sie
+ * ausgibt, gibt sie unmaskiert aus — deshalb kommt hier nichts aus einer
+ * Eingabe.
+ */
+function demo_image_credits(): array {
+  $zeilen = [];
+  if (str_starts_with(setting('background_file'), 'background_demo_')) {
+    $zeilen[] = e(t('legal_credit_background')) . ' '
+      . '<a href="https://www.pexels.com/photo/panoramic-view-of-crowd-at-music-concert-248963/" rel="noopener">Pexels</a>'
+      . ' · ' . demo_cc0_link();
+  }
+  // Erkannt wird über die Prüfsumme, nicht über den Dateinamen: Jede Kopie
+  // bekommt beim Einspielen einen Zufallsnamen, und dieselbe Vorlage kann
+  // mehrfach in der Galerie liegen. Erst fragen, dann rechnen — auf einer
+  // Installation ohne Demobilder wird hier keine Datei angefasst.
+  $summen = array_column(rows("SELECT DISTINCT checksum FROM photos
+                               WHERE filename LIKE 'foto\\_demo\\_%' AND checksum <> ''"), 'checksum');
+  if ($summen) {
+    $namen = [];
+    foreach (DEMO_PHOTO_CREDITS as $datei => [$wer, $fundstelle]) {
+      $pfad = BASE_DIR . '/seed/demo/' . $datei;
+      if (is_file($pfad) && in_array(hash_file('sha256', $pfad), $summen, true)) {
+        $namen[] = '<a href="' . e($fundstelle) . '" rel="noopener">' . e($wer) . '</a>';
+      }
+    }
+    if ($namen) {
+      $zeilen[] = e(t('legal_credit_photos')) . ' ' . implode(' · ', $namen) . ' · ' . demo_cc0_link();
+    }
+  }
+  return $zeilen;
 }
 
 /** Das Hintergrundbild der Demo wieder entfernen — aber nur das eigene. */

@@ -8,16 +8,18 @@
   <?php endif; ?>
 </div>
 
-<?php // Das mitgelieferte Hintergrundbild steht unter CC0 und verlangt keine
-      // Nennung. Genannt wird es trotzdem, solange es im Einsatz ist — wer ein
-      // Bild verschenkt, darf im Impressum stehen. Mit dem eigenen Bild der
-      // Band verschwindet der Hinweis von selbst. ?>
-<?php if ($imageCredit): ?>
+<?php // Die mitgelieferten Bilder stehen unter CC0 und verlangen keine Nennung.
+      // Genannt werden sie trotzdem, solange sie im Einsatz sind — wer ein Bild
+      // verschenkt, darf im Impressum stehen. Mit den eigenen Bildern der Band
+      // verschwindet der Hinweis von selbst. ?>
+<?php if ($imageCredits): ?>
   <div class="card">
     <h2><?= e(t('legal_credits')) ?></h2>
-    <?php // Bewusst unmaskiert: der Text besteht aus zwei festen Verweisen und
-          // einem bereits maskierten Baustein, siehe demo_background_credit(). ?>
-    <p class="muted small"><?= $imageCredit ?></p>
+    <?php // Bewusst unmaskiert: jede Zeile besteht aus festen Verweisen und
+          // bereits maskierten Namen, siehe demo_image_credits(). ?>
+    <?php foreach ($imageCredits as $nachweis): ?>
+      <p class="muted small"><?= $nachweis ?></p>
+    <?php endforeach; ?>
   </div>
 <?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

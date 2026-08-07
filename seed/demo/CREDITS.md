@@ -51,3 +51,9 @@ and it costs no second file.
 The credits are given here although CC0 does not ask for them: whoever takes
 over this project should be able to check where a file came from without having
 to search for it.
+
+Since v1.214.0 the photographers are also named **in the running application** —
+in the imprint and under the public gallery — for as long as the pictures are
+actually in use. That list lives in `DEMO_PHOTO_CREDITS` in `app/demo.php` and
+must be changed together with this file. Two lists that drift apart are worse
+than one.
