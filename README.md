@@ -49,7 +49,12 @@ Public band page plus an internal organization area: events with availability po
 ## Screenshots
 
 The demo data ships with the project, so a fresh installation looks like this
-straight away — a fictional band with events, songs, a treasury and gear.
+straight away — a fictional band with events, songs, a treasury and gear. The
+gallery brings a handful of photographs along so the folder tree, the tags, the
+press selection and the duplicate finder have something to stand on. Only
+licences without conditions get in there, and where each file came from is
+written down in `seed/demo/CREDITS.md`: this project is passed on to other
+bands, and none of them should inherit an obligation nobody told them about.
 
 | | |
 |---|---|

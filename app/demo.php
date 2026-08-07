@@ -539,7 +539,7 @@ TXT,
   demo_install_topics($members);
   demo_install_orders($members);
   demo_install_substitute($members, $evNext, $pw);
-  demo_install_photo($members[0], $evPast);
+  demo_install_photos($members[0], $evPast, $members);
   demo_write_logins($logins);
 }
 
@@ -634,16 +634,75 @@ function demo_install_substitute(array $members, int $eventId, callable $pw): vo
     [$eventId, $sub, $members[0], $members[0]]);
 }
 
-/** Ein Foto in der Galerie — dasselbe mitgelieferte Bild, öffentlich gestellt. */
-function demo_install_photo(int $uploader, int $eventId): void {
-  $source = BASE_DIR . '/seed/demo/stage-crowd.jpg';
-  if (!is_file($source)) return;
-  $name = 'foto_demo_' . bin2hex(random_bytes(8)) . '.jpg';
-  if (!@copy($source, UPLOADS_DIR . '/' . $name)) return;
-  demo_insert('photos', [
-    'filename' => $name, 'caption' => 'Summer Festival Sampleton', 'is_public' => 1,
-    'uploaded_by' => $uploader, 'event_id' => $eventId,
-  ]);
+/**
+ * Die Galerie der Demoband. Ein einzelnes Foto zeigt von der Galerie nichts:
+ * kein Ordnerbaum, keine Schlagwörter, keine Presseauswahl, keine Personen,
+ * nichts zu suchen. Darum eine kleine Sammlung, verteilt wie sie auch wirklich
+ * entstünde — zwei Kameras beim Auftritt, und ein Rest, den noch niemand
+ * einsortiert hat.
+ *
+ * Kopiert wird, nicht verschoben: sonst wäre die Vorlage nach dem ersten
+ * Entfernen der Demodaten weg. Alle mitgelieferten Bilder stehen unter CC0,
+ * ihre Herkunft steht in seed/demo/CREDITS.md.
+ */
+function demo_install_photos(int $uploader, int $eventId, array $members): void {
+  // Der Ordner vor dem Dateinamen ist im Baum die Gruppe — bei echten Bildern
+  // der Ordner, in dem sie ankamen, hier also die Person mit der Kamera. Wer
+  // keinen Termin und keinen Ordner hat, landet im Zweig „noch nicht
+  // einsortiert", und genau der ist der Stapel, an dem man arbeitet.
+  $ordner = 'Photos/2026/07 Summer Festival';
+  $bilder = [
+    ['datei' => 'stage-openair.jpg', 'text' => 'Main stage at dusk',
+     'quelle' => "$ordner/Lisa/IMG_0142.jpg", 'termin' => true,
+     'oeffentlich' => 1, 'presse' => 1, 'marken' => ['Stage'], 'wer' => []],
+    ['datei' => 'stage-bw.jpg', 'text' => 'Second set, seen from the wings',
+     'quelle' => "$ordner/Lisa/IMG_0187.jpg", 'termin' => true,
+     'oeffentlich' => 1, 'presse' => 1, 'marken' => ['Stage'], 'wer' => [1]],
+    ['datei' => 'crowd-frontrow.jpg', 'text' => 'Front row during the encore',
+     'quelle' => "$ordner/Ben/DSC_2291.jpg", 'termin' => true,
+     'oeffentlich' => 1, 'presse' => 0, 'marken' => ['Audience'], 'wer' => []],
+    ['datei' => 'crowd-hands.jpg', 'text' => 'The hall in the last song',
+     'quelle' => "$ordner/Ben/DSC_2304.jpg", 'termin' => true,
+     'oeffentlich' => 0, 'presse' => 0, 'marken' => ['Audience'], 'wer' => []],
+    // Dasselbe Bild ein zweites Mal, aus einem anderen Ordner: So kommt es
+    // wirklich an, wenn zwei Leute dieselbe Datei weiterschicken. Die Suche
+    // nach Doppelten hat damit einen echten Fund statt einer leeren Liste —
+    // und es kostet keine zusätzliche Datei im Repository.
+    ['datei' => 'crowd-hands.jpg', 'text' => 'The hall in the last song (forwarded)',
+     'quelle' => "$ordner/Ines/WhatsApp-Image-2026.jpg", 'termin' => true,
+     'oeffentlich' => 0, 'presse' => 0, 'marken' => [], 'wer' => []],
+    ['datei' => 'from-the-stage.jpg', 'text' => 'Backlight, somewhere in the second set',
+     'quelle' => '', 'termin' => false,
+     'oeffentlich' => 0, 'presse' => 0, 'marken' => ['Stage'], 'wer' => [0]],
+    ['datei' => 'mic-studio.jpg', 'text' => 'The new vocal microphone, tried out in the rehearsal room',
+     'quelle' => 'Ines/IMG_0007.jpg', 'termin' => false,
+     'oeffentlich' => 0, 'presse' => 0, 'marken' => ['Technology'], 'wer' => []],
+  ];
+
+  foreach ($bilder as $b) {
+    $quelle = BASE_DIR . '/seed/demo/' . $b['datei'];
+    if (!is_file($quelle)) continue;
+    $name = 'foto_demo_' . bin2hex(random_bytes(8)) . '.jpg';
+    if (!@copy($quelle, UPLOADS_DIR . '/' . $name)) continue;
+    $id = demo_insert('photos', [
+      'filename' => $name, 'caption' => $b['text'], 'is_public' => $b['oeffentlich'],
+      'is_press' => $b['presse'], 'uploaded_by' => $uploader,
+      'event_id' => $b['termin'] ? $eventId : null, 'source' => $b['quelle'],
+      // Die Prüfsumme gleich mitgeben, statt auf den nächsten Durchlauf zu
+      // warten: ohne sie findet die Suche nach Doppelten nichts.
+      'checksum' => hash_file('sha256', UPLOADS_DIR . '/' . $name),
+    ]);
+    // Schlagwörter und Personen hängen an der Foto-Zeile, nicht an demo_rows;
+    // demo_remove() nimmt sie über die Foto-Kennung mit.
+    foreach ($b['marken'] as $marke) {
+      q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$id, $marke]);
+    }
+    foreach ($b['wer'] as $i) {
+      if (isset($members[$i])) {
+        q('INSERT IGNORE INTO photo_people (photo_id, user_id) VALUES (?,?)', [$id, $members[$i]]);
+      }
+    }
+  }
 }
 
 /**
@@ -757,6 +816,12 @@ function demo_remove(): void {
   foreach ($byTable['equipment'] ?? [] as $eqId) {
     q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$eqId]);
     q('DELETE FROM event_equipment WHERE equipment_id = ?', [$eqId]);
+  }
+  // Schlagwörter und Personen hängen an der Foto-Zeile und stehen in keiner
+  // eigenen Demo-Liste; ohne sie hier bleiben sie als Waisen zurück.
+  foreach ($byTable['photos'] ?? [] as $photoId) {
+    q('DELETE FROM photo_tags WHERE photo_id = ?', [$photoId]);
+    q('DELETE FROM photo_people WHERE photo_id = ?', [$photoId]);
   }
 
   // Kindzeilen zuerst, dann die Haupttabellen
