@@ -74,6 +74,33 @@
   </div>
 <?php endif; ?>
 
+<?php // Anhänge stehen zwischen Nachricht und Antwort: Ein Bühnenplan gehört zum
+      // Termin, nicht in irgendeinen Posteingang (#19). Geholt wird auf Klick. ?>
+<?php if ($attachments): ?>
+  <div class="card">
+    <h2>📎 <?= e(t('post_attachments')) ?></h2>
+    <p class="muted small"><?= e(t('post_attach_hint')) ?></p>
+    <?php if ($msg['event_id'] === null): ?>
+      <p class="muted small">💡 <?= e(t('post_attach_need_event')) ?></p>
+    <?php endif; ?>
+    <ul class="task-list">
+      <?php foreach ($attachments as $anhang): ?>
+        <li>
+          <strong><?= e($anhang['name']) ?></strong>
+          <span class="muted small"><?= e($anhang['mime']) ?> · <?= e(fmt_bytes((int) $anhang['size_bytes'])) ?></span>
+          <?php if ($anhang['taken_at'] !== null): ?>
+            <span class="badge">✔ <?= e(t('post_attach_taken')) ?></span>
+          <?php elseif ($msg['event_id'] !== null): ?>
+            <form method="post" action="/intern/post/<?= (int) $msg['id'] ?>/anhang/<?= (int) $anhang['id'] ?>" class="inline"><?= csrf_field() ?>
+              <button class="btn btn-tiny">📥 <?= e(t('post_attach_take')) ?></button>
+            </form>
+          <?php endif; ?>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
+<?php endif; ?>
+
 <div class="card">
   <h2>↩ <?= e(t('post_reply')) ?></h2>
   <?php // Der Empfänger steht fest und kommt aus der Nachricht — er ist kein

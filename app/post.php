@@ -276,6 +276,7 @@ function post_due(): bool {
  * @return array{ok: bool, neu: int, gesehen: int, message: string}
  */
 function post_fetch(int $hoechstens = POST_BATCH): array {
+  global $db;
   set_setting('imap_last_attempt', (string) time());
   if (!function_exists('imap_open')) {
     return ['ok' => false, 'neu' => 0, 'gesehen' => 0, 'message' => t('post_no_imap')];
@@ -313,6 +314,9 @@ function post_fetch(int $hoechstens = POST_BATCH): array {
       isset($kopf->udate) ? date('Y-m-d H:i:s', (int) $kopf->udate) : date('Y-m-d H:i:s'),
       mb_substr($text, 0, 60000), $groesse,
     ]);
+    $nachrichtId = (int) $db->lastInsertId();
+    // Nur vermerken, nichts holen (#19): Was jemand braucht, sagt er später.
+    post_note_attachments($mbox, $i, $nachrichtId);
     $neu++;
   }
   imap_close($mbox);
@@ -366,4 +370,147 @@ function post_decode_part(string $roh, int $encoding): string {
     4 => quoted_printable_decode($roh),
     default => $roh,
   };
+}
+
+/**
+ * Die Anhänge einer Nachricht aus ihrem Aufbau lesen (#19).
+ *
+ * Absichtlich ohne Netz und ohne die imap-Erweiterung: Der Aufbau einer Mail
+ * ist ein Baum, und das Ablaufen dieses Baums ist die Stelle, an der man sich
+ * vertut — deshalb muss sie ohne Postfach prüfbar sein. Herein kommt, was
+ * imap_fetchstructure() liefert; heraus kommt eine flache Liste.
+ *
+ * Ein Anhang ist, was einen Dateinamen trägt oder ausdrücklich als „attachment"
+ * ausgezeichnet ist. Der eingebettete Text der Nachricht ist keiner, sonst
+ * stünde unter jeder Mail zweimal dasselbe.
+ *
+ * Die Teilnummer ist der Weg durch den Baum („2", „2.1"), so wie imap_fetchbody
+ * sie erwartet.
+ *
+ * @return array<int, array{part: string, name: string, size: int, mime: string, encoding: int}>
+ */
+function post_attachments_from_structure(object $aufbau, string $weg = ''): array {
+  $gefunden = [];
+  $teile = is_array($aufbau->parts ?? null) ? $aufbau->parts : [];
+  if (!$teile) {
+    $name = post_part_filename($aufbau);
+    if ($weg !== '' && ($name !== '' || post_part_is_attachment($aufbau))) {
+      $gefunden[] = [
+        'part' => $weg,
+        'name' => $name,
+        'size' => (int) ($aufbau->bytes ?? 0),
+        'mime' => post_part_mime($aufbau),
+        'encoding' => (int) ($aufbau->encoding ?? 0),
+      ];
+    }
+    return $gefunden;
+  }
+  foreach ($teile as $nr => $teil) {
+    $unterWeg = ($weg === '' ? '' : $weg . '.') . (string) ($nr + 1);
+    $gefunden = [...$gefunden, ...post_attachments_from_structure((object) $teil, $unterWeg)];
+  }
+  return $gefunden;
+}
+
+/** Der Dateiname eines Teils — er steht an zwei Stellen, je nach Absender. */
+function post_part_filename(object $teil): string {
+  foreach (['dparameters', 'parameters'] as $feld) {
+    foreach (is_array($teil->$feld ?? null) ? $teil->$feld : [] as $p) {
+      $schl = strtolower((string) ((is_object($p) ? $p->attribute : $p['attribute']) ?? ''));
+      if (in_array($schl, ['filename', 'name'], true)) {
+        $wert = (string) ((is_object($p) ? $p->value : $p['value']) ?? '');
+        if (trim($wert) !== '') return post_decode_header($wert);
+      }
+    }
+  }
+  return '';
+}
+
+/** Ist der Teil als Anhang ausgezeichnet? */
+function post_part_is_attachment(object $teil): bool {
+  return strtolower((string) ($teil->disposition ?? '')) === 'attachment';
+}
+
+/** Der Medientyp eines Teils, aus Haupt- und Untertyp zusammengesetzt. */
+function post_part_mime(object $teil): string {
+  $haupt = ['text', 'multipart', 'message', 'application', 'audio', 'image', 'video', 'other'];
+  $t = strtolower($haupt[(int) ($teil->type ?? 7)] ?? 'other');
+  $u = strtolower((string) ($teil->subtype ?? 'octet-stream'));
+  return $t . '/' . $u;
+}
+
+/**
+ * Ein Dateiname, der auf eine Platte darf. Was aus einer Mail kommt, ist ein
+ * Vorschlag von jemandem, den wir nicht kennen: Pfadanteile fliegen raus, und
+ * fehlt ein brauchbarer Name, wird einer gebaut — namenlos gespeichert ist
+ * schlimmer als hässlich benannt.
+ */
+function post_attachment_name(string $roh, string $mime, int $nr): string {
+  $name = trim(str_replace(["\0", "\r", "\n"], '', $roh));
+  $name = basename(strtr($name, '\\', '/'));
+  $name = preg_replace('~^\.+~', '', $name) ?? '';
+  if ($name === '') {
+    // „octet-stream" heißt „unbekannt" und würde als Endung nur seltsam
+    // aussehen — dann lieber .bin, das versteht jedes System.
+    $unter = explode('/', strtolower($mime))[1] ?? '';
+    $endung = $unter === 'octet-stream' ? 'bin' : (preg_replace('~[^a-z0-9]~', '', $unter) ?: 'bin');
+    $name = 'anhang-' . $nr . '.' . $endung;
+  }
+  return mb_substr($name, 0, 200);
+}
+
+/**
+ * Die Anhänge einer Nachricht vermerken — Name, Größe, Typ, Teilnummer (#19).
+ * Geholt wird nichts: Das kostet Zeit und Speicher für Dateien, die vielleicht
+ * niemand will.
+ */
+function post_note_attachments($mbox, int $nr, int $nachrichtId): void {
+  $aufbau = @imap_fetchstructure($mbox, $nr);
+  if (!is_object($aufbau)) return;
+  foreach (post_attachments_from_structure($aufbau) as $i => $a) {
+    q('INSERT INTO post_attachments (message_id, part, name, mime, size_bytes, encoding)
+       VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name = VALUES(name)',
+      [$nachrichtId, $a['part'], post_attachment_name($a['name'], $a['mime'], $i + 1),
+       mb_substr($a['mime'], 0, 120), $a['size'], $a['encoding']]);
+  }
+}
+
+/**
+ * Einen Anhang aus dem Postfach holen und in den Anhangsbestand des Termins
+ * legen (#19).
+ *
+ * Der Weg dorthin ist derselbe wie beim Hochladen — dieselbe Grenze, dieselbe
+ * Versiegelung, dieselbe Tabelle. Zwei Wege für dieselbe Sache liefen
+ * auseinander, und dann gilt eine Regel nur noch an einer Stelle.
+ *
+ * @return array{ok: bool, name: string, reason: string}
+ */
+function post_attachment_take(int $anhangId, ?int $wer): array {
+  $a = row('SELECT a.*, m.uid, m.folder, m.event_id FROM post_attachments a
+            JOIN post_messages m ON m.id = a.message_id WHERE a.id = ?', [$anhangId]);
+  if (!$a) return ['ok' => false, 'name' => '', 'reason' => 'weg'];
+  $name = (string) $a['name'];
+  if ($a['event_id'] === null) return ['ok' => false, 'name' => $name, 'reason' => 'ohne-termin'];
+  if ((int) $a['size_bytes'] > FILE_MAX_BYTES) return ['ok' => false, 'name' => $name, 'reason' => 'zu-gross'];
+  if (!function_exists('imap_open')) return ['ok' => false, 'name' => $name, 'reason' => 'kein-imap'];
+
+  $cfg = post_config();
+  $mbox = @imap_open(post_mailbox($cfg, (string) $a['folder']), $cfg['user'], $cfg['pass'], OP_READONLY, 1);
+  if (!$mbox) { imap_errors(); return ['ok' => false, 'name' => $name, 'reason' => 'kein-postfach']; }
+  // Über die Kennung des Servers, nicht über die laufende Nummer: Die Nummer
+  // verschiebt sich, sobald jemand im Postfach etwas löscht.
+  $nr = @imap_msgno($mbox, (int) $a['uid']);
+  $roh = $nr > 0 ? @imap_fetchbody($mbox, $nr, (string) $a['part']) : '';
+  imap_close($mbox);
+  imap_errors();
+  if (!is_string($roh) || $roh === '') return ['ok' => false, 'name' => $name, 'reason' => 'nicht-gefunden'];
+
+  $inhalt = post_decode_part($roh, (int) $a['encoding']);
+  if ($inhalt === '' || strlen($inhalt) > FILE_MAX_BYTES) {
+    return ['ok' => false, 'name' => $name, 'reason' => 'zu-gross'];
+  }
+  $dateiId = file_store_content('event', (int) $a['event_id'], $inhalt, $name, $wer);
+  if ($dateiId === null) return ['ok' => false, 'name' => $name, 'reason' => 'nicht-gespeichert'];
+  q('UPDATE post_attachments SET file_id = ?, taken_at = NOW() WHERE id = ?', [$dateiId, $anhangId]);
+  return ['ok' => true, 'name' => $name, 'reason' => ''];
 }

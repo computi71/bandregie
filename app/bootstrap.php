@@ -383,7 +383,7 @@ const UI_STRINGS = [
   'help_kasse' => 'Einnahmen und Ausgaben der Band, Gagen lassen sich aus den Terminen übernehmen.',
   'help_equipment' => 'Das Inventar samt Bestandteilen, Preisen und Fristen wie Prüfungen oder Versicherungen. Ein Eintrag steht für ein Gerät: Zwei gleiche Mikrofone sind zwei Einträge, durchnummeriert als „#1" und „#2", denn sie werden einzeln getragen, verliehen und vermisst. Für Kleinteile und Meterware gibt es stattdessen das Feld „Menge" — zehn XLR-Tüllen sind keine zehn Einträge. Steht in einer Zeile eine Menge, obwohl es Geräte sind, macht „In einzelne Geräte aufteilen" daraus einzelne Einträge; Preis, Kaufdatum, Rechnung und Bild gehen an jeden mit. Ein neuer Eintrag kann ein Bild übernehmen, das schon im Inventar liegt, statt dieselbe Datei ein zweites Mal hochzuladen.',
   'help_rider' => 'Was ein Veranstalter über eure Technik wissen muss, und die Kanalbelegung fürs Mischpult. Der Bühnenplan ist maßstäblich: Vorgabe sind 8 × 6 m, und alles mit echtem Grundriss — Podeste, Verstärker, Monitore, Boxen — wird in seinem Maß gezeichnet. Daran sieht ein Veranstalter, ob die Band auf seine Bühne passt. „Aus der Mitgliederliste erzeugen" stellt eine Vorlage auf: Schlagzeug hinten Mitte auf einem Podest von 3 × 2 m, Bass hinten links, Gesang vorne, dazu Strom und Stagebox. Danach lässt sich alles verschieben oder über die Zahlenfelder eintragen. Wer im Profil „Ich stehe auf der Bühne" aushakt, wird nicht aufgestellt — dort gehört die Technik hin. Welche Figur ein Mitglied im Plan bekommt, wählt es selbst im Profil; mit „Mein Foto" steht dort das Profilbild.',
-  'help_post' => 'Der Posteingang der Band: Anfragen liegen dort, wo aus ihnen ein Termin wird. Die Anwendung holt das eingerichtete Postfach in einem festen Takt ab — nur lesend, und sie markiert im Postfach nichts als gelesen; wer es nebenher im Handy hat, findet es unverändert. Aus dem Text liest sie einen Terminvorschlag: Datum, Uhrzeiten, Ort und Honorar, jeweils mit der Stelle, an der sie es gefunden hat. Der Vorschlag füllt nur das Formular vor — angelegt wird erst auf Klick, und jedes Feld lässt sich vorher ändern. Was sich nicht sicher lesen lässt, bleibt leer, statt geraten zu werden. Die Anfrage wandert als Notiz in den Termin, damit später niemand rätselt, was zugesagt war. Antworten gehen aus der Anwendung an den Absender der Nachricht und bleiben bei ihr stehen. Anhänge holt die Anwendung nicht.',
+  'help_post' => 'Der Posteingang der Band: Anfragen liegen dort, wo aus ihnen ein Termin wird. Die Anwendung holt das eingerichtete Postfach in einem festen Takt ab — nur lesend, und sie markiert im Postfach nichts als gelesen; wer es nebenher im Handy hat, findet es unverändert. Aus dem Text liest sie einen Terminvorschlag: Datum, Uhrzeiten, Ort und Honorar, jeweils mit der Stelle, an der sie es gefunden hat. Der Vorschlag füllt nur das Formular vor — angelegt wird erst auf Klick, und jedes Feld lässt sich vorher ändern. Was sich nicht sicher lesen lässt, bleibt leer, statt geraten zu werden. Die Anfrage wandert als Notiz in den Termin, damit später niemand rätselt, was zugesagt war. Antworten gehen aus der Anwendung an den Absender der Nachricht und bleiben bei ihr stehen. Anhänge stehen dabei mit Name und Größe, geholt werden sie erst beim Übernehmen — dann liegen sie beim Termin, auf demselben Weg wie eine hochgeladene Datei. Dafür muss die Nachricht mit einem Termin verbunden sein: Der Anhang wird abgelegt, nicht gesammelt.',
   'help_fotos' => 'Bilder für die öffentliche Seite und fürs Bandgedächtnis. Beim Hochladen liest die Anwendung Aufnahmedatum und Aufnahmeort aus der Datei und schlägt damit den Termin vor — zugeordnet wird erst auf Klick: einzeln, angehakt über die Leiste oder gleich als ganzer Herkunftsordner. Aus der gespeicherten Datei werden die Angaben danach entfernt: Ein Proberaum ist oft eine Privatadresse, und die soll mit keinem veröffentlichten Foto mitgehen. Nur Originale direkt vom Gerät tragen sie überhaupt; was über Messenger geteilt wurde, hat sie längst verloren. Die Galerie ordnet nach Jahr, Termin und Fotograf — wie der verknüpfte Ordner. Aus verknüpften OneDrive-Ordnern liegt hier nur ein Vorschaubild — das Original bleibt bei OneDrive und ist an der Kachel verlinkt. Statt zu löschen gibt es das Archiv: aus jeder Galerie genommen, aber nicht zerstört, und auf Klick zurückzuholen. Schlagwörter, die Presse-Auswahl fürs Rausgeben und von Hand benannte Personen machen Bilder auffindbar; das Suchfeld sucht über Beschreibung, Herkunft, Termin, Schlagwort und Person — auch im Archiv. Doppelte Dateien findet das Aufräumen in den Einstellungen anhand einer Prüfsumme. Ein verknüpfter OneDrive-Ordner lässt sich außerdem an einen Termin binden: Dann gehören die Bilder darin dorthin, auch die, die erst nächste Woche hineingelegt werden. Heißt der Ordner nach dem Datum oder dem Ort, schlägt die Anwendung den passenden Termin vor — vorausgewählt wird er nicht, denn ein gesetzter Wert wird bestätigt, ohne hinzusehen.',
   'help_musik' => 'Videos und Streams, die auf der öffentlichen Musikseite erscheinen.',
   'help_downloads' => 'Pressematerial für Veranstalter — mit Link zum Weitergeben.',
@@ -894,6 +894,14 @@ Zeile zwei
   'post_reply' => 'Antworten',
   'post_reply_send' => 'Antwort senden',
   'post_replies' => 'Gesendete Antworten',
+  'post_attachments' => 'Anhänge',
+  'post_attach_take' => 'In den Termin übernehmen',
+  'post_attach_taken' => 'übernommen',
+  'post_attach_need_event' => 'Erst einen Termin mit dieser Nachricht verbinden — dann liegt der Anhang dort, wo er gebraucht wird.',
+  'post_attach_hint' => 'Geholt wird eine Datei erst beim Übernehmen. Bis dahin steht hier nur, dass sie da ist.',
+  'fl_post_attach_done' => '„%1" liegt jetzt beim Termin.',
+  'fl_post_attach_failed' => '„%1" konnte nicht geholt werden — vielleicht ist die Nachricht im Postfach nicht mehr da.',
+  'fl_post_attach_too_big' => '„%1" ist größer als 20 MB und wurde nicht übernommen.',
   'post_archive' => 'Ins Archiv',
   'post_unarchive' => 'Zurückholen',
   'post_archived_view' => 'Archiv: %1',
@@ -1811,6 +1819,23 @@ $tables = [
     fetched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_uid (folder, uid),
     KEY idx_event (event_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Was an einer Nachricht hängt (#19). Erfasst wird nur, dass es da ist —
+  // geholt wird eine Datei erst, wenn jemand sie haben will. Ein Postfach ist
+  // kein Ablagesystem, und ungefragt Megabytes zu ziehen ist keine Höflichkeit.
+  "CREATE TABLE IF NOT EXISTS post_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    part VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL DEFAULT '',
+    mime VARCHAR(120) NOT NULL DEFAULT '',
+    size_bytes INT NOT NULL DEFAULT 0,
+    encoding TINYINT NOT NULL DEFAULT 0,
+    file_id INT NULL,
+    taken_at DATETIME NULL,
+    UNIQUE KEY uniq_part (message_id, part),
+    KEY idx_message (message_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS post_replies (
@@ -3255,6 +3280,47 @@ function orphan_clean(): array {
  *
  * @return int Wie viele Zeilen entfernt wurden
  */
+/**
+ * Die Grenze für einen Anhang. Sie stand als Zahl im Upload-Zweig; seit auch
+ * Mailanhänge diesen Weg gehen (#19), braucht sie einen Namen — sonst gilt sie
+ * an einer Stelle und an der anderen nicht.
+ */
+const FILE_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Der Name, unter dem eine Datei auf der Platte liegt.
+ *
+ * Der Zufallsanteil ist nicht die Zugriffsprüfung — die steht in der Route. Er
+ * sorgt dafür, dass Namen nichts verraten und sich nicht durchzählen lassen.
+ * Wie die Datei wirklich heißt, steht in original_name.
+ */
+function file_safe_name(string $original): string {
+  $endung = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($original, PATHINFO_EXTENSION))) ?? '';
+  return 'datei_' . bin2hex(random_bytes(16)) . ($endung !== '' ? '.' . $endung : '');
+}
+
+/**
+ * Eine Datei aus dem Speicher in den Anhangsbestand legen — für alles, was
+ * nicht durch ein Formular kommt (#19).
+ *
+ * Derselbe Weg wie beim Hochladen: dieselbe Grenze, dieselbe Versiegelung,
+ * dieselbe Tabelle. Zwei Wege für dieselbe Sache laufen auseinander, und dann
+ * gilt eine Regel nur noch an einer Stelle.
+ *
+ * @return int|null Kennung der Zeile, oder null wenn nichts gespeichert wurde
+ */
+function file_store_content(string $entityType, int $entityId, string $inhalt,
+                            string $originalName, ?int $wer): ?int {
+  global $db;
+  if ($inhalt === '' || strlen($inhalt) > FILE_MAX_BYTES) return null;
+  $safe = file_safe_name($originalName);
+  if (@file_put_contents(FILES_DIR . '/' . $safe, $inhalt) === false) return null;
+  if (crypt_available()) file_seal_at_rest(FILES_DIR . '/' . $safe);
+  q('INSERT INTO files (entity_type, entity_id, filename, original_name, size, uploaded_by) VALUES (?,?,?,?,?,?)',
+    [$entityType, $entityId, $safe, mb_substr($originalName, 0, 255), strlen($inhalt), $wer]);
+  return (int) $db->lastInsertId();
+}
+
 function files_purge(string $entityType, int $entityId): int {
   $weg = 0;
   foreach (rows('SELECT id, filename FROM files WHERE entity_type = ? AND entity_id = ?',

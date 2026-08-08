@@ -1,0 +1,47 @@
+-- Anhaenge einer Mail in den Termin uebernehmen (#19)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','post_attachments','Attachments'),
+('en','post_attach_take','Take over into the event'),
+('en','post_attach_taken','taken over'),
+('en','post_attach_need_event','Link an event with this message first — then the attachment sits where it is needed.'),
+('en','post_attach_hint','A file is only fetched when it is taken over. Until then this only says it is there.'),
+('en','fl_post_attach_done','"%1" is now with the event.'),
+('en','fl_post_attach_failed','"%1" could not be fetched — perhaps the message is no longer in the mailbox.'),
+('en','fl_post_attach_too_big','"%1" is larger than 20 MB and was not taken over.'),
+
+('nl','post_attachments','Bijlagen'),
+('nl','post_attach_take','Overnemen in de afspraak'),
+('nl','post_attach_taken','overgenomen'),
+('nl','post_attach_need_event','Koppel eerst een afspraak aan dit bericht — dan staat de bijlage waar die nodig is.'),
+('nl','post_attach_hint','Een bestand wordt pas gehaald bij het overnemen. Tot dan staat hier alleen dat het er is.'),
+('nl','fl_post_attach_done','"%1" staat nu bij de afspraak.'),
+('nl','fl_post_attach_failed','"%1" kon niet worden gehaald — misschien staat het bericht niet meer in het postvak.'),
+('nl','fl_post_attach_too_big','"%1" is groter dan 20 MB en is niet overgenomen.'),
+
+('fr','post_attachments','Pieces jointes'),
+('fr','post_attach_take','Reprendre dans la date'),
+('fr','post_attach_taken','reprise'),
+('fr','post_attach_need_event','Rattache d''abord une date a ce message — la piece jointe sera alors la ou on en a besoin.'),
+('fr','post_attach_hint','Un fichier n''est recupere qu''au moment de la reprise. Jusque-la, ceci dit seulement qu''il existe.'),
+('fr','fl_post_attach_done','« %1 » se trouve maintenant avec la date.'),
+('fr','fl_post_attach_failed','« %1 » n''a pas pu etre recupere — le message n''est peut-etre plus dans la boite.'),
+('fr','fl_post_attach_too_big','« %1 » depasse 20 Mo et n''a pas ete repris.'),
+
+('es','post_attachments','Adjuntos'),
+('es','post_attach_take','Pasar a la fecha'),
+('es','post_attach_taken','pasado'),
+('es','post_attach_need_event','Vincula primero una fecha con este mensaje: asi el adjunto queda donde hace falta.'),
+('es','post_attach_hint','El archivo solo se descarga al pasarlo. Hasta entonces aqui solo consta que existe.'),
+('es','fl_post_attach_done','«%1» ya esta con la fecha.'),
+('es','fl_post_attach_failed','«%1» no se pudo descargar; quiza el mensaje ya no esta en el buzon.'),
+('es','fl_post_attach_too_big','«%1» supera los 20 MB y no se ha pasado.'),
+
+('it','post_attachments','Allegati'),
+('it','post_attach_take','Porta nella data'),
+('it','post_attach_taken','portato'),
+('it','post_attach_need_event','Collega prima una data a questo messaggio: cosi l''allegato sta dove serve.'),
+('it','post_attach_hint','Il file viene scaricato solo quando lo porti. Fino ad allora qui si dice solo che esiste.'),
+('it','fl_post_attach_done','«%1» ora sta con la data.'),
+('it','fl_post_attach_failed','«%1» non si e potuto scaricare: forse il messaggio non e piu nella casella.'),
+('it','fl_post_attach_too_big','«%1» supera i 20 MB e non e stato portato.')
+ON DUPLICATE KEY UPDATE value = value;

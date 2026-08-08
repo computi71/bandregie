@@ -1241,6 +1241,7 @@ if (str_starts_with($path, '/intern')) {
       // Der Vorschlag wird bei jedem Aufruf frisch gelesen und nirgends
       // gespeichert: Er ist eine Lesart des Textes, kein Datenbestand.
       'vorschlag' => post_extract((string) $nachricht['body_text']),
+      'attachments' => rows('SELECT * FROM post_attachments WHERE message_id = ? ORDER BY id', [$m[1]]),
       'replies' => rows('SELECT r.*, u.name AS sender FROM post_replies r
                          LEFT JOIN users u ON u.id = r.sent_by
                          WHERE r.message_id = ? ORDER BY r.id', [$m[1]]),
@@ -1298,6 +1299,23 @@ if (str_starts_with($path, '/intern')) {
       q('UPDATE post_messages SET replied_at = NOW() WHERE id = ?', [$m[1]]);
     }
     flash($ok ? str_replace('%1', $an, t('fl_post_replied')) : t('fl_post_reply_failed'));
+    redirect('/intern/post/' . (int) $m[1]);
+  }
+  // Einen Anhang in den Termin holen (#19). Geholt wird erst jetzt: Bis hierher
+  // stand nur, dass er da ist.
+  if (preg_match('~^/intern/post/(\d+)/anhang/(\d+)$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/post');
+    $postAn = post_attachment_take((int) $m[2], (int) $me['id']);
+    $postName = $postAn['name'] !== '' ? $postAn['name'] : '?';
+    if ($postAn['ok']) {
+      flash(str_replace('%1', $postName, t('fl_post_attach_done')));
+    } elseif ($postAn['reason'] === 'ohne-termin') {
+      flash(t('post_attach_need_event'));
+    } elseif ($postAn['reason'] === 'zu-gross') {
+      flash(str_replace('%1', $postName, t('fl_post_attach_too_big')));
+    } else {
+      flash(str_replace('%1', $postName, t('fl_post_attach_failed')));
+    }
     redirect('/intern/post/' . (int) $m[1]);
   }
   if (preg_match('~^/intern/post/(\d+)/archiv$~', $path, $m) && $method === 'POST') {
@@ -1744,15 +1762,14 @@ if (str_starts_with($path, '/intern')) {
       foreach ($_FILES['files']['tmp_name'] ?? [] as $i => $tmp) {
         if (upload_rejected((int) ($_FILES['files']['error'][$i] ?? UPLOAD_ERR_OK))) continue;
         if (!is_uploaded_file($tmp)) continue;
-        if (($_FILES['files']['size'][$i] ?? 0) > 20 * 1024 * 1024) { flash(t('fl_file_too_big')); continue; }
+        if (($_FILES['files']['size'][$i] ?? 0) > FILE_MAX_BYTES) { flash(t('fl_file_too_big')); continue; }
         $orig = $_FILES['files']['name'][$i];
         // Der Zufallsanteil ist nicht die Zugriffsprüfung — die steht in der
         // Route. Er sorgt nur dafür, dass Namen nichts verraten und sich
         // nicht durchzählen lassen.
         // Wie die Datei heißt, steht in original_name — auf der Platte muss
         // es nicht noch einmal stehen.
-        $fileExt = preg_replace('~[^a-z0-9]~', '', strtolower(pathinfo($orig, PATHINFO_EXTENSION)));
-        $safe = 'datei_' . bin2hex(random_bytes(16)) . ($fileExt !== '' ? '.' . $fileExt : '');
+        $safe = file_safe_name($orig);
         if (move_uploaded_file($tmp, FILES_DIR . '/' . $safe)) {
           // Anhänge liegen hinter der Rechteprüfung, aber auf der Platte lagen
           // sie im Klartext. Wer den Schlüssel gesetzt hat, bekommt sie
