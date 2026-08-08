@@ -19,12 +19,40 @@ const UPDATE_FEED = 'https://api.github.com/repos/computi71/bandregie/releases/l
 const UPDATE_INTERVAL = 86400;
 
 /**
+ * Darf von hier aus überhaupt auf diesen Pfad gesehen werden? open_basedir
+ * sperrt alles außerhalb der erlaubten Verzeichnisse, und ein Zugriff darauf
+ * kostet nicht nur die Antwort, sondern hinterlässt eine Warnung im Protokoll.
+ * Ohne Sperre ist alles erlaubt.
+ */
+function update_path_allowed(string $pfad): bool {
+  $sperre = (string) ini_get('open_basedir');
+  if ($sperre === '') return true;
+  foreach (explode(PATH_SEPARATOR, $sperre) as $erlaubt) {
+    $erlaubt = rtrim(trim($erlaubt), '/');
+    if ($erlaubt !== '' && str_starts_with($pfad, $erlaubt . '/')) return true;
+  }
+  return false;
+}
+
+/**
  * Läuft die Installation unter Plesk? Dann ist das ausgelieferte Verzeichnis
  * keine Git-Arbeitskopie, sondern eine Kopie, die Plesk dorthin legt — ein
  * „git pull" liefe dort ins Leere.
+ *
+ * Die Frage wird zweimal gestellt, weil eine Antwort allein nicht überall
+ * ankommt (#226): Auf der Kommandozeile sind die Plesk-Pfade lesbar, unter dem
+ * Webserver liegen sie außerhalb von open_basedir. Dort scheiterte die Prüfung
+ * mit einer Warnung je Seitenaufruf und antwortete „nein" auf genau der
+ * Maschine, die sie erkennen sollte — die Anwendung nannte dann keinen
+ * Aktualisierungsweg. Also erst fragen, ob man hinsehen darf, und wenn nicht,
+ * den eigenen Pfad befragen: Plesk legt jede Domain unter /var/www/vhosts ab,
+ * und der eigene Pfad ist von innen immer lesbar.
  */
 function update_is_plesk(): bool {
-  return is_readable('/usr/local/psa/version') || is_readable('/opt/psa/version');
+  foreach (['/usr/local/psa/version', '/opt/psa/version'] as $pfad) {
+    if (update_path_allowed($pfad) && is_readable($pfad)) return true;
+  }
+  return str_contains(str_replace('\\', '/', BASE_DIR), '/var/www/vhosts/');
 }
 
 /** Ist das Verzeichnis eine Git-Arbeitskopie? */

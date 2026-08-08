@@ -111,6 +111,7 @@ const UI_STRINGS = [
   'up_installed' => 'Installiert:', 'up_latest' => 'Neueste Fassung:', 'up_unknown' => 'nicht nachgesehen',
   'up_how_git' => 'Das Skript sichert erst Datenbank und Dateien und holt dann die neue Fassung:',
   'up_how_plesk' => 'Diese Installation läuft unter Plesk — das ausgelieferte Verzeichnis ist keine Git-Arbeitskopie, ein „git pull" liefe hier ins Leere. Plesk holt und verteilt:',
+  'up_plesk_name' => 'Der Wert hinter -name ist der Name des Repositorys in Plesk. Heißt es dort anders — etwa noch wie ein früherer Projektname —, gehört dieser Name in den Befehl, sonst findet Plesk nichts.',
   'up_manual' => 'Diese Installation ist keine Git-Arbeitskopie. Neue Dateien einspielen, aber data/ und app/config.php dabei niemals überschreiben — und vorher eine Sicherung ziehen.',
   'up_cron' => 'Soll es von allein laufen, gehört es in die cron-Tabelle des Benutzers, dem die Arbeitskopie gehört:',
   'up_check' => 'Einmal am Tag nachsehen, ob es eine neue Fassung gibt',

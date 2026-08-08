@@ -515,6 +515,11 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <?php else: ?>
     <p class="muted small"><?= e($upCmd['kind'] === 'plesk' ? t('up_how_plesk') : t('up_how_git')) ?></p>
     <pre class="prewrap"><?= e($upCmd['command']) ?></pre>
+    <?php // Den Repository-Namen kann die Anwendung nicht wissen: Er steht in
+          // Plesk, nicht hier. Also wird gesagt, wo nachzusehen ist (#226). ?>
+    <?php if ($upCmd['kind'] === 'plesk'): ?>
+      <p class="muted small"><?= e(t('up_plesk_name')) ?></p>
+    <?php endif; ?>
     <?php if ($upCmd['kind'] === 'git'): ?>
       <p class="muted small"><?= e(t('up_cron')) ?></p>
       <pre class="prewrap">30 4 * * 1  sh <?= e(BASE_DIR) ?>/bin/update.sh &gt;&gt; /var/log/bandregie-update.log 2&gt;&amp;1</pre>
