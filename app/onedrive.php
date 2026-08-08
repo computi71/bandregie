@@ -513,8 +513,11 @@ function od_walk(callable $liste, string $wurzelId, int $maxTiefe = OD_MAX_DEPTH
 
 /** Die verknüpften Ordner, der zuletzt verknüpfte zuerst. */
 function od_folders(): array {
-  return rows('SELECT f.*, u.name AS linked_by_name FROM od_folders f
-               LEFT JOIN users u ON u.id = f.linked_by ORDER BY f.name, f.id');
+  return rows('SELECT f.*, u.name AS linked_by_name, e.title AS event_title, e.date AS event_date
+               FROM od_folders f
+               LEFT JOIN users u ON u.id = f.linked_by
+               LEFT JOIN events e ON e.id = f.event_id
+               ORDER BY f.name, f.id');
 }
 
 /**
@@ -753,6 +756,8 @@ function od_item_photo_row(array $item, string $datei): array {
  * @return array{done: int, left: int, failed: int, bytes: int}
  */
 function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
+  // Der Ordner selbst wird gebraucht, weil er den Termin trägt (#21).
+  $ordner = row('SELECT * FROM od_folders WHERE id = ?', [$folderId]) ?: [];
   $offen = rows("SELECT * FROM od_items
                  WHERE folder_id = ? AND imported_at IS NULL AND missing_since IS NULL
                    AND mime LIKE 'image/%'
@@ -773,12 +778,14 @@ function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
     $w = od_item_photo_row($item, $datei);
     // Die Prüfsumme des ORIGINALS, nicht der Vorschau (#199): Sie macht ein
     // später hochgeladenes Duplikat desselben Originals erkennbar.
+    // Gehört der Ordner zu einem Termin, gehört das Bild dorthin (#21) — das
+    // ist der Sinn der Zuordnung: nicht nur die Bilder von heute.
     q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source,
-                           camera, img_w, img_h, od_item_id, od_web_url, checksum, created_at)
-       VALUES (?,?,0,NULL,?,?,?,?,?,?,?,?,?,?,NOW())',
+                           camera, img_w, img_h, od_item_id, od_web_url, checksum, event_id, created_at)
+       VALUES (?,?,0,NULL,?,?,?,?,?,?,?,?,?,?,?,NOW())',
       [$w['filename'], $w['caption'], $w['taken_at'], $w['lat'], $w['lng'], $w['source'],
        $w['camera'], $w['img_w'], $w['img_h'], $w['od_item_id'], $w['od_web_url'],
-       (string) ($item['sha256'] ?? '')]);
+       (string) ($item['sha256'] ?? ''), $ordner['event_id'] ?? null]);
     q('UPDATE od_items SET imported_at = NOW() WHERE id = ?', [(int) $item['id']]);
     $getan++;
     $bytes += $n;
@@ -858,4 +865,116 @@ function od_disconnect(): void {
   // Die Verknüpfungen bleiben stehen: Wer die Verbindung erneuert, will seine
   // Ordner wiederfinden und nicht von vorn anfangen. Ohne Zeichen ist ohnehin
   // nichts davon erreichbar, und der Zwischenstand verrät keine Dateiinhalte.
+}
+
+/**
+ * Welcher Termin passt zu diesem Ordnernamen (#21)?
+ *
+ * Ordner heißen nach dem, was in ihnen liegt: „2026-07-04 AKF Korbach",
+ * „04.07 AKF", „Rathausbühne Korbach". Erst wird das Datum gesucht, dann der
+ * Name — ein Datum ist ein Beweis, ein Wort eine Vermutung.
+ *
+ * Gefunden wird höchstens einer. Bei zwei gleich guten Treffern liefert die
+ * Funktion nichts: Ein falscher Vorschlag kostet mehr als keiner, weil ihn
+ * jemand bestätigt, ohne hinzusehen.
+ *
+ * Absichtlich ohne Datenbank und ohne Netz — die Entscheidung ist die
+ * eigentliche Arbeit und soll prüfbar sein.
+ *
+ * @param array<int, array{id: int|string, title: string, date: string, venue?: ?string}> $termine
+ */
+function od_event_for_name(string $name, array $termine): ?int {
+  $klar = str_replace(['_', '.', '-', '/'], ['_', '.', '-', ' '], $name);
+
+  // --- Datum: vollständig, sonst Tag und Monat
+  $datum = null;
+  if (preg_match('~(20\d{2})[-_.](\d{1,2})[-_.](\d{1,2})~', $klar, $m)) {
+    $datum = sprintf('%04d-%02d-%02d', (int) $m[1], (int) $m[2], (int) $m[3]);
+  } elseif (preg_match('~\b(\d{1,2})[-_.](\d{1,2})[-_.](20\d{2})~', $klar, $m)) {
+    $datum = sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+  }
+  $tagMonat = null;
+  if ($datum === null && preg_match('~\b(\d{1,2})[-_.](\d{1,2})(?![-_.\d])~', $klar, $m)
+      && (int) $m[1] >= 1 && (int) $m[1] <= 31 && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
+    $tagMonat = sprintf('%02d-%02d', (int) $m[2], (int) $m[1]);
+  }
+
+  if ($datum !== null || $tagMonat !== null) {
+    $beste = [];
+    foreach ($termine as $t) {
+      $tDatum = substr((string) $t['date'], 0, 10);
+      if ($tDatum === '') continue;
+      // Ohne Jahresangabe zählt nur Tag und Monat — dafür muss es genau passen.
+      $abstand = $datum !== null
+        ? (int) round(abs(strtotime($tDatum) - strtotime($datum)) / 86400)
+        : (substr($tDatum, 5) === $tagMonat ? 0 : null);
+      if ($abstand === null || $abstand > 2) continue;
+      $beste[] = ['id' => (int) $t['id'], 'abstand' => $abstand];
+    }
+    if (count($beste) === 1) return $beste[0]['id'];
+    if (count($beste) > 1) {
+      usort($beste, fn($a, $b) => $a['abstand'] <=> $b['abstand']);
+      // Gleichstand heißt raten. Dann lieber nichts.
+      return $beste[0]['abstand'] === $beste[1]['abstand'] ? null : $beste[0]['id'];
+    }
+    // Ein Datum im Namen, aber kein Termin dazu: Dann ist der Name keine
+    // Vermutung mehr wert — die Zahlen hätten sonst mitgesucht.
+    return null;
+  }
+
+  // --- Name: Wörter ab vier Zeichen, gegen Titel und Ort
+  $woerter = array_values(array_filter(
+    preg_split('~[^\p{L}\p{N}]+~u', mb_strtolower($klar)) ?: [],
+    fn($w) => mb_strlen((string) $w) >= 4
+  ));
+  if (!$woerter) return null;
+
+  $punkte = [];
+  foreach ($termine as $t) {
+    $heu = mb_strtolower((string) $t['title'] . ' ' . (string) ($t['venue'] ?? ''));
+    $treffer = 0;
+    foreach ($woerter as $w) {
+      if (str_contains($heu, (string) $w)) $treffer++;
+    }
+    if ($treffer > 0) $punkte[] = ['id' => (int) $t['id'], 'treffer' => $treffer];
+  }
+  if (!$punkte) return null;
+  usort($punkte, fn($a, $b) => $b['treffer'] <=> $a['treffer']);
+  if (count($punkte) > 1 && $punkte[0]['treffer'] === $punkte[1]['treffer']) return null;
+  return $punkte[0]['id'];
+}
+
+/** Die Termine, gegen die ein Ordnername geprüft wird — Titel und Ort dazu. */
+function od_events_for_matching(): array {
+  return rows('SELECT e.id, e.title, e.date, v.name AS venue
+               FROM events e LEFT JOIN venues v ON v.id = e.venue_id
+               ORDER BY e.date DESC LIMIT 500');
+}
+
+/** Der Terminvorschlag für einen verknüpften Ordner, oder null. */
+function od_folder_event_suggestion(array $ordner): ?int {
+  $name = trim((string) ($ordner['name'] ?? ''));
+  return $name === '' ? null : od_event_for_name($name, od_events_for_matching());
+}
+
+/**
+ * Einen verknüpften Ordner an einen Termin binden — oder die Bindung lösen
+ * (#21). An den Dateien bei Microsoft ändert das nichts; die Bindung sagt nur,
+ * wohin künftige Bilder aus diesem Ordner gehören.
+ *
+ * Schon übernommene Bilder ohne Termin werden mitgenommen: Wer den Ordner
+ * zuordnet, meint die Bilder darin, nicht nur die von morgen. Eine bereits
+ * getroffene Zuordnung bleibt unangetastet — von Hand gesetzt wiegt mehr als
+ * aus einem Ordnernamen geschlossen.
+ *
+ * @return int Zahl der Bilder, die dadurch einen Termin bekommen haben
+ */
+function od_folder_set_event(int $folderId, ?int $eventId): int {
+  q('UPDATE od_folders SET event_id = ? WHERE id = ?', [$eventId, $folderId]);
+  if ($eventId === null) return 0;
+  return q('UPDATE photos p
+            JOIN od_items i ON i.item_id = p.od_item_id
+            SET p.event_id = ?
+            WHERE i.folder_id = ? AND p.event_id IS NULL',
+           [$eventId, $folderId])->rowCount();
 }

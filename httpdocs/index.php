@@ -3288,6 +3288,9 @@ if (str_starts_with($path, '/intern')) {
       // fehlt, statt eine leere Liste zu zeigen.
       'odInhalt' => od_connection()['connected'] ? od_children($odItem) : null,
       'odLinked' => od_folders(),
+      // Die Termine für die Zuordnung eines Ordners (#21) — dieselbe Liste, die
+      // auch der Vorschlag durchsieht.
+      'odTermine' => od_events_for_matching(),
       'odWeg'    => array_values(array_filter(array_map('trim', explode('/', (string) ($_GET['weg'] ?? ''))))),
     ]);
   }
@@ -3315,6 +3318,21 @@ if (str_starts_with($path, '/intern')) {
     if ($odHol['left']) $odText[] = str_replace('%1', (string) $odHol['left'], t('od_import_left'));
     if ($odHol['failed']) $odText[] = str_replace('%1', (string) $odHol['failed'], t('od_import_failed'));
     flash(implode(' ', $odText));
+    back('/intern/einstellungen/onedrive/ordner');
+  }
+  // Einen verknüpften Ordner an einen Termin binden (#21). Die Dateien bei
+  // Microsoft bleiben unberührt — die Bindung sagt nur, wohin die Bilder gehören.
+  if (preg_match('~^/intern/einstellungen/onedrive/ordner/(\d+)/termin$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $odTermin = (int) ($_POST['event_id'] ?? 0);
+    // Nur ein Termin, den es gibt — eine Kennung aus dem Formular ist eine
+    // Behauptung, bis sie in der Tabelle steht.
+    if ($odTermin > 0 && !row('SELECT 1 FROM events WHERE id = ?', [$odTermin])) $odTermin = 0;
+    $odZahl = od_folder_set_event((int) $m[1], $odTermin > 0 ? $odTermin : null);
+    flash($odTermin > 0
+      ? str_replace('%1', (string) $odZahl, t('od_folder_event_set'))
+      : t('od_folder_event_cleared'));
     back('/intern/einstellungen/onedrive/ordner');
   }
   if (preg_match('~^/intern/einstellungen/onedrive/ordner/(\d+)/(aktualisieren|loesen)$~', $path, $m) && $method === 'POST') {

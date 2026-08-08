@@ -107,6 +107,31 @@ require BASE_DIR . '/app/views/_header.php';
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
+      <?php // Ordner heißen nach dem Auftritt. Wer das einmal sagt, muss es
+            // nicht bei jedem Bild wiederholen — auch nicht bei den Bildern,
+            // die erst nächste Woche in den Ordner kommen (#21).
+            //
+            // Der Vorschlag steht daneben und wird nicht vorausgewählt: Ein
+            // gesetzter Wert wird bestätigt, ohne hinzusehen. ?>
+      <?php $odVorschlag = $odL['event_id'] === null ? od_folder_event_suggestion($odL) : null; ?>
+      <form method="post" action="/intern/einstellungen/onedrive/ordner/<?= (int) $odL['id'] ?>/termin" class="form-inline"><?= csrf_field() ?>
+        <label><?= e(t('od_folder_event')) ?>
+          <select name="event_id">
+            <option value="0"><?= e(t('od_folder_event_none')) ?></option>
+            <?php foreach ($odTermine as $odEv): ?>
+              <option value="<?= (int) $odEv['id'] ?>"<?= (int) ($odL['event_id'] ?? 0) === (int) $odEv['id'] ? ' selected' : '' ?>>
+                <?= e(fmt_date($odEv['date']) . ' · ' . $odEv['title']) ?></option>
+            <?php endforeach; ?>
+          </select></label>
+        <button class="btn btn-small"><?= e(t('save')) ?></button>
+        <?php if ($odVorschlag !== null): ?>
+          <?php $odV = row('SELECT title, date FROM events WHERE id = ?', [$odVorschlag]); ?>
+          <?php if ($odV): ?>
+            <span class="muted small">💡 <?= e(str_replace('%1', fmt_date($odV['date']) . ' · ' . $odV['title'], t('od_folder_event_suggest'))) ?></span>
+          <?php endif; ?>
+        <?php endif; ?>
+      </form>
+      <p class="muted small"><?= e(t('od_folder_event_hint')) ?></p>
       <form method="post" action="/intern/einstellungen/onedrive/ordner/<?= (int) $odL['id'] ?>/aktualisieren" class="inline"><?= csrf_field() ?>
         <button class="btn btn-small">↻ <?= e(t('od_refresh')) ?></button>
       </form>
