@@ -80,6 +80,62 @@ if ($method === 'POST' && !csrf_valid()) {
   back('/');
 }
 
+// Die Zahl am App-Symbol fragt hier nach. Ohne Sitzung bekam sie bisher die
+// Anmeldeseite: HTTP 200 mit HTML, worauf die Seite „alles gesehen" meldete und
+// der Zähler auf null fiel — obwohl niemand etwas gesehen hatte außer einem
+// Anmeldeformular (#231). Eine Schnittstelle antwortet mit einer Auskunft, nicht
+// mit einer Seite.
+if ($path === '/intern/badge' && $method === 'GET' && empty($_SESSION['uid'])) {
+  header('Content-Type: application/json; charset=utf-8');
+  http_response_code(401);
+  exit('{"angemeldet":false}');
+}
+
+// ============================================================
+// Hintergrundarbeit: fällige Läufe anstoßen
+// ============================================================
+//
+// Das stand einmal im angemeldeten Bereich, und damit hieß „beim ersten
+// Seitenaufruf" in Wahrheit „beim ersten Aufruf durch ein angemeldetes
+// Mitglied" (#231). Eine Band, die eine Woche nicht hineinsieht, bekam keinen
+// Blick in die OneDrive-Ordner, kein Postfach und keine Sicherung — und damit
+// auch keine Mitteilung über neue Bilder, also genau dann nicht, wenn sie
+// nötig gewesen wäre.
+//
+// Keiner dieser Läufe braucht eine Sitzung: Sie lesen Einstellungen und
+// Tabellen und sprechen nach draußen. Sie gehören daher vor die Anmeldung, wo
+// jeder Aufruf sie auslösen kann — auch der auf die öffentliche Bandseite.
+//
+// Nur bei Seitenaufrufen, nicht bei Bildern und Dateien: Eine Galerie mit
+// fünfzig Vorschaubildern stellte sonst fünfzig Mal dieselbe Frage.
+if ($method === 'GET'
+    && !preg_match('~^/(assets|uploads|thumb|datei|app)(/|$)~', $path)) {
+  // Der Platz wird im Anfrage-Faden beansprucht, nicht erst im Nachlauf: Zwei
+  // Aufrufe im selben Augenblick kämen sonst beide durch die Fälligkeitsfrage.
+  $hintergrund = [];
+  if (backup_due()) {
+    // Die Sicherung hat ihre eigene Sperre in backup_run(); hier genügt der
+    // Anstoß.
+    $hintergrund[] = fn() => backup_run('auto');
+  }
+  if (od_refresh_due()) {
+    set_setting('od_auto_attempt', (string) time());
+    $hintergrund[] = fn() => od_refresh_all();
+  }
+  if (post_due()) {
+    set_setting('imap_last_attempt', (string) time());
+    $hintergrund[] = fn() => post_fetch();
+  }
+  if ($hintergrund) {
+    register_shutdown_function(function () use ($hintergrund) {
+      // Erst die Seite ausliefern: Niemand wartet auf Microsoft oder auf einen
+      // Mailserver, und ein Besucher der öffentlichen Seite schon gar nicht.
+      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+      foreach ($hintergrund as $lauf) $lauf();
+    });
+  }
+}
+
 // ============================================================
 // Öffentliche Seiten
 // ============================================================
@@ -601,30 +657,6 @@ if (str_starts_with($path, '/intern')) {
   // nichts mehr zu hören war. Höchstens einmal am Tag, sonst kostenlos.
   push_prune();
 
-  // Fällige Sicherung nebenbei anstoßen. Ohne Cronjob gibt es keinen anderen
-  // Zeitpunkt; die Sperre in backup_run() verhindert doppelte Läufe. Wo der
-  // Server es kann, ist die Seite vorher ausgeliefert und niemand wartet.
-  if ($method === 'GET' && backup_due()) {
-    register_shutdown_function(function () {
-      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-      backup_run('auto');
-    });
-  }
-  // Der tägliche Blick in die OneDrive-Ordner (#214), nach demselben Muster:
-  // nach dem Ausliefern der Seite, damit niemand auf Microsoft wartet.
-  if ($method === 'GET' && od_refresh_due()) {
-    register_shutdown_function(function () {
-      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-      od_refresh_all();
-    });
-  }
-  // Und das Postfach (#219) — dasselbe Muster zum dritten Mal, weil es trägt.
-  if ($method === 'GET' && post_due()) {
-    register_shutdown_function(function () {
-      if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-      post_fetch();
-    });
-  }
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
   // war — sie koennen ohnehin nichts aktualisieren.
@@ -1886,7 +1918,7 @@ if (str_starts_with($path, '/intern')) {
   // auf dem Stand der letzten Mitteilung stehen.
   if ($path === '/intern/badge' && $method === 'GET') {
     header('Content-Type: application/json; charset=utf-8');
-    exit(json_encode(['offen' => open_items_count($me)]));
+    exit(json_encode(['angemeldet' => true, 'offen' => open_items_count($me)]));
   }
   // Lebenszeichen eines Geräts: „mein Abo gibt es noch". Ohne das lässt sich
   // ein totes Abo von einem stillen nicht unterscheiden — der Zustelldienst

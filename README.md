@@ -38,7 +38,7 @@ and a stand-in sees the dates they were asked for and nothing else.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, the band's mailbox (fetched by IMAP, read-only, with a booking request turned into an event proposal you check before it is created, replies written and filed in place, and attachments taken over into the event they belong to), a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, a linked folder can be tied to an event so its pictures land there — the ones already taken over and the ones that arrive next week, with the event read out of the folder name where it says so — and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (first page view of the day, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, the band's mailbox (fetched by IMAP, read-only, with a booking request turned into an event proposal you check before it is created, replies written and filed in place, and attachments taken over into the event they belong to), a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, a linked folder can be tied to an event so its pictures land there — the ones already taken over and the ones that arrive next week, with the event read out of the folder name where it says so — and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (any page view, the public one included, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -251,8 +251,8 @@ dimensions, and its checksum from Graph makes a re-uploaded original
 recognisable as a duplicate without downloading anything.
 
 **The band's mailbox** is fetched by IMAP on the same pattern as the backup and
-the OneDrive check: one due-check, two triggers — the first page view of the
-interval, or `bin/post-fetch.php` as a cron. Read-only, one configured mailbox
+the OneDrive check: one due-check, two triggers — a page view, or
+`bin/post-fetch.php` as a cron. Read-only, one configured mailbox
 only, never a member's private one, and nothing is marked as read on the
 server: whoever also has it on their phone finds it untouched. Messages are
 recognised by the server's UID, so nothing is stored twice.
@@ -272,6 +272,32 @@ quietly. Note that PHP 8.4 moved that extension out of the core.
 **Privacy policy**: the shipped template covers every one of these processing
 activities, including the optional ones, with bracket placeholders to fill in.
 If you add an outgoing service, add its paragraph in the same change.
+
+### Background work, and why it does not wait for a login
+
+Three things run on their own: the automatic backup, the daily look into the
+linked OneDrive folders, and the mailbox fetch. Each has one due-check and two
+triggers — a page view, or the matching script from `bin/` as a cron.
+
+A page view means **any** page view, the public band page included. It used to
+mean a page view by a logged-in member, and that was wrong in the one case that
+matters: a band that does not open the application for a week got no check, no
+push about new pictures, and no backup either — exactly when it would have been
+needed. None of these runs needs a session; they read settings and rows and talk
+to the outside, so they sit in front of the login gate.
+
+They are skipped for images, files and assets, so a gallery with fifty
+thumbnails does not ask the same question fifty times, and each claims its slot
+before the work starts, so two simultaneous requests do not both run it. The
+work itself happens after the page has been delivered — nobody waits for
+Microsoft or for a mail server.
+
+An installation whose public page gets no visitors either should use the cron:
+
+```
+*/10 * * * *  php /var/www/bandregie/bin/post-fetch.php
+30   4 * * *  php /var/www/bandregie/bin/od-refresh.php
+```
 
 ### Push notifications (on by default, switchable)
 

@@ -19,29 +19,39 @@ if ('serviceWorker' in navigator) {
     // Wer die Anwendung öffnet, hat die Mitteilungen gesehen — dann gehört die
     // Zahl am Symbol weg. Auch beim Zurückkehren aus dem Hintergrund, sonst
     // bliebe sie stehen, bis jemand die App einmal ganz neu startet.
+    //
+    // „Gesehen" heißt aber: etwas gesehen. Wer die App nach zwei Wochen öffnet
+    // und auf einem Anmeldeformular landet, hat die Mitteilungen nicht gesehen —
+    // und trotzdem fiel der Zähler auf null, weil die Anmeldeseite mit HTTP 200
+    // antwortete und das hier als Auskunft durchging (#231). Gemeldet wird nur
+    // nach einer Antwort, die sagt, dass jemand angemeldet ist.
     const gesehen = async () => {
       if (document.visibilityState !== 'visible') return;
       // Was noch zu tun ist, weiß nur der Server — die Mitteilungen dagegen sind
       // mit dem Öffnen gesehen. Deshalb hier die frische Zahl holen und dem
       // Service Worker mitgeben, statt die Marke blind zu löschen: eine offene
       // Aufgabe verschwindet nicht dadurch, dass man die App aufmacht.
-      let offen = null;   // null heißt: nicht erfahren, also nichts überschreiben
+      let offen = null;        // null heißt: nicht erfahren, also nichts überschreiben
+      let angemeldet = false;  // und ohne Anmeldung wird gar nichts gemeldet
       try {
         const r = await fetch('/intern/badge', { credentials: 'same-origin' });
-        if (r.ok) offen = Number((await r.json()).offen) || 0;
+        // Nur eine echte Auskunft zählt: Statuscode, Inhaltstyp und der Inhalt
+        // selbst müssen zusammenpassen. Eine ausgelieferte Seite tut das nicht.
+        if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+          const daten = await r.json();
+          if (daten && daten.angemeldet === true) {
+            angemeldet = true;
+            offen = Number(daten.offen) || 0;
+          }
+        }
       } catch (e) { /* kein Netz — der letzte bekannte Stand bleibt stehen */ }
-      if (offen !== null) {
-        try {
-          if (offen > 0 && navigator.setAppBadge) await navigator.setAppBadge(offen);
-          else if (navigator.clearAppBadge) await navigator.clearAppBadge();
-        } catch (e) { /* Gerät kann keine Marke — kein Beinbruch */ }
-      }
+      if (!angemeldet) return;   // Zahl und Mitteilungen bleiben, wie sie waren
+      try {
+        if (offen > 0 && navigator.setAppBadge) await navigator.setAppBadge(offen);
+        else if (navigator.clearAppBadge) await navigator.clearAppBadge();
+      } catch (e) { /* Gerät kann keine Marke — kein Beinbruch */ }
       if (navigator.serviceWorker.controller) {
-        // Ohne Netz nur die Mitteilungen als gesehen melden; wie viel offen
-        // ist, weiß gerade niemand — dann lieber die alte Zahl behalten, als
-        // sie fälschlich auf null zu setzen.
-        navigator.serviceWorker.controller.postMessage(
-          offen === null ? { type: 'gesehen' } : { type: 'gesehen', offen });
+        navigator.serviceWorker.controller.postMessage({ type: 'gesehen', offen });
       }
     };
     gesehen();
