@@ -799,11 +799,22 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Termine ----------
   if ($path === '/intern/termine' && $method === 'GET') {
     $showPast = ($_GET['alle'] ?? '') === '1';
+    // Ein abgesagter Termin ist kein Termin mehr und steht der Planung im Weg
+    // (#233). Weg ist er damit nicht: Dass ein Datum abgesagt wurde, will man
+    // später wissen — sonst rätselt jemand, ob es je eingetragen war.
+    $showCancelled = ($_GET['abgesagt'] ?? '') === '1';
     // Ersatzleute sehen nur die Termine, für die sie angefragt sind
     [$evWhere, $evParams] = visible_clause(visible_event_ids($me));
+    $evStatus = $showCancelled ? '' : " AND status <> 'abgesagt'";
     $events = $showPast
-      ? rows("SELECT * FROM events WHERE 1 = 1$evWhere ORDER BY date DESC, time", $evParams)
-      : rows("SELECT * FROM events WHERE date >= ?$evWhere ORDER BY date, time", [$today, ...$evParams]);
+      ? rows("SELECT * FROM events WHERE 1 = 1$evWhere$evStatus ORDER BY date DESC, time", $evParams)
+      : rows("SELECT * FROM events WHERE date >= ?$evWhere$evStatus ORDER BY date, time", [$today, ...$evParams]);
+    // Wie viele liegen hinter dem Link? Eine Zahl, die niemand nennt, liest
+    // sich wie „keine".
+    $cancelledCount = (int) ($showPast
+      ? row("SELECT COUNT(*) n FROM events WHERE status = 'abgesagt'$evWhere", $evParams)['n']
+      : row("SELECT COUNT(*) n FROM events WHERE date >= ? AND status = 'abgesagt'$evWhere",
+            [$today, ...$evParams])['n']);
     $ids = array_column($events, 'id');
     $comments = [];
     if ($ids) {
@@ -830,6 +841,11 @@ if (str_starts_with($path, '/intern')) {
       'title' => t('nav_termine'),
       'events' => $events,
       'showPast' => $showPast,
+      'showCancelled' => $showCancelled,
+      'cancelledCount' => $cancelledCount,
+      // Nur Angefragtes zählen, was auch angezeigt wird — sonst behauptet die
+      // Zeile etwas über Zeilen, die niemand sieht.
+      'requestedCount' => count(array_filter($events, fn($e) => $e['status'] === 'angefragt')),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
       'venues' => $venues,

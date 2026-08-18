@@ -2,10 +2,37 @@
 $memberNames = array_column($members, 'name', 'id');
 require BASE_DIR . '/app/views/_header.php';
 ?>
+<?php
+// Die Schalter erhalten sich gegenseitig: Wer die Abgesagten eingeblendet hat
+// und dann „auch vergangene" drückt, will nicht beides von vorn einstellen.
+$evLink = function (array $anders) use ($showPast, $showCancelled): string {
+  $q = array_filter(['alle' => $showPast ? '1' : '', 'abgesagt' => $showCancelled ? '1' : ''] + [], 'strlen');
+  foreach ($anders as $k => $v) {
+    if ($v === '') unset($q[$k]); else $q[$k] = $v;
+  }
+  return '/intern/termine' . ($q ? '?' . http_build_query($q) : '');
+};
+?>
 <div class="page-head">
   <h1><?= e(t('inav_termine')) ?></h1>
+  <?php // Eine Zeile, die sagt, was man vor sich hat — und was gerade nicht. ?>
+  <p class="muted small">
+    <?php
+      $evTeile = [str_replace('%1', (string) count($events), t('ev_count'))];
+      if ($requestedCount > 0) $evTeile[] = str_replace('%1', (string) $requestedCount, t('ev_count_requested'));
+      if (!$showCancelled && $cancelledCount > 0) {
+        $evTeile[] = str_replace('%1', (string) $cancelledCount, t('ev_count_cancelled'));
+      }
+      echo e(implode(' · ', $evTeile));
+    ?>
+  </p>
   <div class="row-buttons">
-    <a class="btn btn-ghost" href="/intern/termine<?= $showPast ? '' : '?alle=1' ?>"><?= e($showPast ? t('ev_only_upcoming') : t('ev_also_past')) ?></a>
+    <a class="btn btn-ghost" href="<?= e($evLink(['alle' => $showPast ? '' : '1'])) ?>"><?= e($showPast ? t('ev_only_upcoming') : t('ev_also_past')) ?></a>
+    <?php if ($showCancelled): ?>
+      <a class="btn btn-ghost" href="<?= e($evLink(['abgesagt' => ''])) ?>">🚫 <?= e(t('ev_hide_cancelled')) ?></a>
+    <?php elseif ($cancelledCount > 0): ?>
+      <a class="btn btn-ghost" href="<?= e($evLink(['abgesagt' => '1'])) ?>">🚫 <?= e(str_replace('%1', (string) $cancelledCount, t('ev_show_cancelled'))) ?></a>
+    <?php endif; ?>
     <a class="btn btn-ghost" href="/intern/kalender">📅 <?= e(t('ev_cal_abo')) ?></a>
     <a class="btn btn-ghost" href="/intern/termine/export">⬇ <?= e(t('ev_export')) ?></a>
   </div>
@@ -50,7 +77,14 @@ require BASE_DIR . '/app/views/_header.php';
   </form>
 </details>
 
+<?php // Zwischenüberschrift je Monat: Wer den September sucht, soll nicht den
+      // August lesen müssen (#233). ?>
+<?php $evMonat = ''; ?>
 <?php foreach ($events as $ev): ?>
+  <?php if (fmt_month($ev['date']) !== $evMonat): ?>
+    <?php $evMonat = fmt_month($ev['date']); ?>
+    <h2 class="event-month"><?= e($evMonat) ?></h2>
+  <?php endif; ?>
   <?php $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null; ?>
   <section class="card event-card <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>">
     <div class="event-head">

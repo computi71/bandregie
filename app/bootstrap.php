@@ -86,6 +86,7 @@ const LANGS = ['de' => 'Deutsch', 'en' => 'English', 'nl' => 'Nederlands', 'fr' 
 // UI-Texte der öffentlichen Seite (Deutsch = Standard und Fallback)
 const UI_STRINGS = [
   'weekdays' => 'So,Mo,Di,Mi,Do,Fr,Sa',
+  'months' => 'Januar,Februar,März,April,Mai,Juni,Juli,August,September,Oktober,November,Dezember',
   'nav_start' => 'Start', 'nav_termine' => 'Termine', 'nav_musik' => 'Musik', 'nav_fotos' => 'Fotos',
   'nav_kontakt' => 'Kontakt', 'nav_downloads' => 'Downloads', 'nav_bandbereich' => 'Bandbereich',
   'nav_impressum' => 'Impressum', 'nav_datenschutz' => 'Datenschutz',
@@ -419,6 +420,9 @@ const UI_STRINGS = [
   'songstatus_archiv' => 'Aussortiert',
   // Termine
   'ev_only_upcoming' => 'Nur kommende', 'ev_also_past' => 'Auch vergangene',
+  'ev_show_cancelled' => 'Abgesagte (%1)', 'ev_hide_cancelled' => 'Abgesagte ausblenden',
+  'ev_count' => '%1 Termine', 'ev_count_requested' => '%1 angefragt',
+  'ev_count_cancelled' => '%1 abgesagt, ausgeblendet',
   'ev_cal_abo' => 'Kalender-Abo', 'ev_new' => 'Neuer Termin', 'ev_type' => 'Art',
   'ev_name_ph' => 'z. B. Stadtfest Mainstage', 'ev_meet' => 'Treffen', 'ev_start' => 'Spielbeginn',
   'ev_end' => 'Ende', 'ev_venue' => 'Veranstaltungsort', 'ev_location_free' => 'Ort (Freitext)',
@@ -5037,6 +5041,19 @@ function fmt_date(?string $iso): string {
   $wd = explode(',', t('weekdays'))[(int) date('w', $t)] ?? '';
   return "$wd, " . date('d.m.Y', $t);
 }
+/**
+ * Monat und Jahr für die Zwischenüberschriften der Terminliste (#233).
+ * Der Monatsname kommt aus den Texten, nicht aus der Zeitzone des Servers:
+ * date('F') spricht immer Englisch.
+ */
+function fmt_month(?string $iso): string {
+  if (!$iso) return '';
+  $t = strtotime($iso);
+  if (!$t) return $iso;
+  $name = explode(',', t('months'))[(int) date('n', $t) - 1] ?? date('m', $t);
+  return $name . ' ' . date('Y', $t);
+}
+
 function fmt_duration(int|string|null $sec): string {
   $sec = (int) $sec;
   if ($sec <= 0) return '–';
