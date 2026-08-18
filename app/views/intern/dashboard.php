@@ -66,7 +66,29 @@
   <?php if (perm_allows($user, 'aufgaben')): ?>
   <section class="card">
     <h2><?= e(t('dash_open_tasks')) ?></h2>
-    <?php if (!$tasks): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
+    <?php if (!$tasks && !$openVotes): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
+    <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
+          // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
+          // gleich daneben (#236). ?>
+    <?php if ($openVotes): ?>
+      <ul class="task-list">
+        <?php foreach ($openVotes as $ov): ?>
+          <li>
+            <span class="badge"><?= e(t('dash_vote_missing')) ?></span>
+            <span class="event-date"><?= fmt_date($ov['date']) ?></span>
+            <strong><?= e($ov['title']) ?></strong>
+            <?php if ($ov['status'] !== 'bestaetigt'): ?>
+              <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
+            <?php endif; ?>
+            <form class="inline attendance" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
+              <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
+              <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
+              <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
+            </form>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
     <ul class="task-list">
       <?php foreach ($tasks as $task): ?>
         <li>

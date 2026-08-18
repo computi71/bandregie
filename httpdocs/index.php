@@ -788,6 +788,9 @@ if (str_starts_with($path, '/intern')) {
       'deadlines' => perm_allows($me, 'equipment') ? rows('SELECT d.*, e.name AS eq_name FROM equipment_deadlines d
                            JOIN equipment e ON e.id = d.equipment_id
                            WHERE d.due_date <= DATE_ADD(?, INTERVAL 60 DAY) ORDER BY d.due_date', [$today]) : [],
+      // Fehlende Rückmeldungen gehören zu den offenen Aufgaben: Die Zahl am
+      // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
+      'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
       'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
                        WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
       'attendance' => attendance_map(array_column($events, 'id')),

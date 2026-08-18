@@ -392,6 +392,7 @@ const UI_STRINGS = [
   'login_only_members' => 'Nur für Mitglieder von', 'login_email' => 'E-Mail', 'login_password' => 'Passwort',
   'login_submit' => 'Einloggen', 'login_failed' => 'E-Mail oder Passwort falsch.',
   'dash_hello' => 'Hallo', 'dash_next_events' => 'Nächste Termine',
+  'dash_vote_missing' => 'Rückmeldung fehlt',
   'dash_no_events' => 'Keine anstehenden Termine.', 'dash_create_event' => 'Termin anlegen',
   'dash_all_events' => 'Alle Termine', 'dash_open_tasks' => 'Offene Aufgaben',
   'dash_nothing_open' => 'Nichts offen. 🎉', 'dash_all_tasks' => 'Alle Aufgaben',
@@ -4810,29 +4811,44 @@ function is_substitute(?array $user): bool {
  * sie angefragt wurden, und dürfen auch nur die gezählt bekommen. Eine Zahl,
  * die etwas mitzählt, das man nicht öffnen kann, wäre nicht erklärbar.
  */
-function open_items_count(array $user): int {
-  $userId = (int) $user['id'];
-  $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
-                     [$userId])['c'];
-
+/**
+ * Termine, bei denen die eigene Rückmeldung fehlt (#236).
+ *
+ * Eine eigene Funktion, weil dieselbe Frage an zwei Stellen gestellt wird: Die
+ * Zahl am App-Symbol zählt sie, und der Kasten „Offene Aufgaben" muss sie zeigen.
+ * Kamen die beiden aus getrennten Abfragen, sagte die Zahl „2" und darunter
+ * stand nichts — genau so war es.
+ *
+ * Nicht dabei: Abgesagtes (darüber stimmt niemand ab), Blockiertes (keine
+ * Verabredung) und alles, was schon beantwortet ist — egal wie.
+ */
+function open_votes(array $user): array {
   $sichtbar = visible_event_ids($user);
-  if ($sichtbar === []) return $offen;          // Ersatz ohne Anfrage: keine Termine
+  if ($sichtbar === []) return [];               // Ersatz ohne Anfrage: keine Termine
   $nurDiese = '';
-  $werte = [$userId];
+  $werte = [(int) $user['id']];
   if ($sichtbar !== null) {
     $nurDiese = ' AND e.id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
     $werte = [...$werte, ...$sichtbar];
   }
-  // Ein Termin ohne eigene Rückmeldung ist offene Arbeit — aber nur, wenn es
-  // etwas zu entscheiden gibt. Über einen abgesagten Auftritt stimmt niemand ab,
-  // und ein blockierter Tag ist keine Verabredung (#236).
-  $offen += (int) row("SELECT COUNT(*) c FROM events e
-                       WHERE e.date >= CURDATE()
-                         AND e.status NOT IN ('abgesagt', 'blockiert')
-                         AND NOT EXISTS (SELECT 1 FROM attendance a
-                                         WHERE a.event_id = e.id AND a.user_id = ?)"
-                      . $nurDiese, $werte)['c'];
-  return $offen;
+  return rows("SELECT e.id, e.date, e.time, e.type, e.status, e.title, e.location
+               FROM events e
+               WHERE e.date >= CURDATE()
+                 AND e.status NOT IN ('abgesagt', 'blockiert')
+                 AND NOT EXISTS (SELECT 1 FROM attendance a
+                                 WHERE a.event_id = e.id AND a.user_id = ?)"
+              . $nurDiese . ' ORDER BY e.date, e.time', $werte);
+}
+
+/**
+ * Was am App-Symbol steht: eigene offene Aufgaben und fehlende Rückmeldungen.
+ * Die zweite Hälfte kommt aus open_votes(), damit Zahl und Liste nicht
+ * auseinanderlaufen können.
+ */
+function open_items_count(array $user): int {
+  $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
+                     [(int) $user['id']])['c'];
+  return $offen + count(open_votes($user));
 }
 
 /**
