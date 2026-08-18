@@ -24,14 +24,14 @@ ON DUPLICATE KEY UPDATE value = value;
 
 -- Blockgrenze ueber die Auswahl (#246)
 INSERT INTO translations (lang, tkey, value) VALUES
-('en','sl_block_hint_pick','Block break: with nothing ticked it is appended at the end, a ticked row puts it behind that row, and a ticked block break takes the text from the field — that is the announcement due there.'),
-('en','fl_block_changed','%1 block break(s) changed.'),
-('nl','sl_block_hint_pick','Blokgrens: zonder vinkje komt die achteraan, een aangevinkte regel zet die erachter, en een aangevinkte blokgrens neemt de tekst uit het veld over.'),
-('nl','fl_block_changed','%1 blokgrens(en) gewijzigd.'),
-('fr','sl_block_hint_pick','Fin de bloc : sans coche elle s''ajoute a la fin, une ligne cochee la place apres cette ligne, et une fin de bloc cochee reprend le texte du champ.'),
-('fr','fl_block_changed','%1 fin(s) de bloc modifiee(s).'),
-('es','sl_block_hint_pick','Fin de bloque: sin marcar nada se anade al final, una fila marcada lo coloca detras de esa fila, y un fin de bloque marcado toma el texto del campo.'),
-('es','fl_block_changed','%1 fin(es) de bloque cambiado(s).'),
-('it','sl_block_hint_pick','Fine blocco: senza spunte va in fondo, una riga spuntata la mette dopo quella riga, e una fine blocco spuntata prende il testo dal campo.'),
-('it','fl_block_changed','%1 fine/i blocco modificata/e.')
+('en','sl_block_hint_pick','Announcement: with nothing ticked it is appended at the end, a ticked row puts it behind that row, and a ticked announcement takes the text from the field.'),
+('en','fl_block_changed','%1 announcement(s) changed.'),
+('nl','sl_block_hint_pick','Praatpauze: zonder vinkje komt die achteraan, een aangevinkte regel zet die erachter, en een aangevinkte praatpauze neemt de tekst uit het veld over.'),
+('nl','fl_block_changed','%1 praatpauze(s) gewijzigd.'),
+('fr','sl_block_hint_pick','Annonce : sans coche elle s''ajoute a la fin, une ligne cochee la place apres cette ligne, et une annonce cochee reprend le texte du champ.'),
+('fr','fl_block_changed','%1 annonce(s) modifiee(s).'),
+('es','sl_block_hint_pick','Presentacion: sin marcar nada se anade al final, una fila marcada la coloca detras de esa fila, y una presentacion marcada toma el texto del campo.'),
+('es','fl_block_changed','%1 presentacion(es) cambiada(s).'),
+('it','sl_block_hint_pick','Presentazione: senza spunte va in fondo, una riga spuntata la mette dopo quella riga, e una presentazione spuntata prende il testo dal campo.'),
+('it','fl_block_changed','%1 presentazione/i modificata/e.')
 ON DUPLICATE KEY UPDATE value = value;

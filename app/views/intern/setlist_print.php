@@ -37,7 +37,7 @@ $pauseText = $pauseCount === 0 ? ''
 $fontFor = function (array $set): int {
   $lines = 0;
   foreach ($set as $entry) {
-    // Zugabe-Strich und Blockgrenze sind je eine Zeile; ohne das rechnet die
+    // Zugabe-Strich und Sprechpause sind je eine Zeile; ohne das rechnet die
     // Seite bei sieben Blöcken zu groß und der letzte Song fällt herunter (#241).
     $lines += in_array((int) $entry['is_break'], [2, 3], true)
       ? 1 : (mb_strlen($entry['title']) > 28 ? 2 : 1);
@@ -85,7 +85,7 @@ $fontFor = function (array $set): int {
     .song { font-weight: 700; line-height: 1.18; }
     .song .note { font-weight: 400; font-size: 55%; }
     .encore-rule { border: 0; border-top: 0.6mm solid #000; margin: 1mm 0; }
-    /* Blockgrenze: gestrichelt und dünner als der Zugabe-Strich — auf einen Blick
+    /* Sprechpause: gestrichelt und dünner als der Zugabe-Strich — auf einen Blick
        zu unterscheiden, auch aus zwei Metern auf einem Notenpult (#241). */
     .block-line { border: 0; border-top: 0.35mm dashed #000; margin: 1.5mm 0; }
     /* Mit Anweisung: der Text sitzt in der Linie, links ausgerichtet, damit das
@@ -93,8 +93,8 @@ $fontFor = function (array $set): int {
     .block-rule { display: flex; align-items: center; gap: 2mm; margin: 1.5mm 0; }
     .block-rule::after { content: ''; flex: 1; border-top: 0.35mm dashed #000; }
     .block-rule span { font-size: 45%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-    /* Eine Anweisung gilt für den Block UNTER der Linie — deshalb sitzt sie
-       optisch näher an ihm als an dem Block darüber (#241). */
+    /* Eine Ansage gilt für das, was UNTER der Linie kommt — deshalb sitzt sie
+       optisch näher daran als an den Liedern darüber (#241). */
     .block-rule { margin: 2mm 0 0.5mm; }
     /* Die Klammer vom Zettel: Titel links, geschweifte Klammer rechts daneben,
        Anweisung dahinter. Gezeichnet aus einem Rahmen mit runden Ecken — das
@@ -183,7 +183,7 @@ $fontFor = function (array $set): int {
           <?php if ((int) $entry['is_break'] === 2): ?>
             <hr class="encore-rule">
           <?php elseif ((int) $entry['is_break'] === 3): ?>
-            <?php // Blockgrenze wie der Strich auf dem Papier — gestrichelt, damit
+            <?php // Sprechpause wie der Strich auf dem Papier — gestrichelt, damit
                   // sie sich vom durchgezogenen Zugabe-Strich unterscheidet. Steht
                   // eine Anweisung dabei, steht sie in der Linie (#241). ?>
             <?php if ((string) $entry['item_note'] !== ''): ?>

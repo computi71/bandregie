@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     note.timer = setTimeout(() => { note.style.opacity = '0'; }, 2500);
   };
 
-  // Nach dem Ziehen neu zählen — und zwar nur die Lieder. Pausen, Blockgrenzen
+  // Nach dem Ziehen neu zählen — und zwar nur die Lieder. Pausen, Sprechpausen
   // und der Zugabe-Strich tragen keine Nummer, sonst wäre der zwölfte Song die
   // Vierzehn (#247). Erkannt werden sie an der Klasse, die die Ansicht schon
   // setzt: break-row.

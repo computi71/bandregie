@@ -38,7 +38,7 @@
           <input type="checkbox" class="sl-pick" name="rows[]" value="<?= $entry['item_id'] ?>"
                  title="<?= e(t('sl_brace_pick')) ?>">
         <?php endif; ?>
-        <?php // Gezählt werden Lieder. Eine Pause, eine Blockgrenze und der
+        <?php // Gezählt werden Lieder. Eine Pause, eine Sprechpause und der
               // Zugabe-Strich sind keine Nummer wert — sonst heißt der zwölfte
               // Song „14", und danach sucht auf der Bühne niemand (#247). ?>
         <?php if (!$entry['is_break']) $slNr = ($slNr ?? 0) + 1; ?>
@@ -86,7 +86,7 @@
             // Häkchen (#246). ?>
       <button form="klammerform" class="btn btn-ghost"
               formaction="/intern/setlists/<?= $setlist['id'] ?>/entklammer">⎨✕ <?= e(t('sl_brace_remove')) ?></button>
-      <?php // Blockgrenze aus derselben Leiste und mit derselben Auswahl (#246). ?>
+      <?php // Sprechpause aus derselben Leiste und mit derselben Auswahl (#246). ?>
       <button form="klammerform" class="btn btn-ghost"
               formaction="/intern/setlists/<?= $setlist['id'] ?>/addblock">▬ <?= e(t('sl_block_add')) ?></button>
     </p>
@@ -110,7 +110,7 @@
       <?php endif; ?>
       <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addpause" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">⏸ <?= e(t('sl_pause')) ?></button></form>
       <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addzugabe" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">🎉 <?= e(t('sl_encore')) ?></button></form>
-      <?php // Blockgrenze mit Anweisung — die Anweisung darf leer bleiben, dann
+      <?php // Sprechpause mit Ansage — die Ansage darf leer bleiben, dann
             // ist es nur ein Strich wie auf dem Zettel. ?>
 
     </div>

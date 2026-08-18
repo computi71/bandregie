@@ -1214,12 +1214,16 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'addzugabe') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,NULL,2,?)', [$id, $nextPos()]);
     }
-    // Blockgrenze wie der Strich auf dem Papier — keine Pause: Eine Pause beginnt
-    // eine neue Seite, weil die Band von der Bühne geht. Ein Block bleibt auf dem
-    // Blatt (#241).
+    // Sprechpause: der Strich, den die Band aufs Papier zieht, wenn nicht gespielt,
+    // sondern geredet wird — Bandvorstellung, Umstimmen. Keine Pause: eine Pause
+    // beginnt eine neue Seite, weil die Band von der Bühne geht. Die Sprechpause
+    // bleibt auf dem Blatt (#241, benannt in #248).
+    //
+    // Die Schlüssel heissen weiter sl_block_* und der Wert is_break = 3: Umbenennen
+    // hiesse Übersetzungen umziehen, und die Zeile gewinnt nichts dadurch.
     //
     // Bedient wird sie wie die Klammer, über die Auswahl und das Feld unten (#246):
-    // Angehakte Blockgrenzen bekommen den Text, sonst entsteht eine neue hinter der
+    // Angehakte Sprechpausen bekommen den Text, sonst entsteht eine neue hinter der
     // letzten angehakten Zeile. Ohne Auswahl haengt sie hinten an — vorher war das
     // der einzige Weg, und danach musste man sie durch die halbe Liste schieben.
     if ($action === 'addblock') {

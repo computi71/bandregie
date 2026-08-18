@@ -1,13 +1,26 @@
 -- Blockgrenzen mit Anweisung in der Setliste (#241)
+--
+-- „Block" heisst seit #248 Sprechpause: gespielt wird nicht, geredet schon. Weil
+-- der frueheste Seed gewinnt (ON DUPLICATE KEY UPDATE value = value), muss der
+-- alte Wortlaut aller betroffenen Schluessel einmal weg — auch der aus 115 und
+-- 118, das spaeter laedt und seine neuen Werte dann selbst setzt. sl_block,
+-- sl_block_note_edit und sl_block_hint sind ganz entfallen: unbenutzt, und ein
+-- Text, den niemand anzeigt, ist eine Zeile, die beim naechsten Lesen aufhaelt.
+DELETE FROM translations WHERE tkey IN
+  ('sl_block','sl_block_word','sl_block_add','sl_block_note_ph','sl_block_note_edit',
+   'sl_block_hint','sl_block_hint_pick','fl_block_changed')
+  AND (SELECT COUNT(*) FROM settings WHERE `key` = 'sl_block_sprechpause_v1') = 0;
+INSERT INTO settings (`key`, value) VALUES ('sl_block_sprechpause_v1', '1')
+  ON DUPLICATE KEY UPDATE value = value;
 INSERT INTO translations (lang, tkey, value) VALUES
-('en','sl_block','Block'),('en','sl_block_word','Block'),('en','sl_block_add','Block break'),
-('en','sl_block_note_ph','Cue, e.g. "Andi retunes"'),('en','sl_block_note_edit','Change the cue'),
-('nl','sl_block','Blok'),('nl','sl_block_word','Blok'),('nl','sl_block_add','Blokgrens'),
-('nl','sl_block_note_ph','Aanwijzing, bijv. "Andi stemt"'),('nl','sl_block_note_edit','Aanwijzing wijzigen'),
-('fr','sl_block','Bloc'),('fr','sl_block_word','Bloc'),('fr','sl_block_add','Fin de bloc'),
-('fr','sl_block_note_ph','Consigne, p. ex. « Andi raccorde »'),('fr','sl_block_note_edit','Modifier la consigne'),
-('es','sl_block','Bloque'),('es','sl_block_word','Bloque'),('es','sl_block_add','Fin de bloque'),
-('es','sl_block_note_ph','Indicacion, p. ej. "Andi afina"'),('es','sl_block_note_edit','Cambiar la indicacion'),
-('it','sl_block','Blocco'),('it','sl_block_word','Blocco'),('it','sl_block_add','Fine blocco'),
-('it','sl_block_note_ph','Indicazione, es. "Andi accorda"'),('it','sl_block_note_edit','Cambia indicazione')
+('en','sl_block_word','Announcement'),('en','sl_block_add','Announcement'),
+('en','sl_block_note_ph','Announcement, e.g. "band intro"'),
+('nl','sl_block_word','Praatpauze'),('nl','sl_block_add','Praatpauze'),
+('nl','sl_block_note_ph','Aankondiging, bijv. "bandvoorstelling"'),
+('fr','sl_block_word','Annonce'),('fr','sl_block_add','Annonce'),
+('fr','sl_block_note_ph','Annonce, p. ex. « presentation du groupe »'),
+('es','sl_block_word','Presentacion'),('es','sl_block_add','Presentacion'),
+('es','sl_block_note_ph','Anuncio, p. ej. "presentar la banda"'),
+('it','sl_block_word','Presentazione'),('it','sl_block_add','Presentazione'),
+('it','sl_block_note_ph','Annuncio, es. "presentare la band"')
 ON DUPLICATE KEY UPDATE value = value;
