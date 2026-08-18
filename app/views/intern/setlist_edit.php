@@ -38,7 +38,11 @@
           <input type="checkbox" class="sl-pick" name="rows[]" value="<?= $entry['item_id'] ?>"
                  title="<?= e(t('sl_brace_pick')) ?>">
         <?php endif; ?>
-        <span class="pos"><?= $entry['position'] ?></span>
+        <?php // Gezählt werden Lieder. Eine Pause, eine Blockgrenze und der
+              // Zugabe-Strich sind keine Nummer wert — sonst heißt der zwölfte
+              // Song „14", und danach sucht auf der Bühne niemand (#247). ?>
+        <?php if (!$entry['is_break']) $slNr = ($slNr ?? 0) + 1; ?>
+        <span class="pos"><?= $entry['is_break'] ? '' : (int) $slNr ?></span>
         <?php if ($entry['is_break']): ?>
           <?php if ((int) $entry['is_break'] === 3): ?>
             <?php // Der Strich vom Papier — mit der Anweisung, die dort daneben steht. ?>
