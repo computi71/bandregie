@@ -1010,6 +1010,8 @@ Zeile zwei
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
   'geo_search' => 'Adresse suchen',
+  'geo_none_hint' => 'Kein Treffer. OpenStreetMap kennt Adressen, aber kaum Saalnamen — mit Straße und Ort findet es etwas.',
+  'geo_searched_as' => 'gesucht als: %1',
   'geo_searching' => 'Suche …',
   'geo_no_results' => 'Keine Treffer.',
   'geo_attribution' => '© OpenStreetMap-Mitwirkende',
@@ -3926,14 +3928,17 @@ function navi_web(string $dest): string {
 }
 
 // Adresse → Treffer mit Koordinaten, über OpenStreetMap/Nominatim. Eine Anfrage
-// je Aufruf, mit User-Agent, wie es die Nominatim-Richtlinie verlangt. Fehler
-// (Dienst weg, Timeout) ergeben eine leere Liste — die Oberfläche meldet dann
-// „keine Treffer". Aufgerufen nur, wenn die Band Geocoding erlaubt hat.
-function geocode_search(string $q): array {
+// je Aufruf, mit User-Agent, wie es die Nominatim-Richtlinie verlangt (ohne den
+// antwortet der Dienst mit 403). Fehler (Dienst weg, Timeout) ergeben eine leere
+// Liste — die Oberfläche meldet dann „keine Treffer". Aufgerufen nur, wenn die
+// Band Geocoding erlaubt hat.
+function geocode_request(string $q): array {
   $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=3&q=' . rawurlencode($q);
   $ctx = stream_context_create(['http' => [
     'method' => 'GET',
-    'header' => 'User-Agent: Bandregie/' . BANDREGIE_VERSION . " (self-hosted band tool)\r\nAccept: application/json\r\n",
+    'header' => 'User-Agent: Bandregie/' . BANDREGIE_VERSION . " (self-hosted band tool)
+Accept: application/json
+",
     'timeout' => 8,
   ]]);
   $raw = @file_get_contents($url, false, $ctx);
@@ -3949,16 +3954,54 @@ function geocode_search(string $q): array {
     $a = is_array($r['address'] ?? null) ? $r['address'] : [];
     $city = (string) ($a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? '');
     $street = trim(($a['road'] ?? '') . ' ' . ($a['house_number'] ?? ''));
-    $addr = trim($street . "\n" . trim(($a['postcode'] ?? '') . ' ' . $city));
+    $addr = trim($street . "
+" . trim(($a['postcode'] ?? '') . ' ' . $city));
     $out[] = [
       'name' => (string) $r['display_name'],
       'address' => $addr !== '' ? $addr : (string) $r['display_name'],
       'city' => $city,
       'lat' => (string) $r['lat'],
       'lng' => (string) $r['lon'],
+      'searched' => $q,
     ];
   }
   return $out;
+}
+
+/**
+ * Wie viele Nachfragen mit weniger Wörtern höchstens gestellt werden.
+ * Nominatim erlaubt etwa eine Anfrage je Sekunde; zwei Nachfragen mit Abstand
+ * bleiben in der Richtlinie und halten den Klick unter drei Sekunden.
+ */
+const GEO_RETRIES = 2;
+
+/**
+ * Suche mit Rückzug (#234).
+ *
+ * Nominatim ist ein Adressverzeichnis, keine Namenssuche: Der Freitext muss in
+ * JEDEM Wort treffen, ein einziges unbekanntes lässt das ganze Ergebnis leer
+ * ausgehen. Gemessen: „Treysa" findet den Ort, „Rockschuppen Treysa" findet
+ * nichts — und Saalnamen stehen selten in OpenStreetMap.
+ *
+ * Bleibt die Suche leer, fällt deshalb das erste Wort weg und es wird erneut
+ * gefragt: vorn steht der Name, hinten der Ort. Ein Treffer auf Ortsebene ist
+ * zum Hinfahren genug und allemal besser als nichts.
+ *
+ * Am Treffer steht, wonach wirklich gesucht wurde — sonst hält jemand den Ort
+ * für den Saal.
+ */
+function geocode_search(string $q): array {
+  $q = trim(preg_replace('~\s+~u', ' ', $q) ?? '');
+  if ($q === '') return [];
+  $treffer = geocode_request($q);
+  $worte = preg_split('~[\s,]+~u', $q) ?: [];
+  for ($i = 0; !$treffer && $i < GEO_RETRIES && count($worte) > 1; $i++) {
+    array_shift($worte);
+    // Abstand halten, statt drei Anfragen in einem Wimpernschlag zu stellen.
+    usleep(1100000);
+    $treffer = geocode_request(implode(' ', $worte));
+  }
+  return $treffer;
 }
 
 // EXIF eines Bildes: Aufnahmedatum und GPS, falls vorhanden. Ohne (kein JPEG,

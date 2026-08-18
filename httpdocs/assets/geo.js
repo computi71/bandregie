@@ -16,7 +16,13 @@
     };
 
     btn.addEventListener('click', async () => {
-      const q = [val('name'), val('address'), val('city')].filter(Boolean).join(', ');
+      // Gefragt wird mit dem, was ein Adressverzeichnis beantworten kann:
+      // Straße und Ort. Der Saalname kam früher zuerst — und war genau das Wort,
+      // an dem jede Suche scheiterte, weil Nominatim in jedem Wort treffen muss
+      // (#234). Nur wenn es sonst nichts gibt, wird der Name versucht: Ein
+      // bekannter Saal kann durchaus in der Karte stehen.
+      const adresse = [val('address'), val('city')].filter(Boolean).join(', ');
+      const q = adresse !== '' ? adresse : val('name');
       if (q.length < 3) return;
       results.textContent = field.dataset.tSearching || '…';
       let list = [];
@@ -26,7 +32,22 @@
         list = (data && data.results) || [];
       } catch (e) { list = []; }
       results.textContent = '';
-      if (!list.length) { results.textContent = field.dataset.tNone || ''; return; }
+      if (!list.length) {
+        // „Keine Treffer" lässt jemanden ratlos zurück. Der Hinweis sagt, was
+        // stattdessen hilft.
+        results.textContent = field.dataset.tNoneHint || field.dataset.tNone || '';
+        return;
+      }
+      // Wonach wirklich gesucht wurde, gehört dazu: Der Server fragt bei einem
+      // leeren Ergebnis mit weniger Wörtern nach, und dann steht am Treffer der
+      // Ort statt des Saals.
+      const gesucht = list[0] && list[0].searched;
+      if (gesucht && gesucht.toLowerCase() !== q.toLowerCase() && field.dataset.tSearchedAs) {
+        const hint = document.createElement('p');
+        hint.className = 'muted small';
+        hint.textContent = field.dataset.tSearchedAs.replace('%1', gesucht);
+        results.appendChild(hint);
+      }
       list.forEach((hit) => {
         const b = document.createElement('button');
         b.type = 'button';
