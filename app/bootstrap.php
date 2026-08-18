@@ -375,7 +375,7 @@ const UI_STRINGS = [
   'help_more' => 'Mehr zur Anwendung, zur Lizenz und zu den Mitwirkenden steht unter „Über".',
   // Kurzbeschreibung je Bereich — die Schlüssel heißen wie die Bereiche
   'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
-  'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um.',
+  'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um. Das Mikrofon-Symbol steht an den Liedern, für die ein Text hinterlegt ist, die Gitarre an denen, für die jemand einen Notizzettel geschrieben hat.',
   'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen, Sprechpausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern. Drei Trenner gibt es, und sie bedeuten Verschiedenes: Eine **Pause** teilt den Abend — die Band geht von der Bühne, und im Druck beginnt ein neues Blatt. Eine **Sprechpause** trennt nur innerhalb des Blattes: gespielt wird nicht, geredet schon — Ansage, Bandvorstellung, Umstimmen. Sie steht als gestrichelte Linie, so wie der Strich auf einer Papier-Setliste, und die Ansage steht in der Linie. Der **Zugabe-Strich** trennt, was nur gespielt wird, wenn das Publikum es will. Dazu die **Klammer**: sie fasst Titel zusammen, die ohne Absetzen zusammen gespielt werden, mit einer Anweisung für alle darin — „Drop D" über den ersten drei Liedern heißt, diese drei in Drop D zu spielen. Anweisung und Ansage hängen an der Setliste, nicht am Lied: dasselbe Lied steht in vielen Setlisten, und beides gilt für einen Abend. Gezählt werden nur Lieder; Trenner tragen keine Nummer.',
   'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. PLZ und Ort sind eigene Felder, die Straße samt Hausnummer steht darunter. Über „Adresse suchen“ fragt der Server bei OpenStreetMap nach — jedes Feld als das, was es ist, der Saalname bleibt außen vor, denn den kennt eine Karte selten. Ein Klick auf den Treffer trägt Straße, PLZ, Ort und die Koordinaten ein. Erlaubt sein muss das unter „Einstellungen → Verbindungen nach außen“, sonst bleibt der Knopf grau. Findet die Suche nichts, wird sie schrittweise gröber — ohne Hausnummer, dann nur mit dem Ort. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
   'help_abwesenheiten' => 'Urlaub und Sperrzeiten. Fällt ein Termin hinein, warnt die Terminliste.',
@@ -859,7 +859,7 @@ Zeile zwei
   'song_read' => 'Text und Noten',
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
   'stage_open' => 'Bühne',
-  'stage_hint' => 'Vollbild, großer Text, läuft von selbst',
+  'stage_hint' => 'Liedtext im Vollbild — großer Text, läuft von selbst mit',
   'stage_play' => 'Start / Pause',
   'stage_slower' => 'Langsamer',
   'stage_faster' => 'Schneller',
@@ -1159,9 +1159,6 @@ Zeile zwei
   'song_chords_ph' => "[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nText der ersten Zeile …",
   'song_chords_hint' => 'Für Akkorde und Notizen, wie man sie von Hand aufschreibt. Feste Zeichenbreite: Was untereinander steht, bleibt untereinander. Abschnitte wie beim Text in eckige Klammern.',
   'song_chords_none' => 'Für dieses Lied ist kein Notizzettel angelegt.',
-  'song_lyrics_bulk' => 'Texte einpflegen',
-  'song_lyrics_bulk_hint' => 'Hier lassen sich die Liedtexte mehrerer Songs auf einmal einfügen. Abschnitte in eckigen Klammern ([Refrain]) werden auf der Bühne farbig hervorgehoben.',
-  'song_lyrics_bulk_saved' => 'Liedtexte gespeichert.',
   'song_edit_link' => 'Bearbeiten',
   'off_areas' => 'Offline dabeihaben',
   'off_areas_hint' => 'Was hier angehakt ist, liegt auf diesem Gerät und ist ohne Empfang da. Die Auswahl gilt für dich, nicht für die Band — jedes Gerät hat seine eigene.',
@@ -1189,7 +1186,7 @@ Zeile zwei
   'stage_x' => 'Links–rechts (%)', 'stage_y' => 'Hinten–vorne (%)', 'stage_note' => 'Zusatz',
   'stage_from_members' => 'Aus der Mitgliederliste erzeugen',
   'stage_from_members_hint' => 'Setzt eine Vorlage nach Instrument — Schlagzeug hinten Mitte, Bass hinten links, Gesang vorne. Danach lässt sich alles verschieben.',
-  'stage_hint' => 'Der Plan geht in den Stagerider und in den Ausdruck. Vorne ist unten, so wie das Publikum schaut.',
+  'stageplot_hint' => 'Der Plan geht in den Stagerider und in den Ausdruck. Vorne ist unten, so wie das Publikum schaut.',
   'stage_replace_warn' => 'Der bisherige Plan wird dabei ersetzt. Fortfahren?',
   'stage_drag_hint' => 'Zum Verschieben die Zahlen ändern — oder das Symbol im Plan ziehen.',
   'stagekind_musiker' => 'Musiker', 'stagekind_amp' => 'Verstärker', 'stagekind_podest' => 'Podest',
@@ -2812,6 +2809,20 @@ if (setting('help_orte_postcode') !== '1') {
 // Die Serien sind fort (#218): ihre Texte auch. Sonst bliebe in sechs Sprachen
 // stehen, was die Anwendung nicht mehr kann — und in den Einstellungen ein
 // Schalter-Zustand, den niemand mehr umlegen kann.
+// Die Symbole erscheinen nur, wo es etwas zu zeigen gibt (#250) — das steht
+// jetzt auch in der Hilfe. Der neue Text kommt aus Seed 16; hier wird der
+// veraltete weggeraeumt, damit der Seed ihn neu anlegen kann.
+if (setting('help_songs_icons') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_songs'");
+  set_setting('help_songs_icons', '1');
+}
+// Die Sammelseite „Texte einpflegen" ist fort (#250): ihre Texte auch, sonst
+// stehen in sechs Sprachen Sätze über eine Seite, die es nicht mehr gibt.
+if (setting('lyrics_bulk_gone') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN
+     ('song_lyrics_bulk','song_lyrics_bulk_hint','song_lyrics_bulk_saved')");
+  set_setting('lyrics_bulk_gone', '1');
+}
 if (setting('stacks_texts_gone') !== '1') {
   q("DELETE FROM translations WHERE tkey IN
      ('set_stacks','set_stacks_hint','photo_stack_count','photo_stack_open','photo_stack_title',
@@ -3961,6 +3972,24 @@ function song_chords_all(int $songId, int $meId): array {
                FROM song_chords sc JOIN users u ON u.id = sc.user_id
                WHERE sc.song_id = ? AND TRIM(sc.content) <> ?
                ORDER BY mine DESC, u.name', [$meId, $songId, '']);
+}
+/**
+ * Zu welchen dieser Lieder gibt es überhaupt einen Notizzettel? [song_id => true]
+ *
+ * Für die Symbole in Liste und Setliste: Ein Knopf, der auf eine leere Seite
+ * führt, ist schlimmer als kein Knopf (#250). Eine Abfrage für alle Lieder der
+ * Seite, nicht eine je Zeile.
+ */
+function songs_with_chords(array $songIds): array {
+  $ids = array_values(array_unique(array_map('intval', array_filter($songIds))));
+  if (!$ids) return [];
+  $platzhalter = implode(',', array_fill(0, count($ids), '?'));
+  $out = [];
+  foreach (rows("SELECT DISTINCT song_id FROM song_chords
+                 WHERE TRIM(content) <> '' AND song_id IN ($platzhalter)", $ids) as $r) {
+    $out[(int) $r['song_id']] = true;
+  }
+  return $out;
 }
 function song_chords_mine(int $songId, int $meId): string {
   $r = row('SELECT content FROM song_chords WHERE song_id = ? AND user_id = ?', [$songId, $meId]);

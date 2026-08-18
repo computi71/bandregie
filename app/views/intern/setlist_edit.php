@@ -55,9 +55,16 @@
           <strong><?= e($entry['title']) ?></strong>
           <span class="muted"><?= e($entry['artist'] ?: t('own_song')) ?><?= $entry['song_key'] ? ' · ' . e($entry['song_key']) : '' ?><?= $entry['tempo'] ? ' · ' . e($entry['tempo']) : '' ?> · <?= fmt_duration($entry['duration_sec']) ?></span>
           <?php // Von hier auf die Bühne, mit der Setlist im Rücken: buehne.js
-                // springt dann ohne Vollbild zu verlassen zum nächsten Song. ?>
-          <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/buehne?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_hint')) ?>">🎤</a>
-          <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/noten?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_chords')) ?>">🎸</a>
+                // springt dann ohne Vollbild zu verlassen zum nächsten Song.
+                //
+                // Angeboten nur, wo es etwas zu lesen gibt: Text beim Mikrofon,
+                // ein Notizzettel eines Musikers bei der Gitarre (#250). ?>
+          <?php if (trim((string) $entry['lyrics']) !== ''): ?>
+            <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/buehne?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_hint')) ?>">🎤</a>
+          <?php endif; ?>
+          <?php if (!empty($chordsBy[(int) $entry['id']])): ?>
+            <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/noten?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_chords')) ?>">🎸</a>
+          <?php endif; ?>
         <?php endif; ?>
         <?php // In der Zeile steht nur die Marke — mit der Anweisung an der ersten
               // Zeile, damit man sieht, was gilt. Geändert wird unten: ein Feld für

@@ -1001,8 +1001,10 @@ if (str_starts_with($path, '/intern')) {
     );
   };
   if ($path === '/intern/songs' && $method === 'GET') {
-    view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songList(), 'edit' => null,
-      'ratings' => song_ratings($me['id'])]);
+    $songsAlle = $songList();
+    view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songsAlle, 'edit' => null,
+      'ratings' => song_ratings($me['id']),
+      'chordsBy' => songs_with_chords(array_column($songsAlle, 'id'))]);
   }
   // Ein Lied zum Lesen: Text, Tonart, Tempo, Noten. Das ist die Seite, die auf
   // dem Notenständer liegt; geändert wird unter /edit.
@@ -1064,35 +1066,15 @@ if (str_starts_with($path, '/intern')) {
       'mono' => true,
     ]);
   }
-  // Texte einpflegen: mehrere Liedtexte auf einmal. Bewusst als eigene Seite —
-  // hier fügt die Band ihre Texte ein, das Werkzeug schreibt keine.
-  if ($path === '/intern/songs/lyrics' && $method === 'GET') {
-    view('intern/songs_lyrics', [
-      'title' => t('song_lyrics_bulk'),
-      // Auch hier gilt die Sichtbarkeit: sonst stünden auf einer Seite alle
-      // Texte, die die Liste daneben sorgfältig filtert.
-      'songs' => (function () use ($me) {
-        [$wo, $werte] = visible_clause(visible_song_ids($me));
-        return rows("SELECT id, title, artist, lyrics FROM songs
-                     WHERE status <> 'archiv' $wo ORDER BY title", $werte);
-      })(),
-    ]);
-  }
-  if ($path === '/intern/songs/lyrics' && $method === 'POST') {
-    foreach (($_POST['lyrics'] ?? []) as $id => $text) {
-      if (!is_string($text)) continue; // verschachtelte Eingaben ignorieren, nicht als "Array" speichern
-      q('UPDATE songs SET lyrics = ? WHERE id = ?', [$text, (int) $id]);
-    }
-    flash(t('song_lyrics_bulk_saved'));
-    redirect('/intern/songs/lyrics');
-  }
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
+    $songsAlle = $songList();
     view('intern/songs', [
       'title' => t('inav_songs'),
       'ratings' => song_ratings($me['id']),
-      'songs' => $songList(),
+      'songs' => $songsAlle,
+      'chordsBy' => songs_with_chords(array_column($songsAlle, 'id')),
       'edit' => $edit,
       'songFiles' => files_map('song', [(int) $m[1]])[(int) $m[1]] ?? [],
       'myChords' => song_chords_mine((int) $m[1], $me['id']),
@@ -1154,6 +1136,7 @@ if (str_starts_with($path, '/intern')) {
       'title' => $setlist['name'],
       'setlist' => $setlist,
       'entries' => $entries,
+      'chordsBy' => songs_with_chords(array_column($entries, 'id')),
       'locked' => setlist_locked((int) $m[1]),
       'playedAt' => rows('SELECT e.id, e.title, e.date, v.name AS venue_name FROM events e
                           LEFT JOIN venues v ON v.id = e.venue_id

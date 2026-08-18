@@ -1,6 +1,5 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('songs_title')) ?></h1>
-<p><a class="btn btn-ghost btn-small" href="/intern/songs/lyrics">📝 <?= e(t('song_lyrics_bulk')) ?></a></p>
 
 <details class="card collapsible" <?= $edit || !$songs ? 'open' : '' ?>>
   <summary><?= $edit ? '✏️ „' . e($edit['title']) . '" ' . e(t('song_edit_suffix')) : '➕ ' . e(t('song_new')) ?></summary>
@@ -86,6 +85,14 @@
           </td>
           <td title="<?= e(t('songs_uses_title')) ?>">📋 <?= $song['setlist_count'] ?><?= $song['played_count'] > 0 ? ' · 🎤 ' . $song['played_count'] : '' ?></td>
           <td class="row-buttons">
+            <?php // Text und Notizzettel nur, wo es sie gibt — sonst führt der
+                  // Knopf auf eine leere Bühne (#250). ?>
+            <?php if (trim((string) $song['lyrics']) !== ''): ?>
+              <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/buehne" title="<?= e(t('stage_hint')) ?>">🎤</a>
+            <?php endif; ?>
+            <?php if (!empty($chordsBy[(int) $song['id']])): ?>
+              <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/noten" title="<?= e(t('stage_chords')) ?>">🎸</a>
+            <?php endif; ?>
             <a class="btn btn-tiny" href="/intern/songs/<?= $song['id'] ?>/edit">✏️</a>
             <?php if ($song['played_count'] == 0): ?>
               <form class="inline" method="post" action="/intern/songs/<?= $song['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>

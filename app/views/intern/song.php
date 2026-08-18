@@ -15,8 +15,13 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
   <h1>🎵 <?= e($song['title']) ?></h1>
   <div class="row-buttons">
     <a class="btn btn-ghost btn-small" href="/intern/songs">← <?= e(t('inav_songs')) ?></a>
-    <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/buehne" title="<?= e(t('stage_hint')) ?>">🎤 <?= e(t('stage_open')) ?></a>
-    <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/noten" title="<?= e(t('song_chords')) ?>">🎸 <?= e(t('stage_chords')) ?></a>
+    <?php // Nur anbieten, was auch etwas anzeigt (#250). ?>
+    <?php if (trim((string) ($song['lyrics'] ?? '')) !== ''): ?>
+      <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/buehne" title="<?= e(t('stage_hint')) ?>">🎤 <?= e(t('stage_open')) ?></a>
+    <?php endif; ?>
+    <?php if (trim((string) ($myChords ?? '')) !== '' || ($otherChordsCount ?? 0) > 0): ?>
+      <a class="btn btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/noten" title="<?= e(t('song_chords')) ?>">🎸 <?= e(t('stage_chords')) ?></a>
+    <?php endif; ?>
     <a class="btn btn-ghost btn-small" href="/intern/songs/<?= (int) $song['id'] ?>/edit">✏️ <?= e(t('song_edit_link')) ?></a>
   </div>
 </div>

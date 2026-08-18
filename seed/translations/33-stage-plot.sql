@@ -1,4 +1,21 @@
--- Translations for the stage plot.
+-- Buehnenplan (#33) — und die Entzerrung von stage_hint (#250)
+--
+-- stage_hint hiess zweierlei: der Hinweis am Teleprompter und der zum
+-- Buehnenplan. Der Plan war spaeter definiert und gewann, also erklaerte das
+-- Mikrofon-Symbol den Buehnenplan. Der Plan heisst jetzt stageplot_hint,
+-- stage_hint gehoert dem Teleprompter. Der alte Wert muss einmal weg — die
+-- Wache steht hier, in der Datei, die beide Werte neu setzt.
+DELETE FROM translations WHERE tkey = 'stage_hint'
+  AND (SELECT COUNT(*) FROM settings WHERE `key` = 'stage_hint_split_v1') = 0;
+INSERT INTO settings (`key`, value) VALUES ('stage_hint_split_v1', '1')
+  ON DUPLICATE KEY UPDATE value = value;
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','stage_hint','Lyrics full screen — large text, scrolling by itself'),
+('nl','stage_hint','Songtekst op het volle scherm — grote letters, loopt zelf mee'),
+('fr','stage_hint','Les paroles en plein écran — grand texte, défile tout seul'),
+('es','stage_hint','La letra a pantalla completa: texto grande, avanza solo'),
+('it','stage_hint','Il testo a schermo intero: caratteri grandi, scorre da solo')
+ON DUPLICATE KEY UPDATE value = value;
 SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
@@ -8,7 +25,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','stage_x','Left–right (%)'),('en','stage_y','Back–front (%)'),('en','stage_note','Extra'),
 ('en','stage_from_members','Build from the member list'),
 ('en','stage_from_members_hint','Places a template by instrument — drums back centre, bass back left, vocals front. Everything can be moved afterwards.'),
-('en','stage_hint','The plot goes into the stage rider and into the printout. Front is at the bottom, the way the audience looks at you.'),
+('en','stageplot_hint','The plot goes into the stage rider and into the printout. Front is at the bottom, the way the audience looks at you.'),
 ('en','stage_replace_warn','This replaces the current plot. Continue?'),
 ('en','stage_drag_hint','Change the numbers to move things — or drag the symbol in the plot.'),
 ('en','stagekind_musiker','Musician'),('en','stagekind_amp','Amplifier'),('en','stagekind_podest','Riser'),
@@ -23,7 +40,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','stage_x','Gauche–droite (%)'),('fr','stage_y','Fond–devant (%)'),('fr','stage_note','Précision'),
 ('fr','stage_from_members','Générer depuis la liste des membres'),
 ('fr','stage_from_members_hint','Place un modèle par instrument — batterie au fond au centre, basse au fond à gauche, chant devant. Tout se déplace ensuite.'),
-('fr','stage_hint','Le plan va dans la fiche technique et dans l''impression. Le devant est en bas, comme le public vous voit.'),
+('fr','stageplot_hint','Le plan va dans la fiche technique et dans l''impression. Le devant est en bas, comme le public vous voit.'),
 ('fr','stage_replace_warn','Cela remplace le plan actuel. Continuer ?'),
 ('fr','stage_drag_hint','Modifie les chiffres pour déplacer — ou fais glisser le symbole dans le plan.'),
 ('fr','stagekind_musiker','Musicien'),('fr','stagekind_amp','Ampli'),('fr','stagekind_podest','Podium'),
@@ -38,7 +55,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','stage_x','Izquierda–derecha (%)'),('es','stage_y','Fondo–delante (%)'),('es','stage_note','Detalle'),
 ('es','stage_from_members','Generar desde la lista de miembros'),
 ('es','stage_from_members_hint','Coloca una plantilla por instrumento: batería al fondo en el centro, bajo al fondo a la izquierda, voz delante. Después se puede mover todo.'),
-('es','stage_hint','El plano va a la ficha técnica y a la impresión. Delante está abajo, tal como os ve el público.'),
+('es','stageplot_hint','El plano va a la ficha técnica y a la impresión. Delante está abajo, tal como os ve el público.'),
 ('es','stage_replace_warn','Esto sustituye el plano actual. ¿Continuar?'),
 ('es','stage_drag_hint','Cambia los números para mover — o arrastra el símbolo en el plano.'),
 ('es','stagekind_musiker','Músico'),('es','stagekind_amp','Amplificador'),('es','stagekind_podest','Tarima'),
@@ -53,7 +70,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','stage_x','Links–rechts (%)'),('nl','stage_y','Achter–voor (%)'),('nl','stage_note','Extra'),
 ('nl','stage_from_members','Uit de ledenlijst maken'),
 ('nl','stage_from_members_hint','Zet een sjabloon per instrument — drums achter in het midden, bas achter links, zang vooraan. Daarna is alles te verplaatsen.'),
-('nl','stage_hint','Het plan gaat mee in de stagerider en in de afdruk. Voor is onder, zoals het publiek naar jullie kijkt.'),
+('nl','stageplot_hint','Het plan gaat mee in de stagerider en in de afdruk. Voor is onder, zoals het publiek naar jullie kijkt.'),
 ('nl','stage_replace_warn','Dit vervangt het huidige plan. Doorgaan?'),
 ('nl','stage_drag_hint','Verander de getallen om te verplaatsen — of sleep het symbool in het plan.'),
 ('nl','stagekind_musiker','Muzikant'),('nl','stagekind_amp','Versterker'),('nl','stagekind_podest','Podest'),
@@ -68,7 +85,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','stage_x','Sinistra–destra (%)'),('it','stage_y','Fondo–davanti (%)'),('it','stage_note','Dettaglio'),
 ('it','stage_from_members','Genera dalla lista dei membri'),
 ('it','stage_from_members_hint','Mette un modello per strumento: batteria in fondo al centro, basso in fondo a sinistra, voce davanti. Poi si può spostare tutto.'),
-('it','stage_hint','Il piano finisce nella scheda tecnica e nella stampa. Davanti è in basso, come vi vede il pubblico.'),
+('it','stageplot_hint','Il piano finisce nella scheda tecnica e nella stampa. Davanti è in basso, come vi vede il pubblico.'),
 ('it','stage_replace_warn','Questo sostituisce il piano attuale. Continuare?'),
 ('it','stage_drag_hint','Cambia i numeri per spostare — oppure trascina il simbolo nel piano.'),
 ('it','stagekind_musiker','Musicista'),('it','stagekind_amp','Amplificatore'),('it','stagekind_podest','Pedana'),

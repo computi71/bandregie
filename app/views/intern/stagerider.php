@@ -9,7 +9,7 @@
 
 <div class="card">
   <h2>🎭 <?= e(t('stage_plot')) ?></h2>
-  <p class="muted small"><?= e(t('stage_hint')) ?></p>
+  <p class="muted small"><?= e(t('stageplot_hint')) ?></p>
   <?php $stageEdit = perm_allows($user, 'rider', 'write'); require BASE_DIR . '/app/views/_buehnenplan.php'; ?>
   <?php if ($stageEdit): ?>
     <?php // Das Maß steht beim Plan und nicht in den Einstellungen: Wer den
