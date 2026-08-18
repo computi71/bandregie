@@ -779,9 +779,8 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern' && $method === 'GET') {
     // Die Übersicht zeigt nur, was das Mitglied auch aufrufen dürfte — sonst
     // steht auf der ersten Seite nach dem Anmelden, was das Menü verbirgt.
-    [$dashWhere, $dashParams] = visible_clause(visible_event_ids($me));
     $events = perm_allows($me, 'termine')
-      ? rows("SELECT * FROM events WHERE date >= ?$dashWhere ORDER BY date, time LIMIT 5", [$today, ...$dashParams])
+      ? dashboard_events(visible_event_ids($me), $today)
       : [];
     view('intern/dashboard', [
       'title' => t('inav_intern'),

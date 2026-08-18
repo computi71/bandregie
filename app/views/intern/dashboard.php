@@ -43,6 +43,12 @@
       <?php foreach ($events as $ev): ?>
         <li>
           <span class="badge <?= e($ev['type']) ?>"><?= EVENT_TYPES[$ev['type']] ?? e($ev['type']) ?></span>
+          <?php // Der Status gehört dazu: Ohne ihn liest sich eine Anfrage wie
+                // ein fester Termin, und genau die beiden auseinanderzuhalten
+                // ist der Sinn dieses Kastens (#235). ?>
+          <?php if ($ev['status'] !== 'bestaetigt'): ?>
+            <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
+          <?php endif; ?>
           <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) : '' ?></span>
           <strong><?= e($ev['title']) ?></strong>
           <?php if ($ev['location']): ?><span class="muted"><?= e($ev['location']) ?></span><?php endif; ?>

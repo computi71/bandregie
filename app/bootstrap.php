@@ -5089,6 +5089,50 @@ function fmt_date(?string $iso): string {
  * Der Monatsname kommt aus den Texten, nicht aus der Zeitzone des Servers:
  * date('F') spricht immer Englisch.
  */
+/**
+ * Was unter „Nächste Termine" auf der Übersicht steht (#235).
+ *
+ * Nicht einfach „die nächsten fünf": Bei siebzehn Auftritten schoben fünf Gigs
+ * in Folge die eine Anfrage aus dem Bild — und genau dort entscheiden die
+ * Rückmeldungen etwas. Also:
+ *
+ *   • die nächsten ZWEI Gigs, die stattfinden,
+ *   • alle Anfragen und Reservierungen, egal welcher Art,
+ *   • Feiern und Sonstiges,
+ *   • nie Abgesagtes, nie Blockiertes.
+ *
+ * Die eigene Rückmeldung filtert nichts. Das ist bewusst so: Die Zusage-Knöpfe
+ * stehen in genau diesem Kasten. Wer einen unbeantworteten Termin ausblendet,
+ * nimmt ihm die einzige Stelle, an der er beantwortet werden kann.
+ *
+ * @param array<int, int>|null $sichtbar Kennungen aus visible_event_ids()
+ */
+const DASH_GIGS = 2;
+const DASH_MAX = 8;
+
+function dashboard_events(?array $sichtbar, string $heute): array {
+  [$wo, $args] = visible_clause($sichtbar);
+  $gigs = rows("SELECT * FROM events
+                WHERE date >= ? AND type = 'gig' AND status = 'bestaetigt'$wo
+                ORDER BY date, time LIMIT " . DASH_GIGS, [$heute, ...$args]);
+  // Anfragen und Reservierungen jeder Art, dazu Feiern und Sonstiges. Ein
+  // blockierter Tag ist keine Verabredung, ein abgesagter keine mehr.
+  $rest = rows("SELECT * FROM events
+                WHERE date >= ?
+                  AND status NOT IN ('abgesagt', 'blockiert')
+                  AND (status IN ('angefragt', 'reserviert') OR type IN ('party', 'sonstiges'))$wo
+                ORDER BY date, time", [$heute, ...$args]);
+
+  // Eine Feier, die angefragt ist, passt in beide Listen — sie soll einmal
+  // dastehen.
+  $zusammen = [];
+  foreach ([...$gigs, ...$rest] as $ev) $zusammen[(int) $ev['id']] = $ev;
+  usort($zusammen, fn($a, $b) => [$a['date'], $a['time']] <=> [$b['date'], $b['time']]);
+  // Eine Obergrenze, damit der Kasten nicht zur zweiten Terminliste wird; wer
+  // alles will, hat den Knopf darunter.
+  return array_slice($zusammen, 0, DASH_MAX);
+}
+
 function fmt_month(?string $iso): string {
   if (!$iso) return '';
   $t = strtotime($iso);
