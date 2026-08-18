@@ -1,12 +1,33 @@
-// Setlist per Ziehen umsortieren. Die Pfeiltasten bleiben bestehen — sie sind
-// die Rückfallebene für Touchgeräte, auf denen HTML5-Drag-and-drop nicht greift.
+// Setlist umsortieren — mit Maus, Finger oder Stift.
+//
+// Vorher lag hier HTML5-Drag-and-drop, und das feuert auf Touchgeräten nicht.
+// Der Hinweistext schickte Handynutzer deshalb zu den Pfeiltasten: bei achtund-
+// dreißig Titeln bis zu siebenunddreißig Tipp-Vorgänge, um eine Zugabe nach vorn
+// zu holen — auf genau der Seite, die kurz vor dem Auftritt am Handy offen ist
+// (#237).
+//
+// Zeigerereignisse kennen alle drei Eingabearten, also gibt es jetzt EINEN
+// Mechanismus statt zweier. Zwei Dinge entscheiden, ob es am Handy taugt:
+//
+//   * Gezogen wird nur am Griff (⠿), und nur der bekommt touch-action: none.
+//     Wäre die ganze Zeile ziehbar, könnte der Finger die Liste nicht mehr
+//     scrollen — und Scrollen braucht man bei achtunddreißig Zeilen zuerst.
+//   * Am Bildschirmrand wird mitgescrollt. Ohne das reicht ein Zug nur so weit,
+//     wie der Bildschirm hoch ist, und das Ziel liegt darunter.
+//
+// Die Pfeiltasten bleiben: Sie sind der Weg mit der Tastatur und der Notausgang,
+// wenn ein Gerät sich quer legt.
 document.addEventListener('DOMContentLoaded', () => {
   const list = document.querySelector('ol.sortable');
   if (!list) return;
 
   const url = list.dataset.reorder;
   const token = list.dataset.token;
+  const RAND = 70;      // Pixel bis zum Rand, ab denen mitgescrollt wird
+  const SCHRITT = 12;   // Pixel je Bild
   let dragged = null;
+  let scrollRichtung = 0;
+  let scrollLauf = 0;
 
   const flash = (text, ok = true) => {
     let note = document.getElementById('sort-note');
@@ -40,31 +61,66 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(() => flash('✕', false));
   };
 
-  list.addEventListener('dragstart', e => {
-    const li = e.target.closest('li');
+  // Die Zeile unter dem Zeiger — über die Geometrie und nicht über
+  // elementFromPoint: Unter dem Finger liegt die gezogene Zeile selbst.
+  const zeileUnter = (y) => [...list.children].find((li) => {
+    if (li === dragged) return false;
+    const b = li.getBoundingClientRect();
+    return y >= b.top && y <= b.bottom;
+  });
+
+  const scrollen = () => {
+    if (!scrollRichtung || !dragged) { scrollLauf = 0; return; }
+    window.scrollBy(0, scrollRichtung * SCHRITT);
+    scrollLauf = requestAnimationFrame(scrollen);
+  };
+
+  const randPruefen = (y) => {
+    const vorher = scrollRichtung;
+    scrollRichtung = y < RAND ? -1 : (y > window.innerHeight - RAND ? 1 : 0);
+    if (scrollRichtung && !scrollLauf) scrollLauf = requestAnimationFrame(scrollen);
+    if (!scrollRichtung && vorher) { cancelAnimationFrame(scrollLauf); scrollLauf = 0; }
+  };
+
+  list.addEventListener('pointerdown', (e) => {
+    // Nur der Griff zieht. Alles andere bleibt Scrollen, Antippen, Blättern.
+    const griff = e.target.closest('.drag-handle');
+    if (!griff || e.button > 0) return;
+    const li = griff.closest('li');
     if (!li) return;
     dragged = li;
     li.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    // Firefox startet den Zieh-Vorgang nur mit gesetzten Daten
-    e.dataTransfer.setData('text/plain', li.dataset.item);
+    // Ab jetzt gehen alle Zeigerereignisse an den Griff — auch wenn der Finger
+    // die Zeile verlässt, die unter ihm liegt.
+    try { griff.setPointerCapture(e.pointerId); } catch (err) { /* dann eben nicht */ }
+    e.preventDefault();
   });
 
-  list.addEventListener('dragover', e => {
+  list.addEventListener('pointermove', (e) => {
     if (!dragged) return;
     e.preventDefault();
-    const li = e.target.closest('li');
-    if (!li || li === dragged) return;
-    const box = li.getBoundingClientRect();
-    const after = e.clientY > box.top + box.height / 2;
-    list.insertBefore(dragged, after ? li.nextSibling : li);
+    const ziel = zeileUnter(e.clientY);
+    if (ziel) {
+      const b = ziel.getBoundingClientRect();
+      const danach = e.clientY > b.top + b.height / 2;
+      list.insertBefore(dragged, danach ? ziel.nextSibling : ziel);
+    }
+    randPruefen(e.clientY);
   });
 
-  list.addEventListener('dragend', () => {
+  const beenden = () => {
     if (!dragged) return;
     dragged.classList.remove('dragging');
     dragged = null;
+    scrollRichtung = 0;
+    if (scrollLauf) { cancelAnimationFrame(scrollLauf); scrollLauf = 0; }
     renumber();
     save();
-  });
+  };
+
+  list.addEventListener('pointerup', beenden);
+  list.addEventListener('pointercancel', beenden);
+  // Verlässt der Zeiger das Fenster, ohne loszulassen, bliebe die Zeile sonst
+  // für immer „in der Hand".
+  window.addEventListener('blur', beenden);
 });

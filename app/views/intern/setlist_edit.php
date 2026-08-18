@@ -26,7 +26,9 @@
       data-reorder="/intern/setlists/<?= $setlist['id'] ?>/reorder" data-token="<?= e(csrf_token()) ?>"
       data-saved-text="<?= e(t('sl_saved')) ?>">
     <?php foreach ($entries as $entry): ?>
-      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>" <?= $locked ? '' : 'draggable="true"' ?>>
+      <?php // Kein draggable mehr: Gezogen wird am Griff, mit Zeigerereignissen —
+            // die kennen Maus, Finger und Stift (#237). ?>
+      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>">
         <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <span class="pos"><?= $entry['position'] ?></span>
         <?php if ($entry['is_break']): ?>

@@ -408,7 +408,19 @@ td.rating { white-space: nowrap; }
 /* Setlist per Ziehen umsortieren */
 ol.sortable li { cursor: grab; }
 ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
-.drag-handle { color: rgba(255,255,255,0.3); margin-right: 0.4rem; cursor: grab; user-select: none; }
+/* Der Griff ist die einzige Fläche, die zieht — deshalb nimmt ihm touch-action
+   das Scrollen ab, und nur ihm: Der Rest der Zeile muss mit dem Finger weiter
+   scrollen können (#237). Die Polsterung ist Fingergröße, ohne die Zeile
+   auseinanderzuziehen. */
+.drag-handle {
+  color: rgba(255,255,255,0.3);
+  margin: -0.5rem 0.2rem -0.5rem -0.4rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.6rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.drag-handle:active { cursor: grabbing; color: rgba(255,255,255,0.7); }
 .sort-note { font-size: 0.82rem; color: var(--accent); opacity: 0; transition: opacity 0.3s; height: 1.1em; }
 .sort-note-error { color: #e05656; }
 
