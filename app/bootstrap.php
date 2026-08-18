@@ -468,7 +468,8 @@ const UI_STRINGS = [
   'sl_print_songs' => '%1 Songs', 'sl_print_min' => '%1 Min',
   'sl_print_plus_break' => 'zzgl. Pause', 'sl_print_plus_breaks' => 'zzgl. %1 Pausen',
   'sl_brace' => 'Klammer', 'sl_brace_add' => 'Klammer setzen', 'sl_brace_remove' => 'Klammer lösen',
-  'sl_brace_from' => 'von Position', 'sl_brace_to' => 'bis',
+  'sl_brace_pick' => 'für die Klammer anhaken',
+  'sl_brace_hint_pick' => 'Zeilen anhaken, Anweisung eintragen, Klammer setzen. Was zwischen der ersten und der letzten angehakten Zeile liegt, gehört dazu.',
   'sl_brace_hint' => 'Die Klammer fasst Titel zusammen, die zusammen gespielt werden — wie die gezeichnete Klammer auf dem Zettel. Die Anweisung daneben gilt für alle Titel darin, etwa „Drop D".',
   'fl_brace_set' => 'Klammer über %1 Titel gesetzt.', 'fl_brace_bad' => 'Diese Positionen ergeben keine Klammer.',
   'sl_block_hint' => 'Die Anweisung gilt für den Block unter der Linie — „Drop D" über den ersten drei Liedern heißt: diese drei in Drop D.',
@@ -4774,51 +4775,71 @@ function eq_quantity_hint(array $eq): ?int {
 }
 
 /**
- * Klammern einer Setliste in Ordnung bringen (#242).
+ * Klammern einer Setliste in Ordnung bringen (#242, #245).
  *
- * Die Nummer ist nur eine Kennung, aber sie steht in der Oberfläche. Wer Klammern
- * löscht und neu setzt, sah „1, 5, 6, 4" — gewachsen aus MAX+1, mit Löchern und
- * ohne Bezug zur Reihenfolge des Blattes. Nach jeder Änderung wird deshalb neu
- * gezählt: 1..n von oben nach unten.
+ * Die Nummer ist nur eine Kennung. Nach jeder Änderung wird neu gezählt: 1..n von
+ * oben nach unten, damit in der Oberfläche keine Löcher stehen.
  *
- * Zwei Dinge fallen dabei mit auf:
- *   • Eine Klammer, deren Zeilen nicht mehr aneinanderliegen (weil dazwischen
- *     verschoben wurde), wird in ihre zusammenhängenden Stücke geteilt —
- *     gezeichnet wird ohnehin nur, was beieinandersteht.
- *   • Ein Stück aus einer einzigen Zeile ist keine Klammer und verschwindet.
+ * Und die Klammer wird zusammengehalten, denn sie ist ein Bereich auf dem Blatt.
+ * Die Regel steht an einer EINZELNEN Lücke, nicht an ihrer Summe:
+ *
+ *   • Eine Lücke von einer Zeile wird geschlossen. Wer einen Song zwischen zwei
+ *     geklammerte zieht, will ihn drin haben — vorher zerfiel die Klammer dabei.
+ *   • Eine größere Lücke trennt. Das ist der andere Fall: Ein Mitglied wurde weit
+ *     weg gezogen. Dann bleibt der längste zusammenhängende Lauf, und das
+ *     Davongelaufene wird freigegeben.
+ *
+ * Zuerst stand hier die Summe aller Lücken gegen die Zahl der Mitglieder — damit
+ * schluckte eine Klammer aus vier Titeln beim Herausziehen eines Mitglieds drei
+ * fremde Zeilen mit. Je Lücke gemessen, trifft die Regel beide Fälle.
+ *
+ * Ein Lauf aus einer einzigen Zeile ist keine Klammer und verschwindet.
  *
  * @return int Zahl der Klammern danach
  */
+const BRACE_MAX_GAP = 1;
+
 function setlist_braces_normalize(int $setlistId): int {
   $zeilen = rows('SELECT id, position, bracket, bracket_note FROM setlist_songs
                   WHERE setlist_id = ? ORDER BY position', [$setlistId]);
-  $laeufe = [];
-  foreach ($zeilen as $z) {
-    $nr = $z['bracket'] !== null ? (int) $z['bracket'] : 0;
-    $letzter = $laeufe ? array_key_last($laeufe) : null;
-    if ($nr > 0 && $letzter !== null && $laeufe[$letzter]['nr'] === $nr) {
-      $laeufe[$letzter]['zeilen'][] = $z;
-    } else {
-      $laeufe[] = ['nr' => $nr, 'zeilen' => [$z]];
-    }
+  $mitglieder = [];
+  foreach ($zeilen as $i => $z) {
+    if ($z['bracket'] !== null) $mitglieder[(int) $z['bracket']][] = $i;
   }
-  $neu = 0;
-  foreach ($laeufe as $lauf) {
-    if ($lauf['nr'] === 0) continue;
-    if (count($lauf['zeilen']) < 2) {
-      q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE id = ?", [(int) $lauf['zeilen'][0]['id']]);
-      continue;
+
+  $bereiche = [];
+  foreach ($mitglieder as $idx) {
+    // In Läufe schneiden: eine Lücke bis BRACE_MAX_GAP hält zusammen.
+    $laeufe = [];
+    foreach ($idx as $i) {
+      $letzter = $laeufe ? array_key_last($laeufe) : null;
+      if ($letzter !== null && $i - end($laeufe[$letzter]) <= BRACE_MAX_GAP + 1) {
+        $laeufe[$letzter][] = $i;
+      } else {
+        $laeufe[] = [$i];
+      }
     }
-    $neu++;
-    // Die Anweisung gehört an die erste Zeile des Laufs — auch wenn sie durch ein
-    // Verschieben inzwischen an einer anderen steht.
+    // Der längste Lauf gewinnt; die anderen Mitglieder werden freigegeben.
+    usort($laeufe, fn($a, $b) => count($b) <=> count($a));
+    $lauf = $laeufe[0];
+    if (count($lauf) < 2) continue;                     // eine Zeile ist keine Klammer
     $text = '';
-    foreach ($lauf['zeilen'] as $z) {
-      if ((string) $z['bracket_note'] !== '') { $text = (string) $z['bracket_note']; break; }
+    foreach ($idx as $i) {
+      if ((string) $zeilen[$i]['bracket_note'] !== '') { $text = (string) $zeilen[$i]['bracket_note']; break; }
     }
-    foreach ($lauf['zeilen'] as $i => $z) {
+    $bereiche[] = [min($lauf), max($lauf), $text];
+  }
+  usort($bereiche, fn($a, $b) => $a[0] <=> $b[0]);
+
+  // Erst alles lösen, dann die Bereiche neu schreiben — so bleibt nichts stehen,
+  // was nicht mehr gilt.
+  q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ?", [$setlistId]);
+  $neu = 0;
+  foreach ($bereiche as [$von, $bis, $text]) {
+    $neu++;
+    for ($i = $von; $i <= $bis; $i++) {
       q('UPDATE setlist_songs SET bracket = ?, bracket_note = ? WHERE id = ?',
-        [$neu, $i === 0 ? $text : '', (int) $z['id']]);
+        [$neu, $i === $von ? $text : '', (int) $zeilen[$i]['id']]);
     }
   }
   return $neu;

@@ -1180,7 +1180,7 @@ if (str_starts_with($path, '/intern')) {
       'entries' => array_values(array_filter(setlist_entries((int) $m[1]), fn($x) => !$x['is_break'])),
     ]);
   }
-  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|klammer|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|klammer|klammernotiz|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
@@ -1225,11 +1225,22 @@ if (str_starts_with($path, '/intern')) {
     // innerhalb dieser Setliste eindeutig; sie hat keine Bedeutung außer
     // „gehört zusammen".
     if ($action === 'klammer') {
-      $von = (int) ($_POST['from'] ?? 0);
-      $bis = (int) ($_POST['to'] ?? 0);
-      $zeilen = rows('SELECT id, position, is_break FROM setlist_songs
-                      WHERE setlist_id = ? AND position BETWEEN ? AND ? ORDER BY position',
-                     [$id, min($von, $bis), max($von, $bis)]);
+      // Angehakt statt abgezählt (#245): Was in der Klammer liegt, sagt man durch
+      // Anhaken — Positionen abzulesen und in zwei Felder zu tippen ist die
+      // Umschreibung derselben Auskunft.
+      $gewaehlt = array_map('intval', (array) ($_POST['rows'] ?? []));
+      $zeilen = $gewaehlt
+        ? rows('SELECT id, position, is_break FROM setlist_songs
+                WHERE setlist_id = ? AND id IN (' . implode(',', array_fill(0, count($gewaehlt), '?')) . ')
+                ORDER BY position', [$id, ...$gewaehlt])
+        : [];
+      // Zwischen der ersten und der letzten angehakten Zeile liegt die Klammer —
+      // auch was dazwischen nicht angehakt wurde, gehört dann dazu.
+      if (count($zeilen) >= 2) {
+        $zeilen = rows('SELECT id, position, is_break FROM setlist_songs
+                        WHERE setlist_id = ? AND position BETWEEN ? AND ? ORDER BY position',
+                       [$id, (int) $zeilen[0]['position'], (int) $zeilen[count($zeilen) - 1]['position']]);
+      }
       // Mindestens zwei Zeilen, und keine Pause und kein Zugabe-Strich darin:
       // Die trennen das Blatt, eine Klammer darüber hinweg wäre sinnlos. Eine
       // BLOCKGRENZE darf sie dagegen kreuzen — im Original tut sie das: die
@@ -1254,6 +1265,17 @@ if (str_starts_with($path, '/intern')) {
       }
       setlist_braces_normalize((int) $id);
       flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
+      redirect("/intern/setlists/$id");
+    }
+    // Die Anweisung einer bestehenden Klammer ändern (#245). Vorher ging das nur
+    // durch Lösen und neu Setzen.
+    if ($action === 'klammernotiz') {
+      $kNr = (int) ($_POST['bracket'] ?? 0);
+      $erste = row('SELECT id FROM setlist_songs WHERE setlist_id = ? AND bracket = ? ORDER BY position LIMIT 1', [$id, $kNr]);
+      if ($erste) {
+        q('UPDATE setlist_songs SET bracket_note = ? WHERE id = ?',
+          [mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), (int) $erste['id']]);
+      }
       redirect("/intern/setlists/$id");
     }
     if ($action === 'entklammer') {
