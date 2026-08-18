@@ -31,6 +31,11 @@
       <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>">
         <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <span class="pos"><?= $entry['position'] ?></span>
+        <?php // Klammer sichtbar: erste Zeile mit der Anweisung, folgende mit dem
+              // Fortsetzungszeichen — so sieht man im Bearbeiten, was zusammenhängt. ?>
+        <?php if ($entry['bracket'] !== null): ?>
+          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $entry['item_note'] !== '' ? ' ' . e($entry['item_note']) : '' ?></span>
+        <?php endif; ?>
         <?php if ($entry['is_break']): ?>
           <?php if ((int) $entry['is_break'] === 3): ?>
             <?php // Der Strich vom Papier — mit der Anweisung, die dort daneben steht. ?>
@@ -84,6 +89,23 @@
         <input name="note" maxlength="200" placeholder="<?= e(t('sl_block_note_ph')) ?>">
         <button class="btn btn-ghost">▬ <?= e(t('sl_block_add')) ?></button>
       </form>
+      <p class="muted small span2">▬ <?= e(t('sl_block_hint')) ?></p>
+      <?php // Klammer über einen Bereich — Positionen liest man an der Liste ab,
+            // so wie man sie auf dem Papier mit dem Stift umfasst. ?>
+      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/klammer" class="inline"><?= csrf_field() ?>
+        <label><?= e(t('sl_brace_from')) ?><input type="number" name="from" min="1" required style="width:5rem"></label>
+        <label><?= e(t('sl_brace_to')) ?><input type="number" name="to" min="1" required style="width:5rem"></label>
+        <input name="note" maxlength="200" placeholder="<?= e(t('sl_block_note_ph')) ?>">
+        <button class="btn btn-ghost">⎨ <?= e(t('sl_brace_add')) ?></button>
+      </form>
+      <p class="muted small span2">⎨ <?= e(t('sl_brace_hint')) ?></p>
+      <?php $klammern = array_values(array_unique(array_filter(array_map(fn($e) => $e['bracket'], $entries), fn($b) => $b !== null))); ?>
+      <?php foreach ($klammern as $kNr): ?>
+        <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/entklammer" class="inline"><?= csrf_field() ?>
+          <input type="hidden" name="bracket" value="<?= (int) $kNr ?>">
+          <button class="btn btn-tiny btn-ghost">⎨ <?= (int) $kNr ?> · <?= e(t('sl_brace_remove')) ?></button>
+        </form>
+      <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </div>

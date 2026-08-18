@@ -376,7 +376,7 @@ const UI_STRINGS = [
   // Kurzbeschreibung je Bereich — die Schlüssel heißen wie die Bereiche
   'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
   'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um.',
-  'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern.',
+  'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen, Blöcken und Zugaben. Die Spielzeit rechnet sich aus den Songdauern. Drei Trenner gibt es, und sie bedeuten Verschiedenes: Eine **Pause** teilt den Abend — die Band geht von der Bühne, und im Druck beginnt ein neues Blatt. Ein **Block** ist eine Gruppe von Liedern, die zusammengehören: gleiche Stimmung, gleiche Ansage, gleicher Bogen. Er trennt nur innerhalb des Blattes, gezeichnet als gestrichelte Linie — so wie der Strich auf einer Papier-Setliste. Der **Zugabe-Strich** trennt, was nur gespielt wird, wenn das Publikum es will. An einen Block lässt sich eine Anweisung schreiben, und die gilt für den Block UNTER der Linie: „Drop D" über den ersten drei Liedern heißt, diese drei in Drop D zu spielen. Andere Beispiele: „Andi stimmt um", „Ansage Bandvorstellung", „ohne Licht". Die Anweisung hängt an der Setliste, nicht am Lied — dasselbe Lied steht in vielen Setlisten, und die Anweisung gilt für einen Abend. Auf dem Druckblatt steht sie in der Linie; an einem einzelnen Lied steht sie in Klammern hinter dem Titel.',
   'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. Über „Adresse suchen“ holt der Server einmalig die Koordinaten von OpenStreetMap und trägt Adresse und Ort gleich mit ein — das muss unter „Einstellungen → Verbindungen nach außen“ erlaubt sein, sonst bleibt der Knopf grau. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
   'help_abwesenheiten' => 'Urlaub und Sperrzeiten. Fällt ein Termin hinein, warnt die Terminliste.',
   'help_aufgaben' => 'Was ansteht und wer es macht.',
@@ -465,6 +465,11 @@ const UI_STRINGS = [
   'sl_block' => 'Block', 'sl_block_word' => 'Block',
   'sl_block_add' => 'Blockgrenze', 'sl_block_note_ph' => 'Anweisung, z. B. „Andi stimmt"',
   'sl_block_note_edit' => 'Anweisung ändern',
+  'sl_brace' => 'Klammer', 'sl_brace_add' => 'Klammer setzen', 'sl_brace_remove' => 'Klammer lösen',
+  'sl_brace_from' => 'von Position', 'sl_brace_to' => 'bis',
+  'sl_brace_hint' => 'Die Klammer fasst Titel zusammen, die zusammen gespielt werden — wie die gezeichnete Klammer auf dem Zettel. Die Anweisung daneben gilt für alle Titel darin, etwa „Drop D".',
+  'fl_brace_set' => 'Klammer über %1 Titel gesetzt.', 'fl_brace_bad' => 'Diese Positionen ergeben keine Klammer.',
+  'sl_block_hint' => 'Die Anweisung gilt für den Block unter der Linie — „Drop D" über den ersten drei Liedern heißt: diese drei in Drop D.',
   'sl_pause_word' => 'PAUSE', 'sl_encore_word' => 'ZUGABE',
   // Orte
   'venues_title' => 'Veranstaltungsorte', 'venues_new' => 'Neuer Veranstaltungsort',
@@ -2382,6 +2387,12 @@ if (!column_exists('users', 'photos_seen_at')) {
 // einem verknüpften Bild später der Ordnerpfad. Eine Spalte für beides, denn die
 // Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
 // die Angabe ist verloren und wird nicht erfunden.
+// Die handgezeichnete Klammer der Papier-Setlisten (#242): Zeilen mit derselben
+// Nummer gehören zusammen — gespielt ohne Absetzen, eine Stimmung, ein Bogen.
+// Die Anweisung steht an der ersten Zeile der Klammer.
+if (!column_exists('setlist_songs', 'bracket')) {
+  $db->exec('ALTER TABLE setlist_songs ADD COLUMN bracket TINYINT UNSIGNED NULL');
+}
 // Blöcke aus den Papier-Setlisten (#241): eine Marke, die trennt wie ein Strich
 // auf dem Zettel, mit der Anweisung, die dort daneben steht.
 if (!column_exists('setlist_songs', 'note')) {

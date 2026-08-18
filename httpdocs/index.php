@@ -1180,7 +1180,7 @@ if (str_starts_with($path, '/intern')) {
       'entries' => array_values(array_filter(setlist_entries((int) $m[1]), fn($x) => !$x['is_break'])),
     ]);
   }
-  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|remove|move)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|klammer|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
@@ -1220,6 +1220,35 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'addblock') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note) VALUES (?,NULL,3,?,?)',
         [$id, $nextPos(), mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200)]);
+    }
+    // Eine Klammer über zusammenhängende Zeilen (#242). Die Nummer ist nur
+    // innerhalb dieser Setliste eindeutig; sie hat keine Bedeutung außer
+    // „gehört zusammen".
+    if ($action === 'klammer') {
+      $von = (int) ($_POST['from'] ?? 0);
+      $bis = (int) ($_POST['to'] ?? 0);
+      $zeilen = rows('SELECT id, position, is_break FROM setlist_songs
+                      WHERE setlist_id = ? AND position BETWEEN ? AND ? ORDER BY position',
+                     [$id, min($von, $bis), max($von, $bis)]);
+      // Mindestens zwei Titel, und keine Trenner mitten drin: Eine Klammer über
+      // eine Pause hinweg wäre auf dem Blatt sinnlos.
+      $nurLieder = array_values(array_filter($zeilen, fn($z) => !$z['is_break']));
+      if (count($zeilen) < 2 || count($nurLieder) !== count($zeilen)) {
+        flash(t('fl_brace_bad'));
+        redirect("/intern/setlists/$id");
+      }
+      $nr = (int) row('SELECT COALESCE(MAX(bracket),0) AS b FROM setlist_songs WHERE setlist_id = ?', [$id])['b'] + 1;
+      foreach ($zeilen as $i => $z) {
+        q('UPDATE setlist_songs SET bracket = ?, note = ? WHERE id = ?',
+          [$nr, $i === 0 ? mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200) : (string) '', (int) $z['id']]);
+      }
+      flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
+      redirect("/intern/setlists/$id");
+    }
+    if ($action === 'entklammer') {
+      q('UPDATE setlist_songs SET bracket = NULL, note = ? WHERE setlist_id = ? AND bracket = ?',
+        ['', $id, (int) ($_POST['bracket'] ?? 0)]);
+      redirect("/intern/setlists/$id");
     }
     // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
     if ($action === 'notiz') {
@@ -4045,7 +4074,7 @@ function venue_values(): array {
 function setlist_entries(int $setlistId): array {
   // ss.note heißt hier item_note: so.* bringt songs.notes mit, und zwei Felder
   // mit fast gleichem Namen verwechselt die nächste Ansicht (#241).
-  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, ss.note AS item_note, so.*
+  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, ss.note AS item_note, ss.bracket, so.*
                FROM setlist_songs ss LEFT JOIN songs so ON so.id = ss.song_id
                WHERE ss.setlist_id = ? ORDER BY ss.position', [$setlistId]);
 }

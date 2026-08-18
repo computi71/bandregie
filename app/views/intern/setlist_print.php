@@ -88,6 +88,30 @@ $fontFor = function (array $set): int {
     .block-rule { display: flex; align-items: center; gap: 2mm; margin: 1.5mm 0; }
     .block-rule::after { content: ''; flex: 1; border-top: 0.35mm dashed #000; }
     .block-rule span { font-size: 45%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    /* Eine Anweisung gilt für den Block UNTER der Linie — deshalb sitzt sie
+       optisch näher an ihm als an dem Block darüber (#241). */
+    .block-rule { margin: 2mm 0 0.5mm; }
+    /* Die Klammer vom Zettel: Titel links, geschweifte Klammer rechts daneben,
+       Anweisung dahinter. Gezeichnet aus einem Rahmen mit runden Ecken — das
+       kommt der Handschrift näher als eine Glyphe, die je Drucker anders sitzt
+       und bei zwei Zeilen zu groß wäre (#242). */
+    .braced { display: flex; align-items: stretch; gap: 2mm; }
+    .braced-songs { flex: 0 1 auto; }
+    .brace {
+      flex: 0 0 2.5mm;
+      border: 0.5mm solid #000;
+      border-left: 0;
+      border-radius: 0 3mm 3mm 0;
+      margin: 0.8mm 0;
+    }
+    .brace-note {
+      align-self: center;
+      font-size: 45%;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
     /* position:fixed wiederholt das Wasserzeichen beim Druck auf jeder Seite */
     /* Wasserzeichen liegt in jedem Blatt; pointer-events: none, damit es keine Klicks schluckt */
     .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; pointer-events: none; }
@@ -125,7 +149,27 @@ $fontFor = function (array $set): int {
         </div>
       </div>
       <div class="songs" style="font-size: <?= $fontFor($set) ?>pt">
-        <?php foreach ($set as $entry): ?>
+        <?php
+          // Zeilen mit derselben Klammernummer zu Gruppen zusammenfassen — die
+          // gezeichnete Klammer vom Zettel (#242). Alles ohne Nummer bleibt für
+          // sich; die Reihenfolge bleibt in jedem Fall die der Setliste.
+          $gruppen = [];
+          foreach ($set as $entry) {
+            $nr = $entry['bracket'] !== null ? (int) $entry['bracket'] : 0;
+            $letzte = $gruppen ? array_key_last($gruppen) : null;
+            if ($nr > 0 && $letzte !== null && $gruppen[$letzte]['nr'] === $nr) {
+              $gruppen[$letzte]['zeilen'][] = $entry;
+            } else {
+              $gruppen[] = ['nr' => $nr, 'zeilen' => [$entry]];
+            }
+          }
+        ?>
+        <?php foreach ($gruppen as $gruppe): ?>
+        <?php // Eine Klammer nur, wo sie etwas umfasst — über einer Zeile wäre sie Zierrat. ?>
+        <?php $geklammert = $gruppe['nr'] > 0 && count($gruppe['zeilen']) > 1; ?>
+        <?php $klammerText = $geklammert ? (string) $gruppe['zeilen'][0]['item_note'] : ''; ?>
+        <?php if ($geklammert): ?><div class="braced"><div class="braced-songs"><?php endif; ?>
+        <?php foreach ($gruppe['zeilen'] as $entry): ?>
           <?php if ((int) $entry['is_break'] === 2): ?>
             <hr class="encore-rule">
           <?php elseif ((int) $entry['is_break'] === 3): ?>
@@ -147,6 +191,15 @@ $fontFor = function (array $set): int {
               <?php if ($cue !== ''): ?><span class="note">(<?= e($cue) ?>)</span><?php endif; ?>
             </div>
           <?php endif; ?>
+        <?php endforeach; ?>
+        <?php if ($geklammert): ?>
+          </div>
+          <?php // Die Klammer selbst: rechts neben den Titeln, mit der Anweisung
+                // daneben — so wie sie auf dem Zettel gezeichnet ist. ?>
+          <div class="brace" aria-hidden="true"></div>
+          <?php if ($klammerText !== ''): ?><div class="brace-note"><?= e($klammerText) ?></div><?php endif; ?>
+        </div>
+        <?php endif; ?>
         <?php endforeach; ?>
       </div>
     </div>
