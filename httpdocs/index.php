@@ -1180,7 +1180,7 @@ if (str_starts_with($path, '/intern')) {
       'entries' => array_values(array_filter(setlist_entries((int) $m[1]), fn($x) => !$x['is_break'])),
     ]);
   }
-  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|klammer|klammernotiz|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|klammer|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
@@ -1214,12 +1214,41 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'addzugabe') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,NULL,2,?)', [$id, $nextPos()]);
     }
-    // Blockgrenze wie der Strich auf dem Papier — keine Pause: Eine Pause
-    // beginnt eine neue Seite, weil die Band von der Bühne geht. Ein Block
-    // bleibt auf dem Blatt (#241).
+    // Blockgrenze wie der Strich auf dem Papier — keine Pause: Eine Pause beginnt
+    // eine neue Seite, weil die Band von der Bühne geht. Ein Block bleibt auf dem
+    // Blatt (#241).
+    //
+    // Bedient wird sie wie die Klammer, über die Auswahl und das Feld unten (#246):
+    // Angehakte Blockgrenzen bekommen den Text, sonst entsteht eine neue hinter der
+    // letzten angehakten Zeile. Ohne Auswahl haengt sie hinten an — vorher war das
+    // der einzige Weg, und danach musste man sie durch die halbe Liste schieben.
     if ($action === 'addblock') {
-      q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note) VALUES (?,NULL,3,?,?)',
-        [$id, $nextPos(), mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200)]);
+      $text = mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200);
+      $gewaehlt = array_map('intval', (array) ($_POST['rows'] ?? []));
+      $zeilen = $gewaehlt
+        ? rows('SELECT id, position, is_break FROM setlist_songs
+                WHERE setlist_id = ? AND id IN (' . implode(',', array_fill(0, count($gewaehlt), '?')) . ')
+                ORDER BY position', [$id, ...$gewaehlt])
+        : [];
+      $bloecke = array_values(array_filter($zeilen, fn($z) => (int) $z['is_break'] === 3));
+      if ($bloecke) {
+        foreach ($bloecke as $b) {
+          q('UPDATE setlist_songs SET note = ? WHERE id = ?', [$text, (int) $b['id']]);
+        }
+        flash(str_replace('%1', (string) count($bloecke), t('fl_block_changed')));
+      } else {
+        $hinter = $zeilen ? (int) $zeilen[count($zeilen) - 1]['position'] : null;
+        if ($hinter !== null) {
+          q('UPDATE setlist_songs SET position = position + 1 WHERE setlist_id = ? AND position > ?', [$id, $hinter]);
+          q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note) VALUES (?,NULL,3,?,?)',
+            [$id, $hinter + 1, $text]);
+        } else {
+          q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note) VALUES (?,NULL,3,?,?)',
+            [$id, $nextPos(), $text]);
+        }
+        // Eine Grenze mitten in einer Klammer kann sie sprengen — also nachziehen.
+        setlist_braces_normalize((int) $id);
+      }
     }
     // Eine Klammer über zusammenhängende Zeilen (#242). Die Nummer ist nur
     // innerhalb dieser Setliste eindeutig; sie hat keine Bedeutung außer
@@ -1228,6 +1257,11 @@ if (str_starts_with($path, '/intern')) {
       // Angehakt statt abgezählt (#245): Was in der Klammer liegt, sagt man durch
       // Anhaken — Positionen abzulesen und in zwei Felder zu tippen ist die
       // Umschreibung derselben Auskunft.
+      //
+      // Und dieselbe Auswahl ändert eine bestehende Klammer (#246): Berührt der
+      // Bereich schon geklammerte Zeilen, wird die Klammer auf die Auswahl
+      // umgespannt — größer, kleiner, oder zwei zu einer verschmolzen. Sonst
+      // müsste man lösen und neu setzen, und dabei geht die Anweisung verloren.
       $gewaehlt = array_map('intval', (array) ($_POST['rows'] ?? []));
       $zeilen = $gewaehlt
         ? rows('SELECT id, position, is_break FROM setlist_songs
@@ -1237,7 +1271,10 @@ if (str_starts_with($path, '/intern')) {
       // Zwischen der ersten und der letzten angehakten Zeile liegt die Klammer —
       // auch was dazwischen nicht angehakt wurde, gehört dann dazu.
       if (count($zeilen) >= 2) {
-        $zeilen = rows('SELECT id, position, is_break FROM setlist_songs
+        // bracket und bracket_note gehören mit in die Abfrage: Ohne sie wusste der
+        // Bereich nicht, dass er schon geklammerte Zeilen berührt — dann entstand
+        // beim Verkleinern eine zweite Klammer statt einer geschrumpften (#246).
+        $zeilen = rows('SELECT id, position, is_break, bracket, bracket_note FROM setlist_songs
                         WHERE setlist_id = ? AND position BETWEEN ? AND ? ORDER BY position',
                        [$id, (int) $zeilen[0]['position'], (int) $zeilen[count($zeilen) - 1]['position']]);
       }
@@ -1252,13 +1289,31 @@ if (str_starts_with($path, '/intern')) {
       }
       // Vorläufige Nummer; setlist_braces_normalize() zählt gleich danach ohnehin
       // alles von oben nach unten neu durch.
+      // Welche Klammern berührt die Auswahl? Deren Zeilen werden erst frei, damit
+      // die Auswahl den Bereich allein bestimmt.
+      $beruehrt = array_values(array_unique(array_filter(
+        array_map(fn($z) => $z['bracket'] ?? null, $zeilen), fn($b) => $b !== null)));
+      // Eine vorhandene Anweisung bleibt, wenn das Feld leer bleibt: Umspannen
+      // soll den Text nicht wegwischen.
+      $klammerText = mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200);
+      if ($klammerText === '' && $beruehrt) {
+        $alt = row('SELECT bracket_note FROM setlist_songs
+                    WHERE setlist_id = ? AND bracket IN (' . implode(',', array_fill(0, count($beruehrt), '?')) . ")
+                      AND bracket_note <> '' ORDER BY position LIMIT 1", [$id, ...array_map('intval', $beruehrt)]);
+        if ($alt) $klammerText = (string) $alt['bracket_note'];
+      }
+      if ($beruehrt) {
+        q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ?
+           AND bracket IN (" . implode(',', array_fill(0, count($beruehrt), '?')) . ')',
+          [$id, ...array_map('intval', $beruehrt)]);
+      }
       $nr = (int) row('SELECT COALESCE(MAX(bracket),0) AS b FROM setlist_songs WHERE setlist_id = ?', [$id])['b'] + 1;
       foreach ($zeilen as $i => $z) {
         // Die Anweisung der Klammer steht in ihrer eigenen Spalte an der ersten
         // Zeile. note bleibt unangetastet: dort steht, was zu DIESEM Titel gehört.
         if ($i === 0) {
           q('UPDATE setlist_songs SET bracket = ?, bracket_note = ? WHERE id = ?',
-            [$nr, mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), (int) $z['id']]);
+            [$nr, $klammerText, (int) $z['id']]);
         } else {
           q('UPDATE setlist_songs SET bracket = ? WHERE id = ?', [$nr, (int) $z['id']]);
         }
@@ -1267,31 +1322,25 @@ if (str_starts_with($path, '/intern')) {
       flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
       redirect("/intern/setlists/$id");
     }
-    // Die Anweisung einer bestehenden Klammer ändern (#245). Vorher ging das nur
-    // durch Lösen und neu Setzen.
-    if ($action === 'klammernotiz') {
-      $kNr = (int) ($_POST['bracket'] ?? 0);
-      $erste = row('SELECT id FROM setlist_songs WHERE setlist_id = ? AND bracket = ? ORDER BY position LIMIT 1', [$id, $kNr]);
-      if ($erste) {
-        q('UPDATE setlist_songs SET bracket_note = ? WHERE id = ?',
-          [mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), (int) $erste['id']]);
-      }
-      redirect("/intern/setlists/$id");
-    }
+    // Lösen über dieselbe Auswahl (#246): Angehakt, wo die Klammer sitzt, und weg
+    // ist sie. Eine Nummer musste dafür niemand kennen.
     if ($action === 'entklammer') {
-      // Die Klammer geht mit ihrer eigenen Anweisung; die Notizen der Zeilen
-      // bleiben, denn die gehören den Zeilen.
-      $kNr = (int) ($_POST['bracket'] ?? 0);
-      q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ? AND bracket = ?", [$id, $kNr]);
+      $gewaehlt = array_map('intval', (array) ($_POST['rows'] ?? []));
+      if (!$gewaehlt) { flash(t('fl_brace_pick_first')); redirect("/intern/setlists/$id"); }
+      $marken = array_column(rows('SELECT DISTINCT bracket FROM setlist_songs
+                                   WHERE setlist_id = ? AND bracket IS NOT NULL
+                                     AND id IN (' . implode(',', array_fill(0, count($gewaehlt), '?')) . ')',
+                                  [$id, ...$gewaehlt]), 'bracket');
+      if (!$marken) { flash(t('fl_brace_none_there')); redirect("/intern/setlists/$id"); }
+      q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ?
+         AND bracket IN (" . implode(',', array_fill(0, count($marken), '?')) . ')',
+        [$id, ...array_map('intval', $marken)]);
       // Ohne das blieben Löcher: aus 1,2,3 wird beim Lösen von 2 sonst 1,3.
       setlist_braces_normalize((int) $id);
+      flash(str_replace('%1', (string) count($marken), t('fl_brace_released')));
       redirect("/intern/setlists/$id");
     }
-    // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
-    if ($action === 'notiz') {
-      q('UPDATE setlist_songs SET note = ? WHERE setlist_id = ? AND id = ?',
-        [mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), $id, (int) ($_POST['item_id'] ?? 0)]);
-    }
+
     if ($action === 'remove') {
       q('DELETE FROM setlist_songs WHERE setlist_id = ? AND id = ?', [$id, $_POST['item_id'] ?? 0]);
       // Bleibt von einer Klammer eine Zeile übrig, ist sie keine mehr.

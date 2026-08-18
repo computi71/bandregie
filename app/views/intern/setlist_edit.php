@@ -43,13 +43,7 @@
           <?php if ((int) $entry['is_break'] === 3): ?>
             <?php // Der Strich vom Papier — mit der Anweisung, die dort daneben steht. ?>
             <strong class="muted">▬ <?= e(t('sl_block_word')) ?><?= $entry['item_note'] !== '' ? ': ' . e($entry['item_note']) : '' ?></strong>
-            <?php if (!$locked): ?>
-              <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/notiz"><?= csrf_field() ?>
-                <input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>">
-                <input name="note" maxlength="200" value="<?= e((string) $entry['item_note']) ?>" placeholder="<?= e(t('sl_block_note_ph')) ?>">
-                <button class="btn btn-tiny"><?= e(t('save')) ?></button>
-              </form>
-            <?php endif; ?>
+
           <?php else: ?>
             <strong class="muted"><?= (int) $entry['is_break'] === 2 ? '🎉 — ' . e(t('sl_encore_word')) . ' —' : '⏸ — ' . e(t('sl_pause_word')) . ' —' ?></strong>
           <?php endif; ?>
@@ -61,25 +55,12 @@
           <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/buehne?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_hint')) ?>">🎤</a>
           <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/noten?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_chords')) ?>">🎸</a>
         <?php endif; ?>
-        <?php // Die Klammer-Marke steht hinten: vorn drängte sie sich zwischen
-              // Nummer und Titel, und gelesen wird die Zeile vom Titel her (#242).
-              // An der ersten Zeile der Klammer hängen ihre Bedienelemente — dort,
-              // wo die Klammer anfängt, und nicht in einer Knopfreihe unter der
-              // Liste, die zu keiner Zeile gehörte (#245). ?>
+        <?php // In der Zeile steht nur die Marke — mit der Anweisung an der ersten
+              // Zeile, damit man sieht, was gilt. Geändert wird unten: ein Feld für
+              // alles ist ruhiger als eines in jeder Klammer (#246). ?>
         <?php if ($entry['bracket'] !== null): ?>
           <?php $istErste = ($entry['bracket'] !== ($vorigeKlammer ?? null)); ?>
-          <?php if ($istErste && !$locked): ?>
-            <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨</span>
-            <span class="sl-brace-edit">
-              <input form="klammernotizform<?= (int) $entry['bracket'] ?>" name="note" maxlength="200"
-                     value="<?= e((string) $entry['bracket_note']) ?>" placeholder="<?= e(t('sl_block_note_ph')) ?>">
-              <button form="klammernotizform<?= (int) $entry['bracket'] ?>" class="btn btn-tiny"><?= e(t('save')) ?></button>
-              <button form="entklammerform<?= (int) $entry['bracket'] ?>" class="btn btn-tiny btn-ghost"
-                      title="<?= e(t('sl_brace_remove')) ?>">⎨✕</button>
-            </span>
-          <?php else: ?>
-            <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨</span>
-          <?php endif; ?>
+          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $istErste && $entry['bracket_note'] !== '' ? ' ' . e($entry['bracket_note']) : '' ?></span>
         <?php endif; ?>
         <?php $vorigeKlammer = $entry['bracket']; ?>
         <?php if (!$locked): ?>
@@ -96,15 +77,18 @@
     <p class="row-buttons">
       <input form="klammerform" name="note" maxlength="200" placeholder="<?= e(t('sl_block_note_ph')) ?>">
       <button form="klammerform" class="btn">⎨ <?= e(t('sl_brace_add')) ?></button>
-      <span class="muted small"><?= e(t('sl_brace_hint_pick')) ?></span>
+      <?php // Lösen geht über dieselbe Auswahl und dasselbe Formular — nur eine
+            // andere Adresse. formaction spart ein zweites Formular um dieselben
+            // Häkchen (#246). ?>
+      <button form="klammerform" class="btn btn-ghost"
+              formaction="/intern/setlists/<?= $setlist['id'] ?>/entklammer">⎨✕ <?= e(t('sl_brace_remove')) ?></button>
+      <?php // Blockgrenze aus derselben Leiste und mit derselben Auswahl (#246). ?>
+      <button form="klammerform" class="btn btn-ghost"
+              formaction="/intern/setlists/<?= $setlist['id'] ?>/addblock">▬ <?= e(t('sl_block_add')) ?></button>
     </p>
+    <p class="muted small">⎨ <?= e(t('sl_brace_hint_pick')) ?></p>
+    <p class="muted small">▬ <?= e(t('sl_block_hint_pick')) ?></p>
     </form>
-    <?php // Je Klammer zwei leere Formulare; die Felder oben verweisen mit form= darauf.
-          // So stehen die Bedienelemente an ihrer Zeile, ohne Formulare zu verschachteln. ?>
-    <?php foreach (array_values(array_unique(array_filter(array_map(fn($e) => $e['bracket'], $entries), fn($b) => $b !== null))) as $kNr): ?>
-      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/klammernotiz" id="klammernotizform<?= (int) $kNr ?>"><?= csrf_field() ?><input type="hidden" name="bracket" value="<?= (int) $kNr ?>"></form>
-      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/entklammer" id="entklammerform<?= (int) $kNr ?>"><?= csrf_field() ?><input type="hidden" name="bracket" value="<?= (int) $kNr ?>"></form>
-    <?php endforeach; ?>
   <?php endif; ?>
   <?php if (!$entries): ?><p class="muted"><?= e(t('sl_empty')) ?></p><?php endif; ?>
   <?php if (!$locked): ?>
@@ -124,11 +108,7 @@
       <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addzugabe" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">🎉 <?= e(t('sl_encore')) ?></button></form>
       <?php // Blockgrenze mit Anweisung — die Anweisung darf leer bleiben, dann
             // ist es nur ein Strich wie auf dem Zettel. ?>
-      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addblock" class="inline"><?= csrf_field() ?>
-        <input name="note" maxlength="200" placeholder="<?= e(t('sl_block_note_ph')) ?>">
-        <button class="btn btn-ghost">▬ <?= e(t('sl_block_add')) ?></button>
-      </form>
-      <p class="muted small span2">▬ <?= e(t('sl_block_hint')) ?></p>
+
     </div>
   <?php endif; ?>
 </div>
