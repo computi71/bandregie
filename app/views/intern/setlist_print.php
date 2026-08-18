@@ -51,7 +51,25 @@ $fontFor = function (array $set): int {
              break-after: page; position: relative; overflow: hidden; }
     .sheet:last-child { break-after: auto; }
     .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
-    .head { font-weight: 700; text-decoration: underline; font-size: 14pt; }
+    /* Der Titel bleibt auf einer Zeile: „Setlist Mittwochs Konzert Zündstoff –
+       19. August 2026" brach neben dem Logo um und stand zweizeilig unter dem
+       Bandnamen. Ein Kopf, der über zwei Zeilen läuft, drückt die Songs nach
+       unten — und auf einem Blatt, das ohnehin knapp ist, kostet das eine Zeile
+       Repertoire. Nur der Titel selbst wird schmaler, wenn der Platz nicht
+       reicht; umgebrochen wird er nicht (#240). */
+    .head {
+      font-weight: 700;
+      text-decoration: underline;
+      font-size: 14pt;
+      white-space: nowrap;
+      /* Damit der Flex-Kasten den Titel schrumpfen lässt statt ihn zu brechen */
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Lange Namen: eine Stufe kleiner, statt abgeschnitten zu werden. */
+    .head.head-long { font-size: 12pt; }
+    .head.head-verylong { font-size: 10.5pt; }
     .sub { font-size: 12pt; margin-top: 4mm; line-height: 1.35; }
     .logo img { max-height: 22mm; max-width: 75mm; }
     .logo .bandname { font-size: 22pt; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -80,7 +98,11 @@ $fontFor = function (array $set): int {
       <?php endif; ?>
       <div class="head-row">
         <div>
-          <div class="head">Setlist <?= e($setlist['name']) ?></div>
+          <?php // Je länger der Name, desto kleiner die Zeile — gerechnet, nicht
+              // geraten: 14 pt tragen etwa 46 Zeichen neben dem Logo. ?>
+        <?php $headText = 'Setlist ' . $setlist['name']; ?>
+        <?php $headClass = mb_strlen($headText) > 62 ? ' head-verylong' : (mb_strlen($headText) > 46 ? ' head-long' : ''); ?>
+        <div class="head<?= $headClass ?>"><?= e($headText) ?></div>
           <div class="sub"><?= $songCount ?> Lieder<?= $totalMin > 0 ? " = $totalMin Minuten" : '' ?><br><?= e($pauseText) ?></div>
         </div>
         <div class="logo">
