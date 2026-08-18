@@ -215,11 +215,21 @@ function push_encrypt(string $payload, string $p256dh, string $auth, ?string $ep
 // ---------- Versand ----------
 
 /** Schickt eine Nachricht an ein Abo; bei 404/410 ist das Abo tot → löschen. */
+/**
+ * Eine Mitteilung an ein Gerät.
+ *
+ * Erwartet die Zeile, die push_notify() zusammenstellt: **sub_id** ist das Abo,
+ * **id** das Mitglied. Genau diese Unterscheidung ging hier zweimal verloren —
+ * beide DELETE löschten „WHERE id", also das Abo mit der Nummer des MITGLIEDS.
+ * Bei Mitgliedern 2–7 und Abos 2–4 trifft das fast immer ein fremdes Gerät:
+ * Wer einmal abgelehnt wurde, nahm jemand anderem die Mitteilungen weg (#236).
+ */
 function push_send_one(array $sub, string $json): bool {
+  $aboId = (int) $sub['sub_id'];
   // Auch gespeicherte Abos werden hier noch geprüft: was in der Datenbank
   // steht, ist damit nicht automatisch ein erlaubtes Ziel.
   if (!push_endpoint_ok((string) $sub['endpoint'])) {
-    q('DELETE FROM push_subscriptions WHERE id = ?', [(int) $sub['id']]);
+    q('DELETE FROM push_subscriptions WHERE id = ?', [$aboId]);
     return false;
   }
   $body = push_encrypt($json, $sub['p256dh'], $sub['auth']);
@@ -246,7 +256,7 @@ function push_send_one(array $sub, string $json): bool {
   // groß), würde sonst bei jeder Mitteilung erneut angefragt — und jede Anfrage
   // kostet bis zu zehn Sekunden Wartezeit.
   if (in_array($status, [400, 401, 403, 404, 410, 413], true)) {
-    q('DELETE FROM push_subscriptions WHERE id = ?', [(int) $sub['id']]);
+    q('DELETE FROM push_subscriptions WHERE id = ?', [$aboId]);
     return false;
   }
   return $status >= 200 && $status < 300;
@@ -302,7 +312,12 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
       // Die Zahl am Symbol ist für jeden eine andere — sie reist deshalb je
       // Empfänger mit, nicht je Sprache. Je Mitglied nur einmal ermittelt,
       // auch wenn es mehrere Geräte hat.
-      $uid = (int) $sub['user_id'];
+      // Die Mitglieds-Kennung heißt in dieser Zeile 'id' — deshalb trägt die
+      // Abfrage oben die Abo-Kennung als sub_id. Hier stand 'user_id', das gibt
+      // es nicht: (int) null ist 0, und dann wurde die Zahl EINMAL für ein
+      // Mitglied 0 gerechnet, das nichts beantwortet hat, und ging so an alle.
+      // Gemessen: 17 statt 4 (#236).
+      $uid = (int) $sub['id'];
       $offenJeNutzer[$uid] ??= open_items_count(['id' => $uid, 'role' => $sub['role'],
                                                  'substitute_for' => $sub['substitute_for']]);
       // Ein neuer Termin steckt bereits in „offen" (er ist unbeantwortet) —

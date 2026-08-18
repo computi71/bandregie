@@ -4823,8 +4823,12 @@ function open_items_count(array $user): int {
     $nurDiese = ' AND e.id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
     $werte = [...$werte, ...$sichtbar];
   }
+  // Ein Termin ohne eigene Rückmeldung ist offene Arbeit — aber nur, wenn es
+  // etwas zu entscheiden gibt. Über einen abgesagten Auftritt stimmt niemand ab,
+  // und ein blockierter Tag ist keine Verabredung (#236).
   $offen += (int) row("SELECT COUNT(*) c FROM events e
                        WHERE e.date >= CURDATE()
+                         AND e.status NOT IN ('abgesagt', 'blockiert')
                          AND NOT EXISTS (SELECT 1 FROM attendance a
                                          WHERE a.event_id = e.id AND a.user_id = ?)"
                       . $nurDiese, $werte)['c'];
