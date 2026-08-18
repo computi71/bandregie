@@ -465,6 +465,8 @@ const UI_STRINGS = [
   'sl_block' => 'Block', 'sl_block_word' => 'Block',
   'sl_block_add' => 'Blockgrenze', 'sl_block_note_ph' => 'Anweisung, z. B. „Andi stimmt"',
   'sl_block_note_edit' => 'Anweisung ändern',
+  'sl_print_songs' => '%1 Songs', 'sl_print_min' => '%1 Min',
+  'sl_print_plus_break' => 'zzgl. Pause', 'sl_print_plus_breaks' => 'zzgl. %1 Pausen',
   'sl_brace' => 'Klammer', 'sl_brace_add' => 'Klammer setzen', 'sl_brace_remove' => 'Klammer lösen',
   'sl_brace_from' => 'von Position', 'sl_brace_to' => 'bis',
   'sl_brace_hint' => 'Die Klammer fasst Titel zusammen, die zusammen gespielt werden — wie die gezeichnete Klammer auf dem Zettel. Die Anweisung daneben gilt für alle Titel darin, etwa „Drop D".',

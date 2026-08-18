@@ -23,7 +23,12 @@ $watermark = $settings['print_watermark_file'] ?? '';
 $songCount = count(array_filter($entries, fn($x) => !$x['is_break']));
 $totalMin = (int) round(array_sum(array_map(fn($x) => (int) ($x['duration_sec'] ?? 0), $entries)) / 60);
 $pauseCount = count(array_filter($entries, fn($x) => (int) $x['is_break'] === 1));
-$pauseText = [0 => 'ohne Pause', 1 => 'mit Pause'][$pauseCount] ?? "mit $pauseCount Pausen";
+// „zzgl." und nicht „mit": Die Minuten sind Spielzeit, die Pause kommt obendrauf.
+// „mit Pause" ließ die Zahl wie die Gesamtdauer des Abends lesen, und danach
+// richtet der Veranstalter seinen Ablauf (#243).
+$pauseText = $pauseCount === 0 ? ''
+  : ($pauseCount === 1 ? t('sl_print_plus_break')
+     : str_replace('%1', (string) $pauseCount, t('sl_print_plus_breaks')));
 
 // Schriftgröße pro Set. Bedruckbare Fläche: A4-Höhe 297 mm − 2×10 mm Rand −
 // Kopfblock (~38 mm) ≈ 240 mm. Eine Zeile braucht F pt × 0,3528 mm/pt × 1,18
@@ -138,7 +143,12 @@ $fontFor = function (array $set): int {
         <?php $headText = 'Setlist ' . $setlist['name']; ?>
         <?php $headClass = mb_strlen($headText) > 62 ? ' head-verylong' : (mb_strlen($headText) > 46 ? ' head-long' : ''); ?>
         <div class="head<?= $headClass ?>"><?= e($headText) ?></div>
-          <div class="sub"><?= $songCount ?> Lieder<?= $totalMin > 0 ? " = $totalMin Minuten" : '' ?><br><?= e($pauseText) ?></div>
+          <?php // Eine Zeile, nicht zwei: „38 Songs = 130 Min zzgl. Pause" liest
+                // sich in einem Blick, und der Kopf bleibt flach — jede Zeile hier
+                // fehlt unten beim Repertoire. ?>
+          <div class="sub"><?= e(str_replace('%1', (string) $songCount, t('sl_print_songs'))) ?><?php
+            if ($totalMin > 0): ?> = <?= e(str_replace('%1', (string) $totalMin, t('sl_print_min'))) ?><?php endif; ?><?php
+            if ($pauseText !== ''): ?> <?= e($pauseText) ?><?php endif; ?></div>
         </div>
         <div class="logo">
           <?php if ($logo): ?>
