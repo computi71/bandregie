@@ -5112,25 +5112,22 @@ function fmt_date(?string $iso): string {
 /**
  * Was unter „Nächste Termine" auf der Übersicht steht (#235).
  *
- * Nicht einfach „die nächsten fünf": Bei siebzehn Auftritten schoben fünf Gigs
- * in Folge die eine Anfrage aus dem Bild — und genau dort entscheiden die
- * Rückmeldungen etwas. Also:
+ * Hier steht, was STATTFINDET — nichts anderes. Ein Gig ist erst ein Gig, wenn
+ * er bestätigt ist; eine Anfrage ist eine Frage und gehört zu den offenen
+ * Aufgaben, wo die Rückmeldeknöpfe stehen (#236). Vorher standen Anfragen hier
+ * mit, und dann liest ein Blick auf die Übersicht fünf Termine, von denen zwei
+ * vielleicht nie passieren.
  *
- *   • die nächsten ZWEI Gigs, die stattfinden,
- *   • alle Anfragen und Reservierungen, egal welcher Art,
- *   • jeden Termin, der kein Gig ist — Probe, Besprechung, Party, Aufnahme,
- *     Fotoshooting, Auf-/Abbau, Reise, Day off, Sonstiges,
- *   • nie Abgesagtes, nie Blockiertes.
+ *   • die nächsten ZWEI bestätigten Gigs,
+ *   • jeden bestätigten Termin, der kein Gig ist — Probe, Besprechung, Party,
+ *     Aufnahme, Fotoshooting, Auf-/Abbau, Reise, Day off, Sonstiges,
+ *   • nichts Angefragtes, nichts Reserviertes, nichts Abgesagtes, nichts
+ *     Blockiertes.
  *
  * Die Zweiergrenze gilt allein für Gigs, weil nur die zu Dutzenden im Kalender
- * stehen. Alles andere ist eine einzelne Verabredung, die man kennen muss —
- * eine Probe am Freitag ist keine Zeile, die warten kann, bis fünf Gigs
- * vorüber sind. Deshalb wird hier nicht aufgezählt, sondern unterschieden:
- * Gig oder nicht (#235).
- *
- * Die eigene Rückmeldung filtert nichts. Das ist bewusst so: Die Zusage-Knöpfe
- * stehen in genau diesem Kasten. Wer einen unbeantworteten Termin ausblendet,
- * nimmt ihm die einzige Stelle, an der er beantwortet werden kann.
+ * stehen. Alles andere ist eine einzelne Verabredung, die man kennen muss — eine
+ * Probe am Freitag ist keine Zeile, die warten kann, bis fünf Gigs vorüber sind.
+ * Deshalb wird nicht aufgezählt, sondern unterschieden: Gig oder nicht.
  *
  * @param array<int, int>|null $sichtbar Kennungen aus visible_event_ids()
  */
@@ -5142,16 +5139,10 @@ function dashboard_events(?array $sichtbar, string $heute): array {
   $gigs = rows("SELECT * FROM events
                 WHERE date >= ? AND type = 'gig' AND status = 'bestaetigt'$wo
                 ORDER BY date, time LIMIT " . DASH_GIGS, [$heute, ...$args]);
-  // Anfragen und Reservierungen jeder Art, dazu alles, was kein Gig ist. Ein
-  // blockierter Tag ist keine Verabredung, ein abgesagter keine mehr.
   $rest = rows("SELECT * FROM events
-                WHERE date >= ?
-                  AND status NOT IN ('abgesagt', 'blockiert')
-                  AND (status IN ('angefragt', 'reserviert') OR type <> 'gig')$wo
+                WHERE date >= ? AND status = 'bestaetigt' AND type <> 'gig'$wo
                 ORDER BY date, time", [$heute, ...$args]);
 
-  // Eine Feier, die angefragt ist, passt in beide Listen — sie soll einmal
-  // dastehen.
   $zusammen = [];
   foreach ([...$gigs, ...$rest] as $ev) $zusammen[(int) $ev['id']] = $ev;
   usort($zusammen, fn($a, $b) => [$a['date'], $a['time']] <=> [$b['date'], $b['time']]);
