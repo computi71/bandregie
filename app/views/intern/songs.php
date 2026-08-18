@@ -9,6 +9,8 @@
     <label><?= e(t('song_original')) ?><input name="artist" value="<?= e($edit['artist'] ?? '') ?>" placeholder="<?= e(t('song_original_ph')) ?>"></label>
     <label><?= e(t('song_composer')) ?><input name="composer" value="<?= e($edit['composer'] ?? '') ?>" placeholder="<?= e(t('song_composer_ph')) ?>"></label>
     <label><?= e(t('song_gema')) ?><input name="gema_werknr" value="<?= e($edit['gema_werknr'] ?? '') ?>" placeholder="<?= e(t('song_gema_ph')) ?>"></label>
+    <label><?= e(t('song_year')) ?><input type="number" name="release_year" min="1900" max="<?= (int) date('Y') + 1 ?>"
+      value="<?= e((string) ($edit['release_year'] ?? '')) ?>" placeholder="<?= e(t('song_year_ph')) ?>"></label>
     <label><?= e(t('song_keylbl')) ?><input name="song_key" value="<?= e($edit['song_key'] ?? '') ?>" placeholder="<?= e(t('song_key_ph')) ?>"></label>
     <label><?= e(t('song_tempo')) ?><span class="row-buttons"><input name="tempo" value="<?= e($edit['tempo'] ?? '') ?>" placeholder="<?= e(t('song_tempo_ph')) ?>"><button type="button" class="btn btn-ghost btn-small" data-taptempo="tempo"><?= e(t('stage_tap')) ?></button></span></label>
     <label><?= e(t('song_len')) ?><input name="duration" value="<?= $edit && $edit['duration_sec'] ? floor($edit['duration_sec'] / 60) . ':' . str_pad((string) ($edit['duration_sec'] % 60), 2, '0', STR_PAD_LEFT) : '' ?>" placeholder="3:45"></label>
@@ -55,13 +57,14 @@
 <div class="card">
   <p class="muted small"><?= e(t('songs_usable_hint')) ?> <?= e(t('rate_hint')) ?></p>
   <table class="table">
-    <thead><tr><th><?= e(t('title_lbl')) ?></th><th><?= e(t('songs_col_original')) ?></th><th><?= e(t('song_keylbl')) ?></th><th><?= e(t('song_tempo')) ?></th><th><?= e(t('songs_col_len')) ?></th><th><?= e(t('status')) ?></th><th><?= e(t('songs_col_rating')) ?></th><th><?= e(t('songs_col_uses')) ?></th><th></th></tr></thead>
+    <thead><tr><th><?= e(t('title_lbl')) ?></th><th><?= e(t('songs_col_original')) ?></th><th><?= e(t('song_year')) ?></th><th><?= e(t('song_keylbl')) ?></th><th><?= e(t('song_tempo')) ?></th><th><?= e(t('songs_col_len')) ?></th><th><?= e(t('status')) ?></th><th><?= e(t('songs_col_rating')) ?></th><th><?= e(t('songs_col_uses')) ?></th><th></th></tr></thead>
     <tbody>
       <?php foreach ($songs as $song): ?>
         <tr class="<?= in_array($song['status'], ['archiv', 'abgewiesen'], true) ? 'muted' : '' ?>">
           <td><a href="/intern/songs/<?= (int) $song['id'] ?>"><strong><?= e($song['title']) ?></strong></a>
             <?php if ($song['notes']): ?><div class="muted small"><?= e($song['notes']) ?></div><?php endif; ?></td>
           <td><?= e($song['artist'] ?: t('own_song')) ?></td>
+          <td><?= e($song['release_year'] ? (string) $song['release_year'] : '–') ?></td>
           <td><?= e($song['song_key'] ?: '–') ?></td>
           <td><?= e($song['tempo'] ?: '–') ?></td>
           <td><?= fmt_duration($song['duration_sec']) ?></td>

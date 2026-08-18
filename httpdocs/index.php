@@ -1101,14 +1101,14 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/songs' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
-      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics) VALUES (?,?,?,?,?,?,?,?,?,?)', song_values());
+      q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics, release_year) VALUES (?,?,?,?,?,?,?,?,?,?,?)', song_values());
       song_chords_set((int) $db->lastInsertId(), $me['id'], $_POST['chords'] ?? '');
     }
     redirect('/intern/songs');
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=? WHERE id=?', [...song_values(), $m[1]]);
+      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
       song_chords_set((int) $m[1], $me['id'], $_POST['chords'] ?? '');
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
@@ -4003,9 +4003,13 @@ function song_values(): array {
   $status = array_key_exists($_POST['status'] ?? '', SONG_STATUS) ? $_POST['status'] : 'vorschlag';
   // Der Liedtext kommt so an, wie er eingetippt wurde — Zeilenumbrüche sind
   // in einem Liedtext die halbe Information.
+  // Ein Jahr oder nichts — 0 wäre eine Behauptung, und „1885" ein Tippfehler,
+  // den niemand mehr findet (#239).
+  $jahr = (int) ($_POST['release_year'] ?? 0);
+  $jahr = ($jahr >= 1900 && $jahr <= (int) date('Y') + 1) ? $jahr : null;
   return [$_POST['title'] ?? '', $_POST['artist'] ?? '', $_POST['composer'] ?? '', $_POST['gema_werknr'] ?? '',
           $_POST['song_key'] ?? '', $_POST['tempo'] ?? '', $sec, $status, $_POST['notes'] ?? '',
-          $_POST['lyrics'] ?? ''];
+          $_POST['lyrics'] ?? '', $jahr];
 }
 // Vergangene Termine und dabei gespielte Setlists sind fixiert (Historie)
 function event_locked(int $eventId): bool {

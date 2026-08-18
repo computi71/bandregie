@@ -445,6 +445,7 @@ const UI_STRINGS = [
   'song_original' => 'Original von', 'song_original_ph' => 'leer = eigener Song',
   'song_composer' => 'Komponist/Urheber (GEMA)', 'song_composer_ph' => 'für die GEMA-Musikfolge',
   'song_gema' => 'GEMA-Werknr.', 'song_gema_ph' => 'falls bekannt',
+  'song_year' => 'Erschienen', 'song_year_ph' => 'z. B. 1997',
   'song_keylbl' => 'Tonart', 'song_tempo' => 'Tempo', 'song_len' => 'Länge (m:ss)',
   'song_add' => 'Song hinzufügen', 'song_notes_ph' => 'Ablauf, Besonderheiten, Technik ...',
   'songs_usable_hint' => 'In Setlists nutzbar sind Songs mit Status „Aktives Repertoire" und „In Vorbereitung".',
@@ -2378,6 +2379,11 @@ if (!column_exists('users', 'photos_seen_at')) {
 // einem verknüpften Bild später der Ordnerpfad. Eine Spalte für beides, denn die
 // Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
 // die Angabe ist verloren und wird nicht erfunden.
+// Das Erscheinungsjahr der Fassung, die die Band spielt (#239). Optional: Ein
+// geratenes Jahr ist schlechter als keines.
+if (!column_exists('songs', 'release_year')) {
+  $db->exec('ALTER TABLE songs ADD COLUMN release_year SMALLINT UNSIGNED NULL');
+}
 // Ein verknüpfter Ordner darf zu einem Termin gehören (#21): Ordner heißen nach
 // dem Auftritt, und dann sollen die Bilder darin auch dort landen.
 if (!column_exists('od_folders', 'event_id')) {
