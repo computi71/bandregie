@@ -1,5 +1,9 @@
 -- Hilfetexte und Musikseite
 --
+-- help_orte stand hier ein zweites Mal und konnte nie gewinnen: Seed 16 setzt
+-- ihn und laedt vorher (glob sortiert alphabetisch). Zwei Stellen fuer einen
+-- Text heisst, dass eine davon irgendwann veraltet — sie ist raus (#249).
+--
 -- help_setlists ist mit den Sprechpausen und der Klammer laenger geworden (#241,
 -- #242, #248). Weil der frueheste Seed gewinnt, muss der alte Text einmal weg —
 -- und zwar HIER, nicht in einem spaeteren Seed: der loeschte sonst, was diese
@@ -18,7 +22,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','help_termine','Every gig, rehearsal and meeting. Everyone accepts or declines, files and comments hang on the event, and the packing list says which gear comes along.'),
 ('en','help_songs','The repertoire with key, tempo, length and status. Charts, lyrics and recordings hang on the song.'),
 ('en','help_setlists','The running order for a gig, with breaks, announcements and encores. Playing time adds up from the song lengths. Three separators, and they mean different things: a **break** splits the evening — the band leaves the stage, and in print a new sheet begins. An **announcement** separates within the sheet: nothing is played, something is said — introducing the band, retuning. It draws as a dashed line, the way the line on a paper setlist does, with the announcement sitting in it. The **encore rule** separates what is only played if the audience asks for it. And the **brace** ties together songs played as one run, with a cue for all of them — "drop D" above the first three means those three in drop D. Cue and announcement belong to the setlist, not to the song: the same song sits in many setlists, and both are true for one evening. Only songs are numbered; separators carry no number.'),
-('en','help_orte','Venues with address, contact and what you learned the last time you played there.'),
 ('en','help_abwesenheiten','Holidays and blocked dates. If an event falls inside one, the event list warns you.'),
 ('en','help_aufgaben','What needs doing and who does it.'),
 ('en','help_themen','Discussions in peace, without anything getting lost in a chat.'),
@@ -37,7 +40,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','help_termine','Tous les concerts, répétitions et réunions. Chacun confirme ou décline, les fichiers et commentaires sont attachés à l''événement, et la liste de matériel dit ce qu''on emporte.'),
 ('fr','help_songs','Le répertoire avec tonalité, tempo, durée et statut. Partitions, textes et enregistrements sont attachés au morceau.'),
 ('fr','help_setlists','L''ordre de passage d''un concert, avec pauses, annonces et rappels. Le temps de jeu s''additionne a partir des durees. Trois separateurs, de sens different : une **pause** coupe la soiree — le groupe quitte la scene et une nouvelle feuille commence a l''impression. Une **annonce** separe a l''interieur de la feuille : on ne joue pas, on parle — presenter le groupe, raccorder. Elle se trace en pointilles, comme le trait sur une setlist papier, l''annonce ecrite dedans. Le **trait de rappel** separe ce qui n''est joue que si le public le demande. Et l''**accolade** relie des morceaux joues d''affilee, avec une consigne pour tous. Consigne et annonce appartiennent a la setlist, pas au morceau. Seuls les morceaux sont numerotes.'),
-('fr','help_orte','Les lieux avec adresse, contact et ce que vous avez retenu de la dernière fois.'),
 ('fr','help_abwesenheiten','Vacances et dates bloquées. Si un événement tombe dedans, la liste vous prévient.'),
 ('fr','help_aufgaben','Ce qu''il y a à faire et qui s''en occupe.'),
 ('fr','help_themen','Des discussions au calme, sans que rien ne se perde dans un chat.'),
@@ -56,7 +58,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','help_termine','Todos los conciertos, ensayos y reuniones. Cada uno confirma o cancela, los archivos y comentarios cuelgan del evento, y la lista dice qué equipo se lleva.'),
 ('es','help_songs','El repertorio con tonalidad, tempo, duración y estado. Partituras, letras y grabaciones cuelgan de la canción.'),
 ('es','help_setlists','El orden de un concierto, con descansos, presentaciones y propinas. El tiempo de juego se suma de las duraciones. Hay tres separadores con sentidos distintos: un **descanso** divide la noche — la banda deja el escenario y al imprimir empieza una hoja nueva. Una **presentacion** separa dentro de la hoja: no se toca, se habla — presentar la banda, afinar. Se dibuja como linea de puntos, como el trazo en una hoja de papel, con el anuncio dentro. La **linea de propina** separa lo que solo se toca si el publico lo pide. Y la **llave** agrupa canciones que se tocan seguidas, con una indicacion para todas. Indicacion y anuncio pertenecen a la lista, no a la cancion. Solo las canciones llevan numero.'),
-('es','help_orte','Salas con dirección, contacto y lo aprendido la última vez.'),
 ('es','help_abwesenheiten','Vacaciones y fechas bloqueadas. Si un evento cae dentro, la lista avisa.'),
 ('es','help_aufgaben','Qué hay que hacer y quién lo hace.'),
 ('es','help_themen','Discusiones con calma, sin que nada se pierda en un chat.'),
@@ -75,7 +76,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','help_termine','Alle optredens, repetities en overleggen. Iedereen zegt toe of af, bestanden en reacties hangen aan de afspraak, en de paklijst zegt welke apparatuur meegaat.'),
 ('nl','help_songs','Het repertoire met toonsoort, tempo, duur en status. Bladmuziek, teksten en opnames hangen aan het nummer.'),
 ('nl','help_setlists','De volgorde voor een optreden, met pauzes, praatpauzes en toegiften. De speeltijd telt op uit de nummerduren. Drie scheidingen met verschillende betekenis: een **pauze** deelt de avond — de band gaat van het podium en in de afdruk begint een nieuw blad. Een **praatpauze** scheidt binnen het blad: er wordt niet gespeeld maar gesproken — de band voorstellen, stemmen. Ze staat als streepjeslijn, met de aankondiging erin. De **toegiftlijn** scheidt wat alleen gespeeld wordt als het publiek erom vraagt. En de **accolade** bindt nummers samen die aan een stuk gespeeld worden, met een aanwijzing voor alles erbinnen. Aanwijzing en aankondiging horen bij de setlijst, niet bij het nummer. Alleen nummers krijgen een cijfer.'),
-('nl','help_orte','Zalen met adres, contactpersoon en wat je vorige keer hebt geleerd.'),
 ('nl','help_abwesenheiten','Vakanties en geblokkeerde dagen. Valt een afspraak erin, dan waarschuwt de lijst.'),
 ('nl','help_aufgaben','Wat er moet gebeuren en wie het doet.'),
 ('nl','help_themen','Rustig overleggen, zonder dat iets in een chat verdwijnt.'),
@@ -94,7 +94,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','help_termine','Tutti i concerti, le prove e le riunioni. Ognuno conferma o declina, file e commenti stanno sull''evento, e la lista dice quale attrezzatura viene portata.'),
 ('it','help_songs','Il repertorio con tonalità, tempo, durata e stato. Spartiti, testi e registrazioni stanno sul brano.'),
 ('it','help_setlists','L''ordine di un concerto, con pause, presentazioni e bis. Il tempo di gioco si somma dalle durate. Tre separatori con significati diversi: una **pausa** divide la serata — la band lascia il palco e in stampa comincia un foglio nuovo. Una **presentazione** separa dentro il foglio: non si suona, si parla — presentare la band, riaccordare. Si disegna tratteggiata, come il tratto su un foglio di carta, con l''annuncio dentro. La **linea del bis** separa cio che si suona solo se il pubblico lo chiede. E la **graffa** unisce i pezzi suonati di seguito, con un''indicazione per tutti. Indicazione e annuncio appartengono alla scaletta, non al pezzo. Solo i pezzi hanno un numero.'),
-('it','help_orte','I locali con indirizzo, referente e quello che avete imparato l''ultima volta.'),
 ('it','help_abwesenheiten','Ferie e date bloccate. Se un evento ci cade dentro, la lista avvisa.'),
 ('it','help_aufgaben','Che cosa c''è da fare e chi lo fa.'),
 ('it','help_themen','Discussioni con calma, senza che nulla si perda in una chat.'),

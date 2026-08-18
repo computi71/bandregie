@@ -377,7 +377,7 @@ const UI_STRINGS = [
   'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
   'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um.',
   'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen, Sprechpausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern. Drei Trenner gibt es, und sie bedeuten Verschiedenes: Eine **Pause** teilt den Abend — die Band geht von der Bühne, und im Druck beginnt ein neues Blatt. Eine **Sprechpause** trennt nur innerhalb des Blattes: gespielt wird nicht, geredet schon — Ansage, Bandvorstellung, Umstimmen. Sie steht als gestrichelte Linie, so wie der Strich auf einer Papier-Setliste, und die Ansage steht in der Linie. Der **Zugabe-Strich** trennt, was nur gespielt wird, wenn das Publikum es will. Dazu die **Klammer**: sie fasst Titel zusammen, die ohne Absetzen zusammen gespielt werden, mit einer Anweisung für alle darin — „Drop D" über den ersten drei Liedern heißt, diese drei in Drop D zu spielen. Anweisung und Ansage hängen an der Setliste, nicht am Lied: dasselbe Lied steht in vielen Setlisten, und beides gilt für einen Abend. Gezählt werden nur Lieder; Trenner tragen keine Nummer.',
-  'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. Über „Adresse suchen“ holt der Server einmalig die Koordinaten von OpenStreetMap und trägt Adresse und Ort gleich mit ein — das muss unter „Einstellungen → Verbindungen nach außen“ erlaubt sein, sonst bleibt der Knopf grau. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
+  'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. PLZ und Ort sind eigene Felder, die Straße samt Hausnummer steht darunter. Über „Adresse suchen“ fragt der Server bei OpenStreetMap nach — jedes Feld als das, was es ist, der Saalname bleibt außen vor, denn den kennt eine Karte selten. Ein Klick auf den Treffer trägt Straße, PLZ, Ort und die Koordinaten ein. Erlaubt sein muss das unter „Einstellungen → Verbindungen nach außen“, sonst bleibt der Knopf grau. Findet die Suche nichts, wird sie schrittweise gröber — ohne Hausnummer, dann nur mit dem Ort. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
   'help_abwesenheiten' => 'Urlaub und Sperrzeiten. Fällt ein Termin hinein, warnt die Terminliste.',
   'help_aufgaben' => 'Was ansteht und wer es macht.',
   'help_themen' => 'Diskussionen in Ruhe, ohne dass etwas im Chat untergeht.',
@@ -480,6 +480,7 @@ const UI_STRINGS = [
   // Orte
   'venues_title' => 'Veranstaltungsorte', 'venues_new' => 'Neuer Veranstaltungsort',
   'venues_name_ph' => 'z. B. Festhalle Musterstadt', 'city' => 'Stadt', 'address' => 'Adresse',
+  'postcode' => 'PLZ',
   'contact_person' => 'Kontaktperson', 'venues_notes_ph' => 'Bühne, Strom, Parken, Erfahrungen ...',
   'venues_events_here' => 'Termine an diesem Ort', 'venues_none' => 'Noch keine Veranstaltungsorte gespeichert.',
   // Abwesenheiten
@@ -1026,7 +1027,7 @@ Zeile zwei
   'photo_assign' => 'Zuordnen',
   'photo_suggested' => 'Vorschlag aus Datum/GPS',
   'geo_search' => 'Adresse suchen',
-  'geo_none_hint' => 'Kein Treffer. OpenStreetMap kennt Adressen, aber kaum Saalnamen — mit Straße und Ort findet es etwas.',
+  'geo_none_hint' => 'Kein Treffer. Gesucht wird mit Straße, PLZ und Ort — der Saalname steht selten in OpenStreetMap. Am ehesten hilft eine genaue Straße mit Hausnummer.',
   'geo_searched_as' => 'gesucht als: %1',
   'geo_searching' => 'Suche …',
   'geo_no_results' => 'Keine Treffer.',
@@ -1788,6 +1789,7 @@ $tables = [
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     city VARCHAR(190) NOT NULL DEFAULT '',
+    postcode VARCHAR(20) NOT NULL DEFAULT '',
     address VARCHAR(500) NOT NULL DEFAULT '',
     notes TEXT,
     contact_name VARCHAR(190) NOT NULL DEFAULT '',
@@ -2154,6 +2156,29 @@ if (!column_exists('events', 'venue_id')) {
 if (!column_exists('venues', 'lat')) {
   $db->exec('ALTER TABLE venues ADD COLUMN lat DECIMAL(9,6) NULL, ADD COLUMN lng DECIMAL(9,6) NULL');
 }
+// Postleitzahl als eigenes Feld (#249). Bisher stand sie im Adress-Feld mit
+// drin — oder nirgends. Beim Nachrüsten wird sie dort herausgeholt, wo sie
+// erkennbar ist: eine Zeile „12345 Ort" oder eine reine Zahlengruppe. Erkennbar
+// heißt streng: alles andere bleibt unangetastet im Adresstext, denn eine
+// halb geratene Adresse ist schlimmer als eine ungeteilte.
+if (!column_exists('venues', 'postcode')) {
+  $db->exec("ALTER TABLE venues ADD COLUMN postcode VARCHAR(20) NOT NULL DEFAULT '' AFTER city");
+  foreach ($db->query('SELECT id, address, city FROM venues')->fetchAll() as $v) {
+    $stadt = (string) $v['city'];
+    [$rest, $plz, $ort] = address_split_postcode((string) $v['address']);
+    if ($plz !== '' && $stadt === '') $stadt = $ort;
+    // Getippt wurde die PLZ auch schon ins Stadt-Feld — „34549 Edertal" ist ein
+    // vollständiger Ort, nur im falschen Kasten.
+    if ($plz === '') {
+      [$restStadt, $plz, $ort] = address_split_postcode($stadt);
+      if ($plz !== '') $stadt = $ort !== '' ? $ort : $restStadt;
+    }
+    if ($plz === '') continue;
+    $st = $db->prepare('UPDATE venues SET address = ?, postcode = ?, city = ? WHERE id = ?');
+    $st->execute([$rest, $plz, $stadt, $v['id']]);
+  }
+}
+
 // Fotos an Termine hängen: Aufnahmedatum und GPS aus den EXIF-Daten, plus die
 // zugeordnete Event-ID. Alles optional — ohne EXIF bleibt das Foto unzugeordnet.
 if (!column_exists('photos', 'event_id')) {
@@ -2770,6 +2795,14 @@ if (setting('help_texts_2026_08') !== '1') {
   q("DELETE FROM translations WHERE tkey IN
      ('app_install_offline','app_install_push','help_songs','help_orte','help_fotos')");
   set_setting('help_texts_2026_08', '1');
+}
+// Die Adress-Suche fragt seit #249 feldweise, und die PLZ ist ein eigenes Feld —
+// der Hilfetext beschrieb die alte Freitextsuche. Der neue steht in Seed 16
+// selbst (dem fruehesten, der den Schluessel setzt); hier wird nur der veraltete
+// weggeraeumt, damit der Seed ihn neu anlegen kann.
+if (setting('help_orte_postcode') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_orte'");
+  set_setting('help_orte_postcode', '1');
 }
 // Der Fotobereich kann inzwischen mehr, als sein Hilfetext wusste (v1.197 bis
 // v1.203). Der neue Text steht in Seed 16 SELBST — ein späterer Seed erreicht
@@ -3954,7 +3987,30 @@ function navi_dest(string ...$parts): string {
 }
 function venue_dest(array $v): string {
   if (!empty($v['lat']) && !empty($v['lng'])) return $v['lat'] . ',' . $v['lng'];
-  return navi_dest($v['name'] ?? '', $v['address'] ?? '', $v['city'] ?? '');
+  // PLZ und Ort gehören zusammen in ein Feld: „34549 Edertal" ist eine Angabe,
+  // und getrennt durch Komma sucht die Karten-App zwei.
+  $ort = trim(trim((string) ($v['postcode'] ?? '')) . ' ' . trim((string) ($v['city'] ?? '')));
+  return navi_dest($v['name'] ?? '', $v['address'] ?? '', $ort);
+}
+
+/**
+ * Trennt aus einem gewachsenen Adresstext die PLZ heraus.
+ *
+ * Zurück kommt [Rest, PLZ, Ort]. Getrennt wird an Zeilenumbrüchen und Kommas —
+ * mit beidem trennt man „Straße" von „PLZ Ort". Herausgeholt wird aber nur ein
+ * Stück, das für sich genommen zweifelsfrei eine PLZ-Angabe ist: „34549",
+ * „34549 Edertal", „D-34549 Edertal". Alles andere bleibt unangetastet — lieber
+ * ungeteilt als falsch geteilt.
+ */
+function address_split_postcode(string $address): array {
+  $teile = preg_split('~\R|,~', $address) ?: [];
+  foreach ($teile as $i => $teil) {
+    if (!preg_match('~^\s*(?:[A-Z]{1,2}-)?(\d{4,5})\s*([^,\d]*)$~u', $teil, $m)) continue;
+    unset($teile[$i]);
+    $rest = implode("\n", array_filter(array_map('trim', $teile), fn($z) => $z !== ''));
+    return [$rest, $m[1], trim($m[2])];
+  }
+  return [trim($address), '', ''];
 }
 
 // Web-Fallback für den Navi-Link (Desktop und ohne JavaScript): OpenStreetMap
@@ -3970,8 +4026,9 @@ function navi_web(string $dest): string {
 // antwortet der Dienst mit 403). Fehler (Dienst weg, Timeout) ergeben eine leere
 // Liste — die Oberfläche meldet dann „keine Treffer". Aufgerufen nur, wenn die
 // Band Geocoding erlaubt hat.
-function geocode_request(string $q): array {
-  $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=3&q=' . rawurlencode($q);
+function geocode_request(array $params): array {
+  $url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=3&'
+    . http_build_query($params);
   $ctx = stream_context_create(['http' => [
     'method' => 'GET',
     'header' => 'User-Agent: Bandregie/' . BANDREGIE_VERSION . " (self-hosted band tool)
@@ -3986,21 +4043,20 @@ Accept: application/json
   $out = [];
   foreach ($data as $r) {
     if (!isset($r['lat'], $r['lon'], $r['display_name'])) continue;
-    // Aus den Bestandteilen eine saubere Adresse bauen (Straße Hausnummer /
-    // PLZ Ort), damit ein Treffer auch die Adress- und Stadt-Felder füllen kann,
-    // wenn nur der Name eingegeben war. Ohne Bestandteile bleibt der Anzeigename.
+    // Aus den Bestandteilen die einzelnen Felder bauen, damit ein Treffer
+    // Straße, PLZ und Ort getrennt füllen kann (#249). Ohne Bestandteile bleibt
+    // der Anzeigename als Adresse — besser als ein leeres Feld.
     $a = is_array($r['address'] ?? null) ? $r['address'] : [];
     $city = (string) ($a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? '');
     $street = trim(($a['road'] ?? '') . ' ' . ($a['house_number'] ?? ''));
-    $addr = trim($street . "
-" . trim(($a['postcode'] ?? '') . ' ' . $city));
     $out[] = [
       'name' => (string) $r['display_name'],
-      'address' => $addr !== '' ? $addr : (string) $r['display_name'],
+      'address' => $street !== '' ? $street : (string) $r['display_name'],
+      'postcode' => (string) ($a['postcode'] ?? ''),
       'city' => $city,
       'lat' => (string) $r['lat'],
       'lng' => (string) $r['lon'],
-      'searched' => $q,
+      'searched' => geocode_label($params),
     ];
   }
   return $out;
@@ -4031,15 +4087,56 @@ const GEO_RETRIES = 2;
 function geocode_search(string $q): array {
   $q = trim(preg_replace('~\s+~u', ' ', $q) ?? '');
   if ($q === '') return [];
-  $treffer = geocode_request($q);
+  $treffer = geocode_request(['q' => $q]);
   $worte = preg_split('~[\s,]+~u', $q) ?: [];
   for ($i = 0; !$treffer && $i < GEO_RETRIES && count($worte) > 1; $i++) {
     array_shift($worte);
     // Abstand halten, statt drei Anfragen in einem Wimpernschlag zu stellen.
     usleep(1100000);
-    $treffer = geocode_request(implode(' ', $worte));
+    $treffer = geocode_request(['q' => implode(' ', $worte)]);
   }
   return $treffer;
+}
+
+/**
+ * Suche mit den Adressfeldern, jedes im Feld, in das es gehört (#249).
+ *
+ * Nominatim kennt neben dem Freitext eine feldweise Suche (street, postalcode,
+ * city). Die ist hier die richtige: Der Saalname muss dann gar nicht mitgesucht
+ * werden, und die PLZ wird als PLZ verstanden statt als Wort, das irgendwo
+ * treffen muss. Gemessen an „Zündstoff, Am Weiher 1, 34549 Edertal": als
+ * Freitext kein Treffer, feldweise ohne den Namen genau einer.
+ *
+ * Der Rückzug lässt weg, was am ehesten falsch ist — erst die Hausnummer samt
+ * Straße, dann die PLZ. Ein Treffer auf Ortsebene ist zum Hinfahren genug.
+ */
+function geocode_address(string $street, string $postcode, string $city): array {
+  $street = trim(preg_replace(['~\R~u', '~\s+~u'], [', ', ' '], $street) ?? '');
+  $postcode = trim($postcode);
+  $city = trim($city);
+  $stufen = [];
+  if ($street !== '' && ($postcode !== '' || $city !== '')) {
+    $stufen[] = ['street' => $street, 'postalcode' => $postcode, 'city' => $city];
+    if ($city !== '' && $postcode !== '') $stufen[] = ['street' => $street, 'city' => $city];
+  }
+  if ($postcode !== '' && $city !== '') $stufen[] = ['postalcode' => $postcode, 'city' => $city];
+  if ($city !== '') $stufen[] = ['city' => $city];
+  elseif ($postcode !== '') $stufen[] = ['postalcode' => $postcode];
+  foreach (array_slice($stufen, 0, 1 + GEO_RETRIES) as $i => $stufe) {
+    // Abstand halten: Nominatim erlaubt etwa eine Anfrage je Sekunde.
+    if ($i > 0) usleep(1100000);
+    $treffer = geocode_request(array_filter($stufe, fn($v) => $v !== ''));
+    if ($treffer) return $treffer;
+  }
+  return [];
+}
+
+/** Wonach gefragt wurde, in einer Zeile — steht am Treffer, damit niemand den Ort für den Saal hält. */
+function geocode_label(array $params): string {
+  return implode(', ', array_filter([
+    $params['q'] ?? '', $params['street'] ?? '',
+    trim(($params['postalcode'] ?? '') . ' ' . ($params['city'] ?? '')),
+  ]));
 }
 
 // EXIF eines Bildes: Aufnahmedatum und GPS, falls vorhanden. Ohne (kein JPEG,

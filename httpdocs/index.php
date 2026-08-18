@@ -1856,13 +1856,15 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/orte' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
-      q('INSERT INTO venues (name, city, address, notes, contact_name, contact_email, contact_phone, lat, lng) VALUES (?,?,?,?,?,?,?,?,?)', venue_values());
+      q('INSERT INTO venues (name, city, postcode, address, notes, contact_name, contact_email, contact_phone, lat, lng)
+         VALUES (?,?,?,?,?,?,?,?,?,?)', venue_values());
     }
     redirect('/intern/orte');
   }
   if (preg_match('~^/intern/orte/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE venues SET name=?, city=?, address=?, notes=?, contact_name=?, contact_email=?, contact_phone=?, lat=?, lng=? WHERE id=?', [...venue_values(), $m[1]]);
+      q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?, contact_phone=?, lat=?, lng=? WHERE id=?',
+        [...venue_values(), $m[1]]);
     } else {
       q('DELETE FROM venues WHERE id = ?', [$m[1]]);
       q('UPDATE events SET venue_id = NULL WHERE venue_id = ?', [$m[1]]);
@@ -1876,8 +1878,15 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/geo/suggest' && $method === 'GET') {
     header('Content-Type: application/json; charset=utf-8');
     if (setting('geocoding_enabled') !== '1') { echo json_encode(['off' => true, 'results' => []]); exit; }
+    // Zwei Fälle: Adressfelder (street/postcode/city) werden feldweise gefragt —
+    // so versteht Nominatim die PLZ als PLZ (#249). Nur wenn nichts als der Name
+    // da ist, bleibt es beim Freitext mit Wort-Rückzug.
+    $street = trim((string) ($_GET['street'] ?? ''));
+    $plz = trim((string) ($_GET['postcode'] ?? ''));
+    $ort = trim((string) ($_GET['city'] ?? ''));
     $qStr = trim((string) ($_GET['q'] ?? ''));
-    if (mb_strlen($qStr) < 3) { echo json_encode(['results' => []]); exit; }
+    $feldweise = $street !== '' || $plz !== '' || $ort !== '';
+    if (!$feldweise && mb_strlen($qStr) < 3) { echo json_encode(['results' => []]); exit; }
     // Nominatim lässt etwa eine Anfrage je Sekunde zu und sperrt nach IP-Adresse.
     // Ohne Bremse könnte eine festgehaltene Taste die Adresse der ganzen
     // Installation sperren lassen — für alle, auch für die Suche, die die Band
@@ -1887,7 +1896,9 @@ if (str_starts_with($path, '/intern')) {
       exit;
     }
     throttle_note('geo', (string) $me['id']);
-    echo json_encode(['results' => geocode_search($qStr)]);
+    echo json_encode(['results' => $feldweise
+      ? geocode_address($street, $plz, $ort)
+      : geocode_search($qStr)]);
     exit;
   }
 
@@ -4163,9 +4174,12 @@ function venue_values(): array {
   // Zahlen übernehmen, sonst leer — nichts Getipptes landet ungeprüft in der DB.
   $lat = is_numeric($_POST['lat'] ?? '') ? (string) $_POST['lat'] : null;
   $lng = is_numeric($_POST['lng'] ?? '') ? (string) $_POST['lng'] : null;
+  // Auf Spaltenlänge kürzen: Eine zu lange Eingabe soll gespeichert und dabei
+  // beschnitten werden, nicht mit einem Serverfehler enden.
+  $feld = fn(string $name, int $max): string => mb_substr(trim((string) ($_POST[$name] ?? '')), 0, $max);
   return [
-    $_POST['name'] ?? '', $_POST['city'] ?? '', $_POST['address'] ?? '', $_POST['notes'] ?? '',
-    $_POST['contact_name'] ?? '', $_POST['contact_email'] ?? '', $_POST['contact_phone'] ?? '',
+    $feld('name', 255), $feld('city', 190), $feld('postcode', 20), $feld('address', 500), $feld('notes', 5000),
+    $feld('contact_name', 190), $feld('contact_email', 190), $feld('contact_phone', 100),
     $lat, $lng,
   ];
 }

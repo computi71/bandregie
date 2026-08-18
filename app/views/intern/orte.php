@@ -4,7 +4,12 @@
 <details class="card collapsible" <?= $venues ? '' : 'open' ?>>
   <summary>➕ <?= e(t('venues_new')) ?></summary>
   <form method="post" action="/intern/orte" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('name')) ?><input name="name" required placeholder="<?= e(t('venues_name_ph')) ?>"></label>
+    <?php // Adressblock in der Reihenfolge, in der eine Adresse geschrieben wird:
+          // Name, dann PLZ und Ort in einer Zeile, dann Straße und Hausnummer.
+          // Die PLZ ist ein eigenes Feld, weil die Adress-Suche sie als PLZ fragt
+          // und nicht als Wort im Fließtext (#249). ?>
+    <label class="span2"><?= e(t('name')) ?><input name="name" required placeholder="<?= e(t('venues_name_ph')) ?>"></label>
+    <label><?= e(t('postcode')) ?><input name="postcode" inputmode="numeric" maxlength="20"></label>
     <label><?= e(t('city')) ?><input name="city"></label>
     <label class="span2"><?= e(t('address')) ?><textarea name="address" rows="2"></textarea></label>
     <?php $geoLat = $geoLng = ''; require BASE_DIR . '/app/views/intern/_geofield.php'; ?>
@@ -20,7 +25,8 @@
   <section class="card">
     <div class="event-head">
       <strong><?= e($v['name']) ?></strong>
-      <?php if ($v['city']): ?><span class="muted">📍 <?= e($v['city']) ?></span><?php endif; ?>
+      <?php $ortZeile = trim($v['postcode'] . ' ' . $v['city']); ?>
+      <?php if ($ortZeile !== ''): ?><span class="muted">📍 <?= e($ortZeile) ?></span><?php endif; ?>
       <?php if ($v['contact_name']): ?><span class="muted">👤 <?= e($v['contact_name']) ?></span><?php endif; ?>
       <?php if ($v['contact_phone']): ?><span class="muted">📞 <?= e($v['contact_phone']) ?></span><?php endif; ?>
       <?php if ($v['contact_email']): ?><a class="muted" href="mailto:<?= e($v['contact_email']) ?>">✉ <?= e($v['contact_email']) ?></a><?php endif; ?>
@@ -54,7 +60,8 @@
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
       <form method="post" action="/intern/orte/<?= $v['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
-        <label><?= e(t('name')) ?><input name="name" value="<?= e($v['name']) ?>" required></label>
+        <label class="span2"><?= e(t('name')) ?><input name="name" value="<?= e($v['name']) ?>" required></label>
+        <label><?= e(t('postcode')) ?><input name="postcode" inputmode="numeric" maxlength="20" value="<?= e($v['postcode']) ?>"></label>
         <label><?= e(t('city')) ?><input name="city" value="<?= e($v['city']) ?>"></label>
         <label class="span2"><?= e(t('address')) ?><textarea name="address" rows="2"><?= e($v['address']) ?></textarea></label>
         <?php $geoLat = $v['lat']; $geoLng = $v['lng']; require BASE_DIR . '/app/views/intern/_geofield.php'; ?>

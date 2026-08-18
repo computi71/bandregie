@@ -16,18 +16,24 @@
     };
 
     btn.addEventListener('click', async () => {
-      // Gefragt wird mit dem, was ein Adressverzeichnis beantworten kann:
-      // Straße und Ort. Der Saalname kam früher zuerst — und war genau das Wort,
-      // an dem jede Suche scheiterte, weil Nominatim in jedem Wort treffen muss
-      // (#234). Nur wenn es sonst nichts gibt, wird der Name versucht: Ein
-      // bekannter Saal kann durchaus in der Karte stehen.
-      const adresse = [val('address'), val('city')].filter(Boolean).join(', ');
-      const q = adresse !== '' ? adresse : val('name');
-      if (q.length < 3) return;
+      // Jedes Feld wird als das gefragt, was es ist: Straße als street, PLZ als
+      // postalcode, Ort als city. Als ein Freitext zusammengesetzt scheiterte die
+      // Suche an jedem Wort, das die Karte nicht kennt — und der Saalname ist
+      // meistens genau dieses Wort (#234, #249). Nur wenn kein Adressfeld
+      // gefüllt ist, wird der Name als Freitext versucht: Ein bekannter Saal
+      // kann durchaus in der Karte stehen.
+      const felder = { street: val('address'), postcode: val('postcode'), city: val('city') };
+      const params = new URLSearchParams();
+      Object.entries(felder).forEach(([k, v]) => { if (v) params.set(k, v); });
+      if ([...params.keys()].length === 0) {
+        const name = val('name');
+        if (name.length < 3) return;
+        params.set('q', name);
+      }
       results.textContent = field.dataset.tSearching || '…';
       let list = [];
       try {
-        const r = await fetch(field.dataset.geoEndpoint + '?q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } });
+        const r = await fetch(field.dataset.geoEndpoint + '?' + params.toString(), { headers: { Accept: 'application/json' } });
         const data = await r.json();
         list = (data && data.results) || [];
       } catch (e) { list = []; }
@@ -42,7 +48,9 @@
       // leeren Ergebnis mit weniger Wörtern nach, und dann steht am Treffer der
       // Ort statt des Saals.
       const gesucht = list[0] && list[0].searched;
-      if (gesucht && gesucht.toLowerCase() !== q.toLowerCase() && field.dataset.tSearchedAs) {
+      const gefragt = [felder.street, [felder.postcode, felder.city].filter(Boolean).join(' ')]
+        .filter(Boolean).join(', ') || val('name');
+      if (gesucht && gesucht.toLowerCase() !== gefragt.toLowerCase() && field.dataset.tSearchedAs) {
         const hint = document.createElement('p');
         hint.className = 'muted small';
         hint.textContent = field.dataset.tSearchedAs.replace('%1', gesucht);
@@ -54,13 +62,14 @@
         b.className = 'btn btn-ghost btn-small geo-hit';
         b.textContent = hit.name;
         b.addEventListener('click', () => {
-          // Der gewählte Treffer füllt Adresse, Stadt und Koordinaten — so wird
+          // Der gewählte Treffer füllt Straße, PLZ, Ort und Koordinaten — so wird
           // aus einem bloßen Namen ein vollständiger Ort.
           const set = (name, v) => {
             const el = form.querySelector('[name="' + name + '"]');
             if (el && v) el.value = v;
           };
           set('address', hit.address);
+          set('postcode', hit.postcode);
           set('city', hit.city);
           set('lat', hit.lat);
           set('lng', hit.lng);
