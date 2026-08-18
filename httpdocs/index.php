@@ -1230,24 +1230,37 @@ if (str_starts_with($path, '/intern')) {
       $zeilen = rows('SELECT id, position, is_break FROM setlist_songs
                       WHERE setlist_id = ? AND position BETWEEN ? AND ? ORDER BY position',
                      [$id, min($von, $bis), max($von, $bis)]);
-      // Mindestens zwei Titel, und keine Trenner mitten drin: Eine Klammer über
-      // eine Pause hinweg wäre auf dem Blatt sinnlos.
-      $nurLieder = array_values(array_filter($zeilen, fn($z) => !$z['is_break']));
-      if (count($zeilen) < 2 || count($nurLieder) !== count($zeilen)) {
+      // Mindestens zwei Zeilen, und keine Pause und kein Zugabe-Strich darin:
+      // Die trennen das Blatt, eine Klammer darüber hinweg wäre sinnlos. Eine
+      // BLOCKGRENZE darf sie dagegen kreuzen — im Original tut sie das: die
+      // zweite Klammer beginnt auf dem unterstrichenen „Pocahontas" (#242).
+      $trennt = array_filter($zeilen, fn($z) => in_array((int) $z['is_break'], [1, 2], true));
+      if (count($zeilen) < 2 || $trennt) {
         flash(t('fl_brace_bad'));
         redirect("/intern/setlists/$id");
       }
       $nr = (int) row('SELECT COALESCE(MAX(bracket),0) AS b FROM setlist_songs WHERE setlist_id = ?', [$id])['b'] + 1;
       foreach ($zeilen as $i => $z) {
-        q('UPDATE setlist_songs SET bracket = ?, note = ? WHERE id = ?',
-          [$nr, $i === 0 ? mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200) : (string) '', (int) $z['id']]);
+        // Nur die erste Zeile bekommt die Anweisung. Die übrigen behalten ihre
+        // eigene — eine Blockgrenze innerhalb der Klammer trägt ihre Ansage
+        // weiter, und die zu löschen hätte niemand bemerkt.
+        if ($i === 0) {
+          q('UPDATE setlist_songs SET bracket = ?, note = ? WHERE id = ?',
+            [$nr, mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), (int) $z['id']]);
+        } else {
+          q('UPDATE setlist_songs SET bracket = ? WHERE id = ?', [$nr, (int) $z['id']]);
+        }
       }
       flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
       redirect("/intern/setlists/$id");
     }
     if ($action === 'entklammer') {
-      q('UPDATE setlist_songs SET bracket = NULL, note = ? WHERE setlist_id = ? AND bracket = ?',
-        ['', $id, (int) ($_POST['bracket'] ?? 0)]);
+      // Die Klammer geht, die Anweisung der ersten Zeile mit ihr — sie gehörte
+      // zur Klammer. Anweisungen an Blockgrenzen darin bleiben, die gehören dorthin.
+      $kNr = (int) ($_POST['bracket'] ?? 0);
+      $erste = row('SELECT id FROM setlist_songs WHERE setlist_id = ? AND bracket = ? ORDER BY position LIMIT 1', [$id, $kNr]);
+      if ($erste) q("UPDATE setlist_songs SET note = '' WHERE id = ? AND is_break = 0", [(int) $erste['id']]);
+      q('UPDATE setlist_songs SET bracket = NULL WHERE setlist_id = ? AND bracket = ?', [$id, $kNr]);
       redirect("/intern/setlists/$id");
     }
     // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
