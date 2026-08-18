@@ -1239,6 +1239,8 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_brace_bad'));
         redirect("/intern/setlists/$id");
       }
+      // Vorläufige Nummer; setlist_braces_normalize() zählt gleich danach ohnehin
+      // alles von oben nach unten neu durch.
       $nr = (int) row('SELECT COALESCE(MAX(bracket),0) AS b FROM setlist_songs WHERE setlist_id = ?', [$id])['b'] + 1;
       foreach ($zeilen as $i => $z) {
         // Die Anweisung der Klammer steht in ihrer eigenen Spalte an der ersten
@@ -1250,6 +1252,7 @@ if (str_starts_with($path, '/intern')) {
           q('UPDATE setlist_songs SET bracket = ? WHERE id = ?', [$nr, (int) $z['id']]);
         }
       }
+      setlist_braces_normalize((int) $id);
       flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
       redirect("/intern/setlists/$id");
     }
@@ -1258,6 +1261,8 @@ if (str_starts_with($path, '/intern')) {
       // bleiben, denn die gehören den Zeilen.
       $kNr = (int) ($_POST['bracket'] ?? 0);
       q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ? AND bracket = ?", [$id, $kNr]);
+      // Ohne das blieben Löcher: aus 1,2,3 wird beim Lösen von 2 sonst 1,3.
+      setlist_braces_normalize((int) $id);
       redirect("/intern/setlists/$id");
     }
     // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
@@ -1267,6 +1272,8 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'remove') {
       q('DELETE FROM setlist_songs WHERE setlist_id = ? AND id = ?', [$id, $_POST['item_id'] ?? 0]);
+      // Bleibt von einer Klammer eine Zeile übrig, ist sie keine mehr.
+      setlist_braces_normalize((int) $id);
       $i = 1;
       foreach (rows('SELECT id FROM setlist_songs WHERE setlist_id = ? ORDER BY position', [$id]) as $r) {
         q('UPDATE setlist_songs SET position = ? WHERE id = ?', [$i++, $r['id']]);
@@ -1279,6 +1286,9 @@ if (str_starts_with($path, '/intern')) {
       if ($idx !== false && $swap >= 0 && $swap < count($list)) {
         q('UPDATE setlist_songs SET position = ? WHERE id = ?', [$list[$swap]['position'], $list[$idx]['id']]);
         q('UPDATE setlist_songs SET position = ? WHERE id = ?', [$list[$idx]['position'], $list[$swap]['id']]);
+        // Wer eine Zeile aus einer Klammer herausschiebt, zerlegt sie — dann ist
+        // sie neu zu ordnen, sonst zeigt die Liste eine Nummer ohne Klammer.
+        setlist_braces_normalize((int) $id);
       }
     }
     redirect("/intern/setlists/$id");
@@ -3037,6 +3047,9 @@ if (str_starts_with($path, '/intern')) {
       if (!in_array((int) $itemId, array_map('intval', $valid), true)) continue;
       q('UPDATE setlist_songs SET position = ? WHERE id = ? AND setlist_id = ?', [++$pos, (int) $itemId, $setlistId]);
     }
+    // Ziehen kann eine Klammer zerreißen — danach neu ordnen, damit Nummern und
+    // Zeichnung wieder zur Reihenfolge passen (#242).
+    setlist_braces_normalize($setlistId);
     header('Content-Type: application/json');
     exit(json_encode(['ok' => true, 'count' => $pos]));
   }

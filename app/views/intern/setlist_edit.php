@@ -31,11 +31,6 @@
       <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>">
         <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <span class="pos"><?= $entry['position'] ?></span>
-        <?php // Klammer sichtbar: erste Zeile mit der Anweisung, folgende mit dem
-              // Fortsetzungszeichen — so sieht man im Bearbeiten, was zusammenhängt. ?>
-        <?php if ($entry['bracket'] !== null): ?>
-          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $entry['bracket_note'] !== '' ? ' ' . e($entry['bracket_note']) : '' ?></span>
-        <?php endif; ?>
         <?php if ($entry['is_break']): ?>
           <?php if ((int) $entry['is_break'] === 3): ?>
             <?php // Der Strich vom Papier — mit der Anweisung, die dort daneben steht. ?>
@@ -57,6 +52,11 @@
                 // springt dann ohne Vollbild zu verlassen zum nächsten Song. ?>
           <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/buehne?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_hint')) ?>">🎤</a>
           <a class="btn btn-tiny" href="/intern/songs/<?= (int) $entry['id'] ?>/noten?sl=<?= (int) $setlist['id'] ?>" title="<?= e(t('stage_chords')) ?>">🎸</a>
+        <?php endif; ?>
+        <?php // Die Klammer-Marke steht hinten: vorn drängte sie sich zwischen
+              // Nummer und Titel, und gelesen wird die Zeile vom Titel her (#242). ?>
+        <?php if ($entry['bracket'] !== null): ?>
+          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $entry['bracket_note'] !== '' ? ' ' . e($entry['bracket_note']) : '' ?></span>
         <?php endif; ?>
         <?php if (!$locked): ?>
           <span class="row-buttons">
@@ -103,7 +103,22 @@
       <?php foreach ($klammern as $kNr): ?>
         <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/entklammer" class="inline"><?= csrf_field() ?>
           <input type="hidden" name="bracket" value="<?= (int) $kNr ?>">
-          <button class="btn btn-tiny btn-ghost">⎨ <?= (int) $kNr ?> · <?= e(t('sl_brace_remove')) ?></button>
+          <button class="btn btn-tiny btn-ghost">⎨ <?php
+            // Der Knopf nennt die Titel, nicht die Nummer: Nummern sind eine
+            // interne Kennung und nach ein paar Änderungen keine Auskunft mehr.
+            // Erster und letzter Titel sagen ohne Nachdenken, welche Klammer
+            // gemeint ist — Trennerzeilen darin haben keinen Titel und zählen
+            // dafür nicht (#242).
+            $kZeilen = array_values(array_filter($entries, fn($e) => (int) ($e['bracket'] ?? 0) === (int) $kNr));
+            $kTitel = array_values(array_filter(array_map(fn($e) => (string) ($e['title'] ?? ''), $kZeilen), 'strlen'));
+            if ($kTitel) {
+              echo e($kTitel[0]);
+              if (count($kTitel) > 1) echo ' … ' . e($kTitel[count($kTitel) - 1]);
+              $kText = (string) ($kZeilen[0]['bracket_note'] ?? '');
+              if ($kText !== '') echo ' · ' . e($kText);
+              echo ' · ';
+            }
+          ?><?= e(t('sl_brace_remove')) ?></button>
         </form>
       <?php endforeach; ?>
     </div>
