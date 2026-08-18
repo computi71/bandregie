@@ -158,7 +158,9 @@ $eqBoughtAlready = (bool) array_filter($eqBooked, fn($b) => $b['type'] === 'ausg
   </details>
 <?php endif; ?>
 
-<?php if ($eqMayOwn && !$eqHasParts): ?>
+<?php // Nur anbieten, wo es etwas aufzuteilen gibt: Ein Knopf, der Unsinn
+      // erzeugt, ist schlimmer als keiner (#238). ?>
+<?php if ($eqMayOwn && !$eqHasParts && eq_split_count($formEq) > 1): ?>
   <details class="subsection">
     <summary><?= e(t('eq_split')) ?><?= $eqQtyHint ? ' ' . e(sprintf(t('eq_split_found'), $eqQtyHint)) : '' ?></summary>
     <p class="muted small"><?= e(t('eq_split_hint')) ?></p>

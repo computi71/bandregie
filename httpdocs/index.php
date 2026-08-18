@@ -2666,14 +2666,17 @@ if (str_starts_with($path, '/intern')) {
     if (!$eq || !eq_may_edit_owner_fields($eq, $me)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
     $count = min(99, max(1, (int) ($_POST['count'] ?? 1)));
     $hasParts = (int) row('SELECT COUNT(*) AS n FROM equipment WHERE parent_id = ?', [$m[1]])['n'] > 0;
-    if ($count < 2 || $hasParts) {
+    // Eine Zeile, die für ein einzelnes Gerät steht, hat nichts aufzuteilen.
+    // Ohne diese Frage wurde aus jedem Klick ein weiteres „ #1" am Namen (#238).
+    if ($count < 2 || $hasParts || eq_split_count($eq) < 2) {
       flash(t('fl_eq_split_impossible'));
       redirect('/intern/equipment');
     }
     // Die Stückzahl verschwindet aus Name, Steckplatz und Mengenfeld — sie steht
     // jetzt in der Zahl der Zeilen. Der Preis war der eines Geräts und bleibt es.
-    $baseName = eq_strip_quantity((string) $eq['name']);
-    $baseSlot = eq_strip_quantity((string) $eq['slot']);
+    // Eine schon vorhandene Nummer fällt weg, damit sie sich nicht stapelt.
+    $baseName = eq_strip_number(eq_strip_quantity((string) $eq['name']));
+    $baseSlot = eq_strip_number(eq_strip_quantity((string) $eq['slot']));
     q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
     $neue = [];
     for ($i = 2; $i <= $count; $i++) {
