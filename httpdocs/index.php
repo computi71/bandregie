@@ -1198,8 +1198,8 @@ if (str_starts_with($path, '/intern')) {
         q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$src['name'] . ' (Kopie)', $src['notes']]);
         $newId = (int) $GLOBALS['db']->lastInsertId();
         // Die Anweisungen gehören zur Reihenfolge, also kommen sie mit (#241).
-        q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note)
-           SELECT ?, song_id, is_break, position, note FROM setlist_songs WHERE setlist_id = ?', [$newId, $id]);
+        q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note, bracket, bracket_note)
+           SELECT ?, song_id, is_break, position, note, bracket, bracket_note FROM setlist_songs WHERE setlist_id = ?', [$newId, $id]);
         redirect("/intern/setlists/$newId");
       }
       redirect('/intern/setlists');
@@ -1241,11 +1241,10 @@ if (str_starts_with($path, '/intern')) {
       }
       $nr = (int) row('SELECT COALESCE(MAX(bracket),0) AS b FROM setlist_songs WHERE setlist_id = ?', [$id])['b'] + 1;
       foreach ($zeilen as $i => $z) {
-        // Nur die erste Zeile bekommt die Anweisung. Die übrigen behalten ihre
-        // eigene — eine Blockgrenze innerhalb der Klammer trägt ihre Ansage
-        // weiter, und die zu löschen hätte niemand bemerkt.
+        // Die Anweisung der Klammer steht in ihrer eigenen Spalte an der ersten
+        // Zeile. note bleibt unangetastet: dort steht, was zu DIESEM Titel gehört.
         if ($i === 0) {
-          q('UPDATE setlist_songs SET bracket = ?, note = ? WHERE id = ?',
+          q('UPDATE setlist_songs SET bracket = ?, bracket_note = ? WHERE id = ?',
             [$nr, mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), (int) $z['id']]);
         } else {
           q('UPDATE setlist_songs SET bracket = ? WHERE id = ?', [$nr, (int) $z['id']]);
@@ -1255,12 +1254,10 @@ if (str_starts_with($path, '/intern')) {
       redirect("/intern/setlists/$id");
     }
     if ($action === 'entklammer') {
-      // Die Klammer geht, die Anweisung der ersten Zeile mit ihr — sie gehörte
-      // zur Klammer. Anweisungen an Blockgrenzen darin bleiben, die gehören dorthin.
+      // Die Klammer geht mit ihrer eigenen Anweisung; die Notizen der Zeilen
+      // bleiben, denn die gehören den Zeilen.
       $kNr = (int) ($_POST['bracket'] ?? 0);
-      $erste = row('SELECT id FROM setlist_songs WHERE setlist_id = ? AND bracket = ? ORDER BY position LIMIT 1', [$id, $kNr]);
-      if ($erste) q("UPDATE setlist_songs SET note = '' WHERE id = ? AND is_break = 0", [(int) $erste['id']]);
-      q('UPDATE setlist_songs SET bracket = NULL WHERE setlist_id = ? AND bracket = ?', [$id, $kNr]);
+      q("UPDATE setlist_songs SET bracket = NULL, bracket_note = '' WHERE setlist_id = ? AND bracket = ?", [$id, $kNr]);
       redirect("/intern/setlists/$id");
     }
     // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
@@ -4087,7 +4084,7 @@ function venue_values(): array {
 function setlist_entries(int $setlistId): array {
   // ss.note heißt hier item_note: so.* bringt songs.notes mit, und zwei Felder
   // mit fast gleichem Namen verwechselt die nächste Ansicht (#241).
-  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, ss.note AS item_note, ss.bracket, so.*
+  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, ss.note AS item_note, ss.bracket, ss.bracket_note, so.*
                FROM setlist_songs ss LEFT JOIN songs so ON so.id = ss.song_id
                WHERE ss.setlist_id = ? ORDER BY ss.position', [$setlistId]);
 }

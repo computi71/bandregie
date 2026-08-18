@@ -167,7 +167,7 @@ $fontFor = function (array $set): int {
         <?php foreach ($gruppen as $gruppe): ?>
         <?php // Eine Klammer nur, wo sie etwas umfasst — über einer Zeile wäre sie Zierrat. ?>
         <?php $geklammert = $gruppe['nr'] > 0 && count($gruppe['zeilen']) > 1; ?>
-        <?php $klammerText = $geklammert ? (string) $gruppe['zeilen'][0]['item_note'] : ''; ?>
+        <?php $klammerText = $geklammert ? (string) $gruppe['zeilen'][0]['bracket_note'] : ''; ?>
         <?php if ($geklammert): ?><div class="braced"><div class="braced-songs"><?php endif; ?>
         <?php foreach ($gruppe['zeilen'] as $entry): ?>
           <?php if ((int) $entry['is_break'] === 2): ?>

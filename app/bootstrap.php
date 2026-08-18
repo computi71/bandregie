@@ -2387,6 +2387,12 @@ if (!column_exists('users', 'photos_seen_at')) {
 // einem verknüpften Bild später der Ordnerpfad. Eine Spalte für beides, denn die
 // Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
 // die Angabe ist verloren und wird nicht erfunden.
+// Die Anweisung der Klammer braucht ihr eigenes Feld: „Drop D" gilt für die
+// Klammer, „Andi in D" für den einen Song — im selben Feld verdrängte eines das
+// andere, und genau das ist beim Übertragen der Vorlage passiert (#242).
+if (!column_exists('setlist_songs', 'bracket_note')) {
+  $db->exec("ALTER TABLE setlist_songs ADD COLUMN bracket_note VARCHAR(200) NOT NULL DEFAULT ''");
+}
 // Die handgezeichnete Klammer der Papier-Setlisten (#242): Zeilen mit derselben
 // Nummer gehören zusammen — gespielt ohne Absetzen, eine Stimmung, ein Bogen.
 // Die Anweisung steht an der ersten Zeile der Klammer.

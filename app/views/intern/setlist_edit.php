@@ -34,7 +34,7 @@
         <?php // Klammer sichtbar: erste Zeile mit der Anweisung, folgende mit dem
               // Fortsetzungszeichen — so sieht man im Bearbeiten, was zusammenhängt. ?>
         <?php if ($entry['bracket'] !== null): ?>
-          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $entry['item_note'] !== '' ? ' ' . e($entry['item_note']) : '' ?></span>
+          <span class="badge" title="<?= e(t('sl_brace')) ?>">⎨<?= $entry['bracket_note'] !== '' ? ' ' . e($entry['bracket_note']) : '' ?></span>
         <?php endif; ?>
         <?php if ($entry['is_break']): ?>
           <?php if ((int) $entry['is_break'] === 3): ?>
