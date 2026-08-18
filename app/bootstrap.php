@@ -5098,8 +5098,15 @@ function fmt_date(?string $iso): string {
  *
  *   • die nächsten ZWEI Gigs, die stattfinden,
  *   • alle Anfragen und Reservierungen, egal welcher Art,
- *   • Feiern und Sonstiges,
+ *   • jeden Termin, der kein Gig ist — Probe, Besprechung, Party, Aufnahme,
+ *     Fotoshooting, Auf-/Abbau, Reise, Day off, Sonstiges,
  *   • nie Abgesagtes, nie Blockiertes.
+ *
+ * Die Zweiergrenze gilt allein für Gigs, weil nur die zu Dutzenden im Kalender
+ * stehen. Alles andere ist eine einzelne Verabredung, die man kennen muss —
+ * eine Probe am Freitag ist keine Zeile, die warten kann, bis fünf Gigs
+ * vorüber sind. Deshalb wird hier nicht aufgezählt, sondern unterschieden:
+ * Gig oder nicht (#235).
  *
  * Die eigene Rückmeldung filtert nichts. Das ist bewusst so: Die Zusage-Knöpfe
  * stehen in genau diesem Kasten. Wer einen unbeantworteten Termin ausblendet,
@@ -5108,19 +5115,19 @@ function fmt_date(?string $iso): string {
  * @param array<int, int>|null $sichtbar Kennungen aus visible_event_ids()
  */
 const DASH_GIGS = 2;
-const DASH_MAX = 8;
+const DASH_MAX = 12;
 
 function dashboard_events(?array $sichtbar, string $heute): array {
   [$wo, $args] = visible_clause($sichtbar);
   $gigs = rows("SELECT * FROM events
                 WHERE date >= ? AND type = 'gig' AND status = 'bestaetigt'$wo
                 ORDER BY date, time LIMIT " . DASH_GIGS, [$heute, ...$args]);
-  // Anfragen und Reservierungen jeder Art, dazu Feiern und Sonstiges. Ein
+  // Anfragen und Reservierungen jeder Art, dazu alles, was kein Gig ist. Ein
   // blockierter Tag ist keine Verabredung, ein abgesagter keine mehr.
   $rest = rows("SELECT * FROM events
                 WHERE date >= ?
                   AND status NOT IN ('abgesagt', 'blockiert')
-                  AND (status IN ('angefragt', 'reserviert') OR type IN ('party', 'sonstiges'))$wo
+                  AND (status IN ('angefragt', 'reserviert') OR type <> 'gig')$wo
                 ORDER BY date, time", [$heute, ...$args]);
 
   // Eine Feier, die angefragt ist, passt in beide Listen — sie soll einmal
