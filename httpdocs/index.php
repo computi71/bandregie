@@ -1180,7 +1180,7 @@ if (str_starts_with($path, '/intern')) {
       'entries' => array_values(array_filter(setlist_entries((int) $m[1]), fn($x) => !$x['is_break'])),
     ]);
   }
-  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|remove|move)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|notiz|remove|move)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
@@ -1197,8 +1197,9 @@ if (str_starts_with($path, '/intern')) {
       if ($src) {
         q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$src['name'] . ' (Kopie)', $src['notes']]);
         $newId = (int) $GLOBALS['db']->lastInsertId();
-        q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position)
-           SELECT ?, song_id, is_break, position FROM setlist_songs WHERE setlist_id = ?', [$newId, $id]);
+        // Die Anweisungen gehören zur Reihenfolge, also kommen sie mit (#241).
+        q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note)
+           SELECT ?, song_id, is_break, position, note FROM setlist_songs WHERE setlist_id = ?', [$newId, $id]);
         redirect("/intern/setlists/$newId");
       }
       redirect('/intern/setlists');
@@ -1212,6 +1213,18 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'addzugabe') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,NULL,2,?)', [$id, $nextPos()]);
+    }
+    // Blockgrenze wie der Strich auf dem Papier — keine Pause: Eine Pause
+    // beginnt eine neue Seite, weil die Band von der Bühne geht. Ein Block
+    // bleibt auf dem Blatt (#241).
+    if ($action === 'addblock') {
+      q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note) VALUES (?,NULL,3,?,?)',
+        [$id, $nextPos(), mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200)]);
+    }
+    // Die Anweisung an einer Zeile ändern — sie gehört zum Abend, nicht zum Lied.
+    if ($action === 'notiz') {
+      q('UPDATE setlist_songs SET note = ? WHERE setlist_id = ? AND id = ?',
+        [mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200), $id, (int) ($_POST['item_id'] ?? 0)]);
     }
     if ($action === 'remove') {
       q('DELETE FROM setlist_songs WHERE setlist_id = ? AND id = ?', [$id, $_POST['item_id'] ?? 0]);
@@ -4030,7 +4043,9 @@ function venue_values(): array {
   ];
 }
 function setlist_entries(int $setlistId): array {
-  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, so.*
+  // ss.note heißt hier item_note: so.* bringt songs.notes mit, und zwei Felder
+  // mit fast gleichem Namen verwechselt die nächste Ansicht (#241).
+  return rows('SELECT ss.id AS item_id, ss.position, ss.is_break, ss.note AS item_note, so.*
                FROM setlist_songs ss LEFT JOIN songs so ON so.id = ss.song_id
                WHERE ss.setlist_id = ? ORDER BY ss.position', [$setlistId]);
 }

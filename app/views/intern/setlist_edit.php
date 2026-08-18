@@ -32,7 +32,19 @@
         <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <span class="pos"><?= $entry['position'] ?></span>
         <?php if ($entry['is_break']): ?>
-          <strong class="muted"><?= (int) $entry['is_break'] === 2 ? '🎉 — ' . e(t('sl_encore_word')) . ' —' : '⏸ — ' . e(t('sl_pause_word')) . ' —' ?></strong>
+          <?php if ((int) $entry['is_break'] === 3): ?>
+            <?php // Der Strich vom Papier — mit der Anweisung, die dort daneben steht. ?>
+            <strong class="muted">▬ <?= e(t('sl_block_word')) ?><?= $entry['item_note'] !== '' ? ': ' . e($entry['item_note']) : '' ?></strong>
+            <?php if (!$locked): ?>
+              <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/notiz"><?= csrf_field() ?>
+                <input type="hidden" name="item_id" value="<?= $entry['item_id'] ?>">
+                <input name="note" maxlength="200" value="<?= e((string) $entry['item_note']) ?>" placeholder="<?= e(t('sl_block_note_ph')) ?>">
+                <button class="btn btn-tiny"><?= e(t('save')) ?></button>
+              </form>
+            <?php endif; ?>
+          <?php else: ?>
+            <strong class="muted"><?= (int) $entry['is_break'] === 2 ? '🎉 — ' . e(t('sl_encore_word')) . ' —' : '⏸ — ' . e(t('sl_pause_word')) . ' —' ?></strong>
+          <?php endif; ?>
         <?php else: ?>
           <strong><?= e($entry['title']) ?></strong>
           <span class="muted"><?= e($entry['artist'] ?: t('own_song')) ?><?= $entry['song_key'] ? ' · ' . e($entry['song_key']) : '' ?><?= $entry['tempo'] ? ' · ' . e($entry['tempo']) : '' ?> · <?= fmt_duration($entry['duration_sec']) ?></span>
@@ -66,6 +78,12 @@
       <?php endif; ?>
       <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addpause" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">⏸ <?= e(t('sl_pause')) ?></button></form>
       <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addzugabe" class="inline"><?= csrf_field() ?><button class="btn btn-ghost">🎉 <?= e(t('sl_encore')) ?></button></form>
+      <?php // Blockgrenze mit Anweisung — die Anweisung darf leer bleiben, dann
+            // ist es nur ein Strich wie auf dem Zettel. ?>
+      <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/addblock" class="inline"><?= csrf_field() ?>
+        <input name="note" maxlength="200" placeholder="<?= e(t('sl_block_note_ph')) ?>">
+        <button class="btn btn-ghost">▬ <?= e(t('sl_block_add')) ?></button>
+      </form>
     </div>
   <?php endif; ?>
 </div>

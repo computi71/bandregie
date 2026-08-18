@@ -462,6 +462,9 @@ const UI_STRINGS = [
   'sl_drag_hint' => 'Zum Umsortieren am ⠿ ziehen — mit Maus wie mit dem Finger. Die Pfeile tun es auch.',
   'sl_saved' => 'Reihenfolge gespeichert',
   'sl_pause' => 'Pause einfügen', 'sl_encore' => 'Zugabe-Marker',
+  'sl_block' => 'Block', 'sl_block_word' => 'Block',
+  'sl_block_add' => 'Blockgrenze', 'sl_block_note_ph' => 'Anweisung, z. B. „Andi stimmt"',
+  'sl_block_note_edit' => 'Anweisung ändern',
   'sl_pause_word' => 'PAUSE', 'sl_encore_word' => 'ZUGABE',
   // Orte
   'venues_title' => 'Veranstaltungsorte', 'venues_new' => 'Neuer Veranstaltungsort',
@@ -2379,6 +2382,11 @@ if (!column_exists('users', 'photos_seen_at')) {
 // einem verknüpften Bild später der Ordnerpfad. Eine Spalte für beides, denn die
 // Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
 // die Angabe ist verloren und wird nicht erfunden.
+// Blöcke aus den Papier-Setlisten (#241): eine Marke, die trennt wie ein Strich
+// auf dem Zettel, mit der Anweisung, die dort daneben steht.
+if (!column_exists('setlist_songs', 'note')) {
+  $db->exec("ALTER TABLE setlist_songs ADD COLUMN note VARCHAR(200) NOT NULL DEFAULT ''");
+}
 // Das Erscheinungsjahr der Fassung, die die Band spielt (#239). Optional: Ein
 // geratenes Jahr ist schlechter als keines.
 if (!column_exists('songs', 'release_year')) {
