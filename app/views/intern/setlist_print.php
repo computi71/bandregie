@@ -30,19 +30,34 @@ $pauseText = $pauseCount === 0 ? ''
   : ($pauseCount === 1 ? t('sl_print_plus_break')
      : str_replace('%1', (string) $pauseCount, t('sl_print_plus_breaks')));
 
-// Schriftgröße pro Set. Bedruckbare Fläche: A4-Höhe 297 mm − 2×10 mm Rand −
-// Kopfblock (~38 mm) ≈ 240 mm. Eine Zeile braucht F pt × 0,3528 mm/pt × 1,18
-// Zeilenhöhe ≈ 0,42×F mm. Titel über ~28 Zeichen brechen bei 32 pt um und
-// zählen doppelt. Daraus: F = 560 / Zeilen, gedeckelt auf 32 pt, min. 14 pt.
+// Startwert für die Schriftgröße pro Set. Das letzte Wort hat der Browser
+// (print-fit.js misst und passt an) — diese Rechnung gilt, wenn kein JavaScript
+// läuft, und soll deshalb eher etwas zu klein als zu groß liegen.
+//
+// Bedruckbar: 296 mm Blatt − 12 mm oben − 10 mm unten − Kopfblock (Logo bis
+// 22 mm, Infozeile, 8 mm Abstand ≈ 45 mm) ≈ 230 mm. Eine Liedzeile braucht
+// F pt × 0,3528 mm/pt × 1,18 ≈ 0,42×F mm. Trennlinien sind KEINE Textzeile:
+// Zugabe-Strich und Sprechpause brauchen rund 3 mm, unabhängig von der Schrift.
+//
+// Und der Umbruch hängt an der Schrift, nicht an einer festen Zeichenzahl: In
+// die 182 mm Textbreite passen bei 32 pt etwa 28 Zeichen, also grob 900/F. Bei
+// 25 pt sind das 36 — „Du hast den Farbfilm vergessen" passt dort längst in eine
+// Zeile, und genau dafür hatte die alte Rechnung eine Zeile verschenkt (#252).
 $fontFor = function (array $set): int {
-  $lines = 0;
+  $trenner = 0;
+  $titel = [];
   foreach ($set as $entry) {
-    // Zugabe-Strich und Sprechpause sind je eine Zeile; ohne das rechnet die
-    // Seite bei sieben Blöcken zu groß und der letzte Song fällt herunter (#241).
-    $lines += in_array((int) $entry['is_break'], [2, 3], true)
-      ? 1 : (mb_strlen($entry['title']) > 28 ? 2 : 1);
+    if (in_array((int) $entry['is_break'], [2, 3], true)) { $trenner++; continue; }
+    $titel[] = mb_strlen((string) $entry['title']);
   }
-  return max(14, min(32, intdiv(560, max(1, $lines))));
+  $passt = function (int $f) use ($trenner, $titel): bool {
+    $zeichen = max(12, intdiv(900, $f));
+    $mm = $trenner * 3.0;
+    foreach ($titel as $len) $mm += 0.42 * $f * (int) ceil($len / $zeichen);
+    return $mm <= 230.0;
+  };
+  for ($f = 32; $f > 14; $f--) if ($passt($f)) return $f;
+  return 14;
 };
 ?>
 <!DOCTYPE html>
@@ -130,6 +145,10 @@ $fontFor = function (array $set): int {
   </style>
 </head>
 <body>
+  <?php // Gemessen statt geschätzt: print-fit.js vergrößert die Schrift, solange
+          // die Liste auf das Blatt passt. Ohne JavaScript bleibt der Startwert
+          // von oben stehen — dann ist der Ausdruck kleiner, aber nie zu groß. ?>
+  <script src="<?= e(asset('/assets/print-fit.js')) ?>" defer></script>
   <div class="toolbar"><button data-print>🖨 Drucken</button></div>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
