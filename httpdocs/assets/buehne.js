@@ -87,8 +87,15 @@
       if (step >= 1) {
         stage.scrollTop += step;
         carry -= step;
-        // Am Ende angekommen: stehen bleiben, nicht heimlich weiterlaufen.
-        if (stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 1) setRunning(false);
+        // Am Ende des Liedes: das nächste nach oben holen — und dort warten
+        // (#254). Umblättern ist Buchführung, das kann die Anwendung. WANN die
+        // Band anfängt, weiß nur der Mensch auf der Bühne; würde hier
+        // weitergescrollt, wäre der Text nach zwei Liedern davongelaufen.
+        if (stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 1) {
+          setRunning(false);
+          const weiter = nextWithContent(index);
+          if (weiter > index) go(weiter - index);
+        }
       }
     }
     last = now;
@@ -153,6 +160,26 @@
       const b = Math.round(60000 / ((tapTimes[tapTimes.length - 1] - tapTimes[0]) / (tapTimes.length - 1)));
       if (b >= 30 && b <= 260) { bpm = b; showSpeed(); }
     }
+  }
+
+  // Das naechste Lied, zu dem es hier etwas zu lesen gibt: im Teleprompter ein
+  // Text, in der Notenansicht ein Notizzettel. Uebersprungen wird, was leer ist —
+  // beim automatischen Weiterblaettern stuende sonst mitten im Set eine leere
+  // Seite (#254). Von Hand blaettert man weiter Zeile fuer Zeile: wer selbst
+  // tippt, will genau dorthin, auch wenn dort nichts steht.
+  // Nicht die Zahl der Zeilen zaehlt, sondern ob eine davon etwas sagt: Ein Lied
+  // ohne Text liefert eine leere Zeile, und die sah wie Inhalt aus.
+  function anyText(lines) {
+    return (lines || []).some((z) => (z.text || '').trim() !== '');
+  }
+  function hasContent(song) {
+    return isMono
+      ? (song.musicians || []).some((m) => anyText(m.lines))
+      : anyText(song.lines);
+  }
+  function nextWithContent(von) {
+    for (let i = von + 1; i < songs.length; i++) if (hasContent(songs[i])) return i;
+    return von;
   }
 
   function go(delta) {

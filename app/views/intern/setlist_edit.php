@@ -2,6 +2,17 @@
 <div class="page-head">
   <h1>🎵 <?= e($setlist['name']) ?><?= $locked ? ' 🔒' : '' ?></h1>
   <div class="row-buttons">
+    <?php // Der Einstieg für die Bühne: nicht Lied für Lied, sondern das Set.
+          // Angefangen wird beim ersten Lied, für das ein Text hinterlegt ist —
+          // ein Teleprompter, der auf einer leeren Seite startet, hilft niemandem
+          // (#254). Geladen ist die ganze Setliste, deshalb steht dort „1 / 18".
+          $prompterVon = null;
+          foreach ($entries as $eintrag) {
+            if (!$eintrag['is_break'] && trim((string) $eintrag['lyrics']) !== '') { $prompterVon = (int) $eintrag['id']; break; }
+          } ?>
+    <?php if ($prompterVon !== null): ?>
+      <a class="btn btn-primary" href="/intern/songs/<?= $prompterVon ?>/buehne?sl=<?= $setlist['id'] ?>" title="<?= e(t('sl_prompter_hint')) ?>">🎤 <?= e(t('sl_prompter')) ?></a>
+    <?php endif; ?>
     <a class="btn btn-ghost" href="/intern/setlists/<?= $setlist['id'] ?>/print" target="_blank">🖨 <?= e(t('sl_print_view')) ?></a>
     <a class="btn btn-ghost" href="/intern/setlists/<?= $setlist['id'] ?>/gema" target="_blank">🏛 <?= e(t('sl_gema_list')) ?></a>
     <form class="inline" method="post" action="/intern/setlists/<?= $setlist['id'] ?>/copy"><?= csrf_field() ?><button class="btn btn-ghost"><?= e(t('copy')) ?></button></form>

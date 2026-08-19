@@ -860,6 +860,8 @@ Zeile zwei
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
   'stage_open' => 'Bühne',
   'stage_hint' => 'Liedtext im Vollbild — großer Text, läuft von selbst mit',
+  'sl_prompter' => 'Teleprompter',
+  'sl_prompter_hint' => 'Startet beim ersten Lied mit Text, die ganze Setliste im Rücken. Am Liedende kommt das nächste von selbst nach oben — ein Tipp auf den Text startet es.',
   'stage_play' => 'Start / Pause',
   'stage_slower' => 'Langsamer',
   'stage_faster' => 'Schneller',
