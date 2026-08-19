@@ -36,23 +36,28 @@ $pauseText = $pauseCount === 0 ? ''
 //
 // Bedruckbar: 296 mm Blatt − 12 mm oben − 10 mm unten − Kopfblock (Logo bis
 // 22 mm, Infozeile, 8 mm Abstand ≈ 45 mm) ≈ 230 mm. Eine Liedzeile braucht
-// F pt × 0,3528 mm/pt × 1,18 ≈ 0,42×F mm. Trennlinien sind KEINE Textzeile:
-// Zugabe-Strich und Sprechpause brauchen rund 3 mm, unabhängig von der Schrift.
+// F pt × 0,3528 mm/pt × 1,18 ≈ 0,42×F mm. Eine nackte Trennlinie ist KEINE
+// Textzeile: sie braucht rund 3 mm, unabhängig von der Schrift. Trägt sie ein
+// Wort (Zugabe, Ansage), ist sie so hoch wie das Wort — 45 % der Schrift, also
+// 0,45×F pt × 1,2 × 0,3528 ≈ 0,19×F mm, plus 2,5 mm Abstände (#253).
 //
 // Und der Umbruch hängt an der Schrift, nicht an einer festen Zeichenzahl: In
 // die 182 mm Textbreite passen bei 32 pt etwa 28 Zeichen, also grob 900/F. Bei
 // 25 pt sind das 36 — „Du hast den Farbfilm vergessen" passt dort längst in eine
 // Zeile, und genau dafür hatte die alte Rechnung eine Zeile verschenkt (#252).
 $fontFor = function (array $set): int {
-  $trenner = 0;
+  $linien = 0;      // nackte Trennlinien
+  $beschriftet = 0; // Trennlinien mit Wort darin
   $titel = [];
   foreach ($set as $entry) {
-    if (in_array((int) $entry['is_break'], [2, 3], true)) { $trenner++; continue; }
+    $art = (int) $entry['is_break'];
+    if ($art === 2) { $beschriftet++; continue; }
+    if ($art === 3) { (string) $entry['item_note'] !== '' ? $beschriftet++ : $linien++; continue; }
     $titel[] = mb_strlen((string) $entry['title']);
   }
-  $passt = function (int $f) use ($trenner, $titel): bool {
+  $passt = function (int $f) use ($linien, $beschriftet, $titel): bool {
     $zeichen = max(12, intdiv(900, $f));
-    $mm = $trenner * 3.0;
+    $mm = $linien * 3.0 + $beschriftet * (0.19 * $f + 2.5);
     foreach ($titel as $len) $mm += 0.42 * $f * (int) ceil($len / $zeichen);
     return $mm <= 230.0;
   };
@@ -99,7 +104,14 @@ $fontFor = function (array $set): int {
     .songs { margin-top: 8mm; position: relative; z-index: 1; }
     .song { font-weight: 700; line-height: 1.18; }
     .song .note { font-weight: 400; font-size: 55%; }
-    .encore-rule { border: 0; border-top: 0.6mm solid #000; margin: 1mm 0; }
+    /* Zugabe: das Wort steht IN der Linie, wie es auf dem Papier gezogen wird —
+       ein kurzes Stück voraus, dann das Wort, dann die Linie bis zum Rand. Durch-
+       gezogen und dicker als die Sprechpause: Die trennt innerhalb des Sets, die
+       Zugabe trennt, was nur bei Zugabe gespielt wird (#253). */
+    .encore-rule { display: flex; align-items: center; gap: 2mm; margin: 1.5mm 0; border: 0; }
+    .encore-rule::before { content: ''; flex: 0 0 8mm; border-top: 0.6mm solid #000; }
+    .encore-rule::after { content: ''; flex: 1; border-top: 0.6mm solid #000; }
+    .encore-rule span { font-size: 45%; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
     /* Sprechpause: gestrichelt und dünner als der Zugabe-Strich — auf einen Blick
        zu unterscheiden, auch aus zwei Metern auf einem Notenpult (#241). */
     .block-line { border: 0; border-top: 0.35mm dashed #000; margin: 1.5mm 0; }
@@ -200,7 +212,7 @@ $fontFor = function (array $set): int {
         <?php if ($geklammert): ?><div class="braced"><div class="braced-songs"><?php endif; ?>
         <?php foreach ($gruppe['zeilen'] as $entry): ?>
           <?php if ((int) $entry['is_break'] === 2): ?>
-            <hr class="encore-rule">
+            <div class="encore-rule"><span><?= e(t('sl_encore_word')) ?></span></div>
           <?php elseif ((int) $entry['is_break'] === 3): ?>
             <?php // Sprechpause wie der Strich auf dem Papier — gestrichelt, damit
                   // sie sich vom durchgezogenen Zugabe-Strich unterscheidet. Steht
