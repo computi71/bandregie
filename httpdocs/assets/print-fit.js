@@ -45,4 +45,7 @@
   // Das Logo ist ein Bild: vor dem Laden ist der Kopf noch flach und der Platz
   // zu groß gemessen. Nach dem Laden nochmal.
   window.addEventListener('load', alle);
+  // Wer Felder zu- oder abschaltet, ändert die Höhe der Zeilen — dann gilt die
+  // gemessene Schrift nicht mehr (#255).
+  document.addEventListener('setlist:refit', alle);
 })();

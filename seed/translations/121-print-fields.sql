@@ -1,0 +1,28 @@
+-- Waehlbare Felder auf dem Setlisten-Ausdruck (#255)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','sl_print_fields','Also print:'),
+('en','sl_print_f_time','Playing time'),
+('en','sl_print_f_off','none'),
+('en','sl_print_f_first','first line'),
+('en','sl_print_f_full','complete'),
+('nl','sl_print_fields','Ook afdrukken:'),
+('nl','sl_print_f_time','Speelduur'),
+('nl','sl_print_f_off','geen'),
+('nl','sl_print_f_first','eerste regel'),
+('nl','sl_print_f_full','compleet'),
+('fr','sl_print_fields','Imprimer aussi :'),
+('fr','sl_print_f_time','Duree'),
+('fr','sl_print_f_off','aucune'),
+('fr','sl_print_f_first','premiere ligne'),
+('fr','sl_print_f_full','complete'),
+('es','sl_print_fields','Imprimir tambien:'),
+('es','sl_print_f_time','Duracion'),
+('es','sl_print_f_off','ninguna'),
+('es','sl_print_f_first','primera linea'),
+('es','sl_print_f_full','completa'),
+('it','sl_print_fields','Stampa anche:'),
+('it','sl_print_f_time','Durata'),
+('it','sl_print_f_off','nessuna'),
+('it','sl_print_f_first','prima riga'),
+('it','sl_print_f_full','completa')
+ON DUPLICATE KEY UPDATE value = value;

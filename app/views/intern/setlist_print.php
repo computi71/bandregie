@@ -104,6 +104,23 @@ $fontFor = function (array $set): int {
     .songs { margin-top: 8mm; position: relative; z-index: 1; }
     .song { font-weight: 700; line-height: 1.18; }
     .song .note { font-weight: 400; font-size: 55%; }
+    /* Waehlbare Zusatzfelder (#255): Sie stehen immer im HTML und werden ueber
+       Klassen am body eingeschaltet — so wirkt ein Haken sofort, ohne die Seite
+       neu zu laden, und der Druck nimmt genau das mit, was zu sehen ist. */
+    .feld { display: none; font-weight: 400; font-size: 50%; }
+    .feld::before { content: ' · '; }
+    body.mit-interpret .feld-interpret,
+    body.mit-jahr .feld-jahr,
+    body.mit-bpm .feld-bpm,
+    body.mit-zeit .feld-zeit { display: inline; }
+    .notiz-kurz { display: none; }
+    body.mit-notiz-kurz .notiz-kurz { display: inline; }
+    .notiz-lang { display: none; font-weight: 400; font-size: 50%; white-space: pre-line; }
+    body.mit-notiz-lang .notiz-lang { display: block; }
+    /* Die Auswahl selbst: nur am Bildschirm, im Druck ist die Leiste ohnehin fort. */
+    .felder { display: inline-flex; flex-wrap: wrap; gap: 0.15rem 0.9rem; align-items: center; margin-left: 0.9rem; }
+    .felder > label { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; }
+    .felder strong { font-weight: 700; font-size: 0.9rem; }
     /* Zugabe: das Wort steht IN der Linie, wie es auf dem Papier gezogen wird —
        ein kurzes Stück voraus, dann das Wort, dann die Linie bis zum Rand. Durch-
        gezogen und dicker als die Sprechpause: Die trennt innerhalb des Sets, die
@@ -161,7 +178,24 @@ $fontFor = function (array $set): int {
           // die Liste auf das Blatt passt. Ohne JavaScript bleibt der Startwert
           // von oben stehen — dann ist der Ausdruck kleiner, aber nie zu groß. ?>
   <script src="<?= e(asset('/assets/print-fit.js')) ?>" defer></script>
-  <div class="toolbar"><button data-print>🖨 Drucken</button></div>
+  <script src="<?= e(asset('/assets/print-fields.js')) ?>" defer></script>
+  <div class="toolbar">
+    <button data-print>🖨 Drucken</button>
+    <span class="felder">
+      <strong><?= e(t('sl_print_fields')) ?></strong>
+      <label><input type="checkbox" data-feld="interpret"> <?= e(t('songs_col_original')) ?></label>
+      <label><input type="checkbox" data-feld="jahr"> <?= e(t('song_year')) ?></label>
+      <label><input type="checkbox" data-feld="bpm"> BPM</label>
+      <label><input type="checkbox" data-feld="zeit"> <?= e(t('sl_print_f_time')) ?></label>
+      <label><?= e(t('notes')) ?>
+        <select data-notiz>
+          <option value="">— <?= e(t('sl_print_f_off')) ?> —</option>
+          <option value="kurz" selected><?= e(t('sl_print_f_first')) ?></option>
+          <option value="lang"><?= e(t('sl_print_f_full')) ?></option>
+        </select>
+      </label>
+    </span>
+  </div>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
       <?php if ($watermark): ?>
@@ -223,13 +257,21 @@ $fontFor = function (array $set): int {
               <hr class="block-line">
             <?php endif; ?>
           <?php else: ?>
+            <?php // Die Anweisung der Zeile gilt für diesen Abend und steht immer da.
+                  // Die Notiz am Lied gilt immer — was davon mitkommt, entscheidet
+                  // die Auswahl in der Leiste (#255). ?>
+            <?php $zuruf = (string) $entry['item_note']; ?>
+            <?php $notizKurz = song_note_cue((string) $entry['notes']); ?>
+            <?php $notizLang = trim((string) $entry['notes']); ?>
             <div class="song">
               <?= e($entry['title']) ?>
-              <?php // Die Anweisung der Zeile zuerst — sie gilt für diesen Abend.
-                    // Die Notiz am Lied gilt immer und tritt dahinter zurück. ?>
-              <?php $cue = (string) $entry['item_note'] !== '' ? (string) $entry['item_note']
-                            : song_note_cue((string) $entry['notes']); ?>
-              <?php if ($cue !== ''): ?><span class="note">(<?= e($cue) ?>)</span><?php endif; ?>
+              <?php if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span><?php endif; ?>
+              <?php if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span><?php endif; ?>
+              <?php if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span><?php endif; ?>
+              <?php if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span><?php endif; ?>
+              <?php if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span><?php endif; ?>
+              <?php if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif; ?>
+              <?php if ($notizLang !== ''): ?><span class="notiz-lang"><?= e($notizLang) ?></span><?php endif; ?>
             </div>
           <?php endif; ?>
         <?php endforeach; ?>
