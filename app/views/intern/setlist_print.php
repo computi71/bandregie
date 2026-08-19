@@ -197,7 +197,7 @@ $fontFor = function (array $set): int {
               <?php // Die Anweisung der Zeile zuerst — sie gilt für diesen Abend.
                     // Die Notiz am Lied gilt immer und tritt dahinter zurück. ?>
               <?php $cue = (string) $entry['item_note'] !== '' ? (string) $entry['item_note']
-                            : ((string) $entry['notes'] !== '' && mb_strlen((string) $entry['notes']) <= 40 ? (string) $entry['notes'] : ''); ?>
+                            : song_note_cue((string) $entry['notes']); ?>
               <?php if ($cue !== ''): ?><span class="note">(<?= e($cue) ?>)</span><?php endif; ?>
             </div>
           <?php endif; ?>

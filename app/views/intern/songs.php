@@ -61,7 +61,9 @@
       <?php foreach ($songs as $song): ?>
         <tr class="<?= in_array($song['status'], ['archiv', 'abgewiesen'], true) ? 'muted' : '' ?>">
           <td><a href="/intern/songs/<?= (int) $song['id'] ?>"><strong><?= e($song['title']) ?></strong></a>
-            <?php if ($song['notes']): ?><div class="muted small"><?= e($song['notes']) ?></div><?php endif; ?></td>
+            <?php // Notizen sind seit #251 oft mehrzeilig (Zuruf oben, Herkunft darunter) —
+                  // ohne prewrap laufen die Zeilen zu einem Satz zusammen. ?>
+            <?php if ($song['notes']): ?><div class="muted small prewrap"><?= e($song['notes']) ?></div><?php endif; ?></td>
           <td><?= e($song['artist'] ?: t('own_song')) ?></td>
           <td><?= e($song['release_year'] ? (string) $song['release_year'] : '–') ?></td>
           <td><?= e($song['song_key'] ?: '–') ?></td>

@@ -3974,6 +3974,23 @@ function song_chords_all(int $songId, int $meId): array {
                ORDER BY mine DESC, u.name', [$meId, $songId, '']);
 }
 /**
+ * Der Kurzhinweis aus den Song-Notizen für den Ausdruck — oder nichts.
+ *
+ * Genommen wird die ERSTE Zeile: Notizen wachsen nach unten (die Herkunft eines
+ * Covers, ein Hinweis von letztem Jahr, was auch immer), und was auf der Bühne
+ * gilt, schreibt man oben hin. Eine Herkunftszeile („Original: Alphaville,
+ * 1984") ist Dokumentation und kein Zuruf — die gehört nicht aufs Notenpult
+ * (#251). Über 40 Zeichen bleibt es leer, weil es die Zeile sprengt.
+ */
+function song_note_cue(string $notes): string {
+  $erste = trim((preg_split('~\R~', $notes) ?: [''])[0]);
+  if ($erste === '' || mb_strlen($erste) > 40) return '';
+  // „Original:" schreibt die Band selbst — deshalb auch die Wörter der anderen
+  // Sprachen, in denen die Anwendung bedient wird.
+  return preg_match('~^(original|originale|origineel)\s*:~ui', $erste) ? '' : $erste;
+}
+
+/**
  * Zu welchen dieser Lieder gibt es überhaupt einen Notizzettel? [song_id => true]
  *
  * Für die Symbole in Liste und Setliste: Ein Knopf, der auf eine leere Seite
