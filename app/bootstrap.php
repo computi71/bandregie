@@ -449,7 +449,7 @@ const UI_STRINGS = [
   'song_keylbl' => 'Tonart', 'song_tempo' => 'Tempo', 'song_len' => 'Länge (m:ss)',
   'song_add' => 'Song hinzufügen', 'song_notes_ph' => 'Ablauf, Besonderheiten, Technik ...',
   'songs_usable_hint' => 'In Setlists nutzbar sind Songs mit Status „Aktives Repertoire" und „In Vorbereitung".',
-  'songs_col_len' => 'Länge', 'songs_col_uses' => 'Einsätze', 'songs_col_original' => 'Original',
+  'songs_col_len' => 'Länge', 'songs_col_uses' => 'Einsätze', 'songs_col_original' => 'Interpret',
   'songs_none' => 'Noch keine Songs angelegt.', 'songs_uses_title' => 'In Setlists / davon live gespielt',
   // Setlists
   'sl_new_ph' => 'Name der neuen Setlist, z. B. Stadtfest 2026', 'sl_songs' => 'Songs',
@@ -2816,6 +2816,13 @@ if (setting('help_orte_postcode') !== '1') {
 // Die Serien sind fort (#218): ihre Texte auch. Sonst bliebe in sechs Sprachen
 // stehen, was die Anwendung nicht mehr kann — und in den Einstellungen ein
 // Schalter-Zustand, den niemand mehr umlegen kann.
+// Die Spalte über songs.artist hiess „Original" — seit die Herkunft eines Covers
+// in den Notizen steht (#251), zeigt das Feld den Interpreten der gespielten
+// Fassung. Der alte Wortlaut muss weg, der neue kommt aus den Seeds 03/04 (#256).
+if (setting('col_interpret') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'songs_col_original'");
+  set_setting('col_interpret', '1');
+}
 // Die Symbole erscheinen nur, wo es etwas zu zeigen gibt (#250) — das steht
 // jetzt auch in der Hilfe. Der neue Text kommt aus Seed 16; hier wird der
 // veraltete weggeraeumt, damit der Seed ihn neu anlegen kann.
