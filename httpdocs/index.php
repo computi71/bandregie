@@ -126,6 +126,19 @@ if ($method === 'GET'
     set_setting('imap_last_attempt', (string) time());
     $hintergrund[] = fn() => post_fetch();
   }
+  // Daueraufträge und das Aufräumen alter Push-Abos standen bis #232 hinter der
+  // Anmeldung — eine Band, die zwei Wochen nicht hineinsieht, bekam ihre Miete
+  // nicht gebucht. Buchen von einem öffentlichen Seitenaufruf aus ist gefahrlos:
+  // orders_run() beansprucht jeden Auftrag mit einem UPDATE, bevor es bucht, und
+  // die Buchung selbst fängt den eindeutigen Schlüssel ab.
+  if (orders_due()) {
+    $hintergrund[] = fn() => orders_run();
+  }
+  // push_prune() hält seine eigene Tagesgrenze; hier wird nur nicht umsonst
+  // eingeplant, was heute schon gelaufen ist.
+  if (setting('push_pruned_on') !== date('Y-m-d')) {
+    $hintergrund[] = fn() => push_prune();
+  }
   if ($hintergrund) {
     register_shutdown_function(function () use ($hintergrund) {
       // Erst die Seite ausliefern: Niemand wartet auf Microsoft oder auf einen
@@ -648,14 +661,6 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern');
     }
   }
-
-  // Fällige Daueraufträge buchen. Das kostet fast nichts, wenn nichts fällig
-  // ist — eine Abfrage auf ein Datum —, und erspart einen zweiten Zeitgeber.
-  orders_run();
-
-  // Aus demselben Grund gleich hier: Abos wegräumen, von denen seit Monaten
-  // nichts mehr zu hören war. Höchstens einmal am Tag, sonst kostenlos.
-  push_prune();
 
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt

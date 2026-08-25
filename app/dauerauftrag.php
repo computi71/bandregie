@@ -46,6 +46,18 @@ function order_next_date(string $date, string $interval): string {
 }
 
 /**
+ * Steht heute überhaupt eine Buchung an?
+ *
+ * Die Frage gehört vor den Lauf, weil der Lauf seit #232 bei JEDEM Seitenaufruf
+ * möglich ist — auch bei einem auf die öffentliche Bandseite. Eine Abfrage auf
+ * ein Datum kostet fast nichts; das Buchen selbst passiert danach im Nachlauf.
+ */
+function orders_due(): bool {
+  return (bool) row('SELECT 1 FROM standing_orders WHERE paused = 0 AND next_date <= ? LIMIT 1',
+                    [date('Y-m-d')]);
+}
+
+/**
  * Alle fälligen Daueraufträge buchen — auch rückwirkend, wenn die Seite eine
  * Weile nicht geöffnet wurde. Gebucht wird bis heute, nie in die Zukunft.
  *
