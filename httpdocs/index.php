@@ -1874,7 +1874,13 @@ if (str_starts_with($path, '/intern')) {
     $ort = trim((string) ($_GET['city'] ?? ''));
     $qStr = trim((string) ($_GET['q'] ?? ''));
     $feldweise = $street !== '' || $plz !== '' || $ort !== '';
-    if (!$feldweise && mb_strlen($qStr) < 3) { echo json_encode(['results' => []]); exit; }
+    // Erst fragen, wenn die Frage Substanz hat. Der Freitext brauchte schon
+    // immer drei Zeichen; feldweise galt das nicht mehr, und „?city=a" ging
+    // wirklich hinaus (#257). Eine PLZ ist erst ab vier Ziffern eine PLZ.
+    $genug = $feldweise
+      ? mb_strlen($street . $ort) >= 3 || preg_match('~^\d{4,}$~', $plz) === 1
+      : mb_strlen($qStr) >= 3;
+    if (!$genug) { echo json_encode(['results' => []]); exit; }
     // Nominatim lässt etwa eine Anfrage je Sekunde zu und sperrt nach IP-Adresse.
     // Ohne Bremse könnte eine festgehaltene Taste die Adresse der ganzen
     // Installation sperren lassen — für alle, auch für die Suche, die die Band
