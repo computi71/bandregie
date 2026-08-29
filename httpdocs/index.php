@@ -993,9 +993,12 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Songs ----------
   // Ersatzleute sehen nur die Songs, die auf den Setlists ihrer Termine stehen
+  // Liste plus die Frage, zu welchen Liedern es einen Notizzettel gibt: beides
+  // gehört zusammen, sonst baut es jeder Aufrufer neu (#261). Rückgabe passt
+  // direkt in die Ansicht.
   $songList = function () use ($today, $me): array {
     [$songWhere, $songParams] = visible_clause(visible_song_ids($me), 's.id');
-    return rows(
+    $songs = rows(
       "SELECT s.*,
          (SELECT COUNT(*) FROM setlist_songs ss WHERE ss.song_id = s.id) AS setlist_count,
          (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
@@ -1004,12 +1007,11 @@ if (str_starts_with($path, '/intern')) {
        ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
       [$today, ...$songParams]
     );
+    return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id'))];
   };
   if ($path === '/intern/songs' && $method === 'GET') {
-    $songsAlle = $songList();
-    view('intern/songs', ['title' => t('inav_songs'), 'songs' => $songsAlle, 'edit' => null,
-      'ratings' => song_ratings($me['id']),
-      'chordsBy' => songs_with_chords(array_column($songsAlle, 'id'))]);
+    view('intern/songs', $songList() + ['title' => t('inav_songs'), 'edit' => null,
+      'ratings' => song_ratings($me['id'])]);
   }
   // Ein Lied zum Lesen: Text, Tonart, Tempo, Noten. Das ist die Seite, die auf
   // dem Notenständer liegt; geändert wird unter /edit.
@@ -1074,12 +1076,9 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/songs/(\d+)/edit$~', $path, $m) && $method === 'GET') {
     $edit = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
     if (!$edit || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
-    $songsAlle = $songList();
-    view('intern/songs', [
+    view('intern/songs', $songList() + [
       'title' => t('inav_songs'),
       'ratings' => song_ratings($me['id']),
-      'songs' => $songsAlle,
-      'chordsBy' => songs_with_chords(array_column($songsAlle, 'id')),
       'edit' => $edit,
       'songFiles' => files_map('song', [(int) $m[1]])[(int) $m[1]] ?? [],
       'myChords' => song_chords_mine((int) $m[1], $me['id']),
