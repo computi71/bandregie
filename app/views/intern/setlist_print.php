@@ -69,6 +69,7 @@ $fontFor = function (array $set): int {
 <html lang="de">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Setlist · <?= e($setlist['name']) ?></title>
   <style>
     /* Ränder fest ins Blatt eingebaut (Padding) statt über @page — so stimmen sie
@@ -117,10 +118,6 @@ $fontFor = function (array $set): int {
     body.mit-notiz-kurz .notiz-kurz { display: inline; }
     .notiz-lang { display: none; font-weight: 400; font-size: 50%; white-space: pre-line; }
     body.mit-notiz-lang .notiz-lang { display: block; }
-    /* Die Auswahl selbst: nur am Bildschirm, im Druck ist die Leiste ohnehin fort. */
-    .felder { display: inline-flex; flex-wrap: wrap; gap: 0.15rem 0.9rem; align-items: center; margin-left: 0.9rem; }
-    .felder > label { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; }
-    .felder strong { font-weight: 700; font-size: 0.9rem; }
     /* Zugabe: das Wort steht IN der Linie, wie es auf dem Papier gezogen wird —
        ein kurzes Stück voraus, dann das Wort, dann die Linie bis zum Rand. Durch-
        gezogen und dicker als die Sprechpause: Die trennt innerhalb des Sets, die
@@ -165,8 +162,6 @@ $fontFor = function (array $set): int {
     /* Wasserzeichen liegt in jedem Blatt; pointer-events: none, damit es keine Klicks schluckt */
     .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; pointer-events: none; }
     .watermark img { width: 72%; opacity: 0.07; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    .toolbar { margin: 0.6rem 0 1rem; position: relative; z-index: 2; }
-    @media print { .toolbar { display: none; } }
     @media screen {
       body { background: #777; padding: 1rem; }
       .sheet { margin: 0 auto 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.4); background: #fff; }
@@ -179,9 +174,10 @@ $fontFor = function (array $set): int {
           // von oben stehen — dann ist der Ausdruck kleiner, aber nie zu groß. ?>
   <script src="<?= e(asset('/assets/print-fit.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/print-fields.js')) ?>" defer></script>
-  <div class="toolbar">
-    <button data-print>🖨 Drucken</button>
-    <span class="felder">
+  <?php
+    // Zurück zur Setliste, aus der der Ausdruck geöffnet wurde (#263).
+    $zurueckUrl = '/intern/setlists/' . (int) $setlist['id'];
+    ob_start(); ?>
       <strong><?= e(t('sl_print_fields')) ?></strong>
       <label><input type="checkbox" data-feld="interpret"> <?= e(t('songs_col_original')) ?></label>
       <label><input type="checkbox" data-feld="jahr"> <?= e(t('song_year')) ?></label>
@@ -194,8 +190,8 @@ $fontFor = function (array $set): int {
           <option value="lang"><?= e(t('sl_print_f_full')) ?></option>
         </select>
       </label>
-    </span>
-  </div>
+    <?php $leisteExtra = ob_get_clean();
+    require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
       <?php if ($watermark): ?>

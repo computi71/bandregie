@@ -860,6 +860,7 @@ Zeile zwei
   'song_no_lyrics' => 'Für dieses Lied ist kein Text eingetragen.',
   'stage_open' => 'Bühne',
   'stage_hint' => 'Liedtext im Vollbild — großer Text, läuft von selbst mit',
+  'back' => 'Zurück',
   'sl_print_fields' => 'Mitdrucken:',
   'sl_print_f_time' => 'Spielzeit',
   'sl_print_f_off' => 'ohne',

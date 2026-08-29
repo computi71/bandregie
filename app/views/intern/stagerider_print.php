@@ -16,6 +16,7 @@ $blocks = [
 <html lang="<?= e(current_lang()) ?>">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e(t('rider_title')) ?> · <?= e($settings['band_name']) ?></title>
   <style>
     @page { size: A4 portrait; margin: 0; }
@@ -34,14 +35,12 @@ $blocks = [
     th { border-bottom: 0.4mm solid #000; }
     .contacts { display: flex; gap: 10mm; margin-top: 4mm; }
     .muted { color: #555; }
-    .toolbar { padding: 0.6rem 16mm; }
-    @media print { .toolbar { display: none; } }
     @media screen { body { background: #777; padding: 1rem 0; }
                     .sheet { margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); } }
   </style>
 </head>
 <body>
-<div class="toolbar"><button data-print>🖨 <?= e(t('sl_print')) ?></button></div>
+<?php $zurueckUrl = '/intern/stagerider'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <div class="head-row">
     <div>

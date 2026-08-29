@@ -11,6 +11,7 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
 <html lang="de">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GEMA-Musikfolge · <?= e($setlist['name']) ?></title>
   <style>
     body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; margin: 1.5rem 2rem; font-size: 11pt; }
@@ -27,12 +28,11 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
     tfoot td { font-weight: 700; }
     .warn { background: #fff3cd; border: 1px solid #d4a017; padding: 0.5rem 0.8rem; margin: 0.8rem 0; }
     .hint { color: #555; font-size: 9.5pt; margin-top: 0.8rem; }
-    .toolbar { margin-bottom: 1rem; }
     @media print { .toolbar, .warn { display: none; } }
   </style>
 </head>
 <body>
-  <div class="toolbar"><button data-print>🖨 Als PDF drucken</button></div>
+<?php $zurueckUrl = '/intern/setlists/' . (int) $setlist['id']; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 
   <h1>Musikfolge (Setlist) für die GEMA-Meldung</h1>
 

@@ -8,6 +8,7 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
 <html lang="<?= e(current_lang()) ?>">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e(t('taxr_title')) ?> <?= (int) $year ?> · <?= e($taxOwner) ?></title>
   <style>
     @page { size: A4 portrait; margin: 0; }
@@ -24,14 +25,12 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
     .sum td { border-top: 0.4mm solid #000; border-bottom: 0; font-weight: 700; }
     .muted { color: #555; }
     .note { font-size: 9pt; color: #555; margin-top: 6mm; }
-    .toolbar { padding: 0.6rem 16mm; }
-    @media print { .toolbar { display: none; } }
     @media screen { body { background: #777; padding: 1rem 0; }
                     .sheet { margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); } }
   </style>
 </head>
 <body>
-<div class="toolbar"><button data-print>🖨 <?= e(t('sl_print')) ?></button></div>
+<?php $zurueckUrl = '/intern/kasse/steuer'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <div class="head-row">
     <div>

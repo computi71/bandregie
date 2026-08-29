@@ -39,12 +39,40 @@
   function alle() {
     var blaetter = document.querySelectorAll('.sheet');
     for (var i = 0; i < blaetter.length; i++) anpassen(blaetter[i]);
+    aufBildschirmbreite(blaetter);
+  }
+
+  // A4 ist 210 mm breit, ein Telefon ist es nicht. Seit die Ansicht ein
+  // Viewport-Meta hat, rechnet der Browser nicht mehr heimlich auf 980 px um —
+  // also verkleinern wir das Blatt selbst, so weit es sein muss. Der Druck
+  // bleibt unberührt: transform gilt nur am Bildschirm.
+  function aufBildschirmbreite(blaetter) {
+    if (!blaetter.length || !window.matchMedia('screen').matches) return;
+    // Der Platz ist der INHALT des Elternkastens: clientWidth zählt sein
+    // Innenabstand mit, und die Ansicht hat am Bildschirm einen Rand. Ohne den
+    // Abzug ragt das Blatt genau um diesen Rand über die Seite hinaus.
+    var eltern = blaetter[0].parentElement || document.body;
+    var es = getComputedStyle(eltern);
+    var platz = eltern.clientWidth - parseFloat(es.paddingLeft) - parseFloat(es.paddingRight);
+    var breite = blaetter[0].offsetWidth;
+    var faktor = breite > platz ? platz / breite : 1;
+    for (var i = 0; i < blaetter.length; i++) {
+      var b = blaetter[i];
+      b.style.transformOrigin = 'top left';
+      b.style.transform = faktor < 1 ? 'scale(' + faktor.toFixed(4) + ')' : '';
+      // Verkleinern ändert die Größe im LAYOUT nicht — ohne Ausgleich klafft
+      // unten eine Lücke von einem Drittel Blatt, und die Seite ließe sich
+      // seitwärts schieben, obwohl nichts mehr dort steht.
+      b.style.marginBottom = faktor < 1 ? (-(1 - faktor) * b.offsetHeight) + 'px' : '';
+      b.style.marginRight = faktor < 1 ? (-(1 - faktor) * b.offsetWidth) + 'px' : '';
+    }
   }
 
   alle();
   // Das Logo ist ein Bild: vor dem Laden ist der Kopf noch flach und der Platz
   // zu groß gemessen. Nach dem Laden nochmal.
   window.addEventListener('load', alle);
+  window.addEventListener('resize', alle);
   // Wer Felder zu- oder abschaltet, ändert die Höhe der Zeilen — dann gilt die
   // gemessene Schrift nicht mehr (#255).
   document.addEventListener('setlist:refit', alle);
