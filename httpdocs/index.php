@@ -4163,10 +4163,13 @@ function venue_values(): array {
   $lat = is_numeric($_POST['lat'] ?? '') ? (string) $_POST['lat'] : null;
   $lng = is_numeric($_POST['lng'] ?? '') ? (string) $_POST['lng'] : null;
   // Auf Spaltenlänge kürzen: Eine zu lange Eingabe soll gespeichert und dabei
-  // beschnitten werden, nicht mit einem Serverfehler enden.
+  // beschnitten werden, nicht mit einem Serverfehler enden. Die Zahlen sind die
+  // der Spalten — bei notes (TEXT, 65535 BYTE) sind 16000 Zeichen die Grenze,
+  // die auch mit lauter Umlauten nicht überschritten wird. Vorher standen hier
+  // 5000, und eine gewachsene Ortsnotiz verlor stillschweigend ihr Ende (#258).
   $feld = fn(string $name, int $max): string => mb_substr(trim((string) ($_POST[$name] ?? '')), 0, $max);
   return [
-    $feld('name', 255), $feld('city', 190), $feld('postcode', 20), $feld('address', 500), $feld('notes', 5000),
+    $feld('name', 255), $feld('city', 190), $feld('postcode', 20), $feld('address', 500), $feld('notes', 16000),
     $feld('contact_name', 190), $feld('contact_email', 190), $feld('contact_phone', 100),
     $lat, $lng,
   ];
