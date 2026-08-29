@@ -259,7 +259,14 @@ function push_send_one(array $sub, string $json): bool {
     q('DELETE FROM push_subscriptions WHERE id = ?', [$aboId]);
     return false;
   }
-  return $status >= 200 && $status < 300;
+  // Eine gelungene Zustellung ist der Beweis, dass das Abo lebt. Ohne diese
+  // Zeile zählte das Aufräumen „Tage ohne Anmeldung" und warf nach 90 Tagen ein
+  // Abo weg, das jede Nachricht brav ausgeliefert hat (#262).
+  if ($status >= 200 && $status < 300) {
+    q('UPDATE push_subscriptions SET last_seen_at = NOW() WHERE id = ?', [$aboId]);
+    return true;
+  }
+  return false;
 }
 
 /** Ein UI-Text in der Sprache des Empfängers — t() kennt nur die Sitzung. */

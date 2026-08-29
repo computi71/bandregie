@@ -435,10 +435,14 @@ if ($path === '/login') {
       // keine uid — alles hinter require_login() bleibt damit zu, ohne dass
       // eine einzige Route etwas davon wissen muss.
       if (totp_available() && totp_active_for($u)) {
-        $_SESSION['totp_wait'] = ['uid' => (int) $u['id'], 'seit' => time()];
+        // „Angemeldet bleiben" muss den zweiten Schritt überleben — ausgestellt
+        // wird das Merkmal erst, wenn auch der Code stimmt (#262).
+        $_SESSION['totp_wait'] = ['uid' => (int) $u['id'], 'seit' => time(),
+                                  'bleiben' => !empty($_POST['bleiben'])];
         redirect('/login/code');
       }
       $_SESSION['uid'] = $u['id'];
+      if (!empty($_POST['bleiben'])) remember_issue((int) $u['id']);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
     }
@@ -462,6 +466,7 @@ if ($path === '/login/code') {
   // Zehn Minuten: lang genug, um die App zu suchen, kurz genug, dass ein
   // stehengelassener Rechner keine halbfertige Anmeldung offen hält.
   if (!is_array($warte) || time() - (int) ($warte['seit'] ?? 0) > 600) {
+    $bleiben = !empty($warte['bleiben']);
     unset($_SESSION['totp_wait']);
     redirect('/login');
   }
@@ -482,6 +487,7 @@ if ($path === '/login/code') {
       unset($_SESSION['totp_wait']);
       session_regenerate_id(true);
       $_SESSION['uid'] = $uid;
+      if ($bleiben) remember_issue($uid);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
     }
@@ -493,6 +499,8 @@ if ($path === '/login/code') {
 }
 
 if ($path === '/logout' && $method === 'POST') {
+  // Erst das Merkmal, dann die Sitzung: Wer sich abmeldet, meint dieses Gerät.
+  remember_forget();
   session_destroy();
   redirect('/');
 }
@@ -549,6 +557,9 @@ if ($path === '/passkey/login' && $method === 'POST') {
   throttle_clear('passkey', $credId);
   session_regenerate_id(true);
   $_SESSION['uid'] = $u['id'];
+  // Ein Passkey gehört zu genau diesem Gerät — dann darf es auch
+  // angemeldet bleiben, ohne dass jemand ein Häkchen sucht (#262).
+  remember_issue((int) $u['id']);
   if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
   exit(json_encode(['ok' => true, 'weiter' => !empty($u['must_change_pw']) ? '/intern/passwort' : '/intern']));
 }
@@ -688,6 +699,9 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_pw_mismatch'));
       } else {
         q('UPDATE users SET password_hash = ?, must_change_pw = 0 WHERE id = ?', [password_hash($pw, PASSWORD_DEFAULT), $me['id']]);
+        // Ein neues Passwort setzt man, wenn das alte irgendwo gelandet ist —
+        // dann darf kein Gerät mit einem alten Merkmal drin bleiben (#262).
+        remember_forget((int) $me['id']);
         // Das Startpasswort ist damit verbraucht. Die Datei liegen zu lassen
         // heißt, dass sie irgendwann etwas anderes behauptet als die Wahrheit
         // — und bis dahin ein gültiges Passwort im Klartext herumliegt. Die

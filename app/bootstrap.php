@@ -861,6 +861,8 @@ Zeile zwei
   'stage_open' => 'Bühne',
   'stage_hint' => 'Liedtext im Vollbild — großer Text, läuft von selbst mit',
   'back' => 'Zurück',
+  'login_stay' => 'Angemeldet bleiben',
+  'login_stay_hint' => 'Auf diesem Gerät 90 Tage angemeldet bleiben. Ohne das meldet die App sich nach kurzer Zeit von selbst ab — und der Zähler am Symbol bekommt nichts mehr mit.',
   'sl_print_fields' => 'Mitdrucken:',
   'sl_print_f_time' => 'Spielzeit',
   'sl_print_f_off' => 'ohne',
@@ -2115,6 +2117,21 @@ $tables = [
     PRIMARY KEY (song_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Angemeldet bleiben (#262): Das Gerät hält einen Zufallswert, der Server nur
+  // dessen Prüfsumme — eine gestohlene Datenbank ergibt damit keine Anmeldung.
+  // selector findet die Zeile, validator_hash beweist sie.
+  "CREATE TABLE IF NOT EXISTS login_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    selector CHAR(32) NOT NULL,
+    validator_hash CHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME NULL,
+    expires_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_selector (selector),
+    INDEX idx_user (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS login_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     k VARCHAR(190) NOT NULL,
@@ -2764,6 +2781,22 @@ if (setting('perm_musik_migrated') !== '1' && setting('permissions_migrated') ==
      SELECT user_id, 'musik', can_read, can_write FROM permissions WHERE module = 'fotos'
      ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)");
   set_setting('perm_musik_migrated', '1');
+}
+
+// Die Konstanten stehen hier und nicht bei den Funktionen darunter: PHP zieht
+// Funktionen vor, `const` aber nicht — und die Zeilen gleich darunter benutzen
+// sie bereits.
+const REMEMBER_COOKIE = 'bandregie_bleiben';
+const REMEMBER_DAYS = 90;
+
+// Angemeldet bleiben: Ohne Sitzung, aber mit gültigem Merkmal wird die Sitzung
+// hier wiederhergestellt — bevor irgendeine Route nach dem Mitglied fragt (#262).
+if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
+  $wieder = remember_check();
+  if ($wieder !== null) {
+    session_regenerate_id(true);
+    $_SESSION['uid'] = $wieder;
+  }
 }
 
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
@@ -3668,6 +3701,75 @@ function csrf_valid(): bool {
 function throttle_key(string $action, string $id): string {
   return $action . '|' . mb_strtolower(trim($id)) . '|' . ($_SERVER['REMOTE_ADDR'] ?? '');
 }
+/**
+ * Angemeldet bleiben (#262).
+ *
+ * Gemessen lief die Sitzung nach 24 Minuten Untätigkeit ab (gc_maxlifetime),
+ * und das Cookie starb mit dem Fenster. Wer die App eine Woche nicht öffnete,
+ * war abgemeldet, ohne es je gewollt zu haben — und ohne Sitzung holt die App
+ * ihre Zahl nicht, frischt ihr Push-Abo nicht auf und merkt nicht, wenn der
+ * Browser es erneuert hat. Genau daran verschwand die Zahl am Symbol.
+ *
+ * Das Cookie trägt „selector:validator". Der Server speichert den selector im
+ * Klartext (er sucht die Zeile) und vom validator nur den SHA-256. Wer die
+ * Datenbank hat, hat damit keine Anmeldung. Jede Benutzung tauscht den
+ * validator aus: Ein abgehörtes Cookie ist nach dem nächsten Aufruf wertlos.
+ */
+/** Ein frisches Merkmal für dieses Gerät ausstellen. Nur nach vollständiger Anmeldung. */
+function remember_issue(int $uid): void {
+  if (is_demo()) return;   // in der Demo ist jeder Admin, und sie setzt sich stündlich zurück
+  $selector = bin2hex(random_bytes(16));
+  $validator = bin2hex(random_bytes(32));
+  q('INSERT INTO login_tokens (user_id, selector, validator_hash, expires_at)
+     VALUES (?,?,?, DATE_ADD(NOW(), INTERVAL ? DAY))',
+    [$uid, $selector, hash('sha256', $validator), REMEMBER_DAYS]);
+  remember_cookie($selector . ':' . $validator, time() + REMEMBER_DAYS * 86400);
+}
+
+/** Das Cookie setzen oder löschen — an einer Stelle, damit die Flags nicht auseinanderlaufen. */
+function remember_cookie(string $wert, int $bis): void {
+  $overTls = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+  setcookie(REMEMBER_COOKIE, $wert, [
+    'expires' => $bis, 'path' => '/', 'httponly' => true,
+    'samesite' => 'Lax', 'secure' => $overTls,
+  ]);
+}
+
+/**
+ * Das Merkmal prüfen und dabei erneuern. Gibt die Mitglieds-Kennung zurück
+ * oder null; ein ungültiges Cookie wird weggeräumt, damit es nicht bei jedem
+ * Aufruf erneut geprüft wird.
+ */
+function remember_check(): ?int {
+  $roh = (string) ($_COOKIE[REMEMBER_COOKIE] ?? '');
+  if (!str_contains($roh, ':')) return null;
+  [$selector, $validator] = explode(':', $roh, 2);
+  $zeile = row('SELECT * FROM login_tokens WHERE selector = ? AND expires_at > NOW()', [$selector]);
+  if (!$zeile || !hash_equals((string) $zeile['validator_hash'], hash('sha256', $validator))) {
+    remember_cookie('', time() - 3600);
+    if ($zeile) q('DELETE FROM login_tokens WHERE id = ?', [$zeile['id']]);   // abgelaufen oder gefälscht
+    return null;
+  }
+  // Frischer validator und neue 90 Tage: Wer die App benutzt, bleibt drin.
+  $neu = bin2hex(random_bytes(32));
+  q('UPDATE login_tokens SET validator_hash = ?, last_used_at = NOW(),
+     expires_at = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE id = ?',
+    [hash('sha256', $neu), REMEMBER_DAYS, $zeile['id']]);
+  remember_cookie($selector . ':' . $neu, time() + REMEMBER_DAYS * 86400);
+  return (int) $zeile['user_id'];
+}
+
+/** Beim Abmelden dieses Gerät vergessen, beim Passwortwechsel alle. */
+function remember_forget(?int $uid = null): void {
+  $roh = (string) ($_COOKIE[REMEMBER_COOKIE] ?? '');
+  if (str_contains($roh, ':')) {
+    q('DELETE FROM login_tokens WHERE selector = ?', [explode(':', $roh, 2)[0]]);
+  }
+  if ($uid !== null) q('DELETE FROM login_tokens WHERE user_id = ?', [$uid]);
+  remember_cookie('', time() - 3600);
+}
+
 function throttle_blocked(string $action, string $id, int $max = 8, int $minutes = 15): bool {
   $row = row('SELECT COUNT(*) AS n FROM login_attempts WHERE k = ? AND ts > DATE_SUB(NOW(), INTERVAL ? MINUTE)',
     [throttle_key($action, $id), $minutes]);

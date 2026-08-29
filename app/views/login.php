@@ -6,6 +6,11 @@
   <form method="post" action="/login" class="stack"><?= csrf_field() ?>
     <label><?= e(t('login_email')) ?><input type="email" name="email" required autofocus autocomplete="username webauthn"></label>
     <label><?= e(t('login_password')) ?><input type="password" name="password" required autocomplete="current-password"></label>
+    <?php // Vorbelegt: Die Sitzung lief nach 24 Minuten ab, und danach bekam auch
+          // die Zahl am App-Symbol nichts mehr mit (#262). Wer an einem fremden
+          // Gerät sitzt, nimmt den Haken heraus. ?>
+    <label class="checkbox"><input type="checkbox" name="bleiben" value="1" checked> <?= e(t('login_stay')) ?></label>
+    <p class="muted small"><?= e(t('login_stay_hint')) ?></p>
     <button class="btn btn-primary"><?= e(t('login_submit')) ?></button>
   </form>
   <?php // Passkey: versteckt, bis das Skript weiß, dass der Browser es kann.
