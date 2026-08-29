@@ -180,7 +180,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 }
 .event-month:first-of-type { margin-top: 0.6rem; }
 
-.event-card .event-head { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: baseline; }
+/* Der Terminkopf steht in der Karte der Terminliste und in der Zeile der
+   Übersicht — dieselbe Anordnung, damit beides gleich aussieht (#264). */
+.event-head { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: baseline; }
+/* In der Übersichtszeile bekommt der Kopf eine eigene Zeile; Zeiten und
+   Rückmelde-Knöpfe teilen sich die darunter. */
+.event-list li .event-head { flex: 1 1 100%; }
+.event-list li p.small { margin: 0; }
 
 .badge {
   display: inline-block;
@@ -195,7 +201,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 .badge.gig { border-color: var(--accent); color: var(--accent); }
 .badge.probe { border-color: #60a5fa; color: #60a5fa; }
 .badge.public { border-color: var(--ok); color: var(--ok); }
-.badge.link { cursor: pointer; }
+/* Navi und Setliste sind Ziele für einen Daumen: Ein Emoji in Kleinschrift ist
+   auf dem Telefon kaum zu treffen, deshalb sind Badge-Links höher. */
+a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2.25rem; padding: 0.1rem 0.7rem; }
 .badge.status-aktiv { border-color: var(--ok); color: var(--ok); }
 .badge.status-in_arbeit { border-color: var(--maybe); color: var(--maybe); }
 .badge.status-vorschlag { border-color: #60a5fa; color: #60a5fa; }

@@ -801,6 +801,14 @@ if (str_starts_with($path, '/intern')) {
     $events = perm_allows($me, 'termine')
       ? dashboard_events(visible_event_ids($me), $today)
       : [];
+    // Der Kasten zeigt jetzt den echten Termin — mit Ort, Navi und Setliste
+    // (#264). Dafür nur die Orte der gezeigten Termine holen; die ganze
+    // Ortsliste zu laden wäre für eine Handvoll Zeilen Verschwendung.
+    $venueIds = array_values(array_unique(array_filter(array_column($events, 'venue_id'))));
+    $venueMap = $venueIds
+      ? array_column(rows('SELECT * FROM venues WHERE id IN ('
+          . implode(',', array_fill(0, count($venueIds), '?')) . ')', $venueIds), null, 'id')
+      : [];
     view('intern/dashboard', [
       'title' => t('inav_intern'),
       'events' => $events,
@@ -814,6 +822,8 @@ if (str_starts_with($path, '/intern')) {
                        WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
       'attendance' => attendance_map(array_column($events, 'id')),
       'mine' => my_attendance(array_column($events, 'id'), $me['id']),
+      'venueMap' => $venueMap,
+      'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
     ]);
   }
 

@@ -87,30 +87,7 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
   <?php endif; ?>
   <?php $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null; ?>
   <section class="card event-card <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>">
-    <div class="event-head">
-      <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
-      <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
-      <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
-      <strong><?= e($ev['title']) ?></strong>
-      <?php if ($venue): ?><span class="muted">📍 <?= e($venue['name']) ?><?= $venue['city'] ? ', ' . e($venue['city']) : '' ?></span>
-      <?php elseif ($ev['location']): ?><span class="muted">📍 <?= e($ev['location']) ?></span><?php endif; ?>
-      <?php // Navi-Link zum Ort: am Handy die native Karten-App (route.js), am
-            // Desktop der Web-Link. ?>
-      <?php $naviDest = $venue ? venue_dest($venue) : navi_dest((string) $ev['location']); ?>
-      <?php if ($naviDest !== ''): ?><a class="badge link navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener" title="<?= e(t('geo_navigate')) ?>">🧭</a><?php endif; ?>
-      <?php if ($ev['is_public']): ?><span class="badge public"><?= e(t('ev_public_badge')) ?></span><?php endif; ?>
-      <?php if ($ev['setlist_id']): ?><a class="badge link" href="/intern/setlists/<?= $ev['setlist_id'] ?>"><?= e(t('ev_setlist')) ?></a><?php endif; ?>
-    </div>
-    <p class="muted small">
-      <?php if ($ev['time_meet']): ?><?= e(t('ev_meet')) ?> <?= e($ev['time_meet']) ?><?php endif; ?>
-      <?php if ($ev['time']): ?> · <?= e(t('ev_start')) ?> <?= e($ev['time']) ?><?php endif; ?>
-      <?php if ($ev['time_end']): ?> · <?= e(t('ev_end')) ?> <?= e($ev['time_end']) ?><?php endif; ?>
-      <?php if ($ev['responsible_id'] && isset($memberNames[$ev['responsible_id']])): ?> · <?= e(t('ev_responsible')) ?>: <?= e($memberNames[$ev['responsible_id']]) ?><?php endif; ?>
-      <?php if ($ev['fee']): ?> · <?= e(t('ev_fee')) ?>: <?= e($ev['fee']) ?><?php endif; ?>
-      <?php if ($ev['invoice_no']): ?> · <?= e(t('ev_invoice')) ?>: <?= e($ev['invoice_no']) ?><?php endif; ?>
-      <?php if (!empty($ev['pa_source'])): ?> · <?= e(t('prod_pa')) ?>: <?= e(production_label($ev['pa_source'])) ?><?php endif; ?>
-      <?php if (!empty($ev['light_source'])): ?> · <?= e(t('prod_light')) ?>: <?= e(production_label($ev['light_source'])) ?><?php endif; ?>
-    </p>
+    <?php require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
     <?php $gear = $gearByEvent[$ev['id']] ?? []; ?>
     <?php if ($gear): ?>
       <p class="muted small">🎒 <?= e(t('ev_gear')) ?>: <?= e(implode(', ', array_column($gear, 'name'))) ?></p>

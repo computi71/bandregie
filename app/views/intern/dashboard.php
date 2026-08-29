@@ -42,10 +42,10 @@
     <ul class="event-list">
       <?php foreach ($events as $ev): ?>
         <li>
-          <span class="badge <?= e($ev['type']) ?>"><?= EVENT_TYPES[$ev['type']] ?? e($ev['type']) ?></span>
-          <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) : '' ?></span>
-          <strong><?= e($ev['title']) ?></strong>
-          <?php if ($ev['location']): ?><span class="muted"><?= e($ev['location']) ?></span><?php endif; ?>
+          <?php // Derselbe Kopf wie in der Terminliste: Ort, Navi und Setliste
+                // gehören dahin, wo man den Termin zuerst sieht (#264). ?>
+          <?php $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null; ?>
+          <?php $kompakt = true; require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
           <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post"><?= csrf_field() ?>
             <button name="status" value="yes" class="chip <?= ($mine[$ev['id']] ?? '') === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
