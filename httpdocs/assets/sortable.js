@@ -13,7 +13,11 @@
 //     Wäre die ganze Zeile ziehbar, könnte der Finger die Liste nicht mehr
 //     scrollen — und Scrollen braucht man bei achtunddreißig Zeilen zuerst.
 //   * Am Bildschirmrand wird mitgescrollt. Ohne das reicht ein Zug nur so weit,
-//     wie der Bildschirm hoch ist, und das Ziel liegt darunter.
+//     wie der Bildschirm hoch ist, und das Ziel liegt darunter. Wie schnell,
+//     hängt davon ab, wie tief der Finger im Randstreifen steht — mit festem
+//     Tempo raste die Liste am Ziel vorbei, sobald man den Rand nur streifte,
+//     und wer eine Zeile am unteren Bildschirmrand anfasste, sah sie sofort
+//     davonlaufen (#265).
 //
 // Die Pfeiltasten bleiben: Sie sind der Weg mit der Tastatur und der Notausgang,
 // wenn ein Gerät sich quer legt.
@@ -23,11 +27,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const url = list.dataset.reorder;
   const token = list.dataset.token;
-  const RAND = 70;      // Pixel bis zum Rand, ab denen mitgescrollt wird
-  const SCHRITT = 12;   // Pixel je Bild
+  const RAND = 60;        // Randstreifen in Pixeln, in dem mitgescrollt wird
+  const TEMPO = 700;      // Pixel je Sekunde, ganz außen am Rand
+  const SCHWELLE = 6;     // so weit muss der Finger, bevor gescrollt wird
   let dragged = null;
-  let scrollRichtung = 0;
+  let startY = 0;
+  let letztesY = 0;
+  let bewegt = false;
+  let scrollTempo = 0;    // Pixel je Sekunde, Vorzeichen ist die Richtung
   let scrollLauf = 0;
+  let letzterTakt = 0;
 
   const flash = (text, ok = true) => {
     let note = document.getElementById('sort-note');
@@ -75,17 +84,45 @@ document.addEventListener('DOMContentLoaded', () => {
     return y >= b.top && y <= b.bottom;
   });
 
-  const scrollen = () => {
-    if (!scrollRichtung || !dragged) { scrollLauf = 0; return; }
-    window.scrollBy(0, scrollRichtung * SCHRITT);
+  // Die Zeile dorthin einsortieren, wo der Zeiger gerade steht.
+  const einsortieren = (y) => {
+    const ziel = zeileUnter(y);
+    if (!ziel) return;
+    const b = ziel.getBoundingClientRect();
+    const danach = y > b.top + b.height / 2;
+    list.insertBefore(dragged, danach ? ziel.nextSibling : ziel);
+  };
+
+  // In Pixeln je Sekunde gerechnet, nicht je Bild: Ein Telefon mit 120 Hz
+  // scrollte sonst doppelt so schnell wie eines mit 60.
+  const scrollen = (zeit) => {
+    if (!scrollTempo || !dragged) { scrollLauf = 0; letzterTakt = 0; return; }
+    // Der erste Takt hat keine Vorgeschichte, und ein Bild, das zu lange her
+    // ist (Tab war im Hintergrund), darf keinen Sprung auslösen.
+    const dauer = letzterTakt ? Math.min((zeit - letzterTakt) / 1000, 0.05) : 0;
+    letzterTakt = zeit;
+    if (dauer) {
+      const vorher = window.scrollY;
+      window.scrollBy(0, scrollTempo * dauer);
+      // Die Zeile bleibt unter dem Finger, während die Seite darunter wandert.
+      if (window.scrollY !== vorher) einsortieren(letztesY);
+    }
     scrollLauf = requestAnimationFrame(scrollen);
   };
 
   const randPruefen = (y) => {
-    const vorher = scrollRichtung;
-    scrollRichtung = y < RAND ? -1 : (y > window.innerHeight - RAND ? 1 : 0);
-    if (scrollRichtung && !scrollLauf) scrollLauf = requestAnimationFrame(scrollen);
-    if (!scrollRichtung && vorher) { cancelAnimationFrame(scrollLauf); scrollLauf = 0; }
+    // Anteil im Randstreifen: an der Innenkante 0, ganz außen 1.
+    const anteil = (tiefe) => Math.min(1, Math.max(0, tiefe) / RAND);
+    const oben = RAND - y;
+    const unten = y - (window.innerHeight - RAND);
+    scrollTempo = 0;
+    // Erst wenn der Finger sich wirklich bewegt hat: Wer eine Zeile am unteren
+    // Rand nur anfasst, will sie greifen und nicht die Liste durchlaufen sehen.
+    if (bewegt) {
+      if (oben > 0) scrollTempo = -TEMPO * anteil(oben);
+      else if (unten > 0) scrollTempo = TEMPO * anteil(unten);
+    }
+    if (scrollTempo && !scrollLauf) { letzterTakt = 0; scrollLauf = requestAnimationFrame(scrollen); }
   };
 
   list.addEventListener('pointerdown', (e) => {
@@ -95,6 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const li = griff.closest('li');
     if (!li) return;
     dragged = li;
+    startY = e.clientY;
+    letztesY = e.clientY;
+    bewegt = false;
     li.classList.add('dragging');
     // Ab jetzt gehen alle Zeigerereignisse an den Griff — auch wenn der Finger
     // die Zeile verlässt, die unter ihm liegt.
@@ -105,12 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
   list.addEventListener('pointermove', (e) => {
     if (!dragged) return;
     e.preventDefault();
-    const ziel = zeileUnter(e.clientY);
-    if (ziel) {
-      const b = ziel.getBoundingClientRect();
-      const danach = e.clientY > b.top + b.height / 2;
-      list.insertBefore(dragged, danach ? ziel.nextSibling : ziel);
-    }
+    letztesY = e.clientY;
+    if (Math.abs(e.clientY - startY) > SCHWELLE) bewegt = true;
+    einsortieren(e.clientY);
     randPruefen(e.clientY);
   });
 
@@ -118,11 +155,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!dragged) return;
     dragged.classList.remove('dragging');
     dragged = null;
-    scrollRichtung = 0;
+    bewegt = false;
+    scrollTempo = 0;
+    letzterTakt = 0;
     if (scrollLauf) { cancelAnimationFrame(scrollLauf); scrollLauf = 0; }
     renumber();
     save();
   };
+
+  // Die Pfeiltasten verschieben die Zeile hier und speichern wie das Ziehen.
+  // Vorher schickte jeder Tipp ein Formular ab: Die Seite lud neu, stand wieder
+  // oben, und der Song, den man gerade bewegt hatte, lag irgendwo darunter — bei
+  // vierzig Zeilen sucht man ihn nach jedem Schritt erneut (#265).
+  list.addEventListener('click', (e) => {
+    const knopf = e.target.closest('button[name="dir"]');
+    if (!knopf) return;
+    const li = knopf.closest('li');
+    const hoch = knopf.value === 'up';
+    const nachbar = li && (hoch ? li.previousElementSibling : li.nextElementSibling);
+    // Am Anfang oder Ende gibt es nichts zu tauschen — der Server täte auch
+    // nichts, aber ohne Neuladen bleibt wenigstens die Ansicht ruhig.
+    if (!nachbar) { e.preventDefault(); return; }
+    // Klammern zeichnet der Server. Wandert eine Zeile in eine hinein oder aus
+    // ihr heraus, muss die Seite neu kommen, sonst steht hier eine Klammer, die
+    // es so nicht mehr gibt — dann bleibt es beim Formular.
+    if (li.dataset.bracket || nachbar.dataset.bracket) return;
+    e.preventDefault();
+    list.insertBefore(hoch ? li : nachbar, hoch ? nachbar : li);
+    renumber();
+    save();
+    // Der Finger bleibt, wo er ist: derselbe Knopf, derselbe Song.
+    knopf.focus();
+    knopf.scrollIntoView({ block: 'nearest' });
+  });
 
   list.addEventListener('pointerup', beenden);
   list.addEventListener('pointercancel', beenden);

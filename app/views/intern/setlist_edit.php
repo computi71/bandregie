@@ -43,7 +43,11 @@
     <?php foreach ($entries as $entry): ?>
       <?php // Kein draggable mehr: Gezogen wird am Griff, mit Zeigerereignissen —
             // die kennen Maus, Finger und Stift (#237). ?>
-      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>">
+      <?php // data-bracket sagt dem Skript, dass diese Zeile in einer Klammer
+            // steht: Die Pfeile verschieben dann nicht im Browser, sondern
+            // schicken das Formular ab, damit der Server die Klammer neu
+            // zeichnet (#265). ?>
+      <li class="<?= $entry['is_break'] ? 'break-row' : '' ?>" data-item="<?= $entry['item_id'] ?>"<?= $entry['bracket'] !== null ? ' data-bracket="' . (int) $entry['bracket'] . '"' : '' ?>>
         <?php if (!$locked): ?><span class="drag-handle" title="<?= e(t('sl_drag_hint')) ?>">⠿</span><?php endif; ?>
         <?php if (!$locked): ?>
           <input type="checkbox" class="sl-pick" name="rows[]" value="<?= $entry['item_id'] ?>"
