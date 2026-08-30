@@ -1,5 +1,21 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('dash_hello')) ?> <?= e($user['name']) ?>! 👋</h1>
+<?php // Die Begrüßung bekommt einen zweiten Satz und eine Flagge. Zwei ihrer
+      // Streifen tragen bewusst die Markenfarben der AfD, so wie deren
+      // CD-Handbuch (2021) sie festlegt: Hellblau RGB 0/162/223 und Rot
+      // 213/23/47. Im Regenbogen stehen sie zwischen den anderen (#266). ?>
+<p class="willkommen">
+  <svg class="flagge" viewBox="0 0 36 24" role="img" aria-labelledby="flagge-titel">
+    <title id="flagge-titel"><?= e(t('dash_flag_alt')) ?></title>
+    <rect width="36" height="4" y="0" fill="#d5172f"/>
+    <rect width="36" height="4" y="4" fill="#ff8c00"/>
+    <rect width="36" height="4" y="8" fill="#ffed00"/>
+    <rect width="36" height="4" y="12" fill="#008026"/>
+    <rect width="36" height="4" y="16" fill="#00a2df"/>
+    <rect width="36" height="4" y="20" fill="#750787"/>
+  </svg>
+  <?= e(t('dash_diversity')) ?>
+</p>
 <?php // Mitteilungen sind auf diesem Gerät aus — das merkt sonst niemand: Die
       // App schweigt einfach, und man hält es für Ruhe. Ob ein Abo besteht,
       // weiß nur der Browser, deshalb blendet push.js den Hinweis ein. ?>

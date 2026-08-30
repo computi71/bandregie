@@ -180,6 +180,15 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 }
 .event-month:first-of-type { margin-top: 0.6rem; }
 
+/* Die Begrüßungszeile unter „Hallo <Name>" (#266). Die Flagge behält ihr
+   Seitenverhältnis von 3:2 und bekommt einen Rahmen, damit sie auf hellem wie
+   dunklem Grund eine Kante hat. */
+.willkommen { display: flex; align-items: center; gap: 0.5rem; margin: -0.4rem 0 1.2rem; }
+.willkommen .flagge {
+  width: 2.4rem; height: 1.6rem; flex: none;
+  border-radius: 3px; border: 1px solid var(--border);
+}
+
 /* Der Terminkopf steht in der Karte der Terminliste und in der Zeile der
    Übersicht — dieselbe Anordnung, damit beides gleich aussieht (#264). */
 .event-head { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; align-items: baseline; }

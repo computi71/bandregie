@@ -392,6 +392,8 @@ const UI_STRINGS = [
   'login_only_members' => 'Nur für Mitglieder von', 'login_email' => 'E-Mail', 'login_password' => 'Passwort',
   'login_submit' => 'Einloggen', 'login_failed' => 'E-Mail oder Passwort falsch.',
   'dash_hello' => 'Hallo', 'dash_next_events' => 'Nächste Termine',
+  'dash_diversity' => 'Willkommen bunte Vielfalt.',
+  'dash_flag_alt' => 'Regenbogenflagge',
   'dash_vote_missing' => 'Rückmeldung fehlt',
   'dash_no_events' => 'Keine anstehenden Termine.', 'dash_create_event' => 'Termin anlegen',
   'dash_all_events' => 'Alle Termine', 'dash_open_tasks' => 'Offene Aufgaben',
