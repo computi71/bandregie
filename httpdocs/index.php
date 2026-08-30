@@ -429,6 +429,12 @@ if ($path === '/login') {
     $u = row('SELECT * FROM users WHERE email = ?', [$email]);
     if ($u && password_verify($_POST['password'] ?? '', $u['password_hash'])) {
       throttle_clear('login', $email);
+      // Ein abgelaufenes Start-Passwort ist kein Passwort mehr (#274). Die
+      // Auskunft kommt erst nach dem richtigen Passwort — vorher verriete sie,
+      // welche Adresse ein Konto hat.
+      if (start_pw_expired($u)) {
+        view('login', ['title' => 'Login', 'error' => t('fl_start_pw_expired')]);
+      }
       session_regenerate_id(true);
       // Zweiter Faktor (#169): Ein richtiges Passwort meldet noch niemanden
       // an. Bis der Code stimmt, steht in der Sitzung nur eine Absicht und
@@ -442,6 +448,7 @@ if ($path === '/login') {
         redirect('/login/code');
       }
       $_SESSION['uid'] = $u['id'];
+      login_stamp((int) $u['id']);
       if (!empty($_POST['bleiben'])) remember_issue((int) $u['id']);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
@@ -487,6 +494,7 @@ if ($path === '/login/code') {
       unset($_SESSION['totp_wait']);
       session_regenerate_id(true);
       $_SESSION['uid'] = $uid;
+      login_stamp($uid);
       if ($bleiben) remember_issue($uid);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
       redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
@@ -557,6 +565,7 @@ if ($path === '/passkey/login' && $method === 'POST') {
   throttle_clear('passkey', $credId);
   session_regenerate_id(true);
   $_SESSION['uid'] = $u['id'];
+  login_stamp((int) $u['id']);
   // Ein Passkey gehört zu genau diesem Gerät — dann darf es auch
   // angemeldet bleiben, ohne dass jemand ein Häkchen sucht (#262).
   remember_issue((int) $u['id']);
@@ -619,7 +628,8 @@ if (preg_match('~^/passwort-reset/([a-f0-9]{64})$~', $path, $m)) {
     } elseif ($pw !== ($_POST['password2'] ?? '')) {
       flash(t('fl_pw_mismatch'));
     } else {
-      q('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL, must_change_pw = 0 WHERE id = ?',
+      q('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL,
+                          must_change_pw = 0, start_pw_at = NULL WHERE id = ?',
         [password_hash($pw, PASSWORD_DEFAULT), $u['id']]);
       flash(t('fl_pw_changed'));
       redirect('/login');
@@ -698,7 +708,8 @@ if (str_starts_with($path, '/intern')) {
       } elseif ($pw !== ($_POST['password2'] ?? '')) {
         flash(t('fl_pw_mismatch'));
       } else {
-        q('UPDATE users SET password_hash = ?, must_change_pw = 0 WHERE id = ?', [password_hash($pw, PASSWORD_DEFAULT), $me['id']]);
+        q('UPDATE users SET password_hash = ?, must_change_pw = 0, start_pw_at = NULL WHERE id = ?',
+          [password_hash($pw, PASSWORD_DEFAULT), $me['id']]);
         // Ein neues Passwort setzt man, wenn das alte irgendwo gelandet ist —
         // dann darf kein Gerät mit einem alten Merkmal drin bleiben (#262).
         remember_forget((int) $me['id']);
@@ -2494,8 +2505,8 @@ if (str_starts_with($path, '/intern')) {
       $startPw = start_password();
       $email = strtolower(trim($_POST['email']));
       try {
-        q('INSERT INTO users (name, first_name, last_name, email, password_hash, role, instrument, must_change_pw)
-         VALUES (?,?,?,?,?,?,?,1)', [
+        q('INSERT INTO users (name, first_name, last_name, email, password_hash, role, instrument, must_change_pw, start_pw_at)
+         VALUES (?,?,?,?,?,?,?,1,NOW())', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? ''),
           trim($_POST['first_name'] ?? ''), trim($_POST['last_name'] ?? ''),
           $email, password_hash($startPw, PASSWORD_DEFAULT),
@@ -2569,7 +2580,7 @@ if (str_starts_with($path, '/intern')) {
     $ziel = row('SELECT id, email, first_name, name FROM users WHERE id = ?', [$m[1]]);
     if (!$ziel) redirect('/intern/mitglieder');
     $startPw = start_password();
-    q('UPDATE users SET password_hash = ?, must_change_pw = 1 WHERE id = ?',
+    q('UPDATE users SET password_hash = ?, must_change_pw = 1, start_pw_at = NOW() WHERE id = ?',
       [password_hash($startPw, PASSWORD_DEFAULT), $ziel['id']]);
     // Auch das gehört ins Protokoll: Es nimmt einem fremden Konto sein Passwort.
     error_log('Bandregie: Zugangsdaten neu verschickt für Konto ' . (int) $ziel['id'] . ' durch Konto ' . (int) $me['id']);

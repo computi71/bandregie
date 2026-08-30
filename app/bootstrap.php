@@ -514,6 +514,10 @@ const UI_STRINGS = [
   // Mitglieder & Profil
   'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied',   'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
   'mem_send_access' => 'Zugangsdaten senden',
+  'mem_never_logged_in' => 'Noch nie angemeldet',
+  'mem_start_pw_until' => 'Start-Passwort gültig bis',
+  'mem_start_pw_expired' => 'Start-Passwort abgelaufen',
+  'fl_start_pw_expired' => 'Das Start-Passwort ist abgelaufen. Lass dir neue Zugangsdaten schicken — in der Mitgliederliste gibt es dafür einen Knopf.',
   'mem_send_access_confirm' => 'Ein neues Start-Passwort wird erzeugt und per E-Mail geschickt. Das bisherige Passwort dieses Mitglieds gilt danach nicht mehr.',
   'fl_access_sent' => 'Zugangsdaten verschickt.',
   'fl_access_nomail' => 'Die Mail ging nicht hinaus. Start-Passwort:',
@@ -2283,6 +2287,18 @@ if (setting('login_providers_removed') !== '1') {
 }
 if (!column_exists('users', 'must_change_pw')) {
   $db->exec("ALTER TABLE users ADD COLUMN must_change_pw TINYINT(1) NOT NULL DEFAULT 0");
+}
+// Wer sich noch nie angemeldet hat, hat hier NULL — daran hängt der Knopf zum
+// erneuten Senden der Zugangsdaten (#274). Bestehende Konten bleiben leer, bis
+// sie sich das nächste Mal anmelden; das ist richtig so, denn wann sie es
+// zuletzt taten, weiß niemand mehr.
+if (!column_exists('users', 'last_login_at')) {
+  $db->exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL");
+}
+// Wann das Start-Passwort erzeugt wurde. Ohne Stempel gilt es unbegrenzt —
+// bestehende Konten sollen sich durch das Update nicht plötzlich aussperren.
+if (!column_exists('users', 'start_pw_at')) {
+  $db->exec("ALTER TABLE users ADD COLUMN start_pw_at DATETIME NULL");
 }
 // events.type war VARCHAR(10) — zu kurz für "besprechung" und "fotoshooting",
 // diese beiden Termin-Arten ließen sich dadurch nicht speichern.
@@ -4711,6 +4727,25 @@ function ical_token_for(int $userId, bool $neu = false): string {
  * Es wird vorgelesen, abgetippt und weitergesagt — da zählt Lesbarkeit mehr
  * als das letzte Bit Entropie, zumal es beim ersten Login gewechselt wird.
  */
+/**
+ * So lange gilt ein Start-Passwort. Es steht im Klartext in einer Mail und
+ * liegt danach in jedem Postfach, durch das sie gelaufen ist — ein Zugang, der
+ * ein halbes Jahr später noch aufgeht, ist genau die Falle. Sieben Tage sind
+ * lang genug für einen Urlaub und kurz genug, dass die Mail veraltet (#274).
+ */
+const START_PW_DAYS = 7;
+
+/** Ist dieses Start-Passwort abgelaufen? Ohne Stempel gilt es weiter. */
+function start_pw_expired(?array $user): bool {
+  if (empty($user['must_change_pw']) || empty($user['start_pw_at'])) return false;
+  return strtotime($user['start_pw_at']) < time() - START_PW_DAYS * 86400;
+}
+
+/** Merkt sich, dass dieses Konto gerade angemeldet wurde. */
+function login_stamp(int $uid): void {
+  q('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$uid]);
+}
+
 function start_password(): string {
   $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
   $pw = '';
@@ -4731,7 +4766,9 @@ function welcome_mail(string $email, string $vorname, string $startPw): bool {
     . 'Login: ' . absolute_url('/login') . "\n"
     . "E-Mail: $email\n"
     . "Start-Passwort: $startPw\n\n"
-    . "Beim ersten Login musst du ein eigenes Passwort vergeben.\n\n"
+    . "Beim ersten Login musst du ein eigenes Passwort vergeben.\n"
+    . 'Das Start-Passwort gilt ' . START_PW_DAYS . ' Tage, also bis zum '
+    . date('d.m.Y', time() + START_PW_DAYS * 86400) . ". Danach lass dir neue Zugangsdaten schicken.\n\n"
     . "Viele Grüße\n$band";
   $from = mail_from_address();
   $antwortAn = mail_header_value(setting('contact_email'));

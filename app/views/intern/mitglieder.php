@@ -64,9 +64,20 @@
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zwei-faktor" data-confirm="<?= e(t('totp_reset_member')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">🔑✖</button></form>
         <?php endif; ?>
         <?php // Zugangsdaten erneut schicken (#273): für den Fall, dass die
-              // Willkommensmail nie ankam. Nicht für das eigene Konto — man
-              // würde sich damit selbst das Passwort nehmen. ?>
-        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
+              // Willkommensmail nie ankam. Nur bei Konten, die sich noch nie
+              // angemeldet haben — danach wäre es kein „nochmal schicken" mehr,
+              // sondern ein Zurücksetzen, und dafür gibt es das Passwortfeld.
+              // Nicht für das eigene Konto: Man nähme sich selbst das Passwort. ?>
+        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo() && $m['last_login_at'] === null): ?>
+          <span class="muted small">
+            <?= e(t('mem_never_logged_in')) ?><?php if ($m['start_pw_at']): ?> ·
+              <?php if (start_pw_expired($m)): ?>
+                <strong class="warn"><?= e(t('mem_start_pw_expired')) ?></strong>
+              <?php else: ?>
+                <?= e(t('mem_start_pw_until')) ?> <?= fmt_date(date('Y-m-d', strtotime($m['start_pw_at']) + START_PW_DAYS * 86400)) ?>
+              <?php endif; ?>
+            <?php endif; ?>
+          </span>
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zugangsdaten" data-confirm="<?= e(t('mem_send_access_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">✉ <?= e(t('mem_send_access')) ?></button></form>
         <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
