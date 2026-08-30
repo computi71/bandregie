@@ -67,8 +67,15 @@
               // Willkommensmail nie ankam. Nur bei Konten, die sich noch nie
               // angemeldet haben — danach wäre es kein „nochmal schicken" mehr,
               // sondern ein Zurücksetzen, und dafür gibt es das Passwortfeld.
-              // Nicht für das eigene Konto: Man nähme sich selbst das Passwort. ?>
-        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo() && $m['last_login_at'] === null): ?>
+              // Nicht für das eigene Konto: Man nähme sich selbst das Passwort.
+              //
+              // Zwei Bedingungen, nicht eine: „noch nie angemeldet" allein
+              // träfe auch jedes Bestandskonto, denn den Stempel gibt es erst
+              // seit dieser Fassung. Zusammen mit „muss das Passwort noch
+              // wechseln" bleibt genau der Fall übrig, um den es geht — ein
+              // Zugang, der ausgeteilt und nie benutzt wurde. ?>
+        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()
+                  && $m['last_login_at'] === null && !empty($m['must_change_pw'])): ?>
           <span class="muted small">
             <?= e(t('mem_never_logged_in')) ?><?php if ($m['start_pw_at']): ?> ·
               <?php if (start_pw_expired($m)): ?>
