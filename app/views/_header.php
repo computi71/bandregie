@@ -111,11 +111,17 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
         // steckt Darstellung im Schlüssel eines Feldes, und zwei Gruppen mit
         // gleicher Beschriftung würden sich überschreiben.
         $navGroups = [
+          // Innerhalb einer Gruppe steht vorn, was am häufigsten gebraucht wird,
+          // und hinten das Nachschlagewerk: Orte ändert man selten, Termine und
+          // Aufgaben täglich. Die Post steht bei der Verständigung und nicht bei
+          // den Medien — sie ist eingehende Korrespondenz und nicht etwas, das
+          // die Band veröffentlicht (#268).
           ['🗂', t('inavg_planung'), [
             '/intern/termine' => ['📅', t('inav_termine')],
-            '/intern/abwesenheiten' => ['🏖', t('inav_abwesenheiten')],
             '/intern/aufgaben' => ['✅', t('inav_aufgaben')],
+            '/intern/abwesenheiten' => ['🏖', t('inav_abwesenheiten')],
             '/intern/themen' => ['💬', t('inav_themen')],
+            '/intern/post' => ['✉', t('inav_post')],
             '/intern/orte' => ['📍', t('inav_orte')],
           ]],
           ['🎼', t('inavg_musik'), [
@@ -128,7 +134,6 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/kanaele' => ['🎚', t('inav_kanaele')],
           ]],
           ['📦', t('inavg_material'), [
-            '/intern/post' => ['✉', t('inav_post')],
             '/intern/fotos' => ['📷', t('inav_fotos')],
             '/intern/musik' => ['🎬', t('inav_musik')],
             '/intern/downloads' => ['⬇', t('inav_downloads')],
@@ -137,10 +142,12 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/kasse' => ['💰', t('inav_kasse')],
             '/intern/mitglieder' => ['👥', t('inav_mitglieder')],
           ]],
+          // „Über" erzählt von der Anwendung — das liest man einmal. Es stand
+          // zwischen den beiden Einträgen, an denen man etwas tut (#268).
           ['🔑', t('inavg_konto'), array_filter([
             '/intern/profil' => ['👤', t('inav_profil')],
-            '/intern/ueber' => ['ℹ️', t('inav_ueber')],
             '/intern/einstellungen' => $user['role'] === 'admin' ? ['⚙️', t('inav_einstellungen')] : null,
+            '/intern/ueber' => ['ℹ️', t('inav_ueber')],
           ])],
         ];
       ?>
