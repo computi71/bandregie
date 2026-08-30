@@ -811,6 +811,7 @@ if (str_starts_with($path, '/intern')) {
       : [];
     view('intern/dashboard', [
       'title' => t('inav_intern'),
+      'welcome' => dashboard_welcome(),
       'events' => $events,
       'deadlines' => perm_allows($me, 'equipment') ? rows('SELECT d.*, e.name AS eq_name FROM equipment_deadlines d
                            JOIN equipment e ON e.id = d.equipment_id
@@ -4042,7 +4043,14 @@ if (str_starts_with($path, '/intern')) {
     // und die ist dort eine Domain dieses Projekts. Ein falscher Bandname ist
     // harmlos, ein fremdes Bild vor dem eigenen Namen nicht.
     deny_in_demo('/intern/einstellungen');
-    foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file'] as $field => $key) {
+    // Der Satz auf der Übersicht und sein Bild gehören zum Erscheinungsbild und
+    // stehen deshalb in diesem Formular (#267). Beides wird immer geschrieben:
+    // Ein leeres Feld ist hier eine Aussage („keine Zeile") und kein Versehen.
+    set_setting('welcome_text', trim((string) ($_POST['welcome_text'] ?? '')));
+    $bildwahl = (string) ($_POST['welcome_image'] ?? 'flagge');
+    set_setting('welcome_image', in_array($bildwahl, ['flagge', 'logo', 'eigen', 'keins'], true) ? $bildwahl : 'flagge');
+    foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file',
+              'welcome' => 'welcome_file'] as $field => $key) {
       if (upload_rejected((int) ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
       $tmp = $_FILES[$field]['tmp_name'] ?? '';
       if (!is_uploaded_file($tmp)) continue;
@@ -4061,7 +4069,7 @@ if (str_starts_with($path, '/intern')) {
     flash(t('fl_branding_saved'));
     redirect('/intern/einstellungen');
   }
-  if (preg_match('~^/intern/einstellungen/branding/(logo|background|favicon)/delete$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/einstellungen/branding/(logo|background|favicon|welcome)/delete$~', $path, $m) && $method === 'POST') {
     require_admin();
     deny_in_demo('/intern/einstellungen');
     $key = $m[1] . '_file';

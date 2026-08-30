@@ -394,6 +394,14 @@ const UI_STRINGS = [
   'dash_hello' => 'Hallo', 'dash_next_events' => 'Nächste Termine',
   'dash_diversity' => 'Willkommen bunte Vielfalt.',
   'dash_flag_alt' => 'Regenbogenflagge',
+  'set_welcome_text_lbl' => 'Satz unter der Anrede',
+  'set_welcome_text_hint' => 'Leer speichern, wenn dort keine Zeile stehen soll.',
+  'set_welcome_img_lbl' => 'Bild daneben',
+  'set_welcome_img_flag' => 'Regenbogenflagge',
+  'set_welcome_img_logo' => 'Bandlogo',
+  'set_welcome_img_own' => 'Eigenes Bild',
+  'set_welcome_img_none' => 'Kein Bild',
+  'set_welcome_file_lbl' => 'Eigenes Bild hochladen',
   'dash_vote_missing' => 'Rückmeldung fehlt',
   'dash_no_events' => 'Keine anstehenden Termine.', 'dash_create_event' => 'Termin anlegen',
   'dash_all_events' => 'Alle Termine', 'dash_open_tasks' => 'Offene Aufgaben',
@@ -5545,6 +5553,25 @@ function dashboard_events(?array $sichtbar, string $heute): array {
   // Eine Obergrenze, damit der Kasten nicht zur zweiten Terminliste wird; wer
   // alles will, hat den Knopf darunter.
   return array_slice($zusammen, 0, DASH_MAX);
+}
+
+/**
+ * Satz und Bild für die Begrüßung auf der Übersicht (#267).
+ *
+ * Kein gespeicherter Satz heißt „der mitgelieferte" — sonst verschwände die
+ * Zeile bei jeder bestehenden Installation, die nie etwas eingestellt hat.
+ * Ein gespeicherter leerer Satz heißt „keine Zeile": Wer sie nicht will, soll
+ * sie abschalten können, ohne dass der Standardtext zurückkommt.
+ */
+function dashboard_welcome(): array {
+  $s = all_settings();
+  $wahl = $s['welcome_image'] ?? 'flagge';
+  $datei = match ($wahl) {
+    'eigen' => $s['welcome_file'] ?? '',
+    'logo' => $s['logo_file'] ?? '',
+    default => '',
+  };
+  return ['text' => $s['welcome_text'] ?? t('dash_diversity'), 'bild' => $wahl, 'datei' => $datei];
 }
 
 function fmt_month(?string $iso): string {

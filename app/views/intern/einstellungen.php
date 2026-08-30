@@ -109,7 +109,20 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label><?= e(t('set_bg_lbl')) ?><input type="file" name="background" accept="image/*"></label>
     <label><?= e(t('set_favicon_lbl')) ?><input type="file" name="favicon" accept="image/png,image/x-icon,image/svg+xml">
       <span class="muted small"><?= e(t('set_favicon_hint')) ?></span></label>
-    <button class="btn btn-primary span2"><?= e(t('upload')) ?></button>
+    <?php // Die Begrüßung auf der Übersicht: Satz und Bild daneben (#267). ?>
+    <label class="span2"><?= e(t('set_welcome_text_lbl')) ?>
+      <input name="welcome_text" value="<?= e($settings['welcome_text'] ?? t('dash_diversity')) ?>">
+      <span class="muted small"><?= e(t('set_welcome_text_hint')) ?></span></label>
+    <label><?= e(t('set_welcome_img_lbl')) ?>
+      <select name="welcome_image">
+        <?php foreach (['flagge' => 'set_welcome_img_flag', 'logo' => 'set_welcome_img_logo',
+                        'eigen' => 'set_welcome_img_own', 'keins' => 'set_welcome_img_none'] as $wert => $tkey): ?>
+          <option value="<?= e($wert) ?>" <?= ($settings['welcome_image'] ?? 'flagge') === $wert ? 'selected' : '' ?>><?= e(t($tkey)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('set_welcome_file_lbl')) ?><input type="file" name="welcome" accept="image/*"></label>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
   <div class="row-buttons">
     <?php if (!empty($settings['logo_file'])): ?>
@@ -119,6 +132,10 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <?php if (!empty($settings['background_file'])): ?>
       <img src="/uploads/<?= e($settings['background_file']) ?>" alt="Hintergrund" style="max-height:60px">
       <form class="inline" method="post" action="/intern/einstellungen/branding/background/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_bg_remove')) ?></button></form>
+    <?php endif; ?>
+    <?php if (!empty($settings['welcome_file'])): ?>
+      <img src="/uploads/<?= e($settings['welcome_file']) ?>" alt="<?= e(t('set_welcome_img_own')) ?>" style="max-height:60px">
+      <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_del')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['favicon_file'])): ?>
       <img src="/uploads/<?= e($settings['favicon_file']) ?>" alt="Favicon" style="max-height:32px">
