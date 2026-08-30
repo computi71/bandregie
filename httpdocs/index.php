@@ -1491,6 +1491,8 @@ if (str_starts_with($path, '/intern')) {
     $antwortAn = mail_header_value(setting('contact_email'));
     $kopf = "From: $from" . ($antwortAn !== '' ? "\r\nReply-To: $antwortAn" : '')
           . "\r\nContent-Type: text/plain; charset=UTF-8";
+    // Antworten heißt: eine Mail im Namen der Band hinausschicken (#270).
+    if (!perm_allows($me, 'mailversand', 'write')) { flash(t('fl_no_permission')); redirect('/intern/post'); }
     $ok = @mail($an, $betreff, $text, $kopf, '-f' . $from);
     if ($ok) {
       q('INSERT INTO post_replies (message_id, sent_by, to_mail, subject, body) VALUES (?,?,?,?,?)',
@@ -2517,8 +2519,12 @@ if (str_starts_with($path, '/intern')) {
         $from = mail_from_address();
         $antwortAn = mail_header_value(setting('contact_email'));
         $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
-        $sent = @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
-          "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+        // Ohne das Recht zum Versand entsteht das Konto trotzdem — nur die Mail
+        // bleibt hier, und das Start-Passwort steht in der Meldung. Genau das ist
+        // der Weg, den es auch gibt, wenn der Server keine Mail zustellen kann.
+        $sent = perm_allows($me, 'mailversand', 'write')
+          && @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
+            "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
         flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
       } catch (PDOException) {
         flash(t('fl_email_taken'));

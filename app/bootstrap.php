@@ -917,7 +917,8 @@ Zeile zwei
   // Postfach der Band (#219)
   'push_post_title' => 'Neue Post',
   'push_post_body' => '%1 neue Nachricht(en) im Bandpostfach',
-  'inav_post' => 'Post',
+  'inav_post' => 'Postfach',
+  'inav_mailversand' => 'E-Mail-Versand',
   'post_title' => 'Postfach',
   'post_intro' => 'Der Posteingang der Band — dort, wo aus einer Anfrage ein Termin wird.',
   'post_none' => 'Keine Nachrichten.',
@@ -1478,6 +1479,13 @@ const PERM_MODULES = [
   'musik'         => ['/intern/musik'],
   'downloads'     => ['/intern/downloads'],
   'mitglieder'    => ['/intern/mitglieder'],
+  // Mail im Namen der Band hinauszuschicken ist eine eigene Entscheidung: Wer
+  // das Postfach liest, muss nicht antworten dürfen, und wer Mitglieder pflegt,
+  // muss ihnen keine Mail schicken können. Der Bereich hat bewusst keinen Pfad
+  // — es gibt keine Seite „Versand", geprüft wird an den zwei Stellen, die
+  // wirklich versenden: die Antwort im Postfach und die Einladung eines neuen
+  // Mitglieds (#270).
+  'mailversand'   => [],
 ];
 
 /** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
@@ -1509,7 +1517,12 @@ const PERM_ENTITY_MODULES = [
  * Ohne eigene Zeile fällt ein Admin auf das Mitglieder-Schema zurück und darf
  * die Kasse sehen, aber nicht buchen — den Einblick verliert also niemand.
  */
-const PERM_EXPLICIT_MODULES = ['kasse'];
+// Was auch ein Admin nicht von selbst hat. Eine Band zu verwalten ist nicht
+// dasselbe, wie ihre Kasse zu führen — und nicht dasselbe, wie ihre Post zu
+// lesen. Im Postfach liegen Anfragen, Rechnungen und private Antworten, und
+// dass jemand die Anwendung verwaltet, ist noch kein Grund, sie mitzulesen
+// (#219, #270).
+const PERM_EXPLICIT_MODULES = ['kasse', 'post'];
 
 /**
  * Wohin ein Trinkgeld geht. Steht beim Entwickler, weil damit die Person
@@ -1525,6 +1538,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
+    'mailversand' => [1, 1],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
@@ -1535,6 +1549,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
+    'mailversand' => [0, 0],
   ],
 ];
 
@@ -2811,6 +2826,18 @@ if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
     session_regenerate_id(true);
     $_SESSION['uid'] = $wieder;
   }
+}
+
+// Das Postfach muss seit #270 auch einem Admin ausdrücklich gegeben werden.
+// Ohne diese Zeile verlöre beim Update jede bestehende Installation ihr
+// Postfach — auch die Person, die es täglich liest. Einmalig und am Schlüssel
+// gemerkt: Wer das Recht später bewusst entzieht, bekommt es nicht zurück.
+if (setting('migr_post_explicit') === '') {
+  foreach (rows("SELECT id FROM users WHERE role = 'admin'") as $adminZeile) {
+    q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)
+       ON DUPLICATE KEY UPDATE can_read = 1, can_write = 1', [$adminZeile['id'], 'post']);
+  }
+  set_setting('migr_post_explicit', '1');
 }
 
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
