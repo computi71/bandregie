@@ -3641,8 +3641,17 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/einstellungen' && $method === 'POST') {
     require_admin();
+    // In der Demo ist jeder Admin, und die Demo läuft auf einer Domain dieses
+    // Projekts. Was dort öffentlich sichtbar wird oder rechtlich zählt, bleibt
+    // deshalb gesperrt — dieselbe Überlegung wie beim Logo (#223): Ein
+    // ausprobierter Kassen-Schalter ist harmlos, ein fremder Bandname im
+    // Seitenkopf und ein verändertes Impressum sind es nicht. Der stündliche
+    // Reset räumt zwar auf, aber erst hinterher (#269).
+    $demoGesperrt = is_demo() ? ['band_name', 'contact_email', 'site_url'] : [];
+    $demoAbgelehnt = false;
     foreach (['band_name', 'contact_email', 'copyright_text', 'facebook_url', 'instagram_url', 'spotify_url', 'youtube_url', 'site_url'] as $k) {
       if (!isset($_POST[$k])) continue;
+      if (in_array($k, $demoGesperrt, true)) { $demoAbgelehnt = true; continue; }
       $wert = trim((string) $_POST[$k]);
       // Bandname und Kontaktadresse landen in Mail-Kopfzeilen (#220). Schon
       // beim Speichern entschärfen, nicht erst beim Versenden: Der Wert wird an
@@ -3720,6 +3729,12 @@ if (str_starts_with($path, '/intern')) {
     // Deutsch landet in settings (Fallback-Basis), andere Sprachen in translations.
     $textFields = isset($_POST['_texts_form']) ? ['bio', 'tagline', 'booking_text']
       : (isset($_POST['_legal_form']) ? ['impressum_text', 'privacy_text'] : null);
+    // Impressum und Datenschutzerklärung sind die Pflichtseiten dieser Domain
+    // und keine Spielwiese (#269).
+    if ($textFields && isset($_POST['_legal_form']) && is_demo()) {
+      $textFields = null;
+      $demoAbgelehnt = true;
+    }
     if ($textFields) {
       foreach (enabled_langs() as $lang) {
         foreach ($textFields as $ckey) {
@@ -3737,7 +3752,9 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_texts_saved'));
       redirect('/intern/einstellungen');
     }
-    flash(t('fl_settings_saved'));
+    // Nicht stillschweigend verwerfen: Wer speichert und „gespeichert" liest,
+    // glaubt es auch (#269).
+    flash($demoAbgelehnt ? t('fl_demo_public_locked') : t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
   // ---------- Daueraufträge ----------

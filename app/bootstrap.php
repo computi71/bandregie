@@ -677,6 +677,10 @@ const UI_STRINGS = [
   'fl_only_admin_pw' => 'Nur Admins können fremde Passwörter zurücksetzen.',
   'fl_pw_min' => 'Passwort braucht mindestens 8 Zeichen.',
   'fl_pw_changed' => 'Passwort geändert.',
+  // Zwei verschiedene Gründe, zwei Texte: Bei den Zugangsdaten geht es darum,
+  // dass sonst jemand alle anderen aussperrt; bei Bandname und Pflichtseiten
+  // darum, dass sie auf einer öffentlichen Adresse dieses Projekts stehen (#269).
+  'fl_demo_public_locked' => 'In der Demo nicht möglich: Bandname, Kontaktadresse, die Adresse der Installation und die Pflichtseiten stehen auf einer öffentlichen Adresse dieses Projekts. Alles Übrige darfst du ausprobieren.',
   'fl_demo_locked' => 'In der Demo nicht möglich: Die Zugangsdaten stehen öffentlich, '
     . 'und wer sie ändert, sperrt alle anderen aus. Alles Übrige darfst du ausprobieren.',
   'demo_locked_hint' => 'In der Demo gesperrt — die Zugangsdaten sind öffentlich und '

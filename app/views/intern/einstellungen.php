@@ -60,21 +60,74 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 </details>
 
 <details class="card acc" name="setacc">
-  <summary><?= e(t('set_texts')) ?></summary>
-  <p class="muted small"><?= e(t('set_texts_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
-    <input type="hidden" name="_texts_form" value="1">
-    <?php foreach ($activeLangs as $lang): ?>
-      <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
-        <summary><?= flag_svg($lang) ?> <strong><?= LANGS[$lang] ?></strong><?= $lang === 'de' ? ' <span class="muted small">(Standard / Fallback)</span>' : '' ?></summary>
-        <div class="form-grid">
-          <label><?= e(t('set_tagline')) ?><input name="txt[<?= $lang ?>][tagline]" value="<?= e($txtVal($lang, 'tagline')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['tagline']) . '"' : '' ?>></label>
-          <label><?= e(t('set_booking')) ?><input name="txt[<?= $lang ?>][booking_text]" value="<?= e($txtVal($lang, 'booking_text')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['booking_text']) . '"' : '' ?>></label>
-          <label class="span2"><?= e(t('set_about')) ?><textarea name="txt[<?= $lang ?>][bio]" rows="5" <?= $lang !== 'de' ? 'placeholder="' . e(mb_substr($settings['bio'], 0, 120)) . ' …"' : '' ?>><?= e($txtVal($lang, 'bio')) ?></textarea></label>
-        </div>
-      </details>
+  <summary>💰 <?= e(t('set_fin')) ?></summary>
+  <form method="post" action="/intern/einstellungen/kasse" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2"><input type="checkbox" name="fin_open_fees" value="1" <?= setting('fin_open_fees') === '1' ? 'checked' : '' ?>> <?= e(t('set_fin_open_fees')) ?></label>
+    <p class="muted small span2"><?= e(t('set_fin_open_fees_hint')) ?></p>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+</details>
+
+<?php require_once BASE_DIR . '/app/steuer.php'; ?>
+<details class="card acc" name="setacc">
+  <summary>⚖ <?= e(t('set_tax')) ?></summary>
+  <p class="muted small"><?= e(t('set_tax_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
+    <input type="hidden" name="_tax_form" value="1">
+    <label class="checkbox span2">
+      <input type="checkbox" name="tax_small_business" value="1" <?= setting('tax_small_business', '0') === '1' ? 'checked' : '' ?>>
+      <?= e(t('set_tax_small')) ?>
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_small_hint')) ?></p>
+    <label class="span2"><?= e(t('set_tax_start')) ?>
+      <input type="date" name="tax_business_start" value="<?= e(setting('tax_business_start', '')) ?>">
+      <span class="muted small"><?= e(t('set_tax_start_hint')) ?></span>
+    </label>
+    <label><?= e(t('set_tax_prev')) ?><input name="tax_limit_prev_year" inputmode="decimal" value="<?= e(setting('tax_limit_prev_year', '25000')) ?>"></label>
+    <label><?= e(t('set_tax_this')) ?><input name="tax_limit_this_year" inputmode="decimal" value="<?= e(setting('tax_limit_this_year', '100000')) ?>"></label>
+    <label><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">
+      <span class="muted small"><?= e(t('set_tax_gwg_hint')) ?></span>
+    </label>
+    <label class="checkbox span2">
+      <input type="checkbox" name="tax_prices_gross" value="1" <?= setting('tax_prices_gross', '1') === '1' ? 'checked' : '' ?>>
+      <?= e(t('set_tax_gross')) ?>
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_gross_hint')) ?></p>
+    <label><?= e(t('set_tax_vat_rate')) ?><input name="tax_vat_rate" inputmode="decimal" value="<?= e(setting('tax_vat_rate', '19')) ?>"></label>
+    <label><?= e(t('set_tax_afa_years')) ?><input name="tax_afa_years" inputmode="numeric" value="<?= e(setting('tax_afa_years', '7')) ?>">
+      <span class="muted small"><?= e(t('set_tax_afa_hint')) ?></span>
+    </label>
+    <p class="span2"><strong><?= e(t('set_tax_afa_cats')) ?></strong></p>
+    <?php foreach (TAX_AFA_BY_CATEGORY as $afaCat => $afaDefault): ?>
+      <label><?= e(eq_category_label($afaCat)) ?>
+        <input name="tax_afa_<?= e($afaCat) ?>" inputmode="numeric" value="<?= e(setting('tax_afa_' . $afaCat, (string) $afaDefault)) ?>">
+      </label>
     <?php endforeach; ?>
-    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+    <p class="muted small span2"><?= e(t('set_tax_afa_cats_hint')) ?></p>
+    <label><?= e(t('set_tax_comm_share')) ?><input name="tax_commercial_share" inputmode="decimal" value="<?= e(setting('tax_commercial_share', '3')) ?>"></label>
+    <label><?= e(t('set_tax_comm_abs')) ?><input name="tax_commercial_abs" inputmode="decimal" value="<?= e(setting('tax_commercial_abs', '24500')) ?>"></label>
+    <p class="muted small span2"><?= e(t('set_tax_comm_hint')) ?></p>
+    <label class="span2"><?= e(t('set_tax_checked')) ?>
+      <input type="date" name="tax_values_checked" value="<?= e(setting('tax_values_checked', '')) ?>">
+    </label>
+    <p class="muted small span2"><?= e(t('set_tax_source')) ?></p>
+    <p class="muted small span2">⚖ <?= e(t('tax_no_advice')) ?></p>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
+<details class="card acc" name="setacc">
+  <summary>🔁 <?= e(t('set_sub_auto')) ?></summary>
+  <p class="muted small"><?= e(t('set_sub_auto_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/ersatz" class="form-grid"><?= csrf_field() ?>
+    <label><?= e(t('set_sub_auto')) ?>
+      <select name="substitute_auto">
+        <?php foreach (SUB_AUTO_MODES as $mode): ?>
+          <option value="<?= $mode ?>" <?= (setting('substitute_auto') ?: 'off') === $mode ? 'selected' : '' ?>><?= e(t('sub_auto_' . $mode)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
   </form>
 </details>
 
@@ -152,8 +205,22 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 </details>
 
 <details class="card acc" name="setacc">
-  <summary><?= e(t('set_meta')) ?></summary>
-  <p class="muted"><?= e(t('set_meta_hint')) ?></p>
+  <summary><?= e(t('set_texts')) ?></summary>
+  <p class="muted small"><?= e(t('set_texts_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
+    <input type="hidden" name="_texts_form" value="1">
+    <?php foreach ($activeLangs as $lang): ?>
+      <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
+        <summary><?= flag_svg($lang) ?> <strong><?= LANGS[$lang] ?></strong><?= $lang === 'de' ? ' <span class="muted small">(Standard / Fallback)</span>' : '' ?></summary>
+        <div class="form-grid">
+          <label><?= e(t('set_tagline')) ?><input name="txt[<?= $lang ?>][tagline]" value="<?= e($txtVal($lang, 'tagline')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['tagline']) . '"' : '' ?>></label>
+          <label><?= e(t('set_booking')) ?><input name="txt[<?= $lang ?>][booking_text]" value="<?= e($txtVal($lang, 'booking_text')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['booking_text']) . '"' : '' ?>></label>
+          <label class="span2"><?= e(t('set_about')) ?><textarea name="txt[<?= $lang ?>][bio]" rows="5" <?= $lang !== 'de' ? 'placeholder="' . e(mb_substr($settings['bio'], 0, 120)) . ' …"' : '' ?>><?= e($txtVal($lang, 'bio')) ?></textarea></label>
+        </div>
+      </details>
+    <?php endforeach; ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
+  </form>
 </details>
 
 <details class="card acc" name="setacc">
@@ -206,27 +273,183 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 </details>
 
 <details class="card acc" name="setacc">
-  <summary>💰 <?= e(t('set_fin')) ?></summary>
-  <form method="post" action="/intern/einstellungen/kasse" class="form-grid"><?= csrf_field() ?>
-    <label class="checkbox span2"><input type="checkbox" name="fin_open_fees" value="1" <?= setting('fin_open_fees') === '1' ? 'checked' : '' ?>> <?= e(t('set_fin_open_fees')) ?></label>
-    <p class="muted small span2"><?= e(t('set_fin_open_fees_hint')) ?></p>
+  <summary><?= e(t('set_meta')) ?></summary>
+  <p class="muted"><?= e(t('set_meta_hint')) ?></p>
+</details>
+
+<?php // Alles, was die Anwendung nach außen tun kann, an einer Stelle — und
+      // nicht verstreut zwischen Einstellungen, mit denen es nichts zu tun hat.
+      // Wer wissen will, was diese Installation verlässt, schaut hierher. ?>
+<details class="card acc" name="setacc">
+  <summary>🌐 <?= e(t('set_extern')) ?></summary>
+  <p class="muted small"><?= e(t('set_extern_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/extern" class="stack"><?= csrf_field() ?>
+    <label class="checkbox"><input type="checkbox" name="push_enabled" value="1" <?= setting('push_enabled') === '1' ? 'checked' : '' ?>> 🔔 <?= e(t('set_push')) ?></label>
+    <p class="muted small"><?= e(t('set_push_hint')) ?></p>
+    <?php if (!push_supported()): ?><p class="warn">⚠ <?= e(t('sys_opt_push')) ?></p><?php endif; ?>
+
+    <label class="checkbox"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
+    <p class="muted small"><?= e(t('set_geocoding_hint')) ?></p>
+
+    <label class="checkbox"><input type="checkbox" name="onedrive_enabled" value="1" <?= setting('onedrive_enabled') === '1' ? 'checked' : '' ?>> ☁ <?= e(t('set_onedrive')) ?></label>
+    <p class="muted small"><?= e(t('set_onedrive_hint')) ?></p>
+
+    <?php // Der tägliche Blick (#214) steht bei den Verbindungen nach außen,
+          // denn er IST eine: einmal am Tag zu Microsoft, auch ohne Klick. ?>
+    <label class="checkbox"><input type="checkbox" name="od_auto_refresh" value="1" <?= setting('od_auto_refresh', '1') === '1' ? 'checked' : '' ?>> 🔄 <?= e(t('set_od_auto')) ?></label>
+    <p class="muted small"><?= e(t('set_od_auto_hint')) ?></p>
+    <?php if (!od_configured()): ?><p class="muted small">⚠ <?= e(t('od_needs_setup')) ?></p><?php endif; ?>
+
+    <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>
+  </form>
+
+  <?php // Das Postfach (#219) steht hier, weil es eine Verbindung nach außen
+        // ist: Der Server meldet sich regelmäßig bei einem fremden Mailserver
+        // an. Eigenes Formular, denn es hat eigene Felder und ein Passwort. ?>
+  <form method="post" action="/intern/einstellungen/postfach" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2"><input type="checkbox" name="imap_enabled" value="1" <?= setting('imap_enabled') === '1' ? 'checked' : '' ?>> ✉ <?= e(t('set_imap')) ?></label>
+    <p class="muted small span2"><?= e(t('set_imap_hint')) ?></p>
+    <?php if (!function_exists('imap_open')): ?>
+      <p class="warn span2">⚠ <?= e(t('post_no_imap')) ?></p>
+    <?php endif; ?>
+    <label><?= e(t('set_imap_host')) ?><input name="imap_host" value="<?= e(setting('imap_host')) ?>" placeholder="imap.example.com"></label>
+    <label><?= e(t('set_imap_port')) ?><input type="number" name="imap_port" min="1" max="65535" value="<?= (int) (setting('imap_port') ?: 993) ?>"></label>
+    <label><?= e(t('set_imap_user')) ?><input name="imap_user" value="<?= e(setting('imap_user')) ?>" autocomplete="off"></label>
+    <label><?= e(t('set_imap_pass')) ?>
+      <input type="password" name="imap_pass" autocomplete="new-password"
+             placeholder="<?= setting('imap_pass') !== '' ? e(t('set_imap_pass_set')) : '' ?>"></label>
+    <label><?= e(t('set_imap_folder')) ?><input name="imap_folder" value="<?= e(setting('imap_folder') ?: 'INBOX') ?>"></label>
+    <label><?= e(t('set_imap_interval')) ?><input type="number" name="imap_interval_min" min="5" max="1440" value="<?= (int) (setting('imap_interval_min') ?: 30) ?>"></label>
+    <label class="checkbox span2"><input type="checkbox" name="imap_tls" value="1" <?= setting('imap_tls', '1') === '1' ? 'checked' : '' ?>> 🔒 <?= e(t('set_imap_tls')) ?></label>
     <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+  <form method="post" action="/intern/post/test" class="inline"><?= csrf_field() ?>
+    <button class="btn"><?= e(t('set_imap_test')) ?></button>
+  </form>
+
+  <form method="post" action="/intern/einstellungen/extern" class="stack"><?= csrf_field() ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
 </details>
 
+<?php // OneDrive (#20): Anwendungsdaten und der Stand der Verbindung. Eigener
+      // Abschnitt, weil das Eintragen einer Anwendung bei Microsoft ein Vorgang
+      // für sich ist — der Schalter oben entscheidet nur, ob überhaupt etwas
+      // hinausgeht. ?>
 <details class="card acc" name="setacc">
-  <summary>🔁 <?= e(t('set_sub_auto')) ?></summary>
-  <p class="muted small"><?= e(t('set_sub_auto_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen/ersatz" class="form-grid"><?= csrf_field() ?>
-    <label><?= e(t('set_sub_auto')) ?>
-      <select name="substitute_auto">
-        <?php foreach (SUB_AUTO_MODES as $mode): ?>
-          <option value="<?= $mode ?>" <?= (setting('substitute_auto') ?: 'off') === $mode ? 'selected' : '' ?>><?= e(t('sub_auto_' . $mode)) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </label>
-    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  <summary>☁ <?= e(t('od_title')) ?></summary>
+  <?php $odVerb = od_connection(); ?>
+  <p class="muted small"><?= e(t('od_hint')) ?></p>
+
+  <?php if ($odVerb['connected']): ?>
+    <p><strong>✅ <?= e($odVerb['name'] !== '' || $odVerb['email'] !== ''
+      ? str_replace('%1', trim($odVerb['name'] . ($odVerb['email'] !== '' ? ' · ' . $odVerb['email'] : '')), t('od_connected_as'))
+      : t('od_connected')) ?></strong>
+      <?php if ($odVerb['drive'] !== ''): ?><span class="muted">☁ <?= e($odVerb['drive']) ?></span><?php endif; ?>
+      <?php if ($odVerb['since'] !== ''): ?><span class="muted small"><?= e(str_replace('%1', fmt_date(substr($odVerb['since'], 0, 10)), t('od_since'))) ?></span><?php endif; ?>
+    </p>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('od_not_connected')) ?></p>
+  <?php endif; ?>
+
+  <?php if ($odVerb['error'] !== ''): ?>
+    <p class="warn small"><strong><?= e(t('od_error_lbl')) ?>:</strong> <?= e($odVerb['error']) ?></p>
+  <?php endif; ?>
+
+  <div class="row-buttons">
+    <?php if (od_enabled()): ?>
+      <form method="post" action="/intern/einstellungen/onedrive/start" class="inline"><?= csrf_field() ?>
+        <button class="btn btn-primary btn-small">☁ <?= e($odVerb['connected'] ? t('od_reconnect') : t('od_connect')) ?></button>
+      </form>
+    <?php else: ?>
+      <span class="muted small">⚠ <?= e(od_configured() ? t('od_needs_enable') : t('od_needs_setup')) ?></span>
+    <?php endif; ?>
+    <?php if ($odVerb['connected']): ?>
+      <?php // Das Durchsehen ist eine eigene Seite: Es lebt vom Klicken durch die
+            // Ebenen und hätte zwischen den Formularen hier nichts gewonnen (#20). ?>
+      <a class="btn btn-small" href="/intern/einstellungen/onedrive/ordner">📁 <?= e(t('od_browse_open')) ?></a>
+      <form method="post" action="/intern/einstellungen/onedrive/loesen" class="inline"
+            data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+        <button class="btn btn-ghost btn-small"><?= e(t('od_disconnect')) ?></button>
+      </form>
+    <?php endif; ?>
+  </div>
+  <?php if ($odVerb['connected']): ?><p class="muted small">🔓 <?= e(t('od_disconnect_hint')) ?></p><?php endif; ?>
+</div>
+
+<?php // Aufräumen: eigene Seite, weil sie erst zeigt und dann löscht (#193). ?>
+<div class="card">
+  <h2>🧹 <?= e(t('clean_title')) ?></h2>
+  <p class="muted small"><?= e(t('clean_intro')) ?></p>
+  <a class="btn btn-small" href="/intern/einstellungen/aufraeumen"><?= e(t('clean_open')) ?></a>
+
+  <details class="subsection">
+    <summary>⚙ <?= e(t('od_setup')) ?></summary>
+    <p class="muted small"><?= e(t('od_setup_hint')) ?></p>
+    <p class="muted small"><strong><?= e(t('od_redirect_lbl')) ?>:</strong><br><code><?= e(od_redirect_uri()) ?></code></p>
+    <p class="muted small"><strong><?= e(t('od_scopes_lbl')) ?>:</strong> <code><?= e(OD_SCOPES) ?></code><br><?= e(t('od_scopes_hint')) ?></p>
+    <form method="post" action="/intern/einstellungen/onedrive" class="form-grid"><?= csrf_field() ?>
+      <label class="span2"><?= e(t('od_client_id')) ?><input name="onedrive_client_id" value="<?= e(setting('onedrive_client_id')) ?>" autocomplete="off"></label>
+      <?php // Nie zurückschreiben, nur anzeigen, dass eines liegt. ?>
+      <label class="span2"><?= e(t('od_client_secret')) ?>
+        <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
+        <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
+      </label>
+      <label class="span2"><?= e(t('od_tenant')) ?><input name="onedrive_tenant" value="<?= e(setting('onedrive_tenant', 'common')) ?>">
+        <span class="muted small"><?= e(t('od_tenant_hint')) ?></span>
+      </label>
+      <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+    </form>
+  </details>
+</details>
+
+<?php // Zweiter Faktor (#169): eine Auswahl aus dreien statt zweier Haken —
+      // „freiwillig" und „vorgeschrieben" schließen einander aus, und zwei
+      // Kästchen ließen den unmöglichen vierten Fall zu. ?>
+<details class="card acc" name="setacc">
+  <summary>🔑 <?= e(t('set_totp')) ?></summary>
+  <p class="muted small"><?= e(t('set_totp_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/zwei-faktor" class="stack"><?= csrf_field() ?>
+    <?php $totpModus = totp_mode(); ?>
+    <?php foreach (['off', 'optional', 'required'] as $totpWahl): ?>
+      <label class="checkbox">
+        <input type="radio" name="totp_mode" value="<?= $totpWahl ?>" <?= $totpModus === $totpWahl ? 'checked' : '' ?>>
+        <?= e(t('set_totp_' . $totpWahl)) ?>
+      </label>
+    <?php endforeach; ?>
+    <button class="btn btn-primary"><?= e(t('save')) ?></button>
   </form>
+</details>
+
+<?php // Verschlüsselung ruhender Daten. Die Seite sagt beides: was geschützt
+      // ist und was nicht — ein Halbsatz „verschlüsselt" ohne Grenze wäre eine
+      // Beruhigung und keine Auskunft. ?>
+<details class="card acc" name="setacc">
+  <summary>🔐 <?= e(t('set_crypt')) ?></summary>
+  <?php $cryptOn = crypt_available(); $cryptTest = $cryptOn ? crypt_selftest() : null; ?>
+  <p class="<?= $cryptOn ? 'muted' : 'warn' ?>">
+    <strong><?= e($cryptOn ? t('set_crypt_on') : t('set_crypt_off')) ?></strong>
+  </p>
+  <?php if ($cryptOn): ?>
+    <p class="muted small"><?= e(t('set_crypt_scope')) ?></p>
+    <p class="<?= $cryptTest['ok'] ? 'muted' : 'warn' ?> small">
+      <?= e(sprintf(t('set_crypt_test'), $cryptTest['message'])) ?>
+    </p>
+    <?php $sealCount = count(array_filter(glob(FILES_DIR . '/*') ?: [], fn($p) => is_file($p) && !crypt_is_sealed($p))); ?>
+    <?php if ($sealCount > 0): ?>
+      <p class="warn small"><?= e(sprintf(t('set_crypt_plain_files'), $sealCount)) ?></p>
+      <form method="post" action="/intern/dateien/versiegeln" class="inline"><?= csrf_field() ?>
+        <button class="btn btn-small">🔐 <?= e(t('set_crypt_seal_now')) ?></button>
+      </form>
+    <?php else: ?>
+      <p class="muted small"><?= e(t('set_crypt_files_done')) ?></p>
+    <?php endif; ?>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('set_crypt_how')) ?></p>
+    <p class="muted small"><code>php <?= e(BASE_DIR) ?>/app/backup.php key</code></p>
+    <p class="muted small">⚠ <?= e(t('set_crypt_lost')) ?></p>
+  <?php endif; ?>
+  <p class="muted small"><?= e(t('set_crypt_law')) ?></p>
 </details>
 
 <details class="card acc" name="setacc">
@@ -345,174 +568,6 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <p class="muted small"><?= e(t('bk_upload_hint')) ?></p>
 </details>
 
-<?php // Verschlüsselung ruhender Daten. Die Seite sagt beides: was geschützt
-      // ist und was nicht — ein Halbsatz „verschlüsselt" ohne Grenze wäre eine
-      // Beruhigung und keine Auskunft. ?>
-<details class="card acc" name="setacc">
-  <summary>🔐 <?= e(t('set_crypt')) ?></summary>
-  <?php $cryptOn = crypt_available(); $cryptTest = $cryptOn ? crypt_selftest() : null; ?>
-  <p class="<?= $cryptOn ? 'muted' : 'warn' ?>">
-    <strong><?= e($cryptOn ? t('set_crypt_on') : t('set_crypt_off')) ?></strong>
-  </p>
-  <?php if ($cryptOn): ?>
-    <p class="muted small"><?= e(t('set_crypt_scope')) ?></p>
-    <p class="<?= $cryptTest['ok'] ? 'muted' : 'warn' ?> small">
-      <?= e(sprintf(t('set_crypt_test'), $cryptTest['message'])) ?>
-    </p>
-    <?php $sealCount = count(array_filter(glob(FILES_DIR . '/*') ?: [], fn($p) => is_file($p) && !crypt_is_sealed($p))); ?>
-    <?php if ($sealCount > 0): ?>
-      <p class="warn small"><?= e(sprintf(t('set_crypt_plain_files'), $sealCount)) ?></p>
-      <form method="post" action="/intern/dateien/versiegeln" class="inline"><?= csrf_field() ?>
-        <button class="btn btn-small">🔐 <?= e(t('set_crypt_seal_now')) ?></button>
-      </form>
-    <?php else: ?>
-      <p class="muted small"><?= e(t('set_crypt_files_done')) ?></p>
-    <?php endif; ?>
-  <?php else: ?>
-    <p class="muted small"><?= e(t('set_crypt_how')) ?></p>
-    <p class="muted small"><code>php <?= e(BASE_DIR) ?>/app/backup.php key</code></p>
-    <p class="muted small">⚠ <?= e(t('set_crypt_lost')) ?></p>
-  <?php endif; ?>
-  <p class="muted small"><?= e(t('set_crypt_law')) ?></p>
-</details>
-
-<?php // OneDrive (#20): Anwendungsdaten und der Stand der Verbindung. Eigener
-      // Abschnitt, weil das Eintragen einer Anwendung bei Microsoft ein Vorgang
-      // für sich ist — der Schalter oben entscheidet nur, ob überhaupt etwas
-      // hinausgeht. ?>
-<details class="card acc" name="setacc">
-  <summary>☁ <?= e(t('od_title')) ?></summary>
-  <?php $odVerb = od_connection(); ?>
-  <p class="muted small"><?= e(t('od_hint')) ?></p>
-
-  <?php if ($odVerb['connected']): ?>
-    <p><strong>✅ <?= e($odVerb['name'] !== '' || $odVerb['email'] !== ''
-      ? str_replace('%1', trim($odVerb['name'] . ($odVerb['email'] !== '' ? ' · ' . $odVerb['email'] : '')), t('od_connected_as'))
-      : t('od_connected')) ?></strong>
-      <?php if ($odVerb['drive'] !== ''): ?><span class="muted">☁ <?= e($odVerb['drive']) ?></span><?php endif; ?>
-      <?php if ($odVerb['since'] !== ''): ?><span class="muted small"><?= e(str_replace('%1', fmt_date(substr($odVerb['since'], 0, 10)), t('od_since'))) ?></span><?php endif; ?>
-    </p>
-  <?php else: ?>
-    <p class="muted small"><?= e(t('od_not_connected')) ?></p>
-  <?php endif; ?>
-
-  <?php if ($odVerb['error'] !== ''): ?>
-    <p class="warn small"><strong><?= e(t('od_error_lbl')) ?>:</strong> <?= e($odVerb['error']) ?></p>
-  <?php endif; ?>
-
-  <div class="row-buttons">
-    <?php if (od_enabled()): ?>
-      <form method="post" action="/intern/einstellungen/onedrive/start" class="inline"><?= csrf_field() ?>
-        <button class="btn btn-primary btn-small">☁ <?= e($odVerb['connected'] ? t('od_reconnect') : t('od_connect')) ?></button>
-      </form>
-    <?php else: ?>
-      <span class="muted small">⚠ <?= e(od_configured() ? t('od_needs_enable') : t('od_needs_setup')) ?></span>
-    <?php endif; ?>
-    <?php if ($odVerb['connected']): ?>
-      <?php // Das Durchsehen ist eine eigene Seite: Es lebt vom Klicken durch die
-            // Ebenen und hätte zwischen den Formularen hier nichts gewonnen (#20). ?>
-      <a class="btn btn-small" href="/intern/einstellungen/onedrive/ordner">📁 <?= e(t('od_browse_open')) ?></a>
-      <form method="post" action="/intern/einstellungen/onedrive/loesen" class="inline"
-            data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
-        <button class="btn btn-ghost btn-small"><?= e(t('od_disconnect')) ?></button>
-      </form>
-    <?php endif; ?>
-  </div>
-  <?php if ($odVerb['connected']): ?><p class="muted small">🔓 <?= e(t('od_disconnect_hint')) ?></p><?php endif; ?>
-</div>
-
-<?php // Aufräumen: eigene Seite, weil sie erst zeigt und dann löscht (#193). ?>
-<div class="card">
-  <h2>🧹 <?= e(t('clean_title')) ?></h2>
-  <p class="muted small"><?= e(t('clean_intro')) ?></p>
-  <a class="btn btn-small" href="/intern/einstellungen/aufraeumen"><?= e(t('clean_open')) ?></a>
-
-  <details class="subsection">
-    <summary>⚙ <?= e(t('od_setup')) ?></summary>
-    <p class="muted small"><?= e(t('od_setup_hint')) ?></p>
-    <p class="muted small"><strong><?= e(t('od_redirect_lbl')) ?>:</strong><br><code><?= e(od_redirect_uri()) ?></code></p>
-    <p class="muted small"><strong><?= e(t('od_scopes_lbl')) ?>:</strong> <code><?= e(OD_SCOPES) ?></code><br><?= e(t('od_scopes_hint')) ?></p>
-    <form method="post" action="/intern/einstellungen/onedrive" class="form-grid"><?= csrf_field() ?>
-      <label class="span2"><?= e(t('od_client_id')) ?><input name="onedrive_client_id" value="<?= e(setting('onedrive_client_id')) ?>" autocomplete="off"></label>
-      <?php // Nie zurückschreiben, nur anzeigen, dass eines liegt. ?>
-      <label class="span2"><?= e(t('od_client_secret')) ?>
-        <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
-        <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
-      </label>
-      <label class="span2"><?= e(t('od_tenant')) ?><input name="onedrive_tenant" value="<?= e(setting('onedrive_tenant', 'common')) ?>">
-        <span class="muted small"><?= e(t('od_tenant_hint')) ?></span>
-      </label>
-      <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
-    </form>
-  </details>
-</details>
-
-<?php // Zweiter Faktor (#169): eine Auswahl aus dreien statt zweier Haken —
-      // „freiwillig" und „vorgeschrieben" schließen einander aus, und zwei
-      // Kästchen ließen den unmöglichen vierten Fall zu. ?>
-<details class="card acc" name="setacc">
-  <summary>🔑 <?= e(t('set_totp')) ?></summary>
-  <p class="muted small"><?= e(t('set_totp_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen/zwei-faktor" class="stack"><?= csrf_field() ?>
-    <?php $totpModus = totp_mode(); ?>
-    <?php foreach (['off', 'optional', 'required'] as $totpWahl): ?>
-      <label class="checkbox">
-        <input type="radio" name="totp_mode" value="<?= $totpWahl ?>" <?= $totpModus === $totpWahl ? 'checked' : '' ?>>
-        <?= e(t('set_totp_' . $totpWahl)) ?>
-      </label>
-    <?php endforeach; ?>
-    <button class="btn btn-primary"><?= e(t('save')) ?></button>
-  </form>
-</details>
-
-<?php require_once BASE_DIR . '/app/steuer.php'; ?>
-<details class="card acc" name="setacc">
-  <summary>⚖ <?= e(t('set_tax')) ?></summary>
-  <p class="muted small"><?= e(t('set_tax_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen" class="form-grid"><?= csrf_field() ?>
-    <input type="hidden" name="_tax_form" value="1">
-    <label class="checkbox span2">
-      <input type="checkbox" name="tax_small_business" value="1" <?= setting('tax_small_business', '0') === '1' ? 'checked' : '' ?>>
-      <?= e(t('set_tax_small')) ?>
-    </label>
-    <p class="muted small span2"><?= e(t('set_tax_small_hint')) ?></p>
-    <label class="span2"><?= e(t('set_tax_start')) ?>
-      <input type="date" name="tax_business_start" value="<?= e(setting('tax_business_start', '')) ?>">
-      <span class="muted small"><?= e(t('set_tax_start_hint')) ?></span>
-    </label>
-    <label><?= e(t('set_tax_prev')) ?><input name="tax_limit_prev_year" inputmode="decimal" value="<?= e(setting('tax_limit_prev_year', '25000')) ?>"></label>
-    <label><?= e(t('set_tax_this')) ?><input name="tax_limit_this_year" inputmode="decimal" value="<?= e(setting('tax_limit_this_year', '100000')) ?>"></label>
-    <label><?= e(t('set_tax_gwg')) ?><input name="tax_gwg_limit" inputmode="decimal" value="<?= e(setting('tax_gwg_limit', '800')) ?>">
-      <span class="muted small"><?= e(t('set_tax_gwg_hint')) ?></span>
-    </label>
-    <label class="checkbox span2">
-      <input type="checkbox" name="tax_prices_gross" value="1" <?= setting('tax_prices_gross', '1') === '1' ? 'checked' : '' ?>>
-      <?= e(t('set_tax_gross')) ?>
-    </label>
-    <p class="muted small span2"><?= e(t('set_tax_gross_hint')) ?></p>
-    <label><?= e(t('set_tax_vat_rate')) ?><input name="tax_vat_rate" inputmode="decimal" value="<?= e(setting('tax_vat_rate', '19')) ?>"></label>
-    <label><?= e(t('set_tax_afa_years')) ?><input name="tax_afa_years" inputmode="numeric" value="<?= e(setting('tax_afa_years', '7')) ?>">
-      <span class="muted small"><?= e(t('set_tax_afa_hint')) ?></span>
-    </label>
-    <p class="span2"><strong><?= e(t('set_tax_afa_cats')) ?></strong></p>
-    <?php foreach (TAX_AFA_BY_CATEGORY as $afaCat => $afaDefault): ?>
-      <label><?= e(eq_category_label($afaCat)) ?>
-        <input name="tax_afa_<?= e($afaCat) ?>" inputmode="numeric" value="<?= e(setting('tax_afa_' . $afaCat, (string) $afaDefault)) ?>">
-      </label>
-    <?php endforeach; ?>
-    <p class="muted small span2"><?= e(t('set_tax_afa_cats_hint')) ?></p>
-    <label><?= e(t('set_tax_comm_share')) ?><input name="tax_commercial_share" inputmode="decimal" value="<?= e(setting('tax_commercial_share', '3')) ?>"></label>
-    <label><?= e(t('set_tax_comm_abs')) ?><input name="tax_commercial_abs" inputmode="decimal" value="<?= e(setting('tax_commercial_abs', '24500')) ?>"></label>
-    <p class="muted small span2"><?= e(t('set_tax_comm_hint')) ?></p>
-    <label class="span2"><?= e(t('set_tax_checked')) ?>
-      <input type="date" name="tax_values_checked" value="<?= e(setting('tax_values_checked', '')) ?>">
-    </label>
-    <p class="muted small span2"><?= e(t('set_tax_source')) ?></p>
-    <p class="muted small span2">⚖ <?= e(t('tax_no_advice')) ?></p>
-    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
-  </form>
-</details>
-
 <?php require_once BASE_DIR . '/app/update.php'; $upCmd = update_command(); $upLatest = update_latest_version(); ?>
 <details class="card acc" name="setacc" <?= update_available() ? 'open' : '' ?>>
   <summary>⬆ <?= e(t('up_title')) ?><?= update_available() ? ' — ' . e(sprintf(t('up_available'), $upLatest)) : '' ?></summary>
@@ -594,62 +649,6 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <button class="btn btn-primary"><?= e(t('set_demo_add')) ?></button>
     </form>
   <?php endif; ?>
-</details>
-
-<?php // Alles, was die Anwendung nach außen tun kann, an einer Stelle — und
-      // nicht verstreut zwischen Einstellungen, mit denen es nichts zu tun hat.
-      // Wer wissen will, was diese Installation verlässt, schaut hierher. ?>
-<details class="card acc" name="setacc">
-  <summary>🌐 <?= e(t('set_extern')) ?></summary>
-  <p class="muted small"><?= e(t('set_extern_hint')) ?></p>
-  <form method="post" action="/intern/einstellungen/extern" class="stack"><?= csrf_field() ?>
-    <label class="checkbox"><input type="checkbox" name="push_enabled" value="1" <?= setting('push_enabled') === '1' ? 'checked' : '' ?>> 🔔 <?= e(t('set_push')) ?></label>
-    <p class="muted small"><?= e(t('set_push_hint')) ?></p>
-    <?php if (!push_supported()): ?><p class="warn">⚠ <?= e(t('sys_opt_push')) ?></p><?php endif; ?>
-
-    <label class="checkbox"><input type="checkbox" name="geocoding_enabled" value="1" <?= setting('geocoding_enabled') === '1' ? 'checked' : '' ?>> 🗺 <?= e(t('set_geocoding')) ?></label>
-    <p class="muted small"><?= e(t('set_geocoding_hint')) ?></p>
-
-    <label class="checkbox"><input type="checkbox" name="onedrive_enabled" value="1" <?= setting('onedrive_enabled') === '1' ? 'checked' : '' ?>> ☁ <?= e(t('set_onedrive')) ?></label>
-    <p class="muted small"><?= e(t('set_onedrive_hint')) ?></p>
-
-    <?php // Der tägliche Blick (#214) steht bei den Verbindungen nach außen,
-          // denn er IST eine: einmal am Tag zu Microsoft, auch ohne Klick. ?>
-    <label class="checkbox"><input type="checkbox" name="od_auto_refresh" value="1" <?= setting('od_auto_refresh', '1') === '1' ? 'checked' : '' ?>> 🔄 <?= e(t('set_od_auto')) ?></label>
-    <p class="muted small"><?= e(t('set_od_auto_hint')) ?></p>
-    <?php if (!od_configured()): ?><p class="muted small">⚠ <?= e(t('od_needs_setup')) ?></p><?php endif; ?>
-
-    <p class="muted small">📄 <?= e(t('set_privacy_note')) ?></p>
-  </form>
-
-  <?php // Das Postfach (#219) steht hier, weil es eine Verbindung nach außen
-        // ist: Der Server meldet sich regelmäßig bei einem fremden Mailserver
-        // an. Eigenes Formular, denn es hat eigene Felder und ein Passwort. ?>
-  <form method="post" action="/intern/einstellungen/postfach" class="form-grid"><?= csrf_field() ?>
-    <label class="checkbox span2"><input type="checkbox" name="imap_enabled" value="1" <?= setting('imap_enabled') === '1' ? 'checked' : '' ?>> ✉ <?= e(t('set_imap')) ?></label>
-    <p class="muted small span2"><?= e(t('set_imap_hint')) ?></p>
-    <?php if (!function_exists('imap_open')): ?>
-      <p class="warn span2">⚠ <?= e(t('post_no_imap')) ?></p>
-    <?php endif; ?>
-    <label><?= e(t('set_imap_host')) ?><input name="imap_host" value="<?= e(setting('imap_host')) ?>" placeholder="imap.example.com"></label>
-    <label><?= e(t('set_imap_port')) ?><input type="number" name="imap_port" min="1" max="65535" value="<?= (int) (setting('imap_port') ?: 993) ?>"></label>
-    <label><?= e(t('set_imap_user')) ?><input name="imap_user" value="<?= e(setting('imap_user')) ?>" autocomplete="off"></label>
-    <label><?= e(t('set_imap_pass')) ?>
-      <input type="password" name="imap_pass" autocomplete="new-password"
-             placeholder="<?= setting('imap_pass') !== '' ? e(t('set_imap_pass_set')) : '' ?>"></label>
-    <label><?= e(t('set_imap_folder')) ?><input name="imap_folder" value="<?= e(setting('imap_folder') ?: 'INBOX') ?>"></label>
-    <label><?= e(t('set_imap_interval')) ?><input type="number" name="imap_interval_min" min="5" max="1440" value="<?= (int) (setting('imap_interval_min') ?: 30) ?>"></label>
-    <label class="checkbox span2"><input type="checkbox" name="imap_tls" value="1" <?= setting('imap_tls', '1') === '1' ? 'checked' : '' ?>> 🔒 <?= e(t('set_imap_tls')) ?></label>
-    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
-  </form>
-  <form method="post" action="/intern/post/test" class="inline"><?= csrf_field() ?>
-    <button class="btn"><?= e(t('set_imap_test')) ?></button>
-  </form>
-
-  <form method="post" action="/intern/einstellungen/extern" class="stack"><?= csrf_field() ?>
-    <button class="btn btn-primary"><?= e(t('save')) ?></button>
-  </form>
-</details>
 </details>
 
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
