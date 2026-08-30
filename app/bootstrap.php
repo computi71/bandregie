@@ -515,6 +515,7 @@ const UI_STRINGS = [
   'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied',   'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
   'mem_send_access' => 'Zugangsdaten senden',
   'mem_never_logged_in' => 'Noch nie angemeldet',
+  'mem_login_unknown' => 'Keine Anmeldung bekannt',
   'mem_start_pw_until' => 'Start-Passwort gültig bis',
   'mem_start_pw_expired' => 'Start-Passwort abgelaufen',
   'fl_start_pw_expired' => 'Das Start-Passwort ist abgelaufen. Lass dir neue Zugangsdaten schicken — in der Mitgliederliste gibt es dafür einen Knopf.',
@@ -2873,6 +2874,27 @@ if (setting('migr_kasse_repair') === '') {
        ON DUPLICATE KEY UPDATE can_read = can_read', [$adminZeile['id'], 'kasse']);
   }
   set_setting('migr_kasse_repair', '1');
+}
+
+// Wer sich vor v1.244.0 angemeldet hat, hinterließ davon keinen Stempel — ein
+// Passwort-Login schreibt nichts mit. Was sich beweisen lässt, wird einmalig
+// nachgetragen: ein Passkey, ein bestätigter zweiter Faktor, ein Merkmal für
+// „angemeldet bleiben" oder ein Push-Abo entsteht nur nach einer Anmeldung.
+// Wo es keinen Beleg gibt, bleibt die Spalte leer — dann sagt die Liste
+// „keine Anmeldung bekannt" und behauptet nichts (#275).
+if (setting('migr_login_backfill') === '') {
+  q("UPDATE users u SET u.last_login_at = GREATEST(
+       COALESCE((SELECT MAX(p.last_used_at) FROM passkeys p WHERE p.user_id = u.id), '1000-01-01'),
+       COALESCE(u.totp_confirmed_at, '1000-01-01'),
+       COALESCE((SELECT MAX(COALESCE(l.last_used_at, l.created_at)) FROM login_tokens l WHERE l.user_id = u.id), '1000-01-01'),
+       COALESCE((SELECT MAX(s.last_seen_at) FROM push_subscriptions s WHERE s.user_id = u.id), '1000-01-01'))
+     WHERE u.last_login_at IS NULL
+       AND GREATEST(
+       COALESCE((SELECT MAX(p.last_used_at) FROM passkeys p WHERE p.user_id = u.id), '1000-01-01'),
+       COALESCE(u.totp_confirmed_at, '1000-01-01'),
+       COALESCE((SELECT MAX(COALESCE(l.last_used_at, l.created_at)) FROM login_tokens l WHERE l.user_id = u.id), '1000-01-01'),
+       COALESCE((SELECT MAX(s.last_seen_at) FROM push_subscriptions s WHERE s.user_id = u.id), '1000-01-01')) > '1000-01-01'");
+  set_setting('migr_login_backfill', '1');
 }
 
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,

@@ -69,15 +69,21 @@
               // sondern ein Zurücksetzen, und dafür gibt es das Passwortfeld.
               // Nicht für das eigene Konto: Man nähme sich selbst das Passwort.
               //
-              // Zwei Bedingungen, nicht eine: „noch nie angemeldet" allein
-              // träfe auch jedes Bestandskonto, denn den Stempel gibt es erst
-              // seit dieser Fassung. Zusammen mit „muss das Passwort noch
-              // wechseln" bleibt genau der Fall übrig, um den es geht — ein
-              // Zugang, der ausgeteilt und nie benutzt wurde. ?>
+              // Bedingung ist allein die fehlende Anmeldung. „Muss das Passwort
+              // noch wechseln" wäre falsch gewesen: Konten, die nicht über das
+              // Einladungsformular entstanden sind, tragen dieses Kennzeichen
+              // nie — und ausgerechnet die, die nie angekommen sind, hätten
+              // keinen Knopf bekommen (#275). ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()
-                  && $m['last_login_at'] === null && !empty($m['must_change_pw'])): ?>
+                  && $m['last_login_at'] === null): ?>
+          <?php // Zwei verschiedene Aussagen, und nur eine davon ist sicher: Wer
+                // ein Start-Passwort bekommen hat und keine Anmeldung zeigt, war
+                // nie da. Bei den übrigen fehlt bloß die Aufzeichnung — den
+                // Stempel gibt es erst seit v1.244.0, und ein Passwort-Login
+                // hinterlässt sonst keine Spur. Das darf hier nicht als
+                // Tatsache stehen. ?>
           <span class="muted small">
-            <?= e(t('mem_never_logged_in')) ?><?php if ($m['start_pw_at']): ?> ·
+            <?= e(t($m['start_pw_at'] ? 'mem_never_logged_in' : 'mem_login_unknown')) ?><?php if ($m['start_pw_at']): ?> ·
               <?php if (start_pw_expired($m)): ?>
                 <strong class="warn"><?= e(t('mem_start_pw_expired')) ?></strong>
               <?php else: ?>
