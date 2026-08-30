@@ -2491,10 +2491,7 @@ if (str_starts_with($path, '/intern')) {
     // hat in einer öffentlichen Demo nichts verloren.
     deny_in_demo('/intern/mitglieder');
     if (($_POST['first_name'] ?? '') && ($_POST['email'] ?? '')) {
-      // Start-Passwort erzeugen (ohne verwechselbare Zeichen), Wechsel beim ersten Login erzwingen
-      $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-      $startPw = '';
-      for ($i = 0; $i < 12; $i++) $startPw .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+      $startPw = start_password();
       $email = strtolower(trim($_POST['email']));
       try {
         q('INSERT INTO users (name, first_name, last_name, email, password_hash, role, instrument, must_change_pw)
@@ -2507,24 +2504,10 @@ if (str_starts_with($path, '/intern')) {
         // Rechte nach der Vorlage der Rolle; Admins brauchen keine Zeilen
         $newRole = in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member';
         if ($newRole !== 'admin') perm_apply_template((int) $db->lastInsertId(), $newRole);
-        $band = setting('band_name');
-        $body = "Hallo " . trim($_POST['first_name'] ?? '') . ",\n\n"
-          . "für dich wurde ein Zugang zum Bandbereich von $band angelegt.\n\n"
-          . 'Login: ' . absolute_url('/login') . "\n"
-          . "E-Mail: $email\n"
-          . "Start-Passwort: $startPw\n\n"
-          . "Beim ersten Login musst du ein eigenes Passwort vergeben.\n\n"
-          . "Viele Grüße\n$band";
-        // Absender von der eigenen Domain (SPF), Antworten gehen an die Band-Adresse
-        $from = mail_from_address();
-        $antwortAn = mail_header_value(setting('contact_email'));
-        $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
-        // Ohne das Recht zum Versand entsteht das Konto trotzdem — nur die Mail
-        // bleibt hier, und das Start-Passwort steht in der Meldung. Genau das ist
-        // der Weg, den es auch gibt, wenn der Server keine Mail zustellen kann.
-        $sent = perm_allows($me, 'mailversand', 'write')
-          && @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
-            "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+        // Die Zugangsdaten gehen an das neue Mitglied selbst — das ist keine
+        // Post im Namen der Band nach draußen, sondern der Zettel mit dem
+        // Schlüssel. Wer ein Konto anlegen darf, darf ihn auch verschicken (#273).
+        $sent = welcome_mail($email, $_POST['first_name'] ?? '', $startPw);
         flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
       } catch (PDOException) {
         flash(t('fl_email_taken'));
@@ -2573,6 +2556,25 @@ if (str_starts_with($path, '/intern')) {
         [password_hash($_POST['password'], PASSWORD_DEFAULT), (int) $id !== (int) $me['id'] ? 1 : 0, $id]);
       flash(t('fl_pw_changed'));
     }
+    redirect('/intern/mitglieder');
+  }
+
+  // Zugangsdaten noch einmal schicken (#273). Das alte Passwort ist nur als
+  // Prüfsumme gespeichert und lässt sich nicht wiederholen — es wird also ein
+  // neues erzeugt. Deshalb fragt der Knopf vorher nach: Für ein Mitglied, das
+  // längst sein eigenes Passwort hat, ist das ein Zurücksetzen.
+  if (preg_match('~^/intern/mitglieder/(\d+)/zugangsdaten$~', $path, $m) && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/mitglieder');
+    $ziel = row('SELECT id, email, first_name, name FROM users WHERE id = ?', [$m[1]]);
+    if (!$ziel) redirect('/intern/mitglieder');
+    $startPw = start_password();
+    q('UPDATE users SET password_hash = ?, must_change_pw = 1 WHERE id = ?',
+      [password_hash($startPw, PASSWORD_DEFAULT), $ziel['id']]);
+    // Auch das gehört ins Protokoll: Es nimmt einem fremden Konto sein Passwort.
+    error_log('Bandregie: Zugangsdaten neu verschickt für Konto ' . (int) $ziel['id'] . ' durch Konto ' . (int) $me['id']);
+    $sent = welcome_mail($ziel['email'], $ziel['first_name'] ?: $ziel['name'], $startPw);
+    flash($sent ? t('fl_access_sent') : t('fl_access_nomail') . ' ' . $startPw);
     redirect('/intern/mitglieder');
   }
 

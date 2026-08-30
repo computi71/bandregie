@@ -513,6 +513,10 @@ const UI_STRINGS = [
   'photos_none_intern' => 'Noch keine Fotos hochgeladen.',
   // Mitglieder & Profil
   'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied',   'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
+  'mem_send_access' => 'Zugangsdaten senden',
+  'mem_send_access_confirm' => 'Ein neues Start-Passwort wird erzeugt und per E-Mail geschickt. Das bisherige Passwort dieses Mitglieds gilt danach nicht mehr.',
+  'fl_access_sent' => 'Zugangsdaten verschickt.',
+  'fl_access_nomail' => 'Die Mail ging nicht hinaus. Start-Passwort:',
   'mem_password' => 'Passwort', 'mem_new_pw' => 'Neues Passwort', 'mem_set' => 'Setzen',
   'mem_first_name' => 'Vorname', 'mem_last_name' => 'Nachname',
   'mem_name_hint' => 'Angezeigt wird „Vorname Nachname“ — oder der Künstlername, falls gesetzt.',
@@ -4702,6 +4706,40 @@ function ical_token_for(int $userId, bool $neu = false): string {
  * Auch der senkrechte Tabulator und das Nullzeichen fliegen: manche
  * Mail-Programme behandeln sie als Umbruch.
  */
+/**
+ * Ein Start-Passwort: zwölf Zeichen ohne die verwechselbaren (0/O, 1/l/I).
+ * Es wird vorgelesen, abgetippt und weitergesagt — da zählt Lesbarkeit mehr
+ * als das letzte Bit Entropie, zumal es beim ersten Login gewechselt wird.
+ */
+function start_password(): string {
+  $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  $pw = '';
+  for ($i = 0; $i < 12; $i++) $pw .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+  return $pw;
+}
+
+/**
+ * Die Willkommensmail mit den Zugangsdaten. Einmal hier, weil sie an zwei
+ * Stellen gebraucht wird: beim Anlegen eines Kontos und wenn sie noch einmal
+ * geschickt werden soll (#273). Absender von der eigenen Domain wegen SPF,
+ * Antworten gehen an die Kontaktadresse der Band.
+ */
+function welcome_mail(string $email, string $vorname, string $startPw): bool {
+  $band = setting('band_name');
+  $body = "Hallo " . trim($vorname) . ",\n\n"
+    . "für dich wurde ein Zugang zum Bandbereich von $band angelegt.\n\n"
+    . 'Login: ' . absolute_url('/login') . "\n"
+    . "E-Mail: $email\n"
+    . "Start-Passwort: $startPw\n\n"
+    . "Beim ersten Login musst du ein eigenes Passwort vergeben.\n\n"
+    . "Viele Grüße\n$band";
+  $from = mail_from_address();
+  $antwortAn = mail_header_value(setting('contact_email'));
+  $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
+  return (bool) @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
+    "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+}
+
 function mail_from_address(): string {
   // Aus site_url und nicht aus dem Host der Anfrage: Der Host kommt vom
   // Aufrufer. Mit einem gefälschten Host-Kopf trug jede Mail dieser
