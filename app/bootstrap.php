@@ -3110,8 +3110,18 @@ function perm_of(int $userId): array {
 function perm_allows(?array $user, string $module, string $need = 'read'): bool {
   if (!$user) return false;
   // Admins dürfen alles — außer, was ausdrücklich vergeben sein will. Eine
-  // Band zu verwalten ist nicht dasselbe, wie ihre Kasse zu führen.
-  if (($user['role'] ?? '') === 'admin' && !in_array($module, PERM_EXPLICIT_MODULES, true)) return true;
+  // Band zu verwalten ist nicht dasselbe, wie ihre Kasse zu führen oder ihre
+  // Post zu lesen.
+  if (($user['role'] ?? '') === 'admin') {
+    if (!in_array($module, PERM_EXPLICIT_MODULES, true)) return true;
+    // Und ein ausdrücklicher Bereich gilt nur, wenn er wirklich eingetragen
+    // ist. Sonst fiele ein frisch angelegter Admin — der bekommt keine einzige
+    // Rechtezeile — auf die Vorlage „Mitglied" zurück und hätte Kasse und
+    // Postfach doch wieder, obwohl genau das verhindert werden sollte (#271).
+    $eigen = perm_of((int) $user['id'])[$module] ?? null;
+    if (!$eigen) return false;
+    return $need === 'write' ? (bool) $eigen['write'] : (bool) ($eigen['read'] || $eigen['write']);
+  }
   $all = perm_of((int) $user['id']);
   if (!$all) {
     // Kein einziger Eintrag heißt „noch nicht entschieden", nicht „verboten" —
