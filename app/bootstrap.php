@@ -2840,6 +2840,21 @@ if (setting('migr_post_explicit') === '') {
   set_setting('migr_post_explicit', '1');
 }
 
+// Reparatur zu #272: Die Migration darüber gab jedem Admin eine Postfach-Zeile
+// — und damit hatte er zum ersten Mal überhaupt Zeilen. Wer Zeilen hat, wird
+// genau danach beurteilt, und die Kasse, die ein Admin vorher über die Vorlage
+// „Mitglied" sehen (nicht führen) durfte, war damit weg. Wessen einzige Zeile
+// das Postfach ist, der hatte vorher keine: Er bekommt die Kasse zum Sehen
+// zurück, genau wie die Vorlage sie gab.
+if (setting('migr_kasse_repair') === '') {
+  foreach (rows("SELECT id FROM users u WHERE u.role = 'admin'
+                 AND NOT EXISTS (SELECT 1 FROM permissions p WHERE p.user_id = u.id AND p.module <> 'post')") as $adminZeile) {
+    q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 0)
+       ON DUPLICATE KEY UPDATE can_read = can_read', [$adminZeile['id'], 'kasse']);
+  }
+  set_setting('migr_kasse_repair', '1');
+}
+
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
 // sondern auch dann, wenn eine neue Version weitere Seed-Dateien mitbringt.
 // Die Seeds ergänzen ausschließlich fehlende Schlüssel; im Bandbereich von Hand
