@@ -34,11 +34,20 @@ years without anyone touching it.
 **What is private stays private.** What a member paid for their own
 equipment, what they deposit, what they own — visible to them, not to the
 band. Permissions are enforced in the route, never only in the interface,
-and a stand-in sees the dates they were asked for and nothing else.
+and a stand-in sees the dates they were asked for and nothing else. Two areas
+are never handed out by rank: the treasury and the mailbox have to be granted
+even to an administrator, because running a band is not the same as running its
+money or reading its post. Sending mail in the band's name is a decision of its
+own again — whoever may read the mailbox need not be the one who answers it.
 
 ## What it does
 
-Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, announcements (the dashed line where the band talks instead of playing), braces that tie a run of songs together under one cue, encore markers, copy, a stage-ready print view and a locked history; venues with play history; absences with conflict warnings; tasks, the band's mailbox (fetched by IMAP, read-only, with a booking request turned into an event proposal you check before it is created, replies written and filed in place, and attachments taken over into the event they belong to), a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, a linked folder can be tied to an event so its pictures land there — the ones already taken over and the ones that arrive next week, with the event read out of the folder name where it says so — and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (any page view, the public one included, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+Public band page plus an internal organization area: events with availability polling (✔/?/✘), status workflow, three times (meet / stage / end), fee tracking and per-event comments; songs with a lifecycle, live-play counters, lyrics and a guitarist's chord sheet — both readable on a full-screen stage teleprompter that scrolls by itself, with the sections colour-coded and the screen kept awake; setlists with pauses, announcements (the dashed line where the band talks instead of playing), braces that tie a run of songs together under one cue, encore markers, copy, a stage-ready print view — with the fields that go on the sheet chosen per print, a type size that fits itself to the paper, and a way back out of the preview — a teleprompter that starts from the setlist and moves on to the next song with lyrics by itself, and a locked history; venues with play history; absences with conflict warnings; tasks, the band's mailbox (fetched by IMAP, read-only, with a booking request turned into an event proposal you check before it is created, replies written and filed in place, and attachments taken over into the event they belong to), a photo library (a folder tree of year, gig and photographer, an archive instead of deleting, tags, press picks, hand-named people and one search field over all of it, duplicates found by checksum), file attachments, member management, a band treasury with standing orders, member deposits and a yearly tax overview, equipment with recurring deadlines — one record per device, numbered where two are identical, and a quantity field for consumables nobody tracks piece by piece — an invoice that can cover several devices at once, an iCal calendar feed, OneDrive folders that can be linked rather than copied — the files stay where they are, pictures come in as small previews with the original linked, a linked folder can be tied to an event so its pictures land there — the ones already taken over and the ones that arrive next week, with the event read out of the folder name where it says so — and what disappears there is marked as missing instead of quietly vanishing from the list, with a daily re-check (any page view, the public one included, or bin/od-refresh.php as a cron) that notifies members of new pictures by push — and a stage-ready offline mode: everything is on the phone unless a member takes it off again in their profile — events, setlists with print views, songs with lyrics and chord sheets, the rider, the patch list — and it refreshes itself in the background whenever a page is opened with a signal. A single event can also be taken along with one button.
+
+The overview greets a member with the next dates as real appointments — venue,
+navigation link, linked setlist, meeting and stage times — under a line of
+welcome text the band writes itself, with the picture beside it chosen from a
+rainbow flag, the band logo, an upload of their own, or none.
 
 **White-label:** band name, logo, background image and favicon are configured entirely in the settings — every band makes the instance its own.
 
@@ -577,6 +586,26 @@ shut. No library and no external service is involved: the QR encoder
 (`app/qr.php`) is part of this repository, because the code carries the secret
 in the clear and rendering it elsewhere would ship the second factor to a
 stranger.
+
+**Stay signed in** is offered at sign-in and lasts 90 days on that device. The
+cookie carries a selector and a validator; the server keeps the selector and
+only a SHA-256 of the validator, so a stolen database yields no session. Every
+use swaps the validator and slides the expiry, which makes an intercepted
+cookie worthless after the next request. It is issued only after a complete
+sign-in (a passkey always brings it, since the key belongs to that one device),
+and it is deleted on sign-out and on every password change — a new password
+turns every device out.
+
+Without it the session died after 24 minutes of inactivity, and a signed-out app
+fetches no count, refreshes no push subscription and never learns that the
+browser rotated one. That, not the push machinery, was why the badge on the app
+icon kept going quiet.
+
+**A start password** — the one mailed with the access details — is good for
+seven days. It travels in plain text through every mailbox that mail passes,
+and one that still opens the door months later is the trap this closes. An
+expired one is refused after the password check, never before: refusing earlier
+would tell a stranger which address has an account.
 
 Found a hole? Please report it privately first — see [SECURITY.md](SECURITY.md).
 
