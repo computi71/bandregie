@@ -16,11 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Liegt dieser Auftritt schon auf dem Gerät? Gefragt wird der Speicher
     // selbst, nicht ein Merkzettel von uns: Der Browser darf jederzeit
     // aufräumen, und dann wäre der Merkzettel eine Lüge (#277).
-    const schluessel = box.dataset.offlinekey || '';
-    if (schluessel && 'caches' in window) {
-      caches.match(schluessel, { ignoreSearch: true }).then(treffer => {
-        if (treffer) knopf.textContent = box.dataset.offlineready || knopf.textContent;
-      }).catch(() => { /* kein Speicher, kein Zustand */ });
+    //
+    // Geprüft wird eine Stichprobe, nicht eine einzelne Seite — die Setliste
+    // allein liegt oft schon vom Blättern im Speicher, und dann verspräche der
+    // Knopf etwas, das auf der Bühne nicht eingelöst wird (#278).
+    let proben = [];
+    try { proben = JSON.parse(box.dataset.offlinecheck || '[]'); } catch (e) { proben = []; }
+    const fertigZeigen = () => {
+      knopf.textContent = box.dataset.offlineready || knopf.textContent;
+    };
+    if (Array.isArray(proben) && proben.length && 'caches' in window) {
+      Promise.all(proben.map(u => caches.match(u)))
+        .then(treffer => { if (treffer.every(Boolean)) fertigZeigen(); })
+        .catch(() => { /* kein Speicher, kein Zustand */ });
     }
 
     knopf.addEventListener('click', async () => {
@@ -54,7 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
       stand.textContent = ' ' + vorlage.replace('%1', daten.geholt).replace('%2', daten.uebersprungen);
       // Jetzt liegt er da — der Knopf sagt es, statt dasselbe noch einmal
       // anzubieten. Drücken kann man ihn weiter: er holt dann das Neueste.
-      if (box.dataset.offlinekey) knopf.textContent = box.dataset.offlineready || knopf.textContent;
+      // Übersprungene Dateien heißen: Es ist nicht alles da, dann bleibt das
+      // Angebot stehen.
+      if (daten.uebersprungen === 0 && (box.dataset.offlinecheck || '') !== '[]') {
+        knopf.textContent = box.dataset.offlineready || knopf.textContent;
+      }
       knopf.disabled = false;
     });
   });
@@ -168,6 +180,17 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     setTimeout(abgleichen, 2000);
   }
+
+  // Danach in Abständen weiter, solange die Seite offen ist (#278): Auf der
+  // Bühne bleibt die App stundenlang auf derselben Setliste stehen, und bisher
+  // sah sie nach dem ersten Aufruf nie wieder nach. Der Abstand ist derselbe
+  // wie oben; faellig() entscheidet, ob wirklich etwas getan wird.
+  setInterval(abgleichen, ABSTAND);
+
+  // Und sofort, wenn die Verbindung zurückkommt — der Moment, in dem es zu
+  // holen gibt und in dem sonst niemand fragt. Kurz warten: „online" meldet
+  // der Browser, sobald ein Netz da ist, nicht sobald es trägt.
+  window.addEventListener('online', () => setTimeout(abgleichen, 1500));
 });
 
 // Wie viel Platz belegt ist — im Profil neben der Auswahl.

@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v53';
+const VERSION = 'bandregie-v54';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -119,10 +119,31 @@ async function mitZeitstempel(response) {
  * die Seite an, landete aber mitunter nie im Vorrat — und auf der Bühne fehlte
  * genau sie.
  */
+// So lange darf das Netz brauchen, wenn eine Kopie bereitliegt. Der Fall, für
+// den das gebaut ist: das WLAN der Halle nimmt die Verbindung an und antwortet
+// nie. Ohne Frist stünde die App minutenlang vor einer weißen Seite, obwohl die
+// Setliste im Speicher liegt — die Umschaltung passiert dann von selbst (#278).
+// Ohne Kopie gibt es nichts umzuschalten, dann bekommt das Netz alle Zeit.
+const NETZ_GEDULD = 3000;
+
+async function mitGeduld(request, ms) {
+  const abbruch = new AbortController();
+  const wecker = setTimeout(() => abbruch.abort(), ms);
+  try {
+    return await fetch(request, { signal: abbruch.signal });
+  } finally {
+    clearTimeout(wecker);
+  }
+}
+
 async function seite(event) {
   const request = event.request;
+  // Query-String tolerant: die Bühne wird aus einer Setlist als …/buehne?sl=7
+  // geöffnet, vorgehalten ist oft nur …/buehne.
+  const vorrat = await caches.match(request)
+    || await caches.match(request, { ignoreSearch: true });
   try {
-    const response = await fetch(request);
+    const response = vorrat ? await mitGeduld(request, NETZ_GEDULD) : await fetch(request);
     if (response.ok) {
       const kopie = await mitZeitstempel(response.clone());
       event.waitUntil(caches.open(PAGE_CACHE).then(cache => cache.put(request, kopie)));
@@ -136,9 +157,7 @@ async function seite(event) {
     // Query-String tolerant abgleichen: die Bühne wird aus einer Setlist als
     // …/buehne?sl=7 geöffnet, vorgehalten wird oft nur …/buehne. Sonst landete
     // man offline auf der Termin-Liste statt beim Liedtext.
-    const hit = await caches.match(request)
-      || await caches.match(request, { ignoreSearch: true });
-    return hit || (await caches.match('/intern/termine')) || Response.error();
+    return vorrat || (await caches.match('/intern/termine')) || Response.error();
   }
 }
 

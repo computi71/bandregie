@@ -5515,9 +5515,16 @@ function offline_scope(?array $user): array {
  * die Automatik und das Aufräumen — und nur wenn alle drei dieselbe Liste
  * bilden, räumt das Aufräumen genau das weg, was das Mitnehmen geholt hat (#277).
  */
+/**
+ * Seiten, die zu jedem Auftritt gehören und zu keinem besonders. Sie stehen
+ * getrennt, weil das Aufräumen sie niemals wegwerfen darf: Sie gehören dem
+ * Gerät, nicht dem vergangenen Termin (#278).
+ */
+const OFFLINE_BASE_PAGES = ['/intern', '/intern/termine', '/intern/songs',
+                            '/intern/stagerider', '/intern/stagerider/print', '/intern/kanaele'];
+
 function event_offline_urls(array $ev): array {
-  $urls = ['/intern', '/intern/termine', '/intern/songs', '/intern/stagerider',
-           '/intern/stagerider/print', '/intern/kanaele'];
+  $urls = OFFLINE_BASE_PAGES;
   $songIds = [];
   if ($ev['setlist_id']) {
     $sl = (int) $ev['setlist_id'];
@@ -5534,22 +5541,48 @@ function event_offline_urls(array $ev): array {
       $urls[] = '/intern/songs/' . $song . '/noten?sl=' . $sl;
     }
   }
-  $dateien = files_map('event', [(int) $ev['id']]);
-  if ($ev['setlist_id']) $dateien += files_map('setlist', [(int) $ev['setlist_id']]);
-  if ($songIds) $dateien += files_map('song', $songIds);
-  foreach ($dateien as $liste) {
-    foreach ($liste as $datei) $urls[] = '/intern/datei/' . (int) $datei['id'];
+  // Je Art einzeln einsammeln statt die drei Ergebnisse zu vereinigen:
+  // files_map() schlüsselt nach Entitäts-Kennung, und „+" behält bei gleicher
+  // Kennung den linken Wert. Termin 1 mit Anhang und Lied 1 mit Noten haben
+  // beide die 1 — die Noten fielen still heraus, ausgerechnet das, wofür das
+  // Mitnehmen da ist (#278).
+  $anhaenge = [
+    ['event', [(int) $ev['id']]],
+    ['setlist', $ev['setlist_id'] ? [(int) $ev['setlist_id']] : []],
+    ['song', $songIds],
+  ];
+  foreach ($anhaenge as [$art, $wen]) {
+    foreach (files_map($art, $wen) as $liste) {
+      foreach ($liste as $datei) $urls[] = '/intern/datei/' . (int) $datei['id'];
+    }
   }
   return array_values(array_unique($urls));
 }
 
 /**
- * Die eine Adresse, an der sich erkennen lässt, ob dieser Auftritt schon auf dem
- * Gerät liegt. Ohne Setliste gibt es nichts Termin-Eigenes im Speicher — dann
- * bleibt der Knopf beim Angebot, statt etwas zu behaupten.
+ * Woran sich erkennen lässt, ob dieser Auftritt wirklich auf dem Gerät liegt.
+ *
+ * Eine einzelne Adresse genügt nicht: Die Druckansicht der Setliste legt der
+ * Service Worker auch beim normalen Blättern ab. Wer sie einmal offen hatte,
+ * bekäme „offline verfügbar" zu lesen, während Texte, Noten und Rider fehlen —
+ * und merkt es auf der Bühne (#278). Deshalb eine Stichprobe quer durch das,
+ * was nur das Mitnehmen holt; erst wenn alles davon da ist, gilt es.
+ *
+ * Höchstens zwölf Adressen — sie reisen im HTML jeder Karte mit.
  */
-function event_offline_key(array $ev): string {
-  return $ev['setlist_id'] ? '/intern/setlists/' . (int) $ev['setlist_id'] . '/print' : '';
+function event_offline_check(array $ev): array {
+  if (!$ev['setlist_id']) return [];
+  $sl = (int) $ev['setlist_id'];
+  $proben = ['/intern/setlists/' . $sl . '/print'];
+  $lieder = array_map('intval', array_column(
+    rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL
+          ORDER BY position', [$sl]), 'song_id'));
+  // Vom Ende her: Wer im Set blättert, kommt vorn zuerst an; die letzten Lieder
+  // liegen nur im Speicher, wenn wirklich alles geholt wurde.
+  foreach (array_slice(array_reverse($lieder), 0, 11) as $song) {
+    $proben[] = '/intern/songs/' . $song . '/buehne?sl=' . $sl;
+  }
+  return $proben;
 }
 
 /**
@@ -5571,9 +5604,9 @@ function offline_stale_urls(array $user): array {
   foreach (rows("SELECT * FROM events WHERE date >= ?$wo", [$heute, ...$args]) as $ev) {
     $behalten = array_merge($behalten, event_offline_urls($ev));
   }
-  // Die Seiten, die jede Fassung dieser Liste enthält, stehen ohnehin im
-  // Behalten-Teil; übrig bleibt, was wirklich nur zum Vergangenen gehört.
-  return array_values(array_diff(array_unique($alt), $behalten));
+  // Die Grundseiten bleiben in jedem Fall: Sie gehören keinem Termin, und ohne
+  // sie stünde die App ohne Empfang vor einer leeren Übersicht (#278).
+  return array_values(array_diff(array_unique($alt), $behalten, OFFLINE_BASE_PAGES));
 }
 
 function offline_urls(array $user): array {

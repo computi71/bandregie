@@ -90,7 +90,7 @@
           // Service Worker keine Wirkung, und ein Knopf, der nichts tut, ist
           // schlimmer als keiner. ?>
     <p class="muted small" data-offlinegig="/intern/termine/<?= (int) $ev['id'] ?>/offline" hidden
-       data-offlinekey="<?= e(event_offline_key($ev)) ?>"
+       data-offlinecheck="<?= e(json_encode(event_offline_check($ev), JSON_UNESCAPED_SLASHES)) ?>"
        data-offlineready="<?= e(t('off_ready')) ?>" data-offlinetake="⭳ <?= e(t('off_take')) ?>"
        data-offlinebusy="<?= e(t('off_busy')) ?>" data-offlinedone="<?= e(t('off_done')) ?>"
        data-offlinesome="<?= e(t('off_some')) ?>" data-offlinefailed="<?= e(t('off_failed')) ?>">
