@@ -812,7 +812,10 @@ if (str_starts_with($path, '/intern')) {
     $events = perm_allows($me, 'termine')
       ? dashboard_events(visible_event_ids($me), $today)
       : [];
-    view('intern/dashboard', event_view_data($events, $me) + [
+    // Ohne Terminrecht zeigt die Übersicht keine Karte — dann braucht sie auch
+    // deren Daten nicht (#279).
+    $kartenDaten = perm_allows($me, 'termine') ? event_view_data($events, $me) : [];
+    view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),
       'events' => $events,
@@ -4082,40 +4085,7 @@ function save_event_gear(int $eventId): void {
   }
 }
 
-/** Packlisten mehrerer Termine: je Termin-ID die Geräte mit Name und Bestandteil-Kennung. */
-function event_gear_map(array $eventIds): array {
-  if (!$eventIds) return [];
-  $in = implode(',', array_fill(0, count($eventIds), '?'));
-  $out = [];
-  foreach (rows("SELECT ee.event_id, e.id, e.name, e.parent_id
-                 FROM event_equipment ee JOIN equipment e ON e.id = ee.equipment_id
-                 WHERE ee.event_id IN ($in) ORDER BY e.category, e.name", $eventIds) as $r) {
-    $out[(int) $r['event_id']][] = $r;
-  }
-  return $out;
-}
 
-/**
- * Geräte, die an einem Tag bei mehreren Terminen eingeplant sind. Zwei Gigs am
- * selben Samstag teilen sich keine PA — darauf weist die Terminliste hin.
- */
-function event_gear_conflicts(array $eventIds): array {
-  if (!$eventIds) return [];
-  $in = implode(',', array_fill(0, count($eventIds), '?'));
-  $out = [];
-  foreach (rows("SELECT ee.event_id, e.name FROM event_equipment ee
-                 JOIN equipment e ON e.id = ee.equipment_id
-                 JOIN events ev ON ev.id = ee.event_id
-                 WHERE ee.event_id IN ($in) AND EXISTS (
-                   SELECT 1 FROM event_equipment o JOIN events oe ON oe.id = o.event_id
-                   WHERE o.equipment_id = ee.equipment_id AND o.event_id <> ee.event_id
-                     AND oe.date = ev.date AND oe.status <> 'abgesagt'
-                 ) AND ev.status <> 'abgesagt'
-                 ORDER BY e.name", $eventIds) as $r) {
-    $out[(int) $r['event_id']][] = $r['name'];
-  }
-  return $out;
-}
 
 function event_values(): array {
   $status = array_key_exists($_POST['status'] ?? '', EVENT_STATUS) ? $_POST['status'] : 'bestaetigt';
@@ -4229,34 +4199,6 @@ function file_serve(array $f, bool $alsDownload = false): never {
   if (head_only()) exit;
   readfile($abs);
   exit;
-}
-function files_map(string $type, array $ids): array {
-  if (!$ids) return [];
-  $in = implode(',', array_map('intval', $ids));
-  $map = [];
-  foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
-                 WHERE f.entity_type = ? AND f.entity_id IN ($in) ORDER BY f.created_at", [$type]) as $f) {
-    $map[$f['entity_id']][] = $f;
-  }
-  return $map;
-}
-function attendance_map(array $eventIds): array {
-  if (!$eventIds) return [];
-  $in = implode(',', array_map('intval', $eventIds));
-  $map = [];
-  foreach (rows("SELECT a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
-    $map[$r['event_id']][] = $r;
-  }
-  return $map;
-}
-function my_attendance(array $eventIds, int $userId): array {
-  if (!$eventIds) return [];
-  $in = implode(',', array_map('intval', $eventIds));
-  $map = [];
-  foreach (rows("SELECT event_id, status FROM attendance WHERE user_id = ? AND event_id IN ($in)", [$userId]) as $r) {
-    $map[$r['event_id']] = $r['status'];
-  }
-  return $map;
 }
 
 // ---------- 404 ----------

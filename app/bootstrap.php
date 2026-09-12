@@ -3281,6 +3281,74 @@ function substitute_auto_request(int $eventId, int $memberId, int $byUserId): vo
     [$eventId, $pick['id'], $memberId, $byUserId]);
 }
 
+// ---------- Karten- und Listendaten ----------
+//
+// Diese fünf sammeln zu einer Menge Kennungen, was daran hängt: Geräte,
+// Konflikte, Dateien, Rückmeldungen. Sie standen im Front-Controller, wurden
+// aber längst auch von hier aufgerufen (offline_urls, event_view_data) — und
+// damit hing bootstrap.php an einer Datei, die ein Cron-Skript nie lädt (#279).
+
+/** Packlisten mehrerer Termine: je Termin-ID die Geräte mit Name und Bestandteil-Kennung. */
+function event_gear_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT ee.event_id, e.id, e.name, e.parent_id
+                 FROM event_equipment ee JOIN equipment e ON e.id = ee.equipment_id
+                 WHERE ee.event_id IN ($in) ORDER BY e.category, e.name", $eventIds) as $r) {
+    $out[(int) $r['event_id']][] = $r;
+  }
+  return $out;
+}
+/**
+ * Geräte, die an einem Tag bei mehreren Terminen eingeplant sind. Zwei Gigs am
+ * selben Samstag teilen sich keine PA — darauf weist die Terminliste hin.
+ */
+function event_gear_conflicts(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT ee.event_id, e.name FROM event_equipment ee
+                 JOIN equipment e ON e.id = ee.equipment_id
+                 JOIN events ev ON ev.id = ee.event_id
+                 WHERE ee.event_id IN ($in) AND EXISTS (
+                   SELECT 1 FROM event_equipment o JOIN events oe ON oe.id = o.event_id
+                   WHERE o.equipment_id = ee.equipment_id AND o.event_id <> ee.event_id
+                     AND oe.date = ev.date AND oe.status <> 'abgesagt'
+                 ) AND ev.status <> 'abgesagt'
+                 ORDER BY e.name", $eventIds) as $r) {
+    $out[(int) $r['event_id']][] = $r['name'];
+  }
+  return $out;
+}
+function files_map(string $type, array $ids): array {
+  if (!$ids) return [];
+  $in = implode(',', array_map('intval', $ids));
+  $map = [];
+  foreach (rows("SELECT f.*, u.name AS uploader FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
+                 WHERE f.entity_type = ? AND f.entity_id IN ($in) ORDER BY f.created_at", [$type]) as $f) {
+    $map[$f['entity_id']][] = $f;
+  }
+  return $map;
+}
+function attendance_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_map('intval', $eventIds));
+  $map = [];
+  foreach (rows("SELECT a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
+    $map[$r['event_id']][] = $r;
+  }
+  return $map;
+}
+function my_attendance(array $eventIds, int $userId): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_map('intval', $eventIds));
+  $map = [];
+  foreach (rows("SELECT event_id, status FROM attendance WHERE user_id = ? AND event_id IN ($in)", [$userId]) as $r) {
+    $map[$r['event_id']] = $r['status'];
+  }
+  return $map;
+}
 /** Angefragte Ersatzleute je Termin: [event_id][] => Zeile mit Name und Antwort. */
 function substitute_requests_map(array $eventIds): array {
   if (!$eventIds) return [];
@@ -5594,19 +5662,49 @@ function offline_stale_urls(array $user): array {
   $sichtbar = visible_event_ids($user);
   [$wo, $args] = visible_clause($sichtbar);
   $heute = date('Y-m-d');
-  $alt = [];
-  foreach (rows("SELECT * FROM events WHERE date < ?$wo ORDER BY date DESC LIMIT 40",
-                [$heute, ...$args]) as $ev) {
-    $alt = array_merge($alt, event_offline_urls($ev));
+
+  // Welche Setlisten gehören zu vergangenen, welche zu kommenden Terminen? Nur
+  // die Differenz ist tot — dieselbe Setliste steht oft wieder an (#278).
+  $frueher = array_column(rows("SELECT DISTINCT setlist_id FROM events
+                                WHERE date < ? AND setlist_id IS NOT NULL$wo", [$heute, ...$args]), 'setlist_id');
+  $kuenftig = array_column(rows("SELECT DISTINCT setlist_id FROM events
+                                 WHERE date >= ? AND setlist_id IS NOT NULL$wo", [$heute, ...$args]), 'setlist_id');
+  $tot = array_values(array_diff(array_map('intval', $frueher), array_map('intval', $kuenftig)));
+
+  $weg = [];
+  if ($tot) {
+    $in = implode(',', array_fill(0, count($tot), '?'));
+    foreach ($tot as $sl) {
+      $weg[] = '/intern/setlists/' . (int) $sl;
+      $weg[] = '/intern/setlists/' . (int) $sl . '/print';
+    }
+    // Die Lied-Adressen mit Setlist im Rücken gehören dieser einen Setliste;
+    // die Seite ohne ?sl bleibt, sie gehört dem Lied.
+    foreach (rows("SELECT DISTINCT setlist_id, song_id FROM setlist_songs
+                   WHERE setlist_id IN ($in) AND song_id IS NOT NULL", $tot) as $z) {
+      $weg[] = '/intern/songs/' . (int) $z['song_id'] . '/buehne?sl=' . (int) $z['setlist_id'];
+      $weg[] = '/intern/songs/' . (int) $z['song_id'] . '/noten?sl=' . (int) $z['setlist_id'];
+    }
   }
-  if (!$alt) return [];
-  $behalten = offline_urls($user);
-  foreach (rows("SELECT * FROM events WHERE date >= ?$wo", [$heute, ...$args]) as $ev) {
-    $behalten = array_merge($behalten, event_offline_urls($ev));
+
+  // Anhänge vergangener Termine. Sie hängen an genau diesem Termin, anders als
+  // die Noten eines Liedes, das im Repertoire bleibt.
+  $alteTermine = array_column(rows("SELECT id FROM events WHERE date < ?$wo", [$heute, ...$args]), 'id');
+  $kommende = array_column(rows("SELECT id FROM events WHERE date >= ?$wo", [$heute, ...$args]), 'id');
+  if ($alteTermine) {
+    $behaltenDateien = [];
+    foreach (files_map('event', $kommende) as $liste) {
+      foreach ($liste as $d) $behaltenDateien[(int) $d['id']] = true;
+    }
+    foreach (files_map('event', $alteTermine) as $liste) {
+      foreach ($liste as $d) {
+        if (!isset($behaltenDateien[(int) $d['id']])) $weg[] = '/intern/datei/' . (int) $d['id'];
+      }
+    }
   }
-  // Die Grundseiten bleiben in jedem Fall: Sie gehören keinem Termin, und ohne
-  // sie stünde die App ohne Empfang vor einer leeren Übersicht (#278).
-  return array_values(array_diff(array_unique($alt), $behalten, OFFLINE_BASE_PAGES));
+
+  // Und nichts wegwerfen, was die gewählte Auswahl dieses Mitglieds braucht.
+  return array_values(array_diff(array_unique($weg), offline_urls($user), OFFLINE_BASE_PAGES));
 }
 
 function offline_urls(array $user): array {

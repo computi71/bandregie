@@ -118,7 +118,11 @@
       </form>
     </details>
 
-    <?php if ($ev['date'] < date('Y-m-d')): ?>
+    <?php // Was jemand nicht darf, wird ihm nicht angeboten: Der Server weist
+          // das Speichern ohnehin ab, und ein Formular, das erst nach dem
+          // Ausfüllen „keine Berechtigung" sagt, ist eine Falle (#279). ?>
+    <?php if (!perm_allows($user, 'termine', 'write')): ?>
+    <?php elseif ($ev['date'] < date('Y-m-d')): ?>
       <p class="muted small">🔒 <?= e(t('ev_locked')) ?></p>
     <?php else: ?>
     <details class="subsection">
