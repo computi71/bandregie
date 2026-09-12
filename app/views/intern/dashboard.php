@@ -58,29 +58,21 @@
     <a class="btn btn-tiny btn-ghost" href="/intern/equipment" style="margin-left:0.5rem">→</a>
   </div>
 <?php endif; ?>
-<div class="grid-2">
-  <?php if (perm_allows($user, 'termine')): ?>
-  <section class="card">
-    <h2><?= e(t('dash_next_events')) ?></h2>
-    <?php if (!$events): ?><p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p><?php endif; ?>
-    <ul class="event-list">
-      <?php foreach ($events as $ev): ?>
-        <li>
-          <?php // Derselbe Kopf wie in der Terminliste: Ort, Navi und Setliste
-                // gehören dahin, wo man den Termin zuerst sieht (#264). ?>
-          <?php $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null; ?>
-          <?php $kompakt = true; require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
-          <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post"><?= csrf_field() ?>
-            <button name="status" value="yes" class="chip <?= ($mine[$ev['id']] ?? '') === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
-            <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
-            <button name="status" value="no" class="chip <?= ($mine[$ev['id']] ?? '') === 'no' ? 'chip-no' : '' ?>"><?= e(t('att_no')) ?></button>
-          </form>
-        </li>
-      <?php endforeach; ?>
-    </ul>
-    <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
-  </section>
+<?php // Die nächsten Termine sind ein Ausschnitt der Terminliste und sehen
+      // deshalb genauso aus (#277). Über dem Raster, weil eine Karte in einer
+      // halben Spalte nicht dieselbe Karte wäre. ?>
+<?php if (perm_allows($user, 'termine')): ?>
+  <h2><?= e(t('dash_next_events')) ?></h2>
+  <?php if (!$events): ?>
+    <p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p>
   <?php endif; ?>
+  <?php foreach ($events as $ev): ?>
+    <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
+  <?php endforeach; ?>
+  <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
+<?php endif; ?>
+
+<div class="grid-2">
   <?php if (perm_allows($user, 'aufgaben')): ?>
   <section class="card">
     <h2><?= e(t('dash_open_tasks')) ?></h2>

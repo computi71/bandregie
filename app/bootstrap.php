@@ -1202,6 +1202,9 @@ Zeile zwei
   'song_edit_link' => 'Bearbeiten',
   'off_areas' => 'Offline dabeihaben',
   'off_areas_hint' => 'Was hier angehakt ist, liegt auf diesem Gerät und ist ohne Empfang da. Die Auswahl gilt für dich, nicht für die Band — jedes Gerät hat seine eigene.',
+  'off_ready' => '✓ Offline verfügbar',
+  'off_auto' => 'Kommende Termine von selbst mitnehmen',
+  'off_auto_hint' => 'Was auf der Übersicht unter „Nächste Termine" steht, holt sich die App im Hintergrund aufs Gerät — mit Setliste, Texten, Noten, Rider und Patchliste. Was zu vergangenen Terminen gehört, wird dabei wieder freigegeben.',
   'off_areas_when' => 'Aktualisiert wird im Hintergrund, sobald du eine Seite öffnest und Empfang hast. Ohne Empfang passiert nichts, und es bleibt, was da ist.',
   'off_area_termine' => 'Termine',
   'off_area_setlists' => 'Setlists mit Druckfassung',
@@ -2306,6 +2309,11 @@ if (!column_exists('users', 'last_login_at')) {
 // bestehende Konten sollen sich durch das Update nicht plötzlich aussperren.
 if (!column_exists('users', 'start_pw_at')) {
   $db->exec("ALTER TABLE users ADD COLUMN start_pw_at DATETIME NULL");
+}
+// „Kommende Termine von selbst mitnehmen" (#277). Aus: Wer den Knopf drückt,
+// bekommt weiterhin genau den einen Auftritt.
+if (!column_exists('users', 'offline_auto')) {
+  $db->exec("ALTER TABLE users ADD COLUMN offline_auto TINYINT(1) NOT NULL DEFAULT 0");
 }
 // events.type war VARCHAR(10) — zu kurz für "besprechung" und "fotoshooting",
 // diese beiden Termin-Arten ließen sich dadurch nicht speichern.
@@ -5499,9 +5507,81 @@ function offline_scope(?array $user): array {
  *
  * @return string[]
  */
+/**
+ * Alle Adressen, die zu einem Auftritt gehören: Setliste mit Druckansicht, jedes
+ * Lied darin mit Bühne und Noten, Rider, Patchliste und die Anhänge.
+ *
+ * Einmal hier, weil drei Stellen dieselbe Antwort brauchen: der Knopf am Termin,
+ * die Automatik und das Aufräumen — und nur wenn alle drei dieselbe Liste
+ * bilden, räumt das Aufräumen genau das weg, was das Mitnehmen geholt hat (#277).
+ */
+function event_offline_urls(array $ev): array {
+  $urls = ['/intern', '/intern/termine', '/intern/songs', '/intern/stagerider',
+           '/intern/stagerider/print', '/intern/kanaele'];
+  $songIds = [];
+  if ($ev['setlist_id']) {
+    $sl = (int) $ev['setlist_id'];
+    $urls[] = '/intern/setlists';
+    $urls[] = '/intern/setlists/' . $sl;
+    $urls[] = '/intern/setlists/' . $sl . '/print';
+    $songIds = array_map('intval', array_column(
+      rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL', [$sl]), 'song_id'));
+    // Bühne und Noten mit der Setliste im Rücken (?sl) — ohne diese Adressen
+    // käme der Teleprompter offline gar nicht erst hoch.
+    foreach ($songIds as $song) {
+      $urls[] = '/intern/songs/' . $song;
+      $urls[] = '/intern/songs/' . $song . '/buehne?sl=' . $sl;
+      $urls[] = '/intern/songs/' . $song . '/noten?sl=' . $sl;
+    }
+  }
+  $dateien = files_map('event', [(int) $ev['id']]);
+  if ($ev['setlist_id']) $dateien += files_map('setlist', [(int) $ev['setlist_id']]);
+  if ($songIds) $dateien += files_map('song', $songIds);
+  foreach ($dateien as $liste) {
+    foreach ($liste as $datei) $urls[] = '/intern/datei/' . (int) $datei['id'];
+  }
+  return array_values(array_unique($urls));
+}
+
+/**
+ * Die eine Adresse, an der sich erkennen lässt, ob dieser Auftritt schon auf dem
+ * Gerät liegt. Ohne Setliste gibt es nichts Termin-Eigenes im Speicher — dann
+ * bleibt der Knopf beim Angebot, statt etwas zu behaupten.
+ */
+function event_offline_key(array $ev): string {
+  return $ev['setlist_id'] ? '/intern/setlists/' . (int) $ev['setlist_id'] . '/print' : '';
+}
+
+/**
+ * Was weg darf: Adressen vergangener Termine, die kein kommender Termin und
+ * keine gewählte Offline-Auswahl mehr braucht. Die Differenz ist der Punkt —
+ * ein Lied aus dem Set von gestern steht oft auch im Set von morgen (#277).
+ */
+function offline_stale_urls(array $user): array {
+  $sichtbar = visible_event_ids($user);
+  [$wo, $args] = visible_clause($sichtbar);
+  $heute = date('Y-m-d');
+  $alt = [];
+  foreach (rows("SELECT * FROM events WHERE date < ?$wo ORDER BY date DESC LIMIT 40",
+                [$heute, ...$args]) as $ev) {
+    $alt = array_merge($alt, event_offline_urls($ev));
+  }
+  if (!$alt) return [];
+  $behalten = offline_urls($user);
+  foreach (rows("SELECT * FROM events WHERE date >= ?$wo", [$heute, ...$args]) as $ev) {
+    $behalten = array_merge($behalten, event_offline_urls($ev));
+  }
+  // Die Seiten, die jede Fassung dieser Liste enthält, stehen ohnehin im
+  // Behalten-Teil; übrig bleibt, was wirklich nur zum Vergangenen gehört.
+  return array_values(array_diff(array_unique($alt), $behalten));
+}
+
 function offline_urls(array $user): array {
   $bereiche = offline_scope($user);
-  if (!$bereiche) return [];
+  // Die Automatik steht für sich: Wer alle Bereiche abgewählt hat, aber die
+  // kommenden Termine dabeihaben will, bekommt genau die (#277).
+  $automatik = !empty($user['offline_auto']);
+  if (!$bereiche && !$automatik) return [];
 
   $urls = ['/intern'];
   if (in_array('termine', $bereiche, true)) $urls[] = '/intern/termine';
@@ -5526,6 +5606,14 @@ function offline_urls(array $user): array {
       $urls[] = '/intern/songs/' . (int) $song['id'];
       $urls[] = '/intern/songs/' . (int) $song['id'] . '/buehne';
       $urls[] = '/intern/songs/' . (int) $song['id'] . '/noten';
+    }
+  }
+
+  // Die kommenden Termine der Übersicht, wenn die Automatik an ist — dieselben,
+  // die dort stehen, mit allem, was der Knopf am Termin auch holen würde.
+  if ($automatik) {
+    foreach (dashboard_events(visible_event_ids($user), date('Y-m-d')) as $ev) {
+      $urls = array_merge($urls, event_offline_urls($ev));
     }
   }
 
@@ -5722,6 +5810,60 @@ function dashboard_events(?array $sichtbar, string $heute): array {
  * Ein gespeicherter leerer Satz heißt „keine Zeile": Wer sie nicht will, soll
  * sie abschalten können, ohne dass der Standardtext zurückkommt.
  */
+/**
+ * Alles, was die Terminkarte braucht — für eine beliebige Menge Termine.
+ *
+ * Die Übersicht zeigt denselben Ausschnitt wie die Terminliste (#277), und
+ * dieselbe Karte braucht dieselben Daten. Zweimal dieselben zwölf Abfragen
+ * nebeneinander zu pflegen ginge eine Weile gut und dann nicht mehr.
+ */
+function event_view_data(array $events, array $me): array {
+  $ids = array_column($events, 'id');
+  $comments = [];
+  if ($ids) {
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    foreach (rows("SELECT c.*, u.name AS author FROM comments c LEFT JOIN users u ON u.id = c.user_id
+                   WHERE c.event_id IN ($in) ORDER BY c.created_at", $ids) as $c) {
+      $comments[$c['event_id']][] = $c;
+    }
+  }
+  // Abwesenheiten sind Zeiträume; welcher Termin hineinfällt, entscheidet sich
+  // hier und nicht in SQL — es sind wenige Zeilen und der Vergleich ist einfach.
+  $absentByEvent = [];
+  if ($events) {
+    $ranges = rows('SELECT a.user_id, a.date_from, a.date_to, a.note, u.name
+                    FROM absences a JOIN users u ON u.id = a.user_id');
+    foreach ($events as $ev) {
+      foreach ($ranges as $r) {
+        if ($ev['date'] >= $r['date_from'] && $ev['date'] <= $r['date_to']) {
+          $absentByEvent[$ev['id']][] = $r['name'];
+        }
+      }
+    }
+  }
+  $venues = rows('SELECT * FROM venues ORDER BY name');
+  return [
+    'events' => $events,
+    'members' => rows('SELECT id, name FROM users ORDER BY name'),
+    'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
+    'venues' => $venues,
+    'venueMap' => array_column($venues, null, 'id'),
+    'absentByEvent' => $absentByEvent,
+    'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
+                         WHERE disposed_on IS NULL ORDER BY category, name'),
+    'gearByEvent' => event_gear_map($ids),
+    'gearConflicts' => event_gear_conflicts($ids),
+    'filesByEvent' => files_map('event', $ids),
+    'comments' => $comments,
+    'attendance' => attendance_map($ids),
+    'mine' => my_attendance($ids, (int) $me['id']),
+    'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
+    'subRequests' => substitute_requests_map($ids),
+    // Der Kartenkopf nennt den Verantwortlichen beim Namen.
+    'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
+  ];
+}
+
 function dashboard_welcome(): array {
   $s = all_settings();
   $wahl = $s['welcome_image'] ?? 'flagge';

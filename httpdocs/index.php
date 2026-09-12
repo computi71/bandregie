@@ -812,15 +812,7 @@ if (str_starts_with($path, '/intern')) {
     $events = perm_allows($me, 'termine')
       ? dashboard_events(visible_event_ids($me), $today)
       : [];
-    // Der Kasten zeigt jetzt den echten Termin — mit Ort, Navi und Setliste
-    // (#264). Dafür nur die Orte der gezeigten Termine holen; die ganze
-    // Ortsliste zu laden wäre für eine Handvoll Zeilen Verschwendung.
-    $venueIds = array_values(array_unique(array_filter(array_column($events, 'venue_id'))));
-    $venueMap = $venueIds
-      ? array_column(rows('SELECT * FROM venues WHERE id IN ('
-          . implode(',', array_fill(0, count($venueIds), '?')) . ')', $venueIds), null, 'id')
-      : [];
-    view('intern/dashboard', [
+    view('intern/dashboard', event_view_data($events, $me) + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),
       'events' => $events,
@@ -832,10 +824,6 @@ if (str_starts_with($path, '/intern')) {
       'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
       'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
                        WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
-      'attendance' => attendance_map(array_column($events, 'id')),
-      'mine' => my_attendance(array_column($events, 'id'), $me['id']),
-      'venueMap' => $venueMap,
-      'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
     ]);
   }
 
@@ -858,53 +846,14 @@ if (str_starts_with($path, '/intern')) {
       ? row("SELECT COUNT(*) n FROM events WHERE status = 'abgesagt'$evWhere", $evParams)['n']
       : row("SELECT COUNT(*) n FROM events WHERE date >= ? AND status = 'abgesagt'$evWhere",
             [$today, ...$evParams])['n']);
-    $ids = array_column($events, 'id');
-    $comments = [];
-    if ($ids) {
-      $in = implode(',', array_fill(0, count($ids), '?'));
-      foreach (rows("SELECT c.*, u.name AS author FROM comments c LEFT JOIN users u ON u.id = c.user_id
-                     WHERE c.event_id IN ($in) ORDER BY c.created_at", $ids) as $c) {
-        $comments[$c['event_id']][] = $c;
-      }
-    }
-    // Abwesenheiten: welche Mitglieder sind an welchem Termintag verhindert?
-    $absentByEvent = [];
-    if ($events) {
-      $ranges = rows('SELECT a.user_id, a.date_from, a.date_to, a.note, u.name FROM absences a JOIN users u ON u.id = a.user_id');
-      foreach ($events as $ev) {
-        foreach ($ranges as $r) {
-          if ($ev['date'] >= $r['date_from'] && $ev['date'] <= $r['date_to']) {
-            $absentByEvent[$ev['id']][] = $r['name'];
-          }
-        }
-      }
-    }
-    $venues = rows('SELECT * FROM venues ORDER BY name');
-    view('intern/termine', [
+    view('intern/termine', event_view_data($events, $me) + [
       'title' => t('nav_termine'),
-      'events' => $events,
       'showPast' => $showPast,
       'showCancelled' => $showCancelled,
       'cancelledCount' => $cancelledCount,
       // Nur Angefragtes zählen, was auch angezeigt wird — sonst behauptet die
       // Zeile etwas über Zeilen, die niemand sieht.
       'requestedCount' => count(array_filter($events, fn($e) => $e['status'] === 'angefragt')),
-      'members' => rows('SELECT id, name FROM users ORDER BY name'),
-      'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
-      'venues' => $venues,
-      'venueMap' => array_column($venues, null, 'id'),
-      'absentByEvent' => $absentByEvent,
-      // Abgegebene Geräte kann niemand mehr einpacken.
-      'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
-                           WHERE disposed_on IS NULL ORDER BY category, name'),
-      'gearByEvent' => event_gear_map($ids),
-      'gearConflicts' => event_gear_conflicts($ids),
-      'filesByEvent' => files_map('event', $ids),
-      'comments' => $comments,
-      'attendance' => attendance_map($ids),
-      'mine' => my_attendance($ids, $me['id']),
-      'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
-      'subRequests' => substitute_requests_map($ids),
       'ical_url' => '/kalender/' . ical_token_for((int) $me['id']) . '.ics',
     ]);
   }
@@ -3326,13 +3275,20 @@ if (str_starts_with($path, '/intern')) {
   // Seite fragt sie im Hintergrund ab und gibt sie an den Service Worker.
   if ($path === '/intern/offline/liste' && $method === 'GET') {
     header('Content-Type: application/json; charset=utf-8');
-    exit(json_encode(['urls' => offline_urls($me)], JSON_UNESCAPED_SLASHES));
+    // „weg" sind die Adressen vergangener Termine, die niemand mehr braucht —
+    // der Service Worker gibt den Platz frei (#277).
+    exit(json_encode([
+      'urls' => offline_urls($me),
+      'weg' => offline_stale_urls($me),
+    ], JSON_UNESCAPED_SLASHES));
   }
   // Bereiche wählen. Steht im eigenen Profil, denn das Telefon ist persönlich.
   if ($path === '/intern/offline/bereiche' && $method === 'POST') {
     $gewaehlt = array_values(array_intersect(OFFLINE_AREAS, (array) ($_POST['areas'] ?? [])));
     // Alles abgewählt wird als solches gespeichert und nicht als „nichts
     // eingestellt" — sonst käme beim nächsten Laden wieder alles zurück.
+    q('UPDATE users SET offline_auto = ? WHERE id = ?',
+      [empty($_POST['auto']) ? 0 : 1, $me['id']]);
     q('UPDATE users SET offline_scope = ? WHERE id = ?',
       [$gewaehlt ? implode(',', $gewaehlt) : OFFLINE_NICHTS, $me['id']]);
     flash(t('fl_off_saved'));
@@ -3349,37 +3305,7 @@ if (str_starts_with($path, '/intern')) {
     $offEv = row('SELECT * FROM events WHERE id = ?', [$m[1]]);
     if (!$offEv || !may_see_event($me, (int) $offEv['id'])) { http_response_code(404); exit('{}'); }
 
-    $offUrls = ['/intern', '/intern/termine', '/intern/songs', '/intern/stagerider',
-                '/intern/stagerider/print', '/intern/kanaele'];
-    $offSongIds = [];
-    if ($offEv['setlist_id']) {
-      $offUrls[] = '/intern/setlists';
-      $offUrls[] = '/intern/setlists/' . (int) $offEv['setlist_id'];
-      $offUrls[] = '/intern/setlists/' . (int) $offEv['setlist_id'] . '/print';
-      $offSongIds = array_map('intval', array_column(
-        rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL',
-             [$offEv['setlist_id']]), 'song_id'));
-      // Jedes Lied der Setlist mit Leseseite und Bühne/Noten — Letztere mit der
-      // Setlist im Rücken (?sl), damit auf der Bühne durchgeblättert werden kann.
-      // Ohne diese URLs käme der Teleprompter offline gar nicht erst hoch.
-      $offSl = (int) $offEv['setlist_id'];
-      foreach ($offSongIds as $offSong) {
-        $offUrls[] = '/intern/songs/' . $offSong;
-        $offUrls[] = '/intern/songs/' . $offSong . '/buehne?sl=' . $offSl;
-        $offUrls[] = '/intern/songs/' . $offSong . '/noten?sl=' . $offSl;
-      }
-    }
-
-    // Anhänge: die des Termins, die der Setlist und die der Songs darin. Das
-    // sind die Noten — der Grund, warum das Ganze überhaupt nötig ist.
-    $offFiles = files_map('event', [(int) $offEv['id']]);
-    if ($offEv['setlist_id']) {
-      $offFiles += files_map('setlist', [(int) $offEv['setlist_id']]);
-    }
-    if ($offSongIds) $offFiles += files_map('song', $offSongIds);
-    foreach ($offFiles as $offList) {
-      foreach ($offList as $offFile) $offUrls[] = '/intern/datei/' . (int) $offFile['id'];
-    }
+    $offUrls = event_offline_urls($offEv);
 
     header('Content-Type: application/json; charset=utf-8');
     exit(json_encode([

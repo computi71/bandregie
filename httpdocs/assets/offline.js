@@ -13,6 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!knopf || !stand) return;
     box.hidden = false;
 
+    // Liegt dieser Auftritt schon auf dem Gerät? Gefragt wird der Speicher
+    // selbst, nicht ein Merkzettel von uns: Der Browser darf jederzeit
+    // aufräumen, und dann wäre der Merkzettel eine Lüge (#277).
+    const schluessel = box.dataset.offlinekey || '';
+    if (schluessel && 'caches' in window) {
+      caches.match(schluessel, { ignoreSearch: true }).then(treffer => {
+        if (treffer) knopf.textContent = box.dataset.offlineready || knopf.textContent;
+      }).catch(() => { /* kein Speicher, kein Zustand */ });
+    }
+
     knopf.addEventListener('click', async () => {
       knopf.disabled = true;
       stand.textContent = ' ' + (box.dataset.offlinebusy || '…');
@@ -42,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (box.dataset.offlinesome || '')
         : (box.dataset.offlinedone || '');
       stand.textContent = ' ' + vorlage.replace('%1', daten.geholt).replace('%2', daten.uebersprungen);
+      // Jetzt liegt er da — der Knopf sagt es, statt dasselbe noch einmal
+      // anzubieten. Drücken kann man ihn weiter: er holt dann das Neueste.
+      if (box.dataset.offlinekey) knopf.textContent = box.dataset.offlineready || knopf.textContent;
       knopf.disabled = false;
     });
   });
@@ -134,10 +147,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const antwort = await fetch('/intern/offline/liste', { credentials: 'same-origin' });
       if (!antwort.ok) return;
       const daten = await antwort.json();
-      if (!Array.isArray(daten.urls) || daten.urls.length === 0) return;
       const sw = await navigator.serviceWorker.ready;
       if (!sw.active) return;
       try { localStorage.setItem(SCHLUESSEL, String(Date.now())); } catch (e) { /* egal */ }
+      // Erst das Alte freigeben, dann das Neue holen: Auf einem vollen Gerät
+      // entscheidet die Reihenfolge, ob das Set von morgen noch Platz findet.
+      if (Array.isArray(daten.weg) && daten.weg.length) {
+        sw.active.postMessage({ type: 'vergessen', urls: daten.weg });
+      }
+      if (!Array.isArray(daten.urls) || daten.urls.length === 0) return;
       sw.active.postMessage({ type: 'mitnehmen', urls: daten.urls, still: true });
     } catch (e) {
       // Kein Netz, kein Problem: es bleibt, was da ist.

@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v52';
+const VERSION = 'bandregie-v53';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -347,6 +347,28 @@ self.addEventListener('message', event => {
   if (daten.type === 'gesehen') {
     // Ohne Angabe bleibt die zuletzt bekannte Zahl offener Punkte stehen.
     event.waitUntil(alleGesehen(daten.offen === undefined ? undefined : Number(daten.offen) || 0));
+    return;
+  }
+  // Was zu vergangenen Terminen gehört, gibt den Platz wieder frei (#277).
+  // Gelöscht wird nur, was die Seite ausdrücklich nennt — der Worker entscheidet
+  // nicht selbst, was alt ist; das weiß nur der Server.
+  if (daten.type === 'vergessen' && Array.isArray(daten.urls)) {
+    event.waitUntil((async () => {
+      const seiten = await caches.open(PAGE_CACHE);
+      const dateien = await caches.open(FILE_CACHE);
+      let weg = 0;
+      for (const roh of daten.urls.slice(0, 2000)) {
+        const treffer = await seiten.delete(roh, { ignoreSearch: false })
+          || await dateien.delete(roh, { ignoreSearch: false });
+        if (treffer) weg++;
+      }
+      // Still: Niemand hat danach gefragt, es soll nur der Platz frei sein.
+      if (weg) {
+        for (const client of await self.clients.matchAll()) {
+          client.postMessage({ type: 'vergessen', weg });
+        }
+      }
+    })());
     return;
   }
   if (daten.type !== 'mitnehmen' || !Array.isArray(daten.urls)) return;

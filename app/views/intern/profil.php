@@ -71,6 +71,14 @@
         </label>
       <?php endforeach; ?>
     </fieldset>
+    <?php // Der Schalter steht bei den Bereichen und nicht in den Einstellungen
+          // der Band: Der Zwischenspeicher liegt auf genau diesem Gerät, und was
+          // dort landet, entscheidet die Person, der es gehört (#277). ?>
+    <label class="checkbox">
+      <input type="checkbox" name="auto" value="1" <?= !empty($profile['offline_auto']) ? 'checked' : '' ?>>
+      <?= e(t('off_auto')) ?>
+    </label>
+    <p class="muted small"><?= e(t('off_auto_hint')) ?></p>
     <p class="muted small" data-offlineuse></p>
     <button class="btn btn-primary btn-small"><?= e(t('save')) ?></button>
   </form>
