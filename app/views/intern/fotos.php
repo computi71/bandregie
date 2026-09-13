@@ -55,7 +55,10 @@
           // nächsten Umzug eine Lüge (#194). ?>
     <label><?= e(str_replace(['%1', '%2'], [fmt_bytes($limits['per_file']), (string) $limits['max_files']], t('photos_upload_lbl_lim'))) ?><input type="file" name="photos[]" accept="image/*" multiple required data-paths></label>
     <label><?= e(t('photos_caption')) ?><input name="caption" placeholder="<?= e(t('optional')) ?>"></label>
-    <label class="checkbox span2"><input type="checkbox" name="is_public" value="1"> <?= e(t('photos_public_now')) ?></label>
+    <?php // Ohne öffentliche Seite führt der Haken ins Leere (#288). ?>
+    <?php if (public_page_active()): ?>
+      <label class="checkbox span2"><input type="checkbox" name="is_public" value="1"> <?= e(t('photos_public_now')) ?></label>
+    <?php endif; ?>
     <?php // Warum manche Fotos keinen Termin-Vorschlag bekommen: Messenger und
           // soziale Netze entfernen die EXIF-Daten beim Teilen (#143). ?>
     <p class="muted small span2">💡 <?= e(t('photo_exif_hint')) ?></p>
@@ -225,9 +228,11 @@
                     <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/presse"><?= csrf_field() ?>
                       <button class="btn btn-tiny <?= $photo['is_press'] ? '' : 'btn-ghost' ?>" title="<?= e(t('photo_press_title')) ?>">📣 <?= e(t('photo_press')) ?></button>
                     </form>
-                    <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
-                      <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
-                    </form>
+                    <?php if (public_page_active()): ?>
+                      <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/toggle"><?= csrf_field() ?>
+                        <button class="btn btn-tiny <?= $photo['is_public'] ? '' : 'btn-ghost' ?>"><?= $photo['is_public'] ? '🌐 ' . e(t('ev_public_badge')) : '🔒 ' . e(t('photo_intern')) ?></button>
+                      </form>
+                    <?php endif; ?>
                     <?php if ($user['role'] === 'admin'): ?>
                       <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/hintergrund"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost" title="<?= e(t('photo_bg_title')) ?>">🖼 <?= e(t('photo_bg')) ?></button></form>
                     <?php endif; ?>

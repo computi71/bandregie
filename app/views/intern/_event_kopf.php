@@ -34,7 +34,7 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
   <?php if ($venue): ?><span class="muted">📍 <?= e($venue['name']) ?><?= $venue['city'] ? ', ' . e($venue['city']) : '' ?></span>
   <?php elseif ($ev['location']): ?><span class="muted">📍 <?= e($ev['location']) ?></span><?php endif; ?>
   <?php if ($naviDest !== ''): ?><a class="badge link navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener" title="<?= e(t('geo_navigate')) ?>">🧭 <?= e(t('geo_navigate')) ?></a><?php endif; ?>
-  <?php if ($ev['is_public']): ?><span class="badge public"><?= e(t('ev_public_badge')) ?></span><?php endif; ?>
+  <?php if ($ev['is_public'] && public_page_active()): ?><span class="badge public"><?= e(t('ev_public_badge')) ?></span><?php endif; ?>
   <?php if ($ev['setlist_id']): ?><a class="badge link" href="/intern/setlists/<?= (int) $ev['setlist_id'] ?>">🎵 <?= e(t('ev_setlist')) ?></a><?php endif; ?>
 </div>
 <?php if ($zeiten): ?><p class="muted small"><?= e(implode(' · ', $zeiten)) ?></p><?php endif; ?>

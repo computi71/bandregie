@@ -612,6 +612,7 @@ const UI_STRINGS = [
   'set_public' => 'Öffentliche Seite', 'set_pm' => 'Modus der öffentlichen Seite',
   'set_pm_website' => 'Volle Website (Start, Termine, Musik, Fotos, Kontakt)',
   'set_pm_redirect' => 'Nur Weiterleitung (z. B. zu Facebook) — Bandbereich, Kalender-Abo und Impressum bleiben erreichbar',
+  'set_pm_redirect_hint' => 'Solange die Seite weiterleitet, ist alles ausgeblendet, was nur auf ihr erscheinen würde: der Haken „Auf der Website zeigen" am Termin, das öffentliche Schalten von Fotos und die Einstellungen zur öffentlichen Terminliste. Gespeichert bleibt das alles — wer zurück auf die volle Website schaltet, findet seinen Stand vor.',
   'set_redirect_target' => 'Weiterleitungs-Ziel', 'set_show_past' => 'Auch vergangene Gigs anzeigen',
   'set_max_upcoming' => 'Max. kommende Termine (0 = alle)', 'set_max_past' => 'Max. vergangene Gigs (0 = alle)',
   'set_embed' => 'Externe Inhalte (YouTube/Spotify auf der Musik-Seite)',
@@ -3830,6 +3831,18 @@ function may_edit_finance(?array $entry): bool {
 function is_demo(): bool {
   global $config;
   return !empty($config['is_demo']);
+}
+
+/**
+ * Gibt es überhaupt eine öffentliche Seite, oder leitet sie weiter?
+ *
+ * Steht der Auftritt nach außen auf Weiterleitung, ist nichts zu
+ * veröffentlichen: Ein Haken „Auf der Website zeigen" verspräche dann etwas,
+ * das niemand zu sehen bekommt. Die gespeicherten Werte bleiben, wo sie sind —
+ * wer zurückschaltet, findet seinen alten Stand vor (#288).
+ */
+function public_page_active(): bool {
+  return setting('public_mode') !== 'redirect';
 }
 
 /**

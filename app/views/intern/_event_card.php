@@ -158,6 +158,7 @@
         <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" value="<?= e($ev['fee']) ?>"></label>
         <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no" value="<?= e($ev['invoice_no']) ?>"></label>
         <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2"><?= e($ev['notes']) ?></textarea></label>
+        <?php if (public_page_active()): ?>
         <fieldset class="span2 pubfields" data-eventfield="public">
           <legend><?= e(t('ev_public_display')) ?></legend>
           <label class="checkbox"><input type="checkbox" name="is_public" value="1" <?= $ev['is_public'] ? 'checked' : '' ?>> <?= e(t('ev_show_on_site_short')) ?></label>
@@ -165,6 +166,17 @@
           <label><?= e(t('ev_public_link')) ?><input name="public_link" value="<?= e($ev['public_link']) ?>"></label>
           <label><?= e(t('ev_public_info')) ?><input name="public_info" value="<?= e($ev['public_info']) ?>"></label>
         </fieldset>
+        <?php else: ?>
+          <?php // Weggelassen heißt nicht gelöscht: Ein fehlendes Kästchen ist ein
+                // fehlendes Feld im Formular, und das Speichern würde den Termin
+                // stillschweigend von der Website nehmen. Die Werte fahren
+                // unsichtbar mit und stehen wieder da, wenn jemand die
+                // öffentliche Seite zurückschaltet (#288). ?>
+          <?php if ($ev['is_public']): ?><input type="hidden" name="is_public" value="1"><?php endif; ?>
+          <input type="hidden" name="public_title" value="<?= e($ev['public_title']) ?>">
+          <input type="hidden" name="public_link" value="<?= e($ev['public_link']) ?>">
+          <input type="hidden" name="public_info" value="<?= e($ev['public_info']) ?>">
+        <?php endif; ?>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
       <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>" class="inline"><?= csrf_field() ?>

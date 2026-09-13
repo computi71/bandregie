@@ -66,6 +66,9 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
     <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" placeholder="<?= e(t('ev_fee_ph')) ?>"></label>
     <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no"></label>
     <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('ev_notes_ph')) ?>"></textarea></label>
+    <?php // Ohne öffentliche Seite gibt es nichts zu veröffentlichen (#288).
+          // Ein neuer Termin hat noch keine Werte, die zu erhalten wären. ?>
+    <?php if (public_page_active()): ?>
     <fieldset class="span2 pubfields" data-eventfield="public">
       <legend><?= e(t('ev_public_display')) ?></legend>
       <label class="checkbox"><input type="checkbox" name="is_public" value="1"> <?= e(t('ev_show_on_site')) ?></label>
@@ -73,6 +76,7 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
       <label><?= e(t('ev_public_link')) ?><input name="public_link" placeholder="https://..."></label>
       <label><?= e(t('ev_public_info')) ?><input name="public_info" placeholder="<?= e(t('ev_public_info_ph')) ?>"></label>
     </fieldset>
+    <?php endif; ?>
     <button class="btn btn-primary span2"><?= e(t('dash_create_event')) ?></button>
   </form>
 </details>

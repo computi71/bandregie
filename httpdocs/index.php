@@ -3623,10 +3623,17 @@ if (str_starts_with($path, '/intern')) {
       set_setting($k, $wert);
     }
     if (isset($_POST['_termine_form'])) {
-      set_setting('public_show_past', isset($_POST['public_show_past']) ? '1' : '0');
-      set_setting('public_limit_upcoming', (string) max(0, (int) ($_POST['public_limit_upcoming'] ?? 10)));
-      set_setting('public_limit_past', (string) max(0, (int) ($_POST['public_limit_past'] ?? 5)));
-      set_setting('public_embed_mode', ($_POST['public_embed_mode'] ?? '') === 'direct' ? 'direct' : 'consent');
+      // Leitet die Seite um, zeigt das Formular diese vier Felder nicht — und
+      // ein nicht gezeigtes Kästchen kommt als fehlendes Feld zurück. Würden
+      // sie trotzdem gesetzt, verlöre jedes Speichern die alte Einstellung.
+      // Entschieden wird nach dem Stand VOR diesem Klick: Wer in demselben
+      // Formular auf „Website" zurückschaltet, findet seine Werte wieder (#288).
+      if (public_page_active()) {
+        set_setting('public_show_past', isset($_POST['public_show_past']) ? '1' : '0');
+        set_setting('public_limit_upcoming', (string) max(0, (int) ($_POST['public_limit_upcoming'] ?? 10)));
+        set_setting('public_limit_past', (string) max(0, (int) ($_POST['public_limit_past'] ?? 5)));
+        set_setting('public_embed_mode', ($_POST['public_embed_mode'] ?? '') === 'direct' ? 'direct' : 'consent');
+      }
       // Nicht in der Demo umschaltbar: die Adress-Suche fragt serverseitig
       // OpenStreetMap, und die Nutzungsrichtlinie trifft die Adresse dieses
       // Servers — nicht die des Besuchers, der den Schalter umlegt.

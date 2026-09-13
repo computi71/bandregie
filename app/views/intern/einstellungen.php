@@ -142,15 +142,23 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       </select>
     </label>
     <label class="span2"><?= e(t('set_redirect_target')) ?><input name="redirect_url" value="<?= e($settings['redirect_url'] ?? '') ?>" placeholder="https://www.facebook.com/your-band"></label>
-    <label class="checkbox span2"><input type="checkbox" name="public_show_past" value="1" <?= $settings['public_show_past'] === '1' ? 'checked' : '' ?>> <?= e(t('set_show_past')) ?></label>
-    <label><?= e(t('set_max_upcoming')) ?><input type="number" name="public_limit_upcoming" min="0" value="<?= e($settings['public_limit_upcoming']) ?>"></label>
-    <label><?= e(t('set_max_past')) ?><input type="number" name="public_limit_past" min="0" value="<?= e($settings['public_limit_past']) ?>"></label>
-    <label class="span2"><?= e(t('set_embed')) ?>
-      <select name="public_embed_mode">
-        <option value="consent" <?= ($settings['public_embed_mode'] ?? 'consent') === 'consent' ? 'selected' : '' ?>><?= e(t('set_embed_consent')) ?></option>
-        <option value="direct" <?= ($settings['public_embed_mode'] ?? '') === 'direct' ? 'selected' : '' ?>><?= e(t('set_embed_direct')) ?></option>
-      </select>
-    </label>
+    <?php // Modus und Ziel stehen oben und bleiben — darüber schaltet man zurück.
+          // Was nur die öffentliche Liste formt, hat ohne sie keinen Sinn (#288).
+          // Gespeichert bleibt es trotzdem: Die Route rührt die vier Werte nicht
+          // an, solange die Seite umleitet. ?>
+    <?php if (public_page_active()): ?>
+      <label class="checkbox span2"><input type="checkbox" name="public_show_past" value="1" <?= $settings['public_show_past'] === '1' ? 'checked' : '' ?>> <?= e(t('set_show_past')) ?></label>
+      <label><?= e(t('set_max_upcoming')) ?><input type="number" name="public_limit_upcoming" min="0" value="<?= e($settings['public_limit_upcoming']) ?>"></label>
+      <label><?= e(t('set_max_past')) ?><input type="number" name="public_limit_past" min="0" value="<?= e($settings['public_limit_past']) ?>"></label>
+      <label class="span2"><?= e(t('set_embed')) ?>
+        <select name="public_embed_mode">
+          <option value="consent" <?= ($settings['public_embed_mode'] ?? 'consent') === 'consent' ? 'selected' : '' ?>><?= e(t('set_embed_consent')) ?></option>
+          <option value="direct" <?= ($settings['public_embed_mode'] ?? '') === 'direct' ? 'selected' : '' ?>><?= e(t('set_embed_direct')) ?></option>
+        </select>
+      </label>
+    <?php else: ?>
+      <p class="muted small span2"><?= e(t('set_pm_redirect_hint')) ?></p>
+    <?php endif; ?>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
 </details>

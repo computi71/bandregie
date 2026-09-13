@@ -1,0 +1,8 @@
+-- Hinweis, warum bei Weiterleitung die Veröffentlichen-Schalter fehlen (#288)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','set_pm_redirect_hint','While the page redirects, everything that would only appear on it is hidden: the "show on the website" box on an event, publishing photos, and the settings for the public list of dates. All of it stays stored — switch back to the full website and your state is there again.'),
+('nl','set_pm_redirect_hint','Zolang de pagina doorverwijst, is alles verborgen wat alleen daar zou verschijnen: het vinkje „op de website tonen" bij een datum, foto''s openbaar zetten en de instellingen voor de openbare agenda. Alles blijft bewaard — zet je terug op de volledige website, dan staat je stand er weer.'),
+('fr','set_pm_redirect_hint','Tant que la page redirige, tout ce qui n''apparaîtrait que sur elle est masqué : la case « afficher sur le site » d''une date, la publication des photos et les réglages de la liste publique des dates. Tout reste enregistré — revenez au site complet et vous retrouvez votre état.'),
+('es','set_pm_redirect_hint','Mientras la página redirige, se oculta todo lo que solo aparecería en ella: la casilla «mostrar en la web» de una fecha, publicar fotos y los ajustes de la lista pública de fechas. Todo queda guardado: al volver a la web completa encontrarás tu estado.'),
+('it','set_pm_redirect_hint','Finché la pagina reindirizza, è nascosto tutto ciò che comparirebbe solo lì: la casella «mostra sul sito» di una data, la pubblicazione delle foto e le impostazioni dell''elenco pubblico delle date. Tutto resta salvato: tornando al sito completo ritrovi il tuo stato.')
+ON DUPLICATE KEY UPDATE value = value;
