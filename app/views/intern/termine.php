@@ -58,6 +58,7 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
     <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
       <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>"><?= e($sl['name']) ?></option><?php endforeach; ?></select>
     </label>
+    <label data-eventfield="support"><?= e(t('ev_support')) ?><input name="support_act" maxlength="255" placeholder="<?= e(t('ev_support_ph')) ?>"></label>
     <label><?= e(t('ev_responsible')) ?>
       <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>

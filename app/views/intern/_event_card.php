@@ -146,6 +146,7 @@
         <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
           <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>" <?= (int) $ev['setlist_id'] === (int) $sl['id'] ? 'selected' : '' ?>><?= e($sl['name']) ?></option><?php endforeach; ?></select>
         </label>
+        <label data-eventfield="support"><?= e(t('ev_support')) ?><input name="support_act" maxlength="255" value="<?= e($ev['support_act']) ?>" placeholder="<?= e(t('ev_support_ph')) ?>"></label>
         <label><?= e(t('ev_responsible')) ?>
           <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $ev['responsible_id'] === (int) $m['id'] ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
         </label>

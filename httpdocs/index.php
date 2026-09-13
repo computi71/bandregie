@@ -407,7 +407,13 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
     }
     echo 'SUMMARY:' . $esc($summary) . "\r\n";
     if ($ev['location']) echo 'LOCATION:' . $esc($ev['location']) . "\r\n";
-    if ($ev['notes']) echo 'DESCRIPTION:' . $esc($ev['notes']) . "\r\n";
+    // Wer sonst spielt, gehört in den Kalendereintrag: gelesen wird er
+    // unterwegs, ohne die App daneben (#287).
+    $icalText = array_filter([
+      $ev['support_act'] ? t('ev_support') . ': ' . $ev['support_act'] : '',
+      (string) $ev['notes'],
+    ]);
+    if ($icalText) echo 'DESCRIPTION:' . $esc(implode("\n", $icalText)) . "\r\n";
     echo "END:VEVENT\r\n";
   }
   echo "END:VCALENDAR\r\n";
@@ -866,8 +872,8 @@ if (str_starts_with($path, '/intern')) {
       q('INSERT INTO events (type, title, date, time, location, notes, is_public, setlist_id,
                              time_meet, time_end, status, responsible_id, fee, invoice_no,
                              public_title, public_link, public_info, venue_id,
-                             pa_source, light_source)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
+                             pa_source, light_source, support_act)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
       $newEventId = (int) $db->lastInsertId();
       save_event_gear($newEventId);
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
@@ -895,7 +901,7 @@ if (str_starts_with($path, '/intern')) {
       q('UPDATE events SET type=?, title=?, date=?, time=?, location=?, notes=?, is_public=?, setlist_id=?,
                            time_meet=?, time_end=?, status=?, responsible_id=?, fee=?, invoice_no=?,
                            public_title=?, public_link=?, public_info=?, venue_id=?,
-                           pa_source=?, light_source=? WHERE id=?',
+                           pa_source=?, light_source=?, support_act=? WHERE id=?',
         [...event_values(), $id]);
       save_event_gear((int) $id);
       redirect('/intern/termine');
@@ -3144,7 +3150,7 @@ if (str_starts_with($path, '/intern')) {
       $rows[] = [
         $ev['date'], event_type_label($ev['type']), event_status_label($ev['status']), $ev['title'],
         $ev['venue_name'] ?: $ev['location'], $ev['time_meet'], $ev['time'], $ev['time_end'],
-        $ev['responsible_name'] ?? '', $ev['fee'], $ev['invoice_no'],
+        $ev['responsible_name'] ?? '', $ev['support_act'], $ev['fee'], $ev['invoice_no'],
         production_label($ev['pa_source'] ?? ''), production_label($ev['light_source'] ?? ''),
         implode(', ', array_column($exportGear[(int) $ev['id']] ?? [], 'name')),
         $ev['is_public'] ? t('ev_public_badge') : '',
@@ -3153,7 +3159,7 @@ if (str_starts_with($path, '/intern')) {
     }
     export_send('termine-' . date('Y-m-d'), [
       t('date'), t('ev_type'), t('status'), t('name'), t('ev_venue'), t('ev_meet'), t('ev_start'), t('ev_end'),
-      t('ev_responsible'), t('ev_fee'), t('ev_invoice'), t('prod_pa'), t('prod_light'), t('ev_gear'),
+      t('ev_responsible'), t('ev_support'), t('ev_fee'), t('ev_invoice'), t('prod_pa'), t('prod_light'), t('ev_gear'),
       t('ev_public_display'), t('ev_notes'),
     ], $rows);
   }
@@ -4103,6 +4109,7 @@ function event_values(): array {
     ($_POST['venue_id'] ?? '') !== '' ? $_POST['venue_id'] : null,
     array_key_exists($_POST['pa_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['pa_source'] : '',
     array_key_exists($_POST['light_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['light_source'] : '',
+    mb_substr(trim((string) ($_POST['support_act'] ?? '')), 0, 255),
   ];
 }
 function song_values(): array {

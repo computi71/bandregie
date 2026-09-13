@@ -17,6 +17,7 @@ $zeiten = [];
 if ($ev['time_meet']) $zeiten[] = t('ev_meet') . ' ' . $ev['time_meet'];
 if ($ev['time']) $zeiten[] = t('ev_start') . ' ' . $ev['time'];
 if ($ev['time_end']) $zeiten[] = t('ev_end') . ' ' . $ev['time_end'];
+if (!empty($ev['support_act'])) $zeiten[] = t('ev_support') . ': ' . $ev['support_act'];
 if ($ev['responsible_id'] && isset($memberNames[$ev['responsible_id']])) {
   $zeiten[] = t('ev_responsible') . ': ' . $memberNames[$ev['responsible_id']];
 }

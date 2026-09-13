@@ -446,6 +446,7 @@ const UI_STRINGS = [
   'ev_end' => 'Ende', 'ev_venue' => 'Veranstaltungsort', 'ev_location_free' => 'Ort (Freitext)',
   'ev_location_free_ph' => 'falls kein gespeicherter Ort passt', 'ev_setlist' => 'Setlist',
   'ev_responsible' => 'Zuständig', 'ev_fee' => 'Gage', 'ev_invoice' => 'Rechnungsnr.',
+  'ev_support' => 'Supportact', 'ev_support_ph' => 'Vorband — oder der Hauptact, wenn ihr supportet',
   'ev_notes' => 'Beschreibung / Notizen', 'ev_notes_ph' => 'Backline, Anfahrt, Technik ...',
   'ev_public_display' => 'Öffentliche Anzeige',
   'ev_show_on_site' => 'Auf der Website zeigen (nur Gigs mit Status „Findet statt")',
@@ -1458,7 +1459,7 @@ const EQ_QUANTITY_RE = '~(?:^|\()\s*(\d{1,2})\s*[x×]\s*(?:\)|$)~ui';
  * einer Probe oder einer Aufnahme. Zwei Fragen, zwei Gruppen.
  */
 const EVENT_TYPE_FIELDS = [
-  'gig'          => ['times', 'venue', 'setlist', 'fee', 'production', 'gear', 'public'],
+  'gig'          => ['times', 'venue', 'setlist', 'support', 'fee', 'production', 'gear', 'public'],
   'probe'        => ['times', 'venue', 'setlist', 'gear'],
   'aufnahme'     => ['times', 'venue', 'setlist', 'gear'],
   'fotoshooting' => ['times', 'venue', 'gear'],
@@ -2409,6 +2410,12 @@ foreach (['pa_source', 'light_source'] as $prodCol) {
   if (!column_exists('events', $prodCol)) {
     $db->exec("ALTER TABLE events ADD COLUMN `$prodCol` VARCHAR(20) NOT NULL DEFAULT ''");
   }
+}
+// Wer sonst noch auf dem Zettel steht: die Vorband — oder der Hauptact, wenn
+// die Band selbst die Vorband ist. Stand bisher in den Notizen und war dort
+// für Export und Kalender unsichtbar (#287).
+if (!column_exists('events', 'support_act')) {
+  $db->exec("ALTER TABLE events ADD COLUMN support_act VARCHAR(255) NOT NULL DEFAULT '' AFTER location");
 }
 foreach (['first_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'last_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
