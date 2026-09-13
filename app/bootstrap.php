@@ -4441,6 +4441,19 @@ function navi_web(string $dest): string {
   return $dest === '' ? '' : 'https://www.openstreetmap.org/search?query=' . rawurlencode($dest);
 }
 
+/**
+ * Ein Navi-Link für Texte, die außerhalb der App gelesen werden — der
+ * Kalendereintrag vor allem (#286). Dort kann niemand fragen, welche App
+ * navigieren soll (das tut route.js nur in der App); es muss ein Link sein,
+ * der auf Android wie iPhone in eine Navigation führt. Das kann von den
+ * Web-Adressen nur die von Google Maps: Sie öffnet die App, wo sie ist, und
+ * sonst die Karte im Browser. Geöffnet wird erst, wenn jemand tippt — die
+ * Anwendung selbst ruft nichts ab.
+ */
+function navi_directions(string $dest): string {
+  return $dest === '' ? '' : 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dest);
+}
+
 // Adresse → Treffer mit Koordinaten, über OpenStreetMap/Nominatim. Eine Anfrage
 // je Aufruf, mit User-Agent, wie es die Nominatim-Richtlinie verlangt (ohne den
 // antwortet der Dienst mit 403). Fehler (Dienst weg, Timeout) ergeben eine leere

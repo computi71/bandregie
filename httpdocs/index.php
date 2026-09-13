@@ -415,12 +415,19 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
     // dazu, wo es eine gibt — damit landet die Karten-App auf dem Punkt.
     $icalOrt = event_place($ev);
     if ($icalOrt !== '') echo 'LOCATION:' . $esc($icalOrt) . "\r\n";
+    // GEO: ist der Standard, aber kaum eine Kalender-App macht daraus etwas
+    // Antippbares. Deshalb steht die Koordinate zusätzlich als Navi-Link in
+    // der Beschreibung — den erkennt jede App als Link.
+    $icalNavi = '';
     if (!empty($ev['venue_lat']) && !empty($ev['venue_lng'])) {
-      echo 'GEO:' . (float) $ev['venue_lat'] . ';' . (float) $ev['venue_lng'] . "\r\n";
+      $icalKoord = (float) $ev['venue_lat'] . ',' . (float) $ev['venue_lng'];
+      echo 'GEO:' . str_replace(',', ';', $icalKoord) . "\r\n";
+      $icalNavi = 'Navi: ' . navi_directions($icalKoord);
     }
     // Wer sonst spielt, gehört in den Kalendereintrag: gelesen wird er
     // unterwegs, ohne die App daneben (#287).
     $icalText = array_filter([
+      $icalNavi,
       $ev['support_act'] ? t('ev_support') . ': ' . $ev['support_act'] : '',
       (string) $ev['notes'],
     ]);
