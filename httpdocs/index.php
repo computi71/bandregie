@@ -2409,7 +2409,9 @@ if (str_starts_with($path, '/intern')) {
         // einen Klick im eigenen Profil zu bitten — sonst sehen im Plan alle
         // gleich aus (#187). Ein unbekannter Wert wird auf „nicht gewählt"
         // gebracht statt übernommen.
-        $figur = array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? (string) $_POST['stage_figure'] : '';
+        // Der Leerschlüssel ist in STAGE_FIGURES ein gültiger Wert („nicht
+        // gewählt") — ohne das Feld im Formular griff der Zweig sonst ins Leere.
+        $figur = array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? (string) ($_POST['stage_figure'] ?? '') : '';
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
                             substitute_rank=?, profit_share=?, stage_figure=?, on_stage=? WHERE id=?', [
