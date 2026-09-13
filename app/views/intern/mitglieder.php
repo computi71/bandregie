@@ -11,7 +11,9 @@
   <form method="post" action="/intern/mitglieder" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('mem_first_name')) ?><input name="first_name" required></label>
     <label><?= e(t('mem_last_name')) ?><input name="last_name"></label>
-    <label><?= e(t('email')) ?><input type="email" name="email" required></label>
+    <?php // Ohne Adresse entsteht ein Konto ohne Zugang; die Einladung geht
+          // hinaus, sobald sie nachgetragen ist (#291). ?>
+    <label><?= e(t('email')) ?><input type="email" name="email" placeholder="<?= e(t('optional')) ?>"></label>
     <label><?= e(t('instrument')) ?><input name="instrument" placeholder="<?= e(t('mem_instrument_ph')) ?>"></label>
     <label><?= e(t('role')) ?>
       <select name="role"><option value="member"><?= e(t('role_member')) ?></option><option value="ersatz"><?= e(t('role_ersatz')) ?></option><option value="admin"><?= e(t('role_admin')) ?></option></select>
@@ -74,7 +76,10 @@
               // Einladungsformular entstanden sind, tragen dieses Kennzeichen
               // nie — und ausgerechnet die, die nie angekommen sind, hätten
               // keinen Knopf bekommen (#275). ?>
-        <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()
+        <?php if ($m['email'] === null): ?>
+          <?php // Ohne Adresse gibt es nichts nachzusenden (#291). ?>
+          <span class="muted small">🚫 <?= e(t('mem_no_email')) ?></span>
+        <?php elseif ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()
                   && $m['last_login_at'] === null): ?>
           <?php // Zwei verschiedene Aussagen, und nur eine davon ist sicher: Wer
                 // ein Start-Passwort bekommen hat und keine Anmeldung zeigt, war
@@ -153,7 +158,7 @@
           <?php // In der Demo bleiben Adresse und Rolle stehen — die Route
                 // übernimmt sie ohnehin nicht, und ein Feld, das sich tippen
                 // lässt und dann nichts tut, ist schlimmer als ein gesperrtes. ?>
-          <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($mFull['email']) ?>" required <?= is_demo() ? 'readonly' : '' ?>></label>
+          <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e((string) $mFull['email']) ?>" <?= $mFull['email'] !== null ? 'required' : '' ?> <?= is_demo() ? 'readonly' : '' ?>></label>
           <label><?= e(t('role')) ?>
             <select name="role" <?= (int) $m['id'] === (int) $user['id']
               ? 'disabled title="' . e(t('mem_own_role')) . '"'

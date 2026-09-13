@@ -2379,19 +2379,25 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/update$~', $path, $m) && $method === 'POST') {
     require_admin();
-    if (($_POST['first_name'] ?? '') !== '' && ($_POST['email'] ?? '') !== '') {
+    // Der Stand vor dem Speichern: Ob die Adresse sich ändert und ob das Konto
+    // je angemeldet war, entscheidet unten über die Willkommensmail.
+    $vorher = row('SELECT id, name, first_name, email, last_login_at, start_pw_at FROM users WHERE id = ?', [$m[1]]) ?: [];
+    $emailNeu = strtolower(trim((string) ($_POST['email'] ?? '')));
+    // Eine Adresse darf fehlen, solange keine da ist (#291). Eine vorhandene
+    // lässt sich ändern, nicht leeren: Sonst sperrt ein Versehen ein Mitglied
+    // aus, das sich längst anmeldet.
+    if ($vorher && $vorher['email'] !== null && $emailNeu === '') {
+      flash(t('fl_email_keep'));
+      redirect('/intern/mitglieder');
+    }
+    if ($vorher && ($_POST['first_name'] ?? '') !== '') {
       try {
         // In der Demo bleiben E-Mail und Rolle, wie sie sind. Mit der Adresse
         // meldet man sich an, und die Rolle entscheidet, wie viel jemand sieht
         // — beides steht auf der Werbeseite und gilt für alle Besucher
         // gleichzeitig. Name, Instrument und Vertretung darf man ändern; das
         // ist gerade das, was man an dieser Seite sehen will.
-        // Der Stand vor dem Speichern: Ob die Adresse sich ändert und ob das
-        // Konto je angemeldet war, entscheidet unten über die Willkommensmail.
-        $vorher = row('SELECT id, name, first_name, email, last_login_at, start_pw_at FROM users WHERE id = ?', [$m[1]]) ?: [];
-        $email = is_demo()
-          ? (string) ($vorher['email'] ?? '')
-          : strtolower(trim($_POST['email']));
+        $email = is_demo() ? $vorher['email'] : ($emailNeu !== '' ? $emailNeu : null);
         // Der Haken zur Gewinnbeteiligung steht nur im Formular, wenn die Kasse
         // sichtbar ist. Wo er fehlt, bleibt der bisherige Wert — ein fehlendes
         // Feld darf keine stille Abwahl bedeuten.
@@ -2433,9 +2439,11 @@ if (str_starts_with($path, '/intern')) {
         }
         // Neue Adresse für ein Konto, das nie angekommen ist: dann war die alte
         // wohl falsch, und die Einladung geht an die richtige — wie beim Anlegen
-        // (#290). Nicht fürs eigene Konto, und nur, wenn „nie angemeldet" sicher
-        // ist; sonst bleibt es beim Knopf, der vorher fragt.
-        if ($vorher && (int) $m[1] !== (int) $me['id'] && $email !== $vorher['email'] && never_signed_in($vorher)) {
+        // (#290). Die erste Adresse eines Kontos, das bisher keine hatte, ist
+        // derselbe Fall (#291). Nicht fürs eigene Konto, und nur, wenn „nie
+        // angemeldet" sicher ist; sonst bleibt es beim Knopf, der vorher fragt.
+        if ($email !== null && (int) $m[1] !== (int) $me['id'] && $email !== $vorher['email']
+            && ($vorher['email'] === null || never_signed_in($vorher))) {
           [$sent, $startPw] = access_send(['id' => $m[1], 'email' => $email,
                                            'first_name' => $_POST['first_name'] ?? '', 'name' => $vorher['name']], (int) $me['id']);
           flash($sent ? t('fl_member_updated_mail') : t('fl_member_updated_nomail') . ' ' . $startPw);
@@ -2453,30 +2461,38 @@ if (str_starts_with($path, '/intern')) {
     // Legt ein Konto an und verschickt das Startpasswort per Mail — beides
     // hat in einer öffentlichen Demo nichts verloren.
     deny_in_demo('/intern/mitglieder');
-    if (($_POST['first_name'] ?? '') && ($_POST['email'] ?? '')) {
-      $startPw = start_password();
-      $email = strtolower(trim($_POST['email']));
+    if (($_POST['first_name'] ?? '') !== '') {
+      $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+      // Ohne Adresse ein Konto ohne Zugang (#291): kein Start-Passwort, keine
+      // Mail — nur ein Passwort-Hash, den niemand kennt, damit die Spalte
+      // gefüllt ist und sich trotzdem niemand damit anmelden kann.
+      $startPw = $email !== '' ? start_password() : bin2hex(random_bytes(32));
       try {
         q('INSERT INTO users (name, first_name, last_name, email, password_hash, role, instrument, must_change_pw, start_pw_at)
-         VALUES (?,?,?,?,?,?,?,1,NOW())', [
+         VALUES (?,?,?,?,?,?,?,?,?)', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? ''),
           trim($_POST['first_name'] ?? ''), trim($_POST['last_name'] ?? ''),
-          $email, password_hash($startPw, PASSWORD_DEFAULT),
+          $email !== '' ? $email : null, password_hash($startPw, PASSWORD_DEFAULT),
           in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
+          $email !== '' ? 1 : 0, $email !== '' ? date('Y-m-d H:i:s') : null,
         ]);
         // Rechte nach der Vorlage der Rolle; Admins brauchen keine Zeilen
         $newRole = in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member';
         if ($newRole !== 'admin') perm_apply_template((int) $db->lastInsertId(), $newRole);
-        // Die Zugangsdaten gehen an das neue Mitglied selbst — das ist keine
-        // Post im Namen der Band nach draußen, sondern der Zettel mit dem
-        // Schlüssel. Wer ein Konto anlegen darf, darf ihn auch verschicken (#273).
-        $sent = welcome_mail($email, $_POST['first_name'] ?? '', $startPw);
-        flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
+        if ($email === '') {
+          flash(t('fl_member_created_noaccess'));
+        } else {
+          // Die Zugangsdaten gehen an das neue Mitglied selbst — das ist keine
+          // Post im Namen der Band nach draußen, sondern der Zettel mit dem
+          // Schlüssel. Wer ein Konto anlegen darf, darf ihn auch verschicken (#273).
+          $sent = welcome_mail($email, $_POST['first_name'] ?? '', $startPw);
+          flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
+        }
       } catch (PDOException) {
         flash(t('fl_email_taken'));
       }
     } else {
-      flash(t('fl_name_email_required'));
+      flash(t('fl_first_name_required'));
     }
     redirect('/intern/mitglieder');
   }

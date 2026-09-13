@@ -696,6 +696,10 @@ const UI_STRINGS = [
   'fl_email_taken' => 'Diese E-Mail ist schon vergeben.',
   'fl_name_email_required' => 'Name und E-Mail sind Pflicht.',
   'fl_member_updated' => 'Mitglied aktualisiert.',
+  'fl_first_name_required' => 'Der Vorname ist Pflicht.',
+  'fl_member_created_noaccess' =>'Mitglied angelegt — ohne E-Mail-Adresse noch ohne Zugang. Sobald die Adresse unter „Bearbeiten" steht, geht die Einladung hinaus.',
+  'fl_email_keep' => 'Eine vorhandene E-Mail-Adresse lässt sich ändern, aber nicht leeren — sonst wäre das Mitglied ausgesperrt.',
+  'mem_no_email' => 'Kein Zugang — E-Mail-Adresse fehlt. Nachtragen, dann geht die Einladung hinaus.',
   'fl_member_updated_mail' => 'Mitglied aktualisiert — die Zugangsdaten gingen an die neue Adresse.',
   'fl_member_updated_nomail' => 'Mitglied aktualisiert. E-Mail-Versand nicht möglich — bitte dieses Start-Passwort weitergeben:',
   'fl_no_self_delete' => 'Du kannst dich nicht selbst löschen.',
@@ -2424,6 +2428,15 @@ foreach (['pa_source', 'light_source'] as $prodCol) {
 // für Export und Kalender unsichtbar (#287).
 if (!column_exists('events', 'support_act')) {
   $db->exec("ALTER TABLE events ADD COLUMN support_act VARCHAR(255) NOT NULL DEFAULT '' AFTER location");
+}
+// Mitglieder ohne E-Mail-Adresse (#291): Die Besetzung steht am ersten Tag,
+// die Adressen kommen nach. Ohne Adresse gibt es keinen Zugang — NULL, nicht
+// Leerstring, denn UNIQUE lässt beliebig viele NULL zu, aber nur ein ''.
+$emailNullable = $db->prepare('SELECT is_nullable FROM information_schema.columns
+                               WHERE table_schema = ? AND table_name = ? AND column_name = ?');
+$emailNullable->execute([$config['db_name'], 'users', 'email']);
+if (($emailNullable->fetchColumn() ?: 'NO') === 'NO') {
+  $db->exec('ALTER TABLE users MODIFY email VARCHAR(190) NULL');
 }
 foreach (['first_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'last_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
