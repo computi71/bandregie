@@ -234,7 +234,17 @@
                       </form>
                     <?php endif; ?>
                     <?php if ($user['role'] === 'admin'): ?>
-                      <form class="inline" method="post" action="/intern/fotos/<?= $photo['id'] ?>/hintergrund"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost" title="<?= e(t('photo_bg_title')) ?>">🖼 <?= e(t('photo_bg')) ?></button></form>
+                      <?php // Als Logo, Hintergrund, Favicon oder Begrüßungsbild — dieselbe
+                            // Route wie in den Einstellungen (#289). ?>
+                      <form class="inline" method="post" action="/intern/einstellungen/branding/uebernehmen"><?= csrf_field() ?>
+                        <input type="hidden" name="photo_id" value="<?= (int) $photo['id'] ?>">
+                        <select name="slot" class="btn-tiny" title="<?= e(t('photo_use_as')) ?>">
+                          <?php foreach (array_keys(BRANDING_SLOTS) as $slot): ?>
+                            <option value="<?= e($slot) ?>"><?= e(t('set_slot_' . $slot)) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <button class="btn btn-tiny btn-ghost">🖼 <?= e(t('photo_use_as')) ?></button>
+                      </form>
                     <?php endif; ?>
                     <?php endif; ?>
                     <?php // Archivieren statt löschen (#200) — eine Serie-Kachel nimmt ihre

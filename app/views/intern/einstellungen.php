@@ -183,8 +183,36 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       </select>
     </label>
     <label><?= e(t('set_welcome_file_lbl')) ?><input type="file" name="welcome" accept="image/*"></label>
+    <p class="muted small span2"><?= e(t('set_upload_to_media')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
+  <?php // Aus der Galerie übernehmen (#289). Bilder statt Dateinamen, wie beim
+        // Inventar: Wer ein Logo sucht, erkennt es am Bild. ?>
+  <?php if (!empty($photoChoices)): ?>
+    <details class="subsection">
+      <summary>🖼 <?= e(t('set_from_media')) ?></summary>
+      <p class="muted small"><?= e(t('set_from_media_hint')) ?></p>
+      <form method="post" action="/intern/einstellungen/branding/uebernehmen" class="photo-pick"><?= csrf_field() ?>
+        <div class="photo-pick-strip">
+          <?php foreach ($photoChoices as $i => $pc): ?>
+            <label class="photo-pick-item">
+              <input type="radio" name="photo_id" value="<?= (int) $pc['id'] ?>" <?= $i === 0 ? 'checked' : '' ?>>
+              <img src="/thumb/<?= e($pc['filename']) ?>" alt="" loading="lazy">
+              <span class="small"><?= e($pc['caption'] !== '' ? $pc['caption'] : $pc['source']) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+        <div class="row-buttons">
+          <select name="slot">
+            <?php foreach (array_keys(BRANDING_SLOTS) as $slot): ?>
+              <option value="<?= e($slot) ?>"><?= e(t('set_slot_' . $slot)) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <button class="btn btn-small"><?= e(t('set_take')) ?></button>
+        </div>
+      </form>
+    </details>
+  <?php endif; ?>
   <div class="row-buttons">
     <?php if (!empty($settings['logo_file'])): ?>
       <img src="/uploads/<?= e($settings['logo_file']) ?>" alt="Logo" style="max-height:60px">

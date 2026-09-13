@@ -1790,25 +1790,6 @@ if (str_starts_with($path, '/intern')) {
     flash(implode(' ', $meldung));
     redirect('/intern/fotos');
   }
-  if (preg_match('~^/intern/fotos/(\d+)/hintergrund$~', $path, $m) && $method === 'POST') {
-    require_admin();
-    $p = row('SELECT * FROM photos WHERE id = ?', [$m[1]]);
-    if ($p && is_file(UPLOADS_DIR . '/' . $p['filename'])) {
-      // Kopie anlegen, damit Galerie-Foto und Hintergrund unabhängig bleiben
-      $ext = strtolower(pathinfo($p['filename'], PATHINFO_EXTENSION) ?: 'jpg');
-      $name = 'background_' . time() . '.' . $ext;
-      if (copy(UPLOADS_DIR . '/' . $p['filename'], UPLOADS_DIR . '/' . $name)) {
-        // Der Hintergrund ist immer öffentlich sichtbar — Aufnahmedaten haben
-        // in der Kopie also erst recht nichts zu suchen.
-        photo_strip_exif(UPLOADS_DIR . '/' . $name);
-        $old = setting('background_file');
-        if ($old) @unlink(UPLOADS_DIR . '/' . $old);
-        set_setting('background_file', $name);
-        flash(t('fl_bg_set'));
-      }
-    }
-    redirect('/intern/fotos');
-  }
   if (preg_match('~^/intern/fotos/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'toggle') {
       q('UPDATE photos SET is_public = 1 - is_public WHERE id = ?', [$m[1]]);
@@ -3581,6 +3562,9 @@ if (str_starts_with($path, '/intern')) {
       'ical_url' => absolute_url('/kalender/' . ical_token_for((int) $me['id']) . '.ics'),
       'contentAll' => $contentAll,
       'backupRuns' => rows('SELECT * FROM backup_runs ORDER BY id DESC LIMIT 12'),
+      // Die Galerie als Quelle für Logo, Hintergrund, Favicon und Begrüßungsbild (#289).
+      'photoChoices' => rows('SELECT id, filename, caption, source FROM photos
+                              WHERE archived_at IS NULL ORDER BY created_at DESC'),
     ]);
   }
   // Den gemeinsamen Kalender-Link abschalten (#222). Nicht löschen, sondern
@@ -4027,30 +4011,39 @@ if (str_starts_with($path, '/intern')) {
     set_setting('welcome_text', trim((string) ($_POST['welcome_text'] ?? '')));
     $bildwahl = (string) ($_POST['welcome_image'] ?? 'flagge');
     set_setting('welcome_image', in_array($bildwahl, ['flagge', 'logo', 'eigen', 'keins'], true) ? $bildwahl : 'flagge');
-    foreach (['logo' => 'logo_file', 'background' => 'background_file', 'favicon' => 'favicon_file',
-              'welcome' => 'welcome_file'] as $field => $key) {
-      if (upload_rejected((int) ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
-      $tmp = $_FILES[$field]['tmp_name'] ?? '';
+    foreach (BRANDING_SLOTS as $slot => $slotInfo) {
+      if (upload_rejected((int) ($_FILES[$slot]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
+      $tmp = $_FILES[$slot]['tmp_name'] ?? '';
       if (!is_uploaded_file($tmp)) continue;
-      if (($_FILES[$field]['size'] ?? 0) > 5 * 1024 * 1024) { flash(t('fl_img_too_big')); continue; }
+      if (($_FILES[$slot]['size'] ?? 0) > 5 * 1024 * 1024) { flash(t('fl_img_too_big')); continue; }
       if (!str_starts_with(mime_content_type($tmp) ?: '', 'image/')) continue;
-      $ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION) ?: 'png');
-      $name = $field . '_' . time() . '.' . preg_replace('~[^a-z0-9]~', '', $ext);
-      if (move_uploaded_file($tmp, UPLOADS_DIR . '/' . $name)) {
-        // Logo, Hintergrund und Favicon stehen auf der öffentlichen Seite.
-        photo_strip_exif(UPLOADS_DIR . '/' . $name);
-        $old = setting($key);
-        if ($old) @unlink(UPLOADS_DIR . '/' . $old);
-        set_setting($key, $name);
+      if (branding_set_file($slot, $tmp)) {
+        // Dasselbe Bild auch in die Galerie (#289): Dort findet man es wieder,
+        // statt es beim nächsten Mal erneut von der Platte zu suchen. Eine
+        // eigene Kopie, damit Löschen dort das Erscheinungsbild nicht zerreißt.
+        photo_add_copy($tmp, t('set_slot_' . $slot), [$slotInfo['tag']], (int) $me['id'],
+                       (string) ($_FILES[$slot]['name'] ?? ''));
       }
     }
     flash(t('fl_branding_saved'));
     redirect('/intern/einstellungen');
   }
-  if (preg_match('~^/intern/einstellungen/branding/(logo|background|favicon|welcome)/delete$~', $path, $m) && $method === 'POST') {
+  // Ein Galeriefoto als Logo, Hintergrund, Favicon oder Begrüßungsbild — aus den
+  // Einstellungen wie aus der Galerie, eine Route für beide Wege (#289).
+  if ($path === '/intern/einstellungen/branding/uebernehmen' && $method === 'POST') {
     require_admin();
     deny_in_demo('/intern/einstellungen');
-    $key = $m[1] . '_file';
+    $slot = (string) ($_POST['slot'] ?? '');
+    $foto = row('SELECT filename FROM photos WHERE id = ?', [(int) ($_POST['photo_id'] ?? 0)]);
+    if (isset(BRANDING_SLOTS[$slot]) && $foto && branding_set_file($slot, UPLOADS_DIR . '/' . $foto['filename'])) {
+      flash(sprintf(t('fl_branding_from_photo'), t('set_slot_' . $slot)));
+    }
+    back('/intern/einstellungen');
+  }
+  if (preg_match('~^/intern/einstellungen/branding/(\w+)/delete$~', $path, $m) && $method === 'POST' && isset(BRANDING_SLOTS[$m[1]])) {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    $key = BRANDING_SLOTS[$m[1]]['key'];
     $old = setting($key);
     if ($old) @unlink(UPLOADS_DIR . '/' . $old);
     set_setting($key, '');

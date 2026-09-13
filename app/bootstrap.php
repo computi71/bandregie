@@ -516,8 +516,7 @@ const UI_STRINGS = [
   // Fotos
   'photos_caption' => 'Beschreibung',
   'photos_public_now' => 'Direkt öffentlich auf der Website zeigen',
-  'photo_intern' => 'intern', 'photo_bg' => 'Hintergrund',
-  'photo_bg_title' => 'Als Website-Hintergrund verwenden',
+  'photo_intern' => 'intern', 'photo_use_as' => 'verwenden als',
   'photos_none_intern' => 'Noch keine Fotos hochgeladen.',
   // Mitglieder & Profil
   'mem_title' => 'Mitglieder', 'mem_new' => 'Neues Mitglied',   'mem_you' => 'du', 'mem_my_profile' => 'Mein Profil',
@@ -627,6 +626,13 @@ const UI_STRINGS = [
   'set_legal' => 'Rechtliches (Pflichtseiten)',
   'set_legal_hint' => 'Impressum ist für Bands mit bezahlten Auftritten Pflicht (§ 5 DDG). Beide Seiten sind im Footer verlinkt. Platzhalter in eckigen Klammern bitte ersetzen. Verbindlich ist die deutsche Fassung.',
   'set_branding' => 'Logo & Hintergrund',
+  'set_upload_to_media' => 'Was du hier hochlädst, landet auch in den Medien — mit dem passenden Schlagwort.',
+  'set_from_media' => 'Aus den Medien übernehmen',
+  'set_from_media_hint' => 'Bild anklicken und darunter sagen, was es werden soll. Die Galerie behält ihr Foto, hier landet eine Kopie.',
+  'set_slot_logo' => 'Logo', 'set_slot_background' => 'Hintergrundbild',
+  'set_slot_favicon' => 'Site-Icon', 'set_slot_welcome' => 'Bild neben der Anrede',
+  'set_take' => 'Übernehmen',
+  'fl_branding_from_photo' => 'Bild übernommen als %s.',
   'set_logo_lbl' => 'Logo (PNG mit Transparenz empfohlen, max. 5 MB)',
   'set_bg_lbl' => 'Hintergrundbild (wird abgedunkelt, max. 5 MB)',
   'set_logo_remove' => 'Logo entfernen', 'set_bg_remove' => 'Hintergrund entfernen',
@@ -658,7 +664,6 @@ const UI_STRINGS = [
   'fl_locked_event' => 'Vergangene Termine sind fixiert und können nicht mehr geändert oder gelöscht werden.',
   'fl_song_played' => 'Dieser Song wurde schon live gespielt und bleibt für die Historie erhalten — stattdessen auf „Aussortiert" setzen.',
   'fl_setlist_locked' => 'Diese Setlist wurde bereits live gespielt und ist fixiert — zum Ändern bitte kopieren.',
-  'fl_bg_set' => 'Foto als Hintergrund gesetzt.',
   'fl_period_invalid' => 'Bitte gültigen Zeitraum angeben.',
   'fl_file_too_big' => 'Datei zu groß (max. 20 MB).',
   'fl_file_sealed' => 'Diese Datei ist verschlüsselt abgelegt und lässt sich mit dem eingetragenen Schlüssel nicht öffnen.',
@@ -4609,6 +4614,74 @@ function events_by_closeness(array $events, ?string $takenAt): array {
  */
 function tag_norm(string $tag): string {
   return mb_substr(trim(preg_replace('~\s+~u', ' ', $tag) ?? ''), 0, 60);
+}
+
+/**
+ * Die vier Bilder des Erscheinungsbilds: Formularfeld => Einstellung, Schlagwort
+ * in der Galerie. Logo, Hintergrund und Favicon stehen auf der öffentlichen
+ * Seite, das vierte neben der Anrede auf der Übersicht (#267).
+ */
+const BRANDING_SLOTS = [
+  'logo'       => ['key' => 'logo_file',       'tag' => 'logo'],
+  'background' => ['key' => 'background_file', 'tag' => 'hintergrund'],
+  'favicon'    => ['key' => 'favicon_file',    'tag' => 'favicon'],
+  'welcome'    => ['key' => 'welcome_file',    'tag' => 'begrüßung'],
+];
+
+/**
+ * Setzt eines der vier Bilder aus einer Datei — hochgeladen oder aus der
+ * Galerie. Immer eine Kopie: Galeriefoto und Erscheinungsbild bleiben
+ * unabhängig, wer das eine löscht, verliert das andere nicht (#289).
+ */
+function branding_set_file(string $slot, string $quelle): bool {
+  if (!isset(BRANDING_SLOTS[$slot]) || !is_file($quelle)) return false;
+  $ext = strtolower(pathinfo($quelle, PATHINFO_EXTENSION));
+  // Eine hochgeladene Datei heißt phpXXXX — ihre Endung sagt nichts.
+  if (!in_array($ext, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico'], true)) {
+    $ext = match (mime_content_type($quelle) ?: '') {
+      'image/jpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp',
+      'image/svg+xml' => 'svg', 'image/vnd.microsoft.icon', 'image/x-icon' => 'ico',
+      default => 'png',
+    };
+  }
+  $name = $slot . '_' . time() . '.' . $ext;
+  if (!copy($quelle, UPLOADS_DIR . '/' . $name)) return false;
+  // Die Bilder stehen nach außen — Aufnahmedaten haben in der Kopie nichts zu suchen.
+  photo_strip_exif(UPLOADS_DIR . '/' . $name);
+  $key = BRANDING_SLOTS[$slot]['key'];
+  $old = setting($key);
+  if ($old && $old !== $name) @unlink(UPLOADS_DIR . '/' . $old);
+  set_setting($key, $name);
+  return true;
+}
+
+/**
+ * Legt eine Kopie einer Bilddatei als Foto in die Galerie — so, wie es nach
+ * einem Upload über das Fotoformular aussähe: Zufallsname, Prüfsumme vor dem
+ * Entfernen der Aufnahmedaten, Maße, Schlagwörter. Zurück kommt die Foto-ID,
+ * 0 wenn die Datei kein Bild ist oder nicht kopiert werden konnte.
+ */
+function photo_add_copy(string $quelle, string $caption, array $tags, ?int $wer, string $herkunft): int {
+  if (!is_file($quelle)) return 0;
+  $info = @getimagesize($quelle);
+  if (!$info) return 0;
+  $ext = match ($info['mime']) {
+    'image/jpeg' => 'jpg', 'image/gif' => 'gif', 'image/webp' => 'webp', default => 'png',
+  };
+  $name = 'foto_' . bin2hex(random_bytes(16)) . '.' . $ext;
+  if (!copy($quelle, UPLOADS_DIR . '/' . $name)) return 0;
+  $summe = (string) (hash_file('sha256', UPLOADS_DIR . '/' . $name) ?: '');
+  photo_strip_exif(UPLOADS_DIR . '/' . $name);
+  q('INSERT INTO photos (filename, caption, is_public, uploaded_by, source, checksum, img_w, img_h)
+     VALUES (?,?,0,?,?,?,?,?)',
+    [$name, mb_substr($caption, 0, 500), $wer, mb_substr($herkunft, 0, 400), $summe, (int) $info[0], (int) $info[1]]);
+  global $db;
+  $id = (int) $db->lastInsertId();
+  foreach ($tags as $tag) {
+    $tag = tag_norm($tag);
+    if ($tag !== '') q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$id, $tag]);
+  }
+  return $id;
 }
 
 /**
