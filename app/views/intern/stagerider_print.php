@@ -35,6 +35,10 @@ $blocks = [
     th { border-bottom: 0.4mm solid #000; }
     .contacts { display: flex; gap: 10mm; margin-top: 4mm; }
     .muted { color: #555; }
+    /* Bühnenplan und Inputliste sind die zwei Blätter, die am Pult hängen —
+       jedes beginnt auf einer eigenen Seite, statt dort, wo die Anforderungen
+       gerade enden (#292). Nur im Druck; am Bildschirm bleibt es ein Bogen. */
+    @media print { .new-page { break-before: page; page-break-before: always; margin-top: 0; } }
     @media screen { body { background: #777; padding: 1rem 0; }
                     .sheet { margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); } }
   </style>
@@ -65,7 +69,7 @@ $blocks = [
   <?php endif; ?>
 
   <?php if ($stageItems): ?>
-    <h2><?= e(t('stage_plot')) ?></h2>
+    <h2 class="new-page"><?= e(t('stage_plot')) ?></h2>
     <div class="block"><?php $stagePrint = true; require BASE_DIR . '/app/views/_buehnenplan.php'; ?></div>
   <?php endif; ?>
 
@@ -75,7 +79,7 @@ $blocks = [
   <?php endif; ?>
 
   <?php if ($channels): ?>
-    <h2><?= e(t('rider_inputs')) ?></h2>
+    <h2 class="new-page"><?= e(t('rider_inputs')) ?></h2>
     <table>
       <thead><tr><th style="width:12mm"><?= e(t('ch_input')) ?></th><th><?= e(t('ch_name')) ?></th><th><?= e(t('ch_source')) ?></th><th><?= e(t('notes')) ?></th></tr></thead>
       <tbody>
