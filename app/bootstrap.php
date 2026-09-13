@@ -696,6 +696,8 @@ const UI_STRINGS = [
   'fl_email_taken' => 'Diese E-Mail ist schon vergeben.',
   'fl_name_email_required' => 'Name und E-Mail sind Pflicht.',
   'fl_member_updated' => 'Mitglied aktualisiert.',
+  'fl_member_updated_mail' => 'Mitglied aktualisiert — die Zugangsdaten gingen an die neue Adresse.',
+  'fl_member_updated_nomail' => 'Mitglied aktualisiert. E-Mail-Versand nicht möglich — bitte dieses Start-Passwort weitergeben:',
   'fl_no_self_delete' => 'Du kannst dich nicht selbst löschen.',
   'fl_only_admin_pw' => 'Nur Admins können fremde Passwörter zurücksetzen.',
   'fl_pw_min' => 'Passwort braucht mindestens 8 Zeichen.',
@@ -4942,6 +4944,32 @@ function start_pw_expired(?array $user): bool {
 /** Merkt sich, dass dieses Konto gerade angemeldet wurde. */
 function login_stamp(int $uid): void {
   q('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$uid]);
+}
+
+/**
+ * War dieses Konto nachweislich noch nie angemeldet? Nur dann, wenn es ein
+ * Start-Passwort bekommen hat und keine Anmeldung zeigt. Ein Konto ohne beides
+ * ist bloß älter als der Anmeldestempel (v1.244.0) und hat womöglich längst
+ * ein eigenes Passwort — dem darf niemand ungefragt ein neues geben (#290).
+ */
+function never_signed_in(array $user): bool {
+  return $user['last_login_at'] === null && !empty($user['start_pw_at']);
+}
+
+/**
+ * Neues Start-Passwort setzen und die Zugangsdaten schicken — beim Nachsenden
+ * wie beim Ändern der Adresse eines Kontos, das nie angekommen ist (#273, #290).
+ * Das alte Passwort ist nur als Prüfsumme da und lässt sich nicht wiederholen,
+ * also entsteht ein neues; das gehört ins Protokoll, weil es einem fremden
+ * Konto sein Passwort nimmt. Zurück kommt [Mail raus?, Start-Passwort] — ging
+ * die Mail nicht hinaus, zeigt der Aufrufer das Passwort selbst an.
+ */
+function access_send(array $ziel, int $durch): array {
+  $startPw = start_password();
+  q('UPDATE users SET password_hash = ?, must_change_pw = 1, start_pw_at = NOW() WHERE id = ?',
+    [password_hash($startPw, PASSWORD_DEFAULT), (int) $ziel['id']]);
+  error_log('Bandregie: Zugangsdaten neu verschickt für Konto ' . (int) $ziel['id'] . ' durch Konto ' . $durch);
+  return [welcome_mail((string) $ziel['email'], $ziel['first_name'] ?: $ziel['name'], $startPw), $startPw];
 }
 
 function start_password(): string {

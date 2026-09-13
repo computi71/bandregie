@@ -2386,8 +2386,11 @@ if (str_starts_with($path, '/intern')) {
         // — beides steht auf der Werbeseite und gilt für alle Besucher
         // gleichzeitig. Name, Instrument und Vertretung darf man ändern; das
         // ist gerade das, was man an dieser Seite sehen will.
+        // Der Stand vor dem Speichern: Ob die Adresse sich ändert und ob das
+        // Konto je angemeldet war, entscheidet unten über die Willkommensmail.
+        $vorher = row('SELECT id, name, first_name, email, last_login_at, start_pw_at FROM users WHERE id = ?', [$m[1]]) ?: [];
         $email = is_demo()
-          ? (row('SELECT email FROM users WHERE id = ?', [$m[1]])['email'] ?? '')
+          ? (string) ($vorher['email'] ?? '')
           : strtolower(trim($_POST['email']));
         // Der Haken zur Gewinnbeteiligung steht nur im Formular, wenn die Kasse
         // sichtbar ist. Wo er fehlt, bleibt der bisherige Wert — ein fehlendes
@@ -2428,7 +2431,17 @@ if (str_starts_with($path, '/intern')) {
             perm_apply_template((int) $m[1], $_POST['role']);
           }
         }
-        flash(t('fl_member_updated'));
+        // Neue Adresse für ein Konto, das nie angekommen ist: dann war die alte
+        // wohl falsch, und die Einladung geht an die richtige — wie beim Anlegen
+        // (#290). Nicht fürs eigene Konto, und nur, wenn „nie angemeldet" sicher
+        // ist; sonst bleibt es beim Knopf, der vorher fragt.
+        if ($vorher && (int) $m[1] !== (int) $me['id'] && $email !== $vorher['email'] && never_signed_in($vorher)) {
+          [$sent, $startPw] = access_send(['id' => $m[1], 'email' => $email,
+                                           'first_name' => $_POST['first_name'] ?? '', 'name' => $vorher['name']], (int) $me['id']);
+          flash($sent ? t('fl_member_updated_mail') : t('fl_member_updated_nomail') . ' ' . $startPw);
+        } else {
+          flash(t('fl_member_updated'));
+        }
       } catch (PDOException) {
         flash(t('fl_email_taken'));
       }
@@ -2518,12 +2531,7 @@ if (str_starts_with($path, '/intern')) {
     deny_in_demo('/intern/mitglieder');
     $ziel = row('SELECT id, email, first_name, name FROM users WHERE id = ?', [$m[1]]);
     if (!$ziel) redirect('/intern/mitglieder');
-    $startPw = start_password();
-    q('UPDATE users SET password_hash = ?, must_change_pw = 1, start_pw_at = NOW() WHERE id = ?',
-      [password_hash($startPw, PASSWORD_DEFAULT), $ziel['id']]);
-    // Auch das gehört ins Protokoll: Es nimmt einem fremden Konto sein Passwort.
-    error_log('Bandregie: Zugangsdaten neu verschickt für Konto ' . (int) $ziel['id'] . ' durch Konto ' . (int) $me['id']);
-    $sent = welcome_mail($ziel['email'], $ziel['first_name'] ?: $ziel['name'], $startPw);
+    [$sent, $startPw] = access_send($ziel, (int) $me['id']);
     flash($sent ? t('fl_access_sent') : t('fl_access_nomail') . ' ' . $startPw);
     redirect('/intern/mitglieder');
   }
