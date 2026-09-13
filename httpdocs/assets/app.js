@@ -6,11 +6,22 @@ if ('serviceWorker' in navigator) {
     // holen, sondern immer frisch prüfen. Sonst bemerkt eine als App installierte
     // Seite (iPhone Home-Screen) neue Fassungen nicht und hängt am alten Stand.
     //
-    // Das Update-Anstoßen und das Neuladen nach der Übernahme wohnen in
-    // swkick.js — bewusst nur dort: die Datei erreicht mit ihrem eigenen,
-    // nie zwischengespeicherten Namen auch festhängende Installationen, und
-    // eine zweite Fassung derselben Logik hier liefe nur auseinander.
+    // Übernimmt ein neuer Worker, wird EINMAL neu geladen, damit die frischen
+    // Dateien greifen — sonst liefe die alte Seite weiter, bis jemand sie von
+    // Hand schließt. Nur, wenn schon ein Worker die Kontrolle hatte: beim
+    // Erstbesuch gibt es nichts zu erneuern und kein überflüssiges Neuladen.
+    // Bis #144 stand das in swkick.js, einer Datei mit nie zwischengespeichertem
+    // Namen, die auch festhängende Installationen erreichte; die sind durch.
+    let reloaded = false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      });
+    }
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+      .then((reg) => reg.update())
       .catch(() => {
         // Kein Grund zur Aufregung: ohne HTTPS oder in alten Browsern geht das
         // nicht, und die Anwendung braucht es auch nicht.
