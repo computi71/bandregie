@@ -1,6 +1,11 @@
 # Bandregie
 
-Installation and update. Everything else is in [`docs/`](docs/).
+A band of six runs on a group chat, three spreadsheets and one person who
+remembers everything. Bandregie replaces that with one place: a public page for
+promoters and fans, and an internal area for the work behind it — [what it is
+and what it does](docs/anwendung/ueberblick.md).
+
+This page is installation and update. Everything else is in [`docs/`](docs/).
 
 **Requirements:** PHP 8.1+ with PDO, MariaDB or MySQL, a web server. No
 framework, no build step, no package manager, no third-party script.
