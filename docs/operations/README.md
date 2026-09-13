@@ -1,30 +1,18 @@
-# Bandregie — operator's handbook
+# Running an instance
 
-These pages are for **running** an instance. What the application does and how to
-install it for the first time is in the
-[README](https://github.com/computi71/bandregie#readme); repeating it here would
-only give it a second place to go stale.
+The operator's handbook lives in the **[wiki](https://github.com/computi71/bandregie/wiki)**:
 
-What belongs here is the knowledge you need *after* the first install: how a
-change reaches production, what runs on a schedule, and what to look at when
-something behaves oddly.
+- **[Running an instance](https://github.com/computi71/bandregie/wiki/Running-an-instance)** —
+  the release path, version numbers, the service worker, and the rules that keep
+  translations from fighting each other.
+- **[Scheduled jobs](https://github.com/computi71/bandregie/wiki/Scheduled-jobs)** —
+  what runs by itself, what needs a cron, and how to tell whether it ran.
+- **[Troubleshooting](https://github.com/computi71/bandregie/wiki/Troubleshooting)** —
+  the symptoms that have actually come up, with the cause behind each one.
 
-## Pages
+It is kept there and nowhere else. A second copy in this repository would drift
+from it, and a handbook that contradicts itself is worse than one that is a
+little out of date.
 
-- **[Running an instance](running-an-instance.md)** — the release path, version
-  numbers, the service worker, and the rules that keep translations from
-  fighting each other.
-- **[Scheduled jobs](scheduled-jobs.md)** — what runs by itself, what needs a cron,
-  and how to tell whether it ran.
-- **[Troubleshooting](troubleshooting.md)** — the symptoms that have actually come
-  up, with the cause behind each one.
-
-## House rules
-
-- **Nothing private in here.** These pages are as public as the repository. No host
-  names, no addresses, no keys, no band data — describe the pattern, not your
-  server.
-- **English**, like the rest of the repository. The application's interface is
-  German plus five translations; the documentation is not.
-- If you change behaviour, change the page that describes it **in the same
-  change**. A handbook that lies is worse than no handbook.
+Installing for the first time is still in the [README](../../README.md) — that
+is where somebody looks who has not decided yet.

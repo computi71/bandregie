@@ -81,10 +81,10 @@ More: [songs](docs/screenshots/songs.jpg) · [members and permissions](docs/scre
 
 ## Running it
 
-Installing is below; **keeping it running** has pages of its own in
-[docs/operations](docs/operations/) — the release path and what a deploy really
-takes, what runs on a schedule and when a cron is needed, and the symptoms that
-have actually come up, with the cause behind each.
+Installing is below; **keeping it running** has pages of its own in the
+[wiki](https://github.com/computi71/bandregie/wiki) — the release path and what
+a deploy really takes, what runs on a schedule and when a cron is needed, and
+the symptoms that have actually come up, with the cause behind each.
 
 ## Installation
 
