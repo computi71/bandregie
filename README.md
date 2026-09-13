@@ -36,8 +36,11 @@ pitfalls, is in the [wiki](https://github.com/computi71/bandregie/wiki).
    has the complete nginx and Apache configuration, the PHP upload limits and
    the TLS notes.
 
-5. **First run.** Open the page. The database is created on the first request,
-   and the first account is made in the browser.
+5. **First run.** Open the page. The tables are created on the first request,
+   and an administrator account with a random password comes with them — the
+   password is written once to `data/INITIAL-PASSWORD.txt`, outside the web
+   root. Sign in with it, set your own password when asked (that deletes the
+   file), then put your address in under *Profil*.
 
 ## Install — over a git connection
 
