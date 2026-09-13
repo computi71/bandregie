@@ -4395,6 +4395,25 @@ function venue_dest(array $v): string {
 }
 
 /**
+ * Der Ort eines Termins in einer Zeile, für Ausgaben, die außerhalb der App
+ * gelesen werden — Kalendereintrag, öffentliche Seite (#286). Bevorzugt den
+ * hinterlegten Veranstaltungsort mit Anschrift („Markthalle Hamburg,
+ * Klosterwall 11, 20095 Hamburg"); erst wenn keiner verknüpft ist, den
+ * Freitext. Erwartet die Ort-Spalten als venue_* an der Termin-Zeile.
+ */
+function event_place(array $ev): string {
+  if (trim((string) ($ev['venue_name'] ?? '')) !== '') {
+    $ort = trim(trim((string) ($ev['venue_postcode'] ?? '')) . ' ' . trim((string) ($ev['venue_city'] ?? '')));
+    return implode(', ', array_filter([trim($ev['venue_name']), trim((string) ($ev['venue_address'] ?? '')), $ort]));
+  }
+  return trim((string) ($ev['location'] ?? ''));
+}
+
+/** Die Ort-Spalten für event_place(), zum Anhängen an „FROM events e". */
+const EVENT_PLACE_JOIN = 'LEFT JOIN venues v ON v.id = e.venue_id';
+const EVENT_PLACE_COLS = 'v.name AS venue_name, v.address AS venue_address, v.postcode AS venue_postcode, v.city AS venue_city, v.lat AS venue_lat, v.lng AS venue_lng';
+
+/**
  * Trennt aus einem gewachsenen Adresstext die PLZ heraus.
  *
  * Zurück kommt [Rest, PLZ, Ort]. Getrennt wird an Zeilenumbrüchen und Kommas —

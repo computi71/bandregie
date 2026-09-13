@@ -21,7 +21,7 @@
       <li>
         <span class="event-date"><?= fmt_date($gig['date']) ?><?= $gig['time'] ? ' · ' . e($gig['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
         <strong><?= e($gig['public_title'] ?: $gig['title']) ?></strong>
-        <?php if ($gig['location']): ?><span class="muted"><?= e($gig['location']) ?></span><?php endif; ?>
+        <?php if (event_place($gig) !== ''): ?><span class="muted"><?= e(event_place($gig)) ?></span><?php endif; ?>
       </li>
     <?php endforeach; ?>
   </ul>

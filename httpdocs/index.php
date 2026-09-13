@@ -236,7 +236,8 @@ if (setting('public_mode') === 'redirect' && $method === 'GET') {
 if ($path === '/' && $method === 'GET') {
   view('public/home', [
     'title' => t('nav_start'),
-    'gigs' => rows("SELECT * FROM events WHERE type='gig' AND is_public=1 AND status='bestaetigt' AND date >= ? ORDER BY date, time LIMIT 3", [$today]),
+    'gigs' => rows("SELECT e.*, " . EVENT_PLACE_COLS . " FROM events e " . EVENT_PLACE_JOIN
+      . " WHERE e.type='gig' AND e.is_public=1 AND e.status='bestaetigt' AND e.date >= ? ORDER BY e.date, e.time LIMIT 3", [$today]),
     'photos' => rows('SELECT * FROM photos WHERE is_public=1 AND archived_at IS NULL ORDER BY created_at DESC LIMIT 6'),
   ]);
 }
@@ -247,10 +248,12 @@ if ($path === '/termine' && $method === 'GET') {
   $showPast = setting('public_show_past') === '1';
   view('public/termine', [
     'title' => t('nav_termine'),
-    'gigs' => rows("SELECT * FROM events WHERE type='gig' AND is_public=1 AND status='bestaetigt' AND date >= ? ORDER BY date, time"
+    'gigs' => rows("SELECT e.*, " . EVENT_PLACE_COLS . " FROM events e " . EVENT_PLACE_JOIN
+      . " WHERE e.type='gig' AND e.is_public=1 AND e.status='bestaetigt' AND e.date >= ? ORDER BY e.date, e.time"
       . ($limitUpcoming > 0 ? " LIMIT $limitUpcoming" : ''), [$today]),
     'past' => $showPast
-      ? rows("SELECT * FROM events WHERE type='gig' AND is_public=1 AND status='bestaetigt' AND date < ? ORDER BY date DESC"
+      ? rows("SELECT e.*, " . EVENT_PLACE_COLS . " FROM events e " . EVENT_PLACE_JOIN
+          . " WHERE e.type='gig' AND e.is_public=1 AND e.status='bestaetigt' AND e.date < ? ORDER BY e.date DESC"
           . ($limitPast > 0 ? " LIMIT $limitPast" : ''), [$today])
       : [],
   ]);
@@ -389,8 +392,9 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
   header('Content-Type: text/calendar; charset=utf-8');
   $band = setting('band_name');
   echo "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//$band//DE\r\nX-WR-CALNAME:$band\r\n";
-  [$icalWhere, $icalArgs] = visible_clause($icalIds);
-  foreach (rows('SELECT * FROM events WHERE 1 = 1' . $icalWhere . ' ORDER BY date', $icalArgs) as $ev) {
+  [$icalWhere, $icalArgs] = visible_clause($icalIds, 'e.id');
+  foreach (rows('SELECT e.*, ' . EVENT_PLACE_COLS . ' FROM events e ' . EVENT_PLACE_JOIN
+                . ' WHERE 1 = 1' . $icalWhere . ' ORDER BY e.date', $icalArgs) as $ev) {
     $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandregie.local');
     if ($ev['status'] === 'abgesagt') continue;
     $summary = ($ev['type'] === 'probe' ? 'Probe: ' : 'Gig: ') . $ev['title']
@@ -406,7 +410,14 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
       echo 'DTSTART;VALUE=DATE:' . str_replace('-', '', $ev['date']) . "\r\n";
     }
     echo 'SUMMARY:' . $esc($summary) . "\r\n";
-    if ($ev['location']) echo 'LOCATION:' . $esc($ev['location']) . "\r\n";
+    // Der Ort mit Anschrift, nicht nur der Freitext (#286): Ein Kalendereintrag
+    // wird unterwegs angetippt, und „Hamburg" führt nirgendwohin. Die Koordinate
+    // dazu, wo es eine gibt — damit landet die Karten-App auf dem Punkt.
+    $icalOrt = event_place($ev);
+    if ($icalOrt !== '') echo 'LOCATION:' . $esc($icalOrt) . "\r\n";
+    if (!empty($ev['venue_lat']) && !empty($ev['venue_lng'])) {
+      echo 'GEO:' . (float) $ev['venue_lat'] . ';' . (float) $ev['venue_lng'] . "\r\n";
+    }
     // Wer sonst spielt, gehört in den Kalendereintrag: gelesen wird er
     // unterwegs, ohne die App daneben (#287).
     $icalText = array_filter([
