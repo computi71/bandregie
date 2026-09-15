@@ -55,6 +55,26 @@ $navi = $venue ? venue_dest($venue) : navi_dest((string) ($b['location'] ?? ''))
       </section>
     <?php endif; ?>
 
+    <?php // Nach der Zusage: alles für den Abend, nur lesend, nur dieser Termin (#294). ?>
+    <?php if ($b['status'] === 'zugesagt' && $antwort !== 'nein'): ?>
+      <section class="card">
+        <h2><?= e(t('gast_for_evening')) ?></h2>
+        <p><a class="btn" href="/gast/<?= e($b['token']) ?>/rider">📋 <?= e(t('gast_rider')) ?></a></p>
+        <?php if ($entries): ?>
+          <p><a class="btn" href="/gast/<?= e($b['token']) ?>/setliste">🎤 <?= e(t('gast_setlist')) ?></a></p>
+          <h3><?= e(t('gast_songs')) ?></h3>
+          <ol>
+            <?php foreach ($entries as $en): ?>
+              <?php if (!empty($en['is_break'])) continue; ?>
+              <li><a href="/gast/<?= e($b['token']) ?>/song/<?= (int) $en['id'] ?>"><?= e($en['title']) ?></a><?= !empty($en['song_key']) ? ' <span class="muted small">' . e($en['song_key']) . '</span>' : '' ?></li>
+            <?php endforeach; ?>
+          </ol>
+        <?php else: ?>
+          <p class="muted small"><?= e(t('gast_no_setlist')) ?></p>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
+
     <?php if ($b['status'] === 'angefragt' && $antwort === null): ?>
       <form method="post" action="/gast/<?= e($b['token']) ?>/antwort" class="answer"><?= csrf_field() ?>
         <button class="btn btn-primary" name="antwort" value="ja">✔ <?= e(t('gast_yes')) ?></button>

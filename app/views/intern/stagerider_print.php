@@ -44,7 +44,8 @@ $blocks = [
   </style>
 </head>
 <body>
-<?php $zurueckUrl = '/intern/stagerider'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php // Für einen Gast (#294) führt „Zurück" auf seine Seite, nicht in den Bandbereich.
+      $zurueckUrl = $zurueckUrl ?? '/intern/stagerider'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <div class="head-row">
     <div>

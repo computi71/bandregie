@@ -383,11 +383,39 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
 // Der Link aus der Einladung: erst die Antwort, dann — bei Zusage — der Zugang
 // für diesen einen Termin. Kein Konto, keine Sitzung; das Token ist der
 // Schlüssel und wird wie ein Passwort behandelt (64 Hex-Zeichen, nur exakt).
-if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort))?$~', $path, $m)) {
+if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$~', $path, $m)) {
   $gastBuchung = guest_booking_by_token($m[1]);
   if (!$gastBuchung) {
     http_response_code(404);
-    view('public/gast', ['title' => t('gast_invalid'), 'b' => null, 'antwort' => null]);
+    view('public/gast', ['title' => t('gast_invalid'), 'b' => null, 'antwort' => null, 'entries' => []]);
+  }
+  $gastZurueck = '/gast/' . $gastBuchung['token'];
+  $gastEntries = $gastBuchung['status'] === 'zugesagt' && $gastBuchung['setlist_id']
+    ? setlist_entries((int) $gastBuchung['setlist_id']) : [];
+  // Rider, Setliste und Lieder gibt es erst nach der Zusage — und nur, was zu
+  // diesem Termin gehört: die Lieder allein aus seiner Setliste.
+  $gastTeil = (string) ($m[2] ?? '');
+  if ($gastTeil !== '' && $gastTeil !== 'antwort' && $gastBuchung['status'] !== 'zugesagt') {
+    redirect($gastZurueck);
+  }
+  if ($gastTeil === 'rider') {
+    view('intern/stagerider_print', [
+      'title' => t('rider_title'), 'zurueckUrl' => $gastZurueck,
+      'channels' => rows('SELECT * FROM channels ORDER BY number'),
+      'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
+    ]);
+  }
+  if ($gastTeil === 'setliste') {
+    $gastSetlist = $gastBuchung['setlist_id'] ? row('SELECT * FROM setlists WHERE id = ?', [$gastBuchung['setlist_id']]) : null;
+    if (!$gastSetlist) redirect($gastZurueck);
+    view('intern/setlist_print', ['title' => $gastSetlist['name'], 'setlist' => $gastSetlist, 'entries' => $gastEntries, 'zurueckUrl' => $gastZurueck]);
+  }
+  if (str_starts_with($gastTeil, 'song/')) {
+    $gastSongId = (int) $m[3];
+    $erlaubt = array_map('intval', array_filter(array_column($gastEntries, 'id')));
+    $gastSong = in_array($gastSongId, $erlaubt, true) ? row('SELECT * FROM songs WHERE id = ?', [$gastSongId]) : null;
+    if (!$gastSong) redirect($gastZurueck);
+    view('public/gast_song', ['title' => $gastSong['title'], 'b' => $gastBuchung, 'song' => $gastSong, 'zurueck' => $gastZurueck]);
   }
   if (($m[2] ?? '') === 'antwort' && $method === 'POST') {
     $ja = ($_POST['antwort'] ?? '') === 'ja';
@@ -397,9 +425,10 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort))?$~', $path, $m)) {
     // Die Absage nimmt den Schlüssel — deshalb keine Weiterleitung auf den
     // Link, der jetzt ungültig wäre, sondern der Dank direkt als Antwort.
     $gastBuchung['status'] = $ja ? 'zugesagt' : 'abgesagt';
-    view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => $ja ? 'ja' : 'nein']);
+    view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => $ja ? 'ja' : 'nein',
+                         'entries' => $ja && $gastBuchung['setlist_id'] ? setlist_entries((int) $gastBuchung['setlist_id']) : []]);
   }
-  view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => null]);
+  view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => null, 'entries' => $gastEntries]);
 }
 
 if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {

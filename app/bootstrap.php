@@ -725,7 +725,10 @@ const UI_STRINGS = [
   // Die Seite, die der Gast sieht
   'gast_hello' => 'Hallo', 'gast_asks' => 'fragt dich an', 'gast_your_part' => 'Deine Aufgabe',
   'gast_yes' => 'Ich bin dabei', 'gast_no' => 'Ich kann nicht',
-  'gast_thanks_yes' => 'Danke für die Zusage! Dieser Link ist ab jetzt dein Zugang für den Termin — hier findest du bald Ablauf, Rider und Setliste.',
+  'gast_thanks_yes' => 'Danke für die Zusage! Dieser Link ist ab jetzt dein Zugang für den Termin — Ablauf, Rider und Setliste findest du hier unten.',
+  'gast_for_evening' => 'Für den Abend', 'gast_rider' => 'Stagerider mit Kanalliste und Bühnenplan', 'gast_setlist' => 'Setliste zum Ausdrucken',
+  'gast_songs' => 'Die Lieder', 'gast_no_setlist' => 'Eine Setliste steht noch nicht fest.', 'gast_back' => 'Zurück zum Termin',
+  'gast_no_lyrics' => 'Zu diesem Lied ist kein Text hinterlegt.',
   'gast_thanks_no' => 'Schade — danke für die Rückmeldung. Die Band weiß Bescheid.',
   'gast_invalid' => 'Dieser Link ist nicht mehr gültig.',
   'gast_invalid_hint' => 'Entweder ist der Termin vorbei, die Buchung wurde zurückgenommen, oder der Link wurde nicht vollständig kopiert.',

@@ -175,8 +175,9 @@ $fontFor = function (array $set): int {
   <script src="<?= e(asset('/assets/print-fit.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/print-fields.js')) ?>" defer></script>
   <?php
-    // Zurück zur Setliste, aus der der Ausdruck geöffnet wurde (#263).
-    $zurueckUrl = '/intern/setlists/' . (int) $setlist['id'];
+    // Zurück zur Setliste, aus der der Ausdruck geöffnet wurde (#263) — oder
+    // auf die Seite eines Gasts, wenn der hier liest (#294).
+    $zurueckUrl = $zurueckUrl ?? '/intern/setlists/' . (int) $setlist['id'];
     ob_start(); ?>
       <strong><?= e(t('sl_print_fields')) ?></strong>
       <label><input type="checkbox" data-feld="interpret"> <?= e(t('songs_col_original')) ?></label>
