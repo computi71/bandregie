@@ -53,6 +53,19 @@ require_once __DIR__ . '/onedrive.php';
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
 // hilft dabei niemandem — die Meldung sagt, was zu tun ist, die Einzelheiten
 // gehen ins Fehlerprotokoll des Servers.
+// Eine Uhr für alles (#295). PHP läuft auf den meisten Servern in UTC, die
+// Datenbank auf der Systemzeit — ohne Festlegung hielt die Anwendung bis ein
+// Uhr nachts den Vortag für „heute", und Zeitstempel aus SQL und aus PHP
+// standen zwei Stunden auseinander. Ein unbekannter Name fällt auf Berlin
+// zurück statt die Seite zu zerreißen; der Verbindung wird derselbe Versatz
+// mitgegeben, damit NOW() und date() dasselbe sagen.
+$appZeitzone = (string) ($config['timezone'] ?? 'Europe/Berlin');
+if (!in_array($appZeitzone, timezone_identifiers_list(), true)) {
+  error_log("Bandregie: unbekannte Zeitzone '$appZeitzone' in app/config.php — Europe/Berlin gilt");
+  $appZeitzone = 'Europe/Berlin';
+}
+date_default_timezone_set($appZeitzone);
+
 try {
   $db = new PDO(
     "mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4",
@@ -61,6 +74,10 @@ try {
     [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+      // Als Versatz statt als Name: Namen kennt MariaDB nur mit geladenen
+      // Zeitzonentabellen, und die fehlen auf vielen Servern. Der Versatz gilt
+      // für diese Anfrage, und eine Anfrage erlebt keinen Zeitumstellungswechsel.
+      PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '" . date('P') . "'",
     ]
   );
 } catch (PDOException $e) {

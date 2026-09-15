@@ -7,6 +7,13 @@ return [
   'db_user' => 'bandregie',
   'db_pass' => 'YOUR-PASSWORD-HERE',
 
+  // The band's time zone. PHP on most servers runs in UTC while the database
+  // runs on the system clock; without this the application would call it
+  // "yesterday" until 01:00 and stamp two clocks two hours apart. Both PHP and
+  // the database session are set to this zone. Any name from
+  // https://www.php.net/timezones works; leave it out and Europe/Berlin applies.
+  'timezone' => 'Europe/Berlin',
+
   // Encryption key for backups and attachments at rest (GDPR Art. 32).
   // Generate one with:  php app/backup.php key
   //
