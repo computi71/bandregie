@@ -2393,6 +2393,9 @@ if (str_starts_with($path, '/intern')) {
                          LEFT JOIN users s ON s.id = u.substitute_for ORDER BY u.name'),
       'instruments' => array_column(rows("SELECT name FROM equipment
                                           WHERE category = 'instrument' AND disposed_on IS NULL ORDER BY name"), 'name'),
+      // Was aus der letzten Einladung wurde, je Konto (#293).
+      'mailStatus' => mail_status_by_user(),
+      'mailChecked' => setting('mail_status_checked_at'),
     ]);
   }
   if (preg_match('~^/intern/mitglieder/(\d+)/update$~', $path, $m) && $method === 'POST') {
@@ -2497,15 +2500,16 @@ if (str_starts_with($path, '/intern')) {
           $email !== '' ? 1 : 0, $email !== '' ? date('Y-m-d H:i:s') : null,
         ]);
         // Rechte nach der Vorlage der Rolle; Admins brauchen keine Zeilen
+        $neuId = (int) $db->lastInsertId();
         $newRole = in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member';
-        if ($newRole !== 'admin') perm_apply_template((int) $db->lastInsertId(), $newRole);
+        if ($newRole !== 'admin') perm_apply_template($neuId, $newRole);
         if ($email === '') {
           flash(t('fl_member_created_noaccess'));
         } else {
           // Die Zugangsdaten gehen an das neue Mitglied selbst — das ist keine
           // Post im Namen der Band nach draußen, sondern der Zettel mit dem
           // Schlüssel. Wer ein Konto anlegen darf, darf ihn auch verschicken (#273).
-          $sent = welcome_mail($email, $_POST['first_name'] ?? '', $startPw);
+          $sent = welcome_mail($email, $_POST['first_name'] ?? '', $startPw, $neuId);
           flash($sent ? t('fl_member_created_mail') : t('fl_member_created_nomail') . ' ' . $startPw);
         }
       } catch (PDOException) {

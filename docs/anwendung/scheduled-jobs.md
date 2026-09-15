@@ -28,9 +28,34 @@ nobody browses — has no trigger. Give it one:
 | `bin/post-fetch.php` | fetches the configured mailbox, read-only | every few minutes to hourly |
 | `bin/update.sh` | pulls and deploys a new version | only for unattended updates |
 | `bin/demo-reset.sh` | resets a demo instance to its seed state | hourly, demo only |
+| `bin/mail-status.php` | reads what the mail server did with each invitation | every minute, see below |
 
 Run them as the **web user**, not as root: files they create have to stay
 readable and writable by the application.
+
+## Delivery status of invitations
+
+`mail()` only says that the local mail server accepted the message. Whether
+Gmail, Yahoo or GMX took it or refused it a second later is written to the
+mail server's log — and that log belongs to root. So the application never
+reads the file; the cron hands it the lines and stays root only for the
+`tail`:
+
+```
+* * * * *  root  tail -n 4000 /var/log/maillog | sudo -u <web-user> php /path/to/bandregie/bin/mail-status.php >/dev/null 2>&1
+```
+
+Every invitation carries its own `Message-ID`; the script matches the Postfix
+lines (`cleanup … message-id=` → queue id → `smtp … status=sent|bounced`) and
+writes status, time and the receiving server's reason into `mail_log`. The
+members list then shows, for every account that has not signed in yet,
+whether its invitation was *delivered*, *refused* (with the reason) or merely
+*handed to the mail server*, together with the time of the last log check.
+Without the cron the last one is all it can say — honest, and still more than
+before.
+
+Postfix log format only, for now. Other mail servers: the pattern is small and
+lives in `mail_status_apply()`.
 
 ## How to see whether something ran
 

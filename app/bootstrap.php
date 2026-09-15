@@ -700,6 +700,9 @@ const UI_STRINGS = [
   'fl_member_created_noaccess' =>'Mitglied angelegt — ohne E-Mail-Adresse noch ohne Zugang. Sobald die Adresse unter „Bearbeiten" steht, geht die Einladung hinaus.',
   'fl_email_keep' => 'Eine vorhandene E-Mail-Adresse lässt sich ändern, aber nicht leeren — sonst wäre das Mitglied ausgesperrt.',
   'mem_no_email' => 'Kein Zugang — E-Mail-Adresse fehlt. Nachtragen, dann geht die Einladung hinaus.',
+  'mem_mail_invited' => 'Einladung', 'mem_mail_queued' => 'übergeben — Zustellung noch unbekannt',
+  'mem_mail_sent' => 'zugestellt', 'mem_mail_bounced' => 'abgewiesen', 'mem_mail_deferred' => 'wird erneut versucht',
+  'mem_mail_failed' => 'nicht verschickt', 'mem_mail_checked' => 'Log geprüft',
   'fl_member_updated_mail' => 'Mitglied aktualisiert — die Zugangsdaten gingen an die neue Adresse.',
   'fl_member_updated_nomail' => 'Mitglied aktualisiert. E-Mail-Versand nicht möglich — bitte dieses Start-Passwort weitergeben:',
   'fl_no_self_delete' => 'Du kannst dich nicht selbst löschen.',
@@ -2027,6 +2030,22 @@ $tables = [
     y TINYINT UNSIGNED NOT NULL DEFAULT 50,
     note VARCHAR(190) NOT NULL DEFAULT '',
     position INT NOT NULL DEFAULT 0
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Was aus einer Einladung wurde (#293). mail() sagt nur, dass der eigene
+  // Mailserver die Nachricht genommen hat; ob Gmail sie eine Sekunde später
+  // abweist, steht allein im Log des Mailservers. bin/mail-status.php trägt
+  // das hier nach — anhand unserer eigenen Message-ID.
+  "CREATE TABLE IF NOT EXISTS mail_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    to_email VARCHAR(190) NOT NULL,
+    kind VARCHAR(20) NOT NULL DEFAULT 'einladung',
+    message_id VARCHAR(190) NOT NULL UNIQUE,
+    queued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'queued',
+    status_at DATETIME NULL,
+    detail VARCHAR(255) NOT NULL DEFAULT ''
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   // Wer für einen Termin als Ersatz angefragt wurde. Ohne Eintrag hier sieht
@@ -5014,7 +5033,7 @@ function access_send(array $ziel, int $durch): array {
   q('UPDATE users SET password_hash = ?, must_change_pw = 1, start_pw_at = NOW() WHERE id = ?',
     [password_hash($startPw, PASSWORD_DEFAULT), (int) $ziel['id']]);
   error_log('Bandregie: Zugangsdaten neu verschickt für Konto ' . (int) $ziel['id'] . ' durch Konto ' . $durch);
-  return [welcome_mail((string) $ziel['email'], $ziel['first_name'] ?: $ziel['name'], $startPw), $startPw];
+  return [welcome_mail((string) $ziel['email'], $ziel['first_name'] ?: $ziel['name'], $startPw, (int) $ziel['id']), $startPw];
 }
 
 function start_password(): string {
@@ -5030,7 +5049,7 @@ function start_password(): string {
  * geschickt werden soll (#273). Absender von der eigenen Domain wegen SPF,
  * Antworten gehen an die Kontaktadresse der Band.
  */
-function welcome_mail(string $email, string $vorname, string $startPw): bool {
+function welcome_mail(string $email, string $vorname, string $startPw, ?int $userId = null): bool {
   $band = setting('band_name');
   $body = "Hallo " . trim($vorname) . ",\n\n"
     . "für dich wurde ein Zugang zum Bandbereich von $band angelegt.\n\n"
@@ -5044,8 +5063,69 @@ function welcome_mail(string $email, string $vorname, string $startPw): bool {
   $from = mail_from_address();
   $antwortAn = mail_header_value(setting('contact_email'));
   $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
-  return (bool) @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
-    "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+  // Eine eigene Message-ID, damit sich die Mail im Log des Mailservers
+  // wiederfinden lässt (#293). Sonst vergibt der Server eine, die nur er kennt.
+  $messageId = 'bandregie-' . bin2hex(random_bytes(16)) . '@' . substr($from, strpos($from, '@') + 1);
+  $ok = (bool) @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
+    "From: $from$replyTo\r\nMessage-ID: <$messageId>\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+  q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (?,?,?,?,?,?,?)',
+    [$userId, mb_substr($email, 0, 190), 'einladung', $messageId,
+     $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $ok ? '' : 'mail() hat die Nachricht nicht angenommen']);
+  return $ok;
+}
+
+/**
+ * Der Stand der letzten Einladung je Mitglied — für die Mitgliederliste (#293).
+ * Eine Abfrage für alle: die jüngste Zeile je Konto.
+ */
+function mail_status_by_user(): array {
+  $out = [];
+  foreach (rows('SELECT m.* FROM mail_log m
+                 JOIN (SELECT user_id, MAX(id) AS id FROM mail_log WHERE user_id IS NOT NULL GROUP BY user_id) j ON j.id = m.id') as $r) {
+    $out[(int) $r['user_id']] = $r;
+  }
+  return $out;
+}
+
+/**
+ * Zeilen aus einem Postfix-Log gegen mail_log abgleichen (#293). Bekommt die
+ * Zeilen, nicht die Datei: Das Log gehört root, die Anwendung nicht — der Cron
+ * reicht die Zeilen durch (tail … | php bin/mail-status.php). Zurück kommt die
+ * Zahl der geänderten Einträge.
+ *
+ * Postfix schreibt je Nachricht mehrere Zeilen mit derselben Queue-ID:
+ *   cleanup[…]: 21087C13DA: message-id=<bandregie-…@tonrausch.app>
+ *   smtp[…]:    21087C13DA: to=<x@gmail.com>, relay=…, dsn=2.0.0, status=sent (250 …)
+ * Die erste verbindet die Queue-ID mit unserer Message-ID, die zweite sagt,
+ * was daraus wurde.
+ */
+function mail_status_apply(iterable $zeilen): int {
+  // Queue-ID => Message-ID, für alle Nachrichten im Ausschnitt. Ob eine davon
+  // uns gehört, entscheidet die Tabelle beim UPDATE — so lassen sich auch
+  // Mails nachtragen, die vor der eigenen Message-ID verschickt wurden.
+  $queue = [];
+  $geaendert = 0;
+  foreach ($zeilen as $z) {
+    if (preg_match('~postfix/cleanup\[\d+\]: ([A-F0-9]+): message-id=<([^>]+)>~', $z, $m)) {
+      $queue[$m[1]] = $m[2];
+      continue;
+    }
+    if (!preg_match('~^(\w{3} +\d+ \d\d:\d\d:\d\d) \S+ postfix/(?:smtp|local|error|pipe|virtual)\[\d+\]: ([A-F0-9]+): to=<([^>]+)>,(?: orig_to=<[^>]*>,)? relay=([^,]+),.*? dsn=([\d.]+), status=(\w+) \((.*)\)~', $z, $m)) {
+      continue;
+    }
+    [, $wann, $qid, $an, $relay, $dsn, $status, $grund] = $m;
+    if (!isset($queue[$qid])) continue;
+    // Syslog kennt kein Jahr; ein Datum in der Zukunft war letztes Jahr.
+    $ts = strtotime($wann . ' ' . date('Y')) ?: time();
+    if ($ts > time() + 86400) $ts = strtotime($wann . ' ' . (date('Y') - 1)) ?: $ts;
+    $detail = mb_substr(preg_replace('~\s+~', ' ', preg_replace('~^host \S+ said: ~', '', $grund)), 0, 200);
+    $relayKurz = preg_replace('~\[.*$~', '', $relay);
+    $geaendert += q('UPDATE mail_log SET status = ?, status_at = ?, detail = ?
+                     WHERE message_id = ? AND to_email = ? AND (status_at IS NULL OR status_at <= ?)',
+      [$status, date('Y-m-d H:i:s', $ts), "$dsn · $relayKurz · $detail", $queue[$qid], strtolower($an), date('Y-m-d H:i:s', $ts)])->rowCount();
+  }
+  set_setting('mail_status_checked_at', date('Y-m-d H:i:s'));
+  return $geaendert;
 }
 
 function mail_from_address(): string {

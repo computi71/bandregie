@@ -96,6 +96,22 @@
               <?php endif; ?>
             <?php endif; ?>
           </span>
+          <?php // Was aus der Einladung wurde (#293): Der Mailserver hat sie genommen,
+                // aber ob der Empfänger sie nahm oder abwies, steht erst im Log —
+                // und das trägt bin/mail-status.php nach. Ohne den Cron bleibt es
+                // bei „übergeben", und das steht dann auch so da. ?>
+          <?php $ml = $mailStatus[(int) $m['id']] ?? null; ?>
+          <?php if ($ml): ?>
+            <?php $mlStatus = in_array($ml['status'], ['sent', 'bounced', 'deferred', 'failed'], true) ? $ml['status'] : 'queued'; ?>
+            <span class="small <?= $mlStatus === 'bounced' || $mlStatus === 'failed' ? 'warn' : 'muted' ?>"
+                  title="<?= e($ml['detail']) ?>">
+              ✉ <?= e(t('mem_mail_invited')) ?> <?= e(date('d.m. H:i', strtotime($ml['queued_at']))) ?> ·
+              <?= $mlStatus === 'bounced' || $mlStatus === 'failed' ? '<strong>' : '' ?><?= e(t('mem_mail_' . $mlStatus)) ?><?= $mlStatus === 'bounced' || $mlStatus === 'failed' ? '</strong>' : '' ?>
+              <?php if ($ml['status_at'] && $mlStatus !== 'queued'): ?>(<?= e(date('H:i', strtotime($ml['status_at']))) ?>)<?php endif; ?>
+              <?php if ($mlStatus === 'bounced' && $ml['detail'] !== ''): ?> — <?= e(mb_substr($ml['detail'], 0, 120)) ?><?php endif; ?>
+              <?php if ($mlStatus === 'queued' && $mailChecked): ?> · <?= e(t('mem_mail_checked')) ?> <?= e(date('d.m. H:i', strtotime($mailChecked))) ?><?php endif; ?>
+            </span>
+          <?php endif; ?>
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zugangsdaten" data-confirm="<?= e(t('mem_send_access_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">✉ <?= e(t('mem_send_access')) ?></button></form>
         <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
