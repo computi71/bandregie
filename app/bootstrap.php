@@ -700,6 +700,37 @@ const UI_STRINGS = [
   'fl_member_created_noaccess' =>'Mitglied angelegt — ohne E-Mail-Adresse noch ohne Zugang. Sobald die Adresse unter „Bearbeiten" steht, geht die Einladung hinaus.',
   'fl_email_keep' => 'Eine vorhandene E-Mail-Adresse lässt sich ändern, aber nicht leeren — sonst wäre das Mitglied ausgesperrt.',
   'mem_no_email' => 'Kein Zugang — E-Mail-Adresse fehlt. Nachtragen, dann geht die Einladung hinaus.',
+  // Gäste (#294)
+  'inav_gaeste' => 'Gäste', 'guest_title' => 'Gäste',
+  'help_gaeste' => 'Leute, die für einen Abend dazukommen, ohne Mitglied zu sein — Tontechniker, Bläsersatz, Aushilfe. Sie stehen in einer Kontaktliste und werden zu einem Termin gebucht. Die Einladung ist ein Link: Der Gast sagt darüber zu oder ab, und nach der Zusage ist derselbe Link sein Zugang zu Ablauf, Rider und Setliste — nur für diesen Termin, nur lesend, bis zum Mittag danach. Eine Absage nimmt den Link sofort. Wer Gäste buchen darf, entscheidet das Recht „Gäste".',
+  'guest_intro' => 'Wer nicht zur Band gehört und trotzdem mitspielt oder mischt. Kein Konto, kein Login — eine Buchung zu einem Termin und ein persönlicher Link.',
+  'guest_new' => 'Gast anlegen', 'guest_function' => 'Funktion', 'guest_function_ph' => 'Ton, Licht, Trompete, Gesang …',
+  'guest_bookings' => 'Einsätze', 'guest_none' => 'Noch keine Gäste.', 'guest_no_bookings' => 'noch kein Einsatz',
+  'guest_book' => 'Gast buchen', 'guest_book_new' => 'neuer Gast', 'guest_book_function_ph' => 'Aufgabe an diesem Abend',
+  'guest_invite_send' => 'Einladung senden', 'guest_invite_resend' => 'Einladung erneut senden',
+  'guest_cancel' => 'Buchung stornieren', 'guest_cancel_confirm' => 'Buchung stornieren? Der Link des Gastes wird sofort ungültig.',
+  'guest_delete_confirm' => 'Gast löschen? Geht nur ohne Einsätze.',
+  'guest_st_angefragt' => 'angefragt', 'guest_st_zugesagt' => 'zugesagt', 'guest_st_abgesagt' => 'abgesagt', 'guest_st_storniert' => 'storniert',
+  'guest_answered' => 'geantwortet', 'guest_invited' => 'eingeladen', 'guest_not_invited' => 'noch nicht eingeladen — keine E-Mail-Adresse',
+  'guest_link_until' => 'Link gültig bis',
+  'fl_guest_created' => 'Gast angelegt.', 'fl_guest_updated' => 'Gast gespeichert.', 'fl_guest_deleted' => 'Gast gelöscht.',
+  'fl_guest_has_bookings' => 'Dieser Gast hat Einsätze — die Liste ist auch die Geschichte. Löschen geht nur ohne.',
+  'fl_guest_name_required' => 'Ein Name muss sein.',
+  'fl_guest_booked_mail' => 'Gast gebucht — die Einladung ist unterwegs.',
+  'fl_guest_booked_nomail' => 'Gast gebucht. Ohne E-Mail-Adresse geht keine Einladung hinaus; den Link findest du beim Einsatz.',
+  'fl_guest_booked_mailfail' => 'Gast gebucht, aber die Mail ging nicht hinaus — den Link findest du beim Einsatz.',
+  'fl_guest_already' => 'Dieser Gast ist für den Termin schon gebucht.',
+  'fl_guest_cancelled' => 'Buchung storniert, der Link ist ungültig.',
+  'fl_guest_resent' => 'Einladung erneut verschickt.',
+  // Die Seite, die der Gast sieht
+  'gast_hello' => 'Hallo', 'gast_asks' => 'fragt dich an', 'gast_your_part' => 'Deine Aufgabe',
+  'gast_yes' => 'Ich bin dabei', 'gast_no' => 'Ich kann nicht',
+  'gast_thanks_yes' => 'Danke für die Zusage! Dieser Link ist ab jetzt dein Zugang für den Termin — hier findest du bald Ablauf, Rider und Setliste.',
+  'gast_thanks_no' => 'Schade — danke für die Rückmeldung. Die Band weiß Bescheid.',
+  'gast_invalid' => 'Dieser Link ist nicht mehr gültig.',
+  'gast_invalid_hint' => 'Entweder ist der Termin vorbei, die Buchung wurde zurückgenommen, oder der Link wurde nicht vollständig kopiert.',
+  'gast_until' => 'Zugang bis', 'gast_change' => 'Du hast zugesagt. Falls es doch nicht klappt:',
+  'gast_declined' => 'Du hast abgesagt.',
   'mem_mail_invited' => 'Einladung', 'mem_mail_queued' => 'übergeben — Zustellung noch unbekannt',
   'mem_mail_sent' => 'zugestellt', 'mem_mail_bounced' => 'abgewiesen', 'mem_mail_deferred' => 'wird erneut versucht',
   'mem_mail_failed' => 'nicht verschickt', 'mem_mail_checked' => 'Log geprüft',
@@ -1514,6 +1545,10 @@ const PERM_MODULES = [
   'musik'         => ['/intern/musik'],
   'downloads'     => ['/intern/downloads'],
   'mitglieder'    => ['/intern/mitglieder'],
+  // Gäste buchen heißt, Leute von außen zu einem Termin einzuladen und ihnen
+  // für den Abend Rider und Setliste zu öffnen — ein eigener Bereich, den eine
+  // Band einzelnen Mitgliedern auch nehmen kann (#294).
+  'gaeste'        => ['/intern/gaeste'],
   // Mail im Namen der Band hinauszuschicken ist eine eigene Entscheidung: Wer
   // das Postfach liest, muss nicht antworten dürfen, und wer Mitglieder pflegt,
   // muss ihnen keine Mail schicken können. Der Bereich hat bewusst keinen Pfad
@@ -1573,7 +1608,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
-    'mailversand' => [1, 1],
+    'mailversand' => [1, 1], 'gaeste' => [1, 1],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
@@ -1584,7 +1619,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
-    'mailversand' => [0, 0],
+    'mailversand' => [0, 0], 'gaeste' => [0, 0],
   ],
 ];
 
@@ -2036,6 +2071,35 @@ $tables = [
   // Mailserver die Nachricht genommen hat; ob Gmail sie eine Sekunde später
   // abweist, steht allein im Log des Mailservers. bin/mail-status.php trägt
   // das hier nach — anhand unserer eigenen Message-ID.
+  // Gäste (#294): Leute, die für einen Abend dazukommen — Tontechniker,
+  // Bläsersatz, Aushilfe — ohne Mitglied zu sein. Kein Login, keine Rechte;
+  // ihr einziger Schlüssel ist das Token einer Buchung.
+  "CREATE TABLE IF NOT EXISTS guests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(190) NOT NULL,
+    function_name VARCHAR(120) NOT NULL DEFAULT '',
+    email VARCHAR(190) NOT NULL DEFAULT '',
+    phone VARCHAR(60) NOT NULL DEFAULT '',
+    notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS guest_bookings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    guest_id INT NOT NULL,
+    event_id INT NOT NULL,
+    function_name VARCHAR(120) NOT NULL DEFAULT '',
+    token CHAR(64) NOT NULL UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'angefragt',
+    invited_at DATETIME NULL,
+    answered_at DATETIME NULL,
+    access_until DATETIME NOT NULL,
+    note VARCHAR(255) NOT NULL DEFAULT '',
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX (event_id), INDEX (guest_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS mail_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NULL,
@@ -2915,6 +2979,17 @@ if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
 // Ohne diese Zeile verlöre beim Update jede bestehende Installation ihr
 // Postfach — auch die Person, die es täglich liest. Einmalig und am Schlüssel
 // gemerkt: Wer das Recht später bewusst entzieht, bekommt es nicht zurück.
+// Neuer Bereich „Gäste" (#294): Wer schon Rechtezeilen hat, wird genau danach
+// beurteilt — ohne Zeile für den neuen Bereich wäre er für alle Bestehenden zu.
+// Mitglieder bekommen ihn, wie die Vorlage ihn gibt; Ersatzleute nicht, Admins
+// haben ihn ohnehin. Einmalig, damit ein späterer Entzug bestehen bleibt.
+if (setting('migr_gaeste_perm') === '') {
+  foreach (rows("SELECT DISTINCT u.id FROM users u JOIN permissions p ON p.user_id = u.id WHERE u.role = 'member'") as $gRow) {
+    q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$gRow['id'], 'gaeste']);
+  }
+  set_setting('migr_gaeste_perm', '1');
+}
+
 if (setting('migr_post_explicit') === '') {
   foreach (rows("SELECT id FROM users WHERE role = 'admin'") as $adminZeile) {
     q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)
@@ -5074,6 +5149,83 @@ function welcome_mail(string $email, string $vorname, string $startPw, ?int $use
   return $ok;
 }
 
+// ---------- Gäste (#294) ----------
+
+const GUEST_STATUS = ['angefragt' => 'Angefragt', 'zugesagt' => 'Zugesagt', 'abgesagt' => 'Abgesagt', 'storniert' => 'Storniert'];
+
+function guest_status_label(string $status): string {
+  return t('guest_st_' . (array_key_exists($status, GUEST_STATUS) ? $status : 'angefragt'));
+}
+
+/**
+ * Bis wann ein Gast nach seinem Termin noch hineinsieht: Mittag des Folgetags.
+ * Ein Gig endet nach Mitternacht, abgebaut wird nachts — um null Uhr wäre der
+ * Zugang genau dann weg, wenn jemand noch die Kanalliste braucht.
+ */
+function guest_access_until(string $eventDate): string {
+  return date('Y-m-d 12:00:00', strtotime($eventDate . ' +1 day'));
+}
+
+/** Die Buchung zu einem Token — nur, wenn sie noch gilt. Sonst null. */
+function guest_booking_by_token(string $token): ?array {
+  if (!preg_match('~^[a-f0-9]{64}$~', $token)) return null;
+  $b = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.time_meet, e.time_end,
+                   e.location, e.support_act, e.setlist_id, e.venue_id, e.status AS event_status
+            FROM guest_bookings b JOIN guests g ON g.id = b.guest_id JOIN events e ON e.id = b.event_id
+            WHERE b.token = ?', [$token]);
+  if (!$b) return null;
+  // Absage und Stornierung nehmen den Schlüssel sofort, das Datum am Folgetag.
+  if (in_array($b['status'], ['abgesagt', 'storniert'], true)) return null;
+  if (strtotime($b['access_until']) < time()) return null;
+  return $b;
+}
+
+/** Buchungen je Termin, für die Karten: Gastname, Funktion, Status. */
+function guest_bookings_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $ph = implode(',', array_fill(0, count($eventIds), '?'));
+  $out = [];
+  foreach (rows("SELECT b.*, g.name AS guest_name, g.email AS guest_email FROM guest_bookings b
+                 JOIN guests g ON g.id = b.guest_id WHERE b.event_id IN ($ph) ORDER BY g.name", $eventIds) as $b) {
+    $out[(int) $b['event_id']][] = $b;
+  }
+  return $out;
+}
+
+/**
+ * Die Einladung an einen Gast: ein Link, der zuerst die Antwort entgegennimmt
+ * und danach — bei Zusage — sein Zugang für diesen einen Termin ist. Landet
+ * wie die Mitglieder-Einladung in mail_log (#293), Art „gast".
+ */
+function guest_invite_mail(array $b): bool {
+  $band = setting('band_name');
+  $ort = trim((string) ($b['location'] ?? ''));
+  if (!empty($b['venue_id']) && ($v = row('SELECT * FROM venues WHERE id = ?', [$b['venue_id']]))) {
+    $ort = event_place(['venue_name' => $v['name'], 'venue_address' => $v['address'], 'venue_postcode' => $v['postcode'], 'venue_city' => $v['city']]);
+  }
+  $body = 'Hallo ' . trim((string) $b['guest_name']) . ",\n\n"
+    . "$band fragt dich für einen Termin an:\n\n"
+    . '  ' . fmt_date($b['date']) . ($b['time'] ? ' · ' . $b['time'] . ' Uhr' : '') . "\n"
+    . '  ' . $b['title'] . "\n"
+    . ($ort !== '' ? "  $ort\n" : '')
+    . ($b['function_name'] !== '' ? '  Deine Aufgabe: ' . $b['function_name'] . "\n" : '')
+    . "\nBitte sag hier zu oder ab:\n" . absolute_url('/gast/' . $b['token']) . "\n\n"
+    . "Nach deiner Zusage ist derselbe Link dein Zugang zu allem, was du für den Abend brauchst — "
+    . "Ablauf, Rider, Setliste. Er ist persönlich und gilt bis zum Mittag nach dem Termin.\n\n"
+    . "Viele Grüße\n$band";
+  $from = mail_from_address();
+  $antwortAn = mail_header_value(setting('contact_email'));
+  $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
+  $messageId = 'bandregie-' . bin2hex(random_bytes(16)) . '@' . substr($from, strpos($from, '@') + 1);
+  $ok = (bool) @mail((string) $b['guest_email'], mail_header_value("$band: Anfrage für " . fmt_date($b['date']), 120), $body,
+    "From: $from$replyTo\r\nMessage-ID: <$messageId>\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+  q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (NULL,?,?,?,?,?,?)',
+    [mb_substr((string) $b['guest_email'], 0, 190), 'gast', $messageId,
+     $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $ok ? 'Buchung ' . (int) $b['id'] : 'mail() hat die Nachricht nicht angenommen · Buchung ' . (int) $b['id']]);
+  if ($ok) q('UPDATE guest_bookings SET invited_at = NOW() WHERE id = ?', [$b['id']]);
+  return $ok;
+}
+
 /**
  * Der Stand der letzten Einladung je Mitglied — für die Mitgliederliste (#293).
  * Eine Abfrage für alle: die jüngste Zeile je Konto.
@@ -6237,6 +6389,9 @@ function event_view_data(array $events, array $me): array {
     'mine' => my_attendance($ids, (int) $me['id']),
     'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
     'subRequests' => substitute_requests_map($ids),
+    // Gebuchte Gäste je Termin und die Kontaktliste fürs Buchen (#294).
+    'guestsByEvent' => guest_bookings_map($ids),
+    'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
   ];

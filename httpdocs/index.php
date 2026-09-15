@@ -222,7 +222,9 @@ if (setting('public_mode') === 'redirect' && $method === 'GET') {
   // Ohne diesen Eintrag wurde jede Vorschau im Bandbereich zu Facebook geleitet,
   // während das große Bild daneben lud — die Fotoseite bestand aus kaputten
   // Kästchen. Wer ein Bild sehen darf, entscheidet die Route selbst.
-  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/uploads/', '/thumb/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/', '/appicon/', '/manifest.webmanifest'];
+  // /gast/ ist der Link aus der Einladung eines Gasts (#294): Er muss auch dann
+  // ankommen, wenn die öffentliche Seite umleitet.
+  $keepPrefixes = ['/intern', '/login', '/logout', '/passwort-vergessen', '/passwort-reset/', '/kalender/', '/gast/', '/uploads/', '/thumb/', '/impressum', '/datenschutz', '/assets/', '/downloads', '/download/', '/appicon/', '/manifest.webmanifest'];
   $keep = false;
   foreach ($keepPrefixes as $prefix) {
     if ($path === rtrim($prefix, '/') || str_starts_with($path, $prefix)) { $keep = true; break; }
@@ -377,6 +379,29 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
 }
 
 // iCal-Feed zum Abonnieren in Kalender-Apps (geheimer Link)
+// ---------- Gast-Link (#294) ----------
+// Der Link aus der Einladung: erst die Antwort, dann — bei Zusage — der Zugang
+// für diesen einen Termin. Kein Konto, keine Sitzung; das Token ist der
+// Schlüssel und wird wie ein Passwort behandelt (64 Hex-Zeichen, nur exakt).
+if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort))?$~', $path, $m)) {
+  $gastBuchung = guest_booking_by_token($m[1]);
+  if (!$gastBuchung) {
+    http_response_code(404);
+    view('public/gast', ['title' => t('gast_invalid'), 'b' => null, 'antwort' => null]);
+  }
+  if (($m[2] ?? '') === 'antwort' && $method === 'POST') {
+    $ja = ($_POST['antwort'] ?? '') === 'ja';
+    q('UPDATE guest_bookings SET status = ?, answered_at = NOW() WHERE id = ?',
+      [$ja ? 'zugesagt' : 'abgesagt', $gastBuchung['id']]);
+    error_log('Bandregie: Gast ' . (int) $gastBuchung['guest_id'] . ' hat für Termin ' . (int) $gastBuchung['event_id'] . ($ja ? ' zugesagt' : ' abgesagt'));
+    // Die Absage nimmt den Schlüssel — deshalb keine Weiterleitung auf den
+    // Link, der jetzt ungültig wäre, sondern der Dank direkt als Antwort.
+    $gastBuchung['status'] = $ja ? 'zugesagt' : 'abgesagt';
+    view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => $ja ? 'ja' : 'nein']);
+  }
+  view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => null]);
+}
+
 if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
   // Wessen Kalender ist das (#222)? Ein persönliches Zeichen nennt sein
   // Mitglied, und dann gilt für den Feed dieselbe Sichtbarkeit wie überall
@@ -393,8 +418,12 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
   $band = setting('band_name');
   echo "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//$band//DE\r\nX-WR-CALNAME:$band\r\n";
   [$icalWhere, $icalArgs] = visible_clause($icalIds, 'e.id');
-  foreach (rows('SELECT e.*, ' . EVENT_PLACE_COLS . ' FROM events e ' . EVENT_PLACE_JOIN
-                . ' WHERE 1 = 1' . $icalWhere . ' ORDER BY e.date', $icalArgs) as $ev) {
+  $icalEvents = rows('SELECT e.*, ' . EVENT_PLACE_COLS . ' FROM events e ' . EVENT_PLACE_JOIN
+                     . ' WHERE 1 = 1' . $icalWhere . ' ORDER BY e.date', $icalArgs);
+  // Zugesagte Gäste stehen mit im Eintrag (#294): Wer am Abend mischt oder
+  // mitspielt, gehört zum Ablauf.
+  $icalGuests = guest_bookings_map(array_map(fn($e) => (int) $e['id'], $icalEvents));
+  foreach ($icalEvents as $ev) {
     $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandregie.local');
     if ($ev['status'] === 'abgesagt') continue;
     $summary = ($ev['type'] === 'probe' ? 'Probe: ' : 'Gig: ') . $ev['title']
@@ -426,9 +455,12 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
     }
     // Wer sonst spielt, gehört in den Kalendereintrag: gelesen wird er
     // unterwegs, ohne die App daneben (#287).
+    $icalGaeste = array_filter($icalGuests[(int) $ev['id']] ?? [], fn($g) => $g['status'] === 'zugesagt');
     $icalText = array_filter([
       $icalNavi,
       $ev['support_act'] ? t('ev_support') . ': ' . $ev['support_act'] : '',
+      $icalGaeste ? t('inav_gaeste') . ': ' . implode(', ', array_map(
+        fn($g) => $g['guest_name'] . ($g['function_name'] !== '' ? ' (' . $g['function_name'] . ')' : ''), $icalGaeste)) : '',
       (string) $ev['notes'],
     ]);
     if ($icalText) echo 'DESCRIPTION:' . $esc(implode("\n", $icalText)) . "\r\n";
@@ -930,6 +962,9 @@ if (str_starts_with($path, '/intern')) {
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
       q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
       q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
+      // Die Buchungen der Gäste gehen mit dem Termin; die Gäste selbst bleiben
+      // in der Kontaktliste (#294).
+      q('DELETE FROM guest_bookings WHERE event_id = ?', [$id]);
       // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
       // den es nicht mehr gibt.
       q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
@@ -2378,6 +2413,104 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_perm_saved'));
     }
     redirect('/intern/mitglieder');
+  }
+
+  // ---------- Gäste (#294) ----------
+  if ($path === '/intern/gaeste' && $method === 'GET') {
+    $gaesteBuchungen = [];
+    foreach (rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC') as $gb) {
+      $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
+    }
+    view('intern/gaeste', [
+      'title' => t('guest_title'),
+      'guests' => rows('SELECT * FROM guests ORDER BY name'),
+      'bookingsByGuest' => $gaesteBuchungen,
+      'events' => rows("SELECT id, title, date FROM events WHERE date >= ? AND status <> 'abgesagt' ORDER BY date", [$today]),
+    ]);
+  }
+  if ($path === '/intern/gaeste' && $method === 'POST') {
+    $gName = trim((string) ($_POST['name'] ?? ''));
+    if ($gName === '') { flash(t('fl_guest_name_required')); redirect('/intern/gaeste'); }
+    q('INSERT INTO guests (name, function_name, email, phone, notes) VALUES (?,?,?,?,?)', [
+      mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+      strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
+      trim((string) ($_POST['notes'] ?? '')),
+    ]);
+    flash(t('fl_guest_created'));
+    redirect('/intern/gaeste');
+  }
+  if (preg_match('~^/intern/gaeste/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
+    if ($m[2] === 'delete') {
+      // Die Einsätze sind die Geschichte, aus der die Liste besteht — ein Gast
+      // mit Einsätzen bleibt.
+      if (row('SELECT 1 FROM guest_bookings WHERE guest_id = ?', [$m[1]])) {
+        flash(t('fl_guest_has_bookings'));
+      } else {
+        q('DELETE FROM guests WHERE id = ?', [$m[1]]);
+        flash(t('fl_guest_deleted'));
+      }
+      redirect('/intern/gaeste');
+    }
+    $gName = trim((string) ($_POST['name'] ?? ''));
+    if ($gName === '') { flash(t('fl_guest_name_required')); redirect('/intern/gaeste'); }
+    q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, notes = ? WHERE id = ?', [
+      mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+      strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
+      trim((string) ($_POST['notes'] ?? '')), $m[1],
+    ]);
+    flash(t('fl_guest_updated'));
+    redirect('/intern/gaeste');
+  }
+  // Einen Gast zu einem Termin buchen — aus der Terminkarte oder der Liste.
+  // Ein neuer Gast kann dabei gleich entstehen (Name im Feld statt Auswahl).
+  if ($path === '/intern/gaeste/buchen' && $method === 'POST') {
+    deny_in_demo('/intern/termine');
+    $gEvent = row('SELECT id, date FROM events WHERE id = ?', [(int) ($_POST['event_id'] ?? 0)]);
+    if (!$gEvent) redirect('/intern/termine');
+    $gId = (int) ($_POST['guest_id'] ?? 0);
+    $gNeu = trim((string) ($_POST['new_name'] ?? ''));
+    if ($gId <= 0 && $gNeu !== '') {
+      q('INSERT INTO guests (name, function_name, email) VALUES (?,?,?)', [
+        mb_substr($gNeu, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+        strtolower(trim((string) ($_POST['new_email'] ?? ''))),
+      ]);
+      $gId = (int) $db->lastInsertId();
+    }
+    $gast = $gId > 0 ? row('SELECT * FROM guests WHERE id = ?', [$gId]) : null;
+    if (!$gast) { flash(t('fl_guest_name_required')); back('/intern/termine'); }
+    if (row("SELECT 1 FROM guest_bookings WHERE guest_id = ? AND event_id = ? AND status <> 'storniert'", [$gId, $gEvent['id']])) {
+      flash(t('fl_guest_already'));
+      back('/intern/termine');
+    }
+    $gFunktion = mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120) ?: (string) $gast['function_name'];
+    q('INSERT INTO guest_bookings (guest_id, event_id, function_name, token, access_until, created_by) VALUES (?,?,?,?,?,?)',
+      [$gId, $gEvent['id'], $gFunktion, bin2hex(random_bytes(32)), guest_access_until($gEvent['date']), $me['id']]);
+    $gBuchung = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.location, e.venue_id
+                     FROM guest_bookings b JOIN guests g ON g.id = b.guest_id JOIN events e ON e.id = b.event_id
+                     WHERE b.id = ?', [(int) $db->lastInsertId()]);
+    if ((string) $gast['email'] === '') {
+      flash(t('fl_guest_booked_nomail'));
+    } else {
+      flash(guest_invite_mail($gBuchung) ? t('fl_guest_booked_mail') : t('fl_guest_booked_mailfail'));
+    }
+    back('/intern/termine');
+  }
+  if (preg_match('~^/intern/gaeste/buchung/(\d+)/(stornieren|erneut)$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/termine');
+    $gBuchung = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.location, e.venue_id
+                     FROM guest_bookings b JOIN guests g ON g.id = b.guest_id JOIN events e ON e.id = b.event_id
+                     WHERE b.id = ?', [$m[1]]);
+    if (!$gBuchung) back('/intern/termine');
+    if ($m[2] === 'stornieren') {
+      // Storniert heißt: der Schlüssel ist sofort weg. Die Zeile bleibt als Geschichte.
+      q("UPDATE guest_bookings SET status = 'storniert' WHERE id = ?", [$m[1]]);
+      flash(t('fl_guest_cancelled'));
+    } elseif ((string) $gBuchung['guest_email'] !== '') {
+      flash(guest_invite_mail($gBuchung) ? t('fl_guest_resent') : t('fl_guest_booked_mailfail'));
+    } else {
+      flash(t('fl_guest_booked_nomail'));
+    }
+    back('/intern/termine');
   }
 
   // ---------- Mitglieder ----------
