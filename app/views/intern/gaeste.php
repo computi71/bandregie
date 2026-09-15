@@ -24,11 +24,15 @@
 
 <?php foreach ($guests as $g): ?>
   <?php $einsaetze = $bookingsByGuest[(int) $g['id']] ?? []; $gezaehlt = array_filter($einsaetze, fn($b) => $b['status'] === 'zugesagt'); ?>
+  <?php // Der Schnitt über alle bewerteten Einsätze — das ist die Zahl, die man
+        // sucht, wenn man den Namen nach einem Jahr wieder liest. ?>
+  <?php $gSum = 0; $gN = 0; foreach ($einsaetze as $b) { if ($r = $ratings[(int) $b['id']] ?? null) { $gSum += $r['sum']; $gN += $r['n']; } } ?>
   <section class="card">
     <div class="event-head">
       <strong><?= e($g['name']) ?></strong>
       <?php if ($g['function_name'] !== ''): ?><span class="muted"><?= e($g['function_name']) ?></span><?php endif; ?>
       <span class="badge"><?= count($gezaehlt) ?> <?= e(t('guest_bookings')) ?></span>
+      <?php if ($gN): ?><span class="badge" title="<?= e(t('guest_rating')) ?>"><?= e(guest_stars($gSum / $gN)) ?> <?= e((string) round($gSum / $gN, 1)) ?> (<?= $gN ?>)</span><?php endif; ?>
     </div>
     <p class="muted small">
       <?php if ($g['email'] !== ''): ?>✉ <a href="mailto:<?= e($g['email']) ?>"><?= e($g['email']) ?></a><?php endif; ?>
@@ -45,6 +49,9 @@
             <span class="badge <?= $b['status'] === 'zugesagt' ? 'public' : ($b['status'] === 'abgesagt' ? 'ev-abgesagt' : '') ?>"><?= e(guest_status_label($b['status'])) ?></span>
             <?php if ($b['status'] === 'zugesagt' && strtotime($b['access_until']) > time()): ?>
               <span class="muted"><?= e(t('guest_link_until')) ?> <?= e(date('d.m. H:i', strtotime($b['access_until']))) ?></span>
+            <?php endif; ?>
+            <?php if ($r = $ratings[(int) $b['id']] ?? null): ?>
+              <span class="muted" title="<?= e(implode(' · ', array_map(fn($x) => $x['name'] . ': ' . $x['stars'] . '★' . ($x['comment'] !== '' ? ' – ' . $x['comment'] : ''), $r['rows']))) ?>"><?= e(guest_stars($r['avg'])) ?> <?= e((string) $r['avg']) ?></span>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>

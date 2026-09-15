@@ -729,6 +729,9 @@ const UI_STRINGS = [
   'gast_for_evening' => 'Für den Abend', 'gast_rider' => 'Stagerider mit Kanalliste und Bühnenplan', 'gast_setlist' => 'Setliste zum Ausdrucken',
   'gast_songs' => 'Die Lieder', 'gast_no_setlist' => 'Eine Setliste steht noch nicht fest.', 'gast_back' => 'Zurück zum Termin',
   'gast_no_lyrics' => 'Zu diesem Lied ist kein Text hinterlegt.',
+  'guest_rate' => 'Bewerten', 'guest_rating' => 'Bewertung', 'guest_rating_hint' => 'Wie war die Zusammenarbeit? Nur für die Band sichtbar.',
+  'guest_rating_none' => 'noch nicht bewertet', 'guest_rating_comment_ph' => 'eine Zeile dazu (optional)',
+  'fl_guest_rated' => 'Bewertung gespeichert.',
   'gast_thanks_no' => 'Schade — danke für die Rückmeldung. Die Band weiß Bescheid.',
   'gast_invalid' => 'Dieser Link ist nicht mehr gültig.',
   'gast_invalid_hint' => 'Entweder ist der Termin vorbei, die Buchung wurde zurückgenommen, oder der Link wurde nicht vollständig kopiert.',
@@ -2101,6 +2104,18 @@ $tables = [
     created_by INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX (event_id), INDEX (guest_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Wie war es mit dem Gast? Je Einsatz und je Mitglied ein Urteil, 1 bis 5
+  // Sterne mit einer Zeile dazu — die Kontaktliste rechnet daraus den Schnitt.
+  // Intern; ein Gast sieht das nie (#294).
+  "CREATE TABLE IF NOT EXISTS guest_ratings (
+    booking_id INT NOT NULL,
+    user_id INT NOT NULL,
+    stars TINYINT NOT NULL,
+    comment VARCHAR(255) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (booking_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS mail_log (
@@ -5183,6 +5198,34 @@ function guest_booking_by_token(string $token): ?array {
   return $b;
 }
 
+/**
+ * Bewertungen je Buchung: Schnitt, Anzahl, eigene Sterne und die Zeilen dazu.
+ * Eine Abfrage für alle Buchungen einer Seite.
+ */
+function guest_ratings_map(array $bookingIds, int $meId): array {
+  if (!$bookingIds) return [];
+  $ph = implode(',', array_fill(0, count($bookingIds), '?'));
+  $out = [];
+  foreach (rows("SELECT r.*, u.name FROM guest_ratings r LEFT JOIN users u ON u.id = r.user_id
+                 WHERE r.booking_id IN ($ph) ORDER BY r.created_at", $bookingIds) as $r) {
+    $b = (int) $r['booking_id'];
+    $out[$b] ??= ['sum' => 0, 'n' => 0, 'mine' => 0, 'rows' => []];
+    $out[$b]['sum'] += (int) $r['stars'];
+    $out[$b]['n']++;
+    if ((int) $r['user_id'] === $meId) $out[$b]['mine'] = (int) $r['stars'];
+    $out[$b]['rows'][] = $r;
+  }
+  foreach ($out as &$o) $o['avg'] = $o['n'] ? round($o['sum'] / $o['n'], 1) : 0;
+  unset($o);
+  return $out;
+}
+
+/** Sterne als Text, „★★★★☆", für Liste und Karte. */
+function guest_stars(float $avg): string {
+  $voll = (int) round($avg);
+  return str_repeat('★', max(0, min(5, $voll))) . str_repeat('☆', 5 - max(0, min(5, $voll)));
+}
+
 /** Buchungen je Termin, für die Karten: Gastname, Funktion, Status. */
 function guest_bookings_map(array $eventIds): array {
   if (!$eventIds) return [];
@@ -6393,8 +6436,9 @@ function event_view_data(array $events, array $me): array {
     'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
     'subRequests' => substitute_requests_map($ids),
     // Gebuchte Gäste je Termin und die Kontaktliste fürs Buchen (#294).
-    'guestsByEvent' => guest_bookings_map($ids),
+    'guestsByEvent' => $guestsByEvent = guest_bookings_map($ids),
     'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
+    'guestRatings' => guest_ratings_map(array_map(fn($b) => (int) $b['id'], array_merge(...array_values($guestsByEvent ?: [[]]))), (int) $me['id']),
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
   ];

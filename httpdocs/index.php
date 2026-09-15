@@ -2447,13 +2447,13 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Gäste (#294) ----------
   if ($path === '/intern/gaeste' && $method === 'GET') {
     $gaesteBuchungen = [];
-    foreach (rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC') as $gb) {
-      $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
-    }
+    $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
+    foreach ($gaesteAlle as $gb) $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
     view('intern/gaeste', [
       'title' => t('guest_title'),
       'guests' => rows('SELECT * FROM guests ORDER BY name'),
       'bookingsByGuest' => $gaesteBuchungen,
+      'ratings' => guest_ratings_map(array_map(fn($b) => (int) $b['id'], $gaesteAlle), (int) $me['id']),
       'events' => rows("SELECT id, title, date FROM events WHERE date >= ? AND status <> 'abgesagt' ORDER BY date", [$today]),
     ]);
   }
@@ -2523,6 +2523,19 @@ if (str_starts_with($path, '/intern')) {
       flash(guest_invite_mail($gBuchung) ? t('fl_guest_booked_mail') : t('fl_guest_booked_mailfail'));
     }
     back('/intern/termine');
+  }
+  // Nach dem Abend: Sterne für den Gast, je Mitglied eine Stimme, jederzeit
+  // änderbar. Nur für zugesagte Einsätze — wer nicht da war, wird nicht beurteilt.
+  if (preg_match('~^/intern/gaeste/buchung/(\d+)/bewerten$~', $path, $m) && $method === 'POST') {
+    $gSterne = (int) ($_POST['stars'] ?? 0);
+    $gBuchung = row("SELECT id FROM guest_bookings WHERE id = ? AND status = 'zugesagt'", [$m[1]]);
+    if ($gBuchung && $gSterne >= 1 && $gSterne <= 5) {
+      q('INSERT INTO guest_ratings (booking_id, user_id, stars, comment) VALUES (?,?,?,?)
+         ON DUPLICATE KEY UPDATE stars = VALUES(stars), comment = VALUES(comment), created_at = NOW()',
+        [$m[1], $me['id'], $gSterne, mb_substr(trim((string) ($_POST['comment'] ?? '')), 0, 255)]);
+      flash(t('fl_guest_rated'));
+    }
+    back('/intern/termine?alle=1');
   }
   if (preg_match('~^/intern/gaeste/buchung/(\d+)/(stornieren|erneut)$~', $path, $m) && $method === 'POST') {
     deny_in_demo('/intern/termine');
