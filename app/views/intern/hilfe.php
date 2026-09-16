@@ -12,10 +12,15 @@
           // nachtragen, ohne einen gewachsenen Text in sechs Sprachen neu zu
           // schreiben — fehlt der Schlüssel, liefert t() ihn selbst zurück, und
           // dann steht hier nichts (#276). ?>
-    <?php $helpMehr = t('help_' . $helpMod . '_2'); ?>
-    <?php if ($helpMehr !== 'help_' . $helpMod . '_2'): ?>
-      <p class="muted"><?= e($helpMehr) ?></p>
-    <?php endif; ?>
+    <?php // Bis zu drei Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
+          // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
+          // Übersetzungen stehen (#298). ?>
+    <?php foreach (['_2', '_3', '_4'] as $helpNr): ?>
+      <?php $helpMehr = t('help_' . $helpMod . $helpNr); ?>
+      <?php if ($helpMehr !== 'help_' . $helpMod . $helpNr): ?>
+        <p class="muted"><?= e($helpMehr) ?></p>
+      <?php endif; ?>
+    <?php endforeach; ?>
   </details>
   <?php $helpFirst = false; ?>
 <?php endforeach; ?>
