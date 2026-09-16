@@ -634,6 +634,16 @@ function demo_install_bereiche(array $members, int $evPast, int $evNext, int $su
     'detail' => '2.0.0 · mx.example.com · 250 2.0.0 OK', 'queue_id' => strtoupper(bin2hex(random_bytes(5))),
   ]);
   set_setting('mail_status_checked_at', date('Y-m-d H:i:s'));
+
+  // Kasse und Postfach sind ausdrückliche Rechte, auch für Admins (#271) — der
+  // Demo-Admin hatte keine Zeile dafür und sah beide Bereiche nie. In der Demo
+  // ist jeder Besucher dieser Admin; er soll alles sehen. Nicht getrackt: die
+  // Zeile gehört zum Konto, nicht zur Demoband, und darf den Reset überleben.
+  foreach (rows("SELECT id FROM users WHERE role = 'admin'") as $adminZeile) {
+    foreach (PERM_EXPLICIT_MODULES as $explizit) {
+      q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$adminZeile['id'], $explizit]);
+    }
+  }
 }
 
 /**

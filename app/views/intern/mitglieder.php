@@ -79,7 +79,10 @@
         <?php if ($m['email'] === null): ?>
           <?php // Ohne Adresse gibt es nichts nachzusenden (#291). ?>
           <span class="muted small">🚫 <?= e(t('mem_no_email')) ?></span>
-        <?php elseif ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()
+        <?php // Die Auskunft (nie angemeldet, Frist, Zustellstatus) sieht ein Admin
+              // auch in der Demo — nur der Knopf, der ein Passwort nimmt und eine
+              // Mail schickt, bleibt dort weg (#297). ?>
+        <?php elseif ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id']
                   && $m['last_login_at'] === null): ?>
           <?php // Zwei verschiedene Aussagen, und nur eine davon ist sicher: Wer
                 // ein Start-Passwort bekommen hat und keine Anmeldung zeigt, war
@@ -112,7 +115,9 @@
               <?php if ($mlStatus === 'queued' && $mailChecked): ?> · <?= e(t('mem_mail_checked')) ?> <?= e(date('d.m. H:i', strtotime($mailChecked))) ?><?php endif; ?>
             </span>
           <?php endif; ?>
-          <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zugangsdaten" data-confirm="<?= e(t('mem_send_access_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">✉ <?= e(t('mem_send_access')) ?></button></form>
+          <?php if (!is_demo()): ?>
+            <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/zugangsdaten" data-confirm="<?= e(t('mem_send_access_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny">✉ <?= e(t('mem_send_access')) ?></button></form>
+          <?php endif; ?>
         <?php endif; ?>
         <?php if ($user['role'] === 'admin' && (int) $m['id'] !== (int) $user['id'] && !is_demo()): ?>
           <form class="inline" method="post" action="/intern/mitglieder/<?= $m['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
