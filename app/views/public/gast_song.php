@@ -25,10 +25,10 @@ $band = $settings['band_name'] ?? 'Bandregie';
 <main class="gast">
   <p class="muted small"><a href="<?= e($zurueck) ?>">← <?= e(t('gast_back')) ?></a></p>
   <h1><?= e($song['title']) ?></h1>
-  <?php if ($song['artist'] !== ''): ?><p class="muted"><?= e($song['artist']) ?></p><?php endif; ?>
+  <?php if ((string) $song['artist'] !== ''): ?><p class="muted"><?= e($song['artist']) ?></p><?php endif; ?>
   <p class="facts muted small">
-    <?php if ($song['song_key'] !== ''): ?><span>🎼 <?= e($song['song_key']) ?></span><?php endif; ?>
-    <?php if ($song['tempo'] !== ''): ?><span>⏱ <?= e($song['tempo']) ?></span><?php endif; ?>
+    <?php if ((string) $song['song_key'] !== ''): ?><span>🎼 <?= e($song['song_key']) ?></span><?php endif; ?>
+    <?php if ((string) $song['tempo'] !== ''): ?><span>⏱ <?= e($song['tempo']) ?></span><?php endif; ?>
     <?php if ((int) $song['duration_sec'] > 0): ?><span>⌛ <?= e(fmt_duration((int) $song['duration_sec'])) ?></span><?php endif; ?>
   </p>
   <?php if (trim((string) $song['lyrics']) === ''): ?>

@@ -392,6 +392,7 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
   $gastZurueck = '/gast/' . $gastBuchung['token'];
   $gastEntries = $gastBuchung['status'] === 'zugesagt' && $gastBuchung['setlist_id']
     ? setlist_entries((int) $gastBuchung['setlist_id']) : [];
+  $gastSeite = ['title' => setting('band_name'), 'b' => $gastBuchung, 'entries' => $gastEntries] + guest_event_place($gastBuchung);
   // Rider, Setliste und Lieder gibt es erst nach der Zusage — und nur, was zu
   // diesem Termin gehört: die Lieder allein aus seiner Setliste.
   $gastTeil = (string) ($m[2] ?? '');
@@ -425,10 +426,11 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
     // Die Absage nimmt den Schlüssel — deshalb keine Weiterleitung auf den
     // Link, der jetzt ungültig wäre, sondern der Dank direkt als Antwort.
     $gastBuchung['status'] = $ja ? 'zugesagt' : 'abgesagt';
-    view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => $ja ? 'ja' : 'nein',
-                         'entries' => $ja && $gastBuchung['setlist_id'] ? setlist_entries((int) $gastBuchung['setlist_id']) : []]);
+    $gastSeite['b'] = $gastBuchung;
+    $gastSeite['entries'] = $ja && $gastBuchung['setlist_id'] ? setlist_entries((int) $gastBuchung['setlist_id']) : [];
+    view('public/gast', $gastSeite + ['antwort' => $ja ? 'ja' : 'nein']);
   }
-  view('public/gast', ['title' => setting('band_name'), 'b' => $gastBuchung, 'antwort' => null, 'entries' => $gastEntries]);
+  view('public/gast', $gastSeite + ['antwort' => null]);
 }
 
 if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {

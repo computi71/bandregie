@@ -753,7 +753,6 @@ const UI_STRINGS = [
   'gast_invalid' => 'Dieser Link ist nicht mehr gültig.',
   'gast_invalid_hint' => 'Entweder ist der Termin vorbei, die Buchung wurde zurückgenommen, oder der Link wurde nicht vollständig kopiert.',
   'gast_until' => 'Zugang bis', 'gast_change' => 'Du hast zugesagt. Falls es doch nicht klappt:',
-  'gast_declined' => 'Du hast abgesagt.',
   'mem_mail_invited' => 'Einladung', 'mem_mail_queued' => 'übergeben — Zustellung noch unbekannt',
   'mem_mail_sent' => 'zugestellt', 'mem_mail_bounced' => 'abgewiesen', 'mem_mail_deferred' => 'wird erneut versucht',
   'mem_mail_failed' => 'nicht verschickt', 'mem_mail_checked' => 'Log geprüft',
@@ -4838,6 +4837,7 @@ function branding_set_file(string $slot, string $quelle): bool {
  * 0 wenn die Datei kein Bild ist oder nicht kopiert werden konnte.
  */
 function photo_add_copy(string $quelle, string $caption, array $tags, ?int $wer, string $herkunft): int {
+  global $db;
   if (!is_file($quelle)) return 0;
   $info = @getimagesize($quelle);
   if (!$info) return 0;
@@ -4851,7 +4851,6 @@ function photo_add_copy(string $quelle, string $caption, array $tags, ?int $wer,
   q('INSERT INTO photos (filename, caption, is_public, uploaded_by, source, checksum, img_w, img_h)
      VALUES (?,?,0,?,?,?,?,?)',
     [$name, mb_substr($caption, 0, 500), $wer, mb_substr($herkunft, 0, 400), $summe, (int) $info[0], (int) $info[1]]);
-  global $db;
   $id = (int) $db->lastInsertId();
   foreach ($tags as $tag) {
     $tag = tag_norm($tag);
@@ -5170,26 +5169,55 @@ function welcome_mail(string $email, string $vorname, string $startPw, ?int $use
     . 'Das Start-Passwort gilt ' . START_PW_DAYS . ' Tage, also bis zum '
     . date('d.m.Y', time() + START_PW_DAYS * 86400) . ". Danach lass dir neue Zugangsdaten schicken.\n\n"
     . "Viele Grüße\n$band";
+  return band_mail_send($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body, 'einladung', $userId);
+}
+
+/**
+ * Eine Mail im Namen der Band hinaus: Absender, Antwortadresse, eigene
+ * Message-ID und der Eintrag in mail_log an einer Stelle — für Einladungen an
+ * Mitglieder wie an Gäste (#293, #294). Zurück kommt nur, ob der eigene
+ * Mailserver die Nachricht genommen hat; was der Empfänger daraus machte,
+ * trägt bin/mail-status.php anhand der Message-ID nach.
+ */
+function band_mail_send(string $to, string $subject, string $body, string $kind, ?int $userId, string $detail = ''): bool {
   $from = mail_from_address();
   $antwortAn = mail_header_value(setting('contact_email'));
   $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
   // Eine eigene Message-ID, damit sich die Mail im Log des Mailservers
-  // wiederfinden lässt (#293). Sonst vergibt der Server eine, die nur er kennt.
+  // wiederfinden lässt. Sonst vergibt der Server eine, die nur er kennt.
   $messageId = 'bandregie-' . bin2hex(random_bytes(16)) . '@' . substr($from, strpos($from, '@') + 1);
-  $ok = (bool) @mail($email, 'Dein Zugang zum Bandbereich von ' . mail_header_value($band, 120), $body,
+  // @: Ohne erreichbares Sendmail warnt mail() mitten in die Seite — das
+  // Ergebnis steht ohnehin als Zeile in mail_log, samt Grund.
+  $ok = (bool) @mail($to, $subject, $body,
     "From: $from$replyTo\r\nMessage-ID: <$messageId>\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+  $grund = $ok ? $detail : trim('mail() hat die Nachricht nicht angenommen · ' . $detail, ' ·');
   q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (?,?,?,?,?,?,?)',
-    [$userId, mb_substr($email, 0, 190), 'einladung', $messageId,
-     $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $ok ? '' : 'mail() hat die Nachricht nicht angenommen']);
+    [$userId, mb_substr($to, 0, 190), $kind, $messageId, $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $grund]);
   return $ok;
 }
 
 // ---------- Gäste (#294) ----------
 
-const GUEST_STATUS = ['angefragt' => 'Angefragt', 'zugesagt' => 'Zugesagt', 'abgesagt' => 'Abgesagt', 'storniert' => 'Storniert'];
+const GUEST_STATUSES = ['angefragt', 'zugesagt', 'abgesagt', 'storniert'];
 
 function guest_status_label(string $status): string {
-  return t('guest_st_' . (array_key_exists($status, GUEST_STATUS) ? $status : 'angefragt'));
+  return t('guest_st_' . (in_array($status, GUEST_STATUSES, true) ? $status : 'angefragt'));
+}
+
+/**
+ * Ort und Navi-Ziel eines Gast-Termins: der hinterlegte Veranstaltungsort mit
+ * Anschrift, sonst der Freitext. Einmal hier, weil Einladungsmail und
+ * Gastseite dasselbe sagen müssen.
+ */
+function guest_event_place(array $b): array {
+  $venue = !empty($b['venue_id']) ? row('SELECT * FROM venues WHERE id = ?', [$b['venue_id']]) : null;
+  if ($venue) {
+    return ['ort' => event_place(['venue_name' => $venue['name'], 'venue_address' => $venue['address'],
+                                  'venue_postcode' => $venue['postcode'], 'venue_city' => $venue['city']]),
+            'navi' => venue_dest($venue)];
+  }
+  $frei = trim((string) ($b['location'] ?? ''));
+  return ['ort' => $frei, 'navi' => navi_dest($frei)];
 }
 
 /**
@@ -5262,10 +5290,7 @@ function guest_bookings_map(array $eventIds): array {
  */
 function guest_invite_mail(array $b): bool {
   $band = setting('band_name');
-  $ort = trim((string) ($b['location'] ?? ''));
-  if (!empty($b['venue_id']) && ($v = row('SELECT * FROM venues WHERE id = ?', [$b['venue_id']]))) {
-    $ort = event_place(['venue_name' => $v['name'], 'venue_address' => $v['address'], 'venue_postcode' => $v['postcode'], 'venue_city' => $v['city']]);
-  }
+  $ort = guest_event_place($b)['ort'];
   $body = 'Hallo ' . trim((string) $b['guest_name']) . ",\n\n"
     . "$band fragt dich für einen Termin an:\n\n"
     . '  ' . fmt_date($b['date']) . ($b['time'] ? ' · ' . $b['time'] . ' Uhr' : '') . "\n"
@@ -5276,15 +5301,8 @@ function guest_invite_mail(array $b): bool {
     . "Nach deiner Zusage ist derselbe Link dein Zugang zu allem, was du für den Abend brauchst — "
     . "Ablauf, Rider, Setliste. Er ist persönlich und gilt bis zum Mittag nach dem Termin.\n\n"
     . "Viele Grüße\n$band";
-  $from = mail_from_address();
-  $antwortAn = mail_header_value(setting('contact_email'));
-  $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
-  $messageId = 'bandregie-' . bin2hex(random_bytes(16)) . '@' . substr($from, strpos($from, '@') + 1);
-  $ok = (bool) @mail((string) $b['guest_email'], mail_header_value("$band: Anfrage für " . fmt_date($b['date']), 120), $body,
-    "From: $from$replyTo\r\nMessage-ID: <$messageId>\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
-  q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (NULL,?,?,?,?,?,?)',
-    [mb_substr((string) $b['guest_email'], 0, 190), 'gast', $messageId,
-     $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $ok ? 'Buchung ' . (int) $b['id'] : 'mail() hat die Nachricht nicht angenommen · Buchung ' . (int) $b['id']]);
+  $ok = band_mail_send((string) $b['guest_email'], mail_header_value("$band: Anfrage für " . fmt_date($b['date']), 120),
+                       $body, 'gast', null, 'Buchung ' . (int) $b['id']);
   if ($ok) q('UPDATE guest_bookings SET invited_at = NOW() WHERE id = ?', [$b['id']]);
   return $ok;
 }
@@ -6435,6 +6453,10 @@ function event_view_data(array $events, array $me): array {
     }
   }
   $venues = rows('SELECT * FROM venues ORDER BY name');
+  // Gebuchte Gäste je Termin und ihre Bewertungen (#294).
+  $guestsByEvent = guest_bookings_map($ids);
+  $guestBookingIds = [];
+  foreach ($guestsByEvent as $liste) foreach ($liste as $b) $guestBookingIds[] = (int) $b['id'];
   return [
     'events' => $events,
     'members' => rows('SELECT id, name FROM users ORDER BY name'),
@@ -6453,9 +6475,9 @@ function event_view_data(array $events, array $me): array {
     'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
     'subRequests' => substitute_requests_map($ids),
     // Gebuchte Gäste je Termin und die Kontaktliste fürs Buchen (#294).
-    'guestsByEvent' => $guestsByEvent = guest_bookings_map($ids),
+    'guestsByEvent' => $guestsByEvent,
     'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
-    'guestRatings' => guest_ratings_map(array_map(fn($b) => (int) $b['id'], array_merge(...array_values($guestsByEvent ?: [[]]))), (int) $me['id']),
+    'guestRatings' => guest_ratings_map($guestBookingIds, (int) $me['id']),
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
   ];

@@ -2,12 +2,12 @@
 // Die Seite hinter dem Gast-Link (#294). Eine eigene, schlanke Seite ohne die
 // Navigation der Band: Ein Gast ist kein Mitglied, und nichts hier darf auf
 // eine interne Seite zeigen. Erwartet $b (Buchung samt Termin, oder null, wenn
-// der Link nicht mehr gilt) und $antwort ('ja' | 'nein' | null).
+// der Link nicht mehr gilt), $antwort ('ja' | 'nein' | null), $entries
+// (Setliste nach der Zusage) und $ort/$navi aus guest_event_place().
 $band = $settings['band_name'] ?? 'Bandregie';
 $logo = !empty($settings['logo_file']) ? '/uploads/' . rawurlencode($settings['logo_file']) : '';
-$venue = $b && !empty($b['venue_id']) ? row('SELECT * FROM venues WHERE id = ?', [$b['venue_id']]) : null;
-$ort = $venue ? event_place(['venue_name' => $venue['name'], 'venue_address' => $venue['address'], 'venue_postcode' => $venue['postcode'], 'venue_city' => $venue['city']]) : trim((string) ($b['location'] ?? ''));
-$navi = $venue ? venue_dest($venue) : navi_dest((string) ($b['location'] ?? ''));
+$ort = $ort ?? '';
+$navi = $navi ?? '';
 ?><!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
 <head>

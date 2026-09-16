@@ -8,7 +8,8 @@
       <li>
         <span class="event-date"><?= fmt_date($gig['date']) ?><?= $gig['time'] ? ' · ' . e($gig['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
         <strong><?= e($gig['public_title'] ?: $gig['title']) ?></strong>
-        <?php if (event_place($gig) !== ''): ?><span class="muted"><?= e(event_place($gig)) ?></span><?php endif; ?>
+        <?php $ort = event_place($gig); ?>
+        <?php if ($ort !== ''): ?><span class="muted"><?= e($ort) ?></span><?php endif; ?>
         <?php if ($gig['public_info']): ?><span class="muted"><?= e($gig['public_info']) ?></span><?php endif; ?>
         <?php if ($gig['public_link']): ?><a class="btn btn-small" href="<?= e($gig['public_link']) ?>" target="_blank" rel="noopener"><?= e(t('events_tickets')) ?></a><?php endif; ?>
       </li>
@@ -20,7 +21,8 @@
   <h2><?= e(t('events_past')) ?></h2>
   <ul class="event-list muted">
     <?php foreach ($past as $gig): ?>
-      <li><span class="event-date"><?= fmt_date($gig['date']) ?></span> <?= e($gig['public_title'] ?: $gig['title']) ?><?= event_place($gig) !== '' ? ' · ' . e(event_place($gig)) : '' ?></li>
+      <?php $ort = event_place($gig); ?>
+      <li><span class="event-date"><?= fmt_date($gig['date']) ?></span> <?= e($gig['public_title'] ?: $gig['title']) ?><?= $ort !== '' ? ' · ' . e($ort) : '' ?></li>
     <?php endforeach; ?>
   </ul>
 </section>
