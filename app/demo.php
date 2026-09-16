@@ -552,11 +552,14 @@ TXT,
  * leere Seiten — dort, wo die Anwendung am meisten zu zeigen hat.
  */
 function demo_install_bereiche(array $members, int $evPast, int $evNext, int $sub): void {
-  // --- Gäste: eine Tontechnikerin, die schon da war und bewertet ist, und ein
-  // Trompeter, der für den kommenden Gig angefragt ist. So haben Karte, Liste,
-  // Sterne und die Gastseite hinter dem Link etwas zu zeigen.
+  // --- Gäste: eine Tontechnikerin, die schon da war und bewertet ist, eine
+  // zweite Gitarre, die für den kommenden Gig zugesagt hat, und ein Trompeter,
+  // der noch nicht geantwortet hat. Drei Zeilen, drei Zustände — so haben
+  // Karte, Liste, Sterne, Zugangslink und die Gastseite etwas zu zeigen.
   $ton = demo_insert('guests', ['name' => 'Sam Lang', 'function_name' => 'Sound', 'email' => 'sam@example.com',
                                  'phone' => '0170 0000001', 'notes' => 'Own mixing console, knows the town hall PA.']);
+  $saite = demo_insert('guests', ['name' => 'Rea Linde', 'function_name' => 'Guitar', 'email' => 'rea@example.com',
+                                   'phone' => '0170 0000002', 'notes' => 'Own amp, plays the second set with us.']);
   $blech = demo_insert('guests', ['name' => 'Kim Horn', 'function_name' => 'Trumpet', 'email' => 'kim@example.com',
                                    'phone' => '', 'notes' => '']);
   $evPastDate = (string) (row('SELECT date FROM events WHERE id = ?', [$evPast])['date'] ?? date('Y-m-d'));
@@ -582,6 +585,12 @@ function demo_install_bereiche(array $members, int $evPast, int $evNext, int $su
     'status' => 'zugesagt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
     'answered_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
     'access_until' => guest_access_until($evNextDate), 'created_by' => $members[0],
+  ]);
+  demo_insert('guest_bookings', [
+    'guest_id' => $saite, 'event_id' => $evNext, 'function_name' => 'Guitar, second set', 'token' => bin2hex(random_bytes(32)),
+    'status' => 'zugesagt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-4 days')),
+    'answered_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
+    'access_until' => guest_access_until($evNextDate), 'created_by' => $members[1],
   ]);
   demo_insert('guest_bookings', [
     'guest_id' => $blech, 'event_id' => $evNext, 'function_name' => 'Trumpet, two songs', 'token' => bin2hex(random_bytes(32)),
