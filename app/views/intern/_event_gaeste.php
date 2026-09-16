@@ -43,6 +43,14 @@
           <?php if ($g['guest_email'] !== '' && $g['status'] === 'angefragt'): ?>
             <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/erneut"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost">✉ <?= e(t('guest_invite_resend')) ?></button></form>
           <?php endif; ?>
+          <?php // Ohne Mail — oder zusätzlich: die Einladung vom eigenen Handy aus,
+                // WhatsApp oder SMS mit fertigem Text. Öffnet nur die App; gesendet
+                // wird dort (#299). ?>
+          <?php if ($g['status'] === 'angefragt'): ?>
+            <?php foreach (guest_share_links($g) as $weg => $url): ?>
+              <a class="badge link" href="<?= e($url) ?>" target="_blank" rel="noopener"><?= $weg === 'whatsapp' ? '💬' : '📱' ?> <?= e(t('guest_send_' . $weg)) ?></a>
+            <?php endforeach; ?>
+          <?php endif; ?>
           <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/stornieren" data-confirm="<?= e(t('guest_cancel_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger" title="<?= e(t('guest_cancel')) ?>">✕</button></form>
         <?php endif; ?>
       </div>
@@ -60,6 +68,8 @@
           <label><?= e(t('guest_function')) ?><input name="function_name" placeholder="<?= e(t('guest_book_function_ph')) ?>"></label>
           <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name"></label>
           <label><?= e(t('email')) ?> (<?= e(t('guest_book_new')) ?>)<input type="email" name="new_email"></label>
+          <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
+          <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
           <div class="span2 row-buttons"><button class="btn btn-small">✉ <?= e(t('guest_invite_send')) ?></button></div>
         </form>
       </details>

@@ -12,6 +12,7 @@
     <label><?= e(t('guest_function')) ?><input name="function_name" maxlength="120" placeholder="<?= e(t('guest_function_ph')) ?>"></label>
     <label><?= e(t('email')) ?><input type="email" name="email" maxlength="190"></label>
     <label><?= e(t('phone')) ?><input name="phone" maxlength="60"></label>
+    <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"></textarea></label>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
   </form>
@@ -68,6 +69,7 @@
           <label><?= e(t('guest_function')) ?><input name="function_name" value="<?= e($g['function_name']) ?>" maxlength="120"></label>
           <label><?= e(t('email')) ?><input type="email" name="email" value="<?= e($g['email']) ?>" maxlength="190"></label>
           <label><?= e(t('phone')) ?><input name="phone" value="<?= e($g['phone']) ?>" maxlength="60"></label>
+          <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
           <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e((string) $g['notes']) ?></textarea></label>
           <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
         </form>

@@ -2462,6 +2462,12 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/gaeste' && $method === 'POST') {
     $gName = trim((string) ($_POST['name'] ?? ''));
     if ($gName === '') { flash(t('fl_guest_name_required')); redirect('/intern/gaeste'); }
+    // Adresse oder Nummer, eines von beiden (#299): Eine Einladung muss jemanden
+    // erreichen, und ein Gast, von dem nur der Name da ist, ist der, den am
+    // Abend vorher niemand anrufen kann.
+    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === '') {
+      flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
+    }
     q('INSERT INTO guests (name, function_name, email, phone, notes) VALUES (?,?,?,?,?)', [
       mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
       strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
@@ -2484,6 +2490,9 @@ if (str_starts_with($path, '/intern')) {
     }
     $gName = trim((string) ($_POST['name'] ?? ''));
     if ($gName === '') { flash(t('fl_guest_name_required')); redirect('/intern/gaeste'); }
+    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === '') {
+      flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
+    }
     q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, notes = ? WHERE id = ?', [
       mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
       strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
@@ -2501,9 +2510,11 @@ if (str_starts_with($path, '/intern')) {
     $gId = (int) ($_POST['guest_id'] ?? 0);
     $gNeu = trim((string) ($_POST['new_name'] ?? ''));
     if ($gId <= 0 && $gNeu !== '') {
-      q('INSERT INTO guests (name, function_name, email) VALUES (?,?,?)', [
-        mb_substr($gNeu, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
-        strtolower(trim((string) ($_POST['new_email'] ?? ''))),
+      $gNeuMail = strtolower(trim((string) ($_POST['new_email'] ?? '')));
+      $gNeuTel = mb_substr(trim((string) ($_POST['new_phone'] ?? '')), 0, 60);
+      if ($gNeuMail === '' && $gNeuTel === '') { flash(t('fl_guest_contact_required')); back('/intern/termine'); }
+      q('INSERT INTO guests (name, function_name, email, phone) VALUES (?,?,?,?)', [
+        mb_substr($gNeu, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120), $gNeuMail, $gNeuTel,
       ]);
       $gId = (int) $db->lastInsertId();
     }

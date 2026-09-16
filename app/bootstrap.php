@@ -400,7 +400,7 @@ const UI_STRINGS = [
   'help_fotos_2' => 'Ein Bild aus der Galerie kann Logo, Hintergrundbild, Symbol im Browser oder das Bild neben der Begrüßung werden: In den Einstellungen unter „Logo & Hintergrund" gibt es dafür „Aus den Medien übernehmen", und an jedem Bild in der Galerie den Knopf „verwenden als". Umgekehrt landet alles, was ihr dort hochladet, auch in der Galerie — mit einem passenden Schlagwort, damit ihr es wiederfindet. Das Bild wird dabei kopiert: Löscht ihr es in der Galerie, bleibt das Logo trotzdem.',
   'help_rider_2' => 'Beim Ausdrucken beginnen Bühnenplan und Kanalliste jeweils auf einer eigenen Seite — das sind die zwei Blätter, die sich der Tontechniker ans Mischpult hängt. Habt ihr für einen Auftritt einen Gast gebucht, etwa einen Tontechniker, sieht er denselben Rider über seinen Einladungslink.',
   'help_mitglieder_3' => 'Ein Mitglied darf auch ohne E-Mail-Adresse angelegt werden — die Besetzung steht ja oft fest, bevor alle Adressen da sind. So ein Konto kann sich noch nicht anmelden; in der Liste steht „Kein Zugang — E-Mail-Adresse fehlt". Sobald ihr die Adresse unter „Bearbeiten" eintragt, geht die Einladung von selbst hinaus. Dasselbe passiert, wenn ihr bei einem Mitglied, das sich noch nie angemeldet hat, die Adresse korrigiert — die alte war dann wohl falsch geschrieben. Unter dem Konto steht danach, was aus der Einladung wurde: „zugestellt", oder „abgewiesen" mit dem Grund, den der Mailanbieter genannt hat. Steht dort nur „übergeben", weiß der Server das Ergebnis noch nicht.',
-  'help_gaeste_2' => 'Hat ein Gast keine E-Mail-Adresse, geht keine Einladung hinaus — die Buchung entsteht trotzdem, und am Termin steht ein Knopf „Link". Den kopiert ihr und schickt ihn, wie ihr wollt, etwa per Nachricht aufs Handy; der Link ist für den Gast dasselbe wie die Mail. Tragt ihr die Adresse später nach, erscheint „Einladung erneut senden". Nach dem Auftritt könnt ihr den Gast bewerten, eins bis fünf Sterne und eine Zeile dazu; in der Gästeliste seht ihr den Durchschnitt. Der Gast sieht diese Bewertung nie — und über seinen Link auch sonst nur, was zu seinem Termin gehört: keine anderen Termine, keine Mitglieder, keine Kasse.',
+  'help_gaeste_2' => 'Ein Gast braucht eine E-Mail-Adresse oder eine Telefonnummer, eines von beiden. Ohne Adresse geht keine Mail hinaus — dafür stehen am Termin die Knöpfe „per WhatsApp" und „per SMS": Sie öffnen auf eurem Handy die Nachrichten-App mit fertigem Text und dem Einladungslink, ihr tippt nur noch auf Senden. Das kostet nichts, und der Link ist für den Gast dasselbe wie die Mail. Tragt ihr die Adresse später nach, erscheint „Einladung erneut senden". Nach dem Auftritt könnt ihr den Gast bewerten, eins bis fünf Sterne und eine Zeile dazu; in der Gästeliste seht ihr den Durchschnitt. Der Gast sieht diese Bewertung nie — und über seinen Link auch sonst nur, was zu seinem Termin gehört: keine anderen Termine, keine Mitglieder, keine Kasse.',
   'help_termine_2' =>'Jeder Termin lässt sich aufs Gerät holen: „Diesen Termin mitnehmen" holt Setliste, Texte, Noten, Rider und Patchliste, damit auf der Bühne nichts fehlt. Liegt alles da, sagt der Knopf „Offline verfügbar". Im Profil lässt sich das für die kommenden Termine auch von selbst erledigen; was zu vergangenen Terminen gehört, gibt die App dabei wieder frei. Ohne Empfang zeigt sie den gespeicherten Stand und schreibt dazu, von wann er ist.',
   'help_setlists_2' => 'Für den Ausdruck lässt sich wählen, was mitkommt: Interpret, Jahr, Tempo, Spielzeit und die Notiz — erste Zeile oder ganz. Die Schrift passt sich der Blattgröße an. Aus der Setliste heraus startet auch der Teleprompter und wechselt am Songende von selbst zum nächsten Lied, das einen Text hat.',
   'help_orte' => 'Veranstaltungsorte mit Adresse, Ansprechpartner und Erfahrungen von den letzten Malen. PLZ und Ort sind eigene Felder, die Straße samt Hausnummer steht darunter. Über „Adresse suchen“ fragt der Server bei OpenStreetMap nach — jedes Feld als das, was es ist, der Saalname bleibt außen vor, denn den kennt eine Karte selten. Ein Klick auf den Treffer trägt Straße, PLZ, Ort und die Koordinaten ein. Erlaubt sein muss das unter „Einstellungen → Verbindungen nach außen“, sonst bleibt der Knopf grau. Findet die Suche nichts, wird sie schrittweise gröber — ohne Hausnummer, dann nur mit dem Ort. Das Navi-Symbol öffnet die Karten-App deines Geräts mit dem Ziel; am iPhone wählst du beim ersten Mal, welche.',
@@ -752,6 +752,10 @@ const UI_STRINGS = [
   'gast_for_evening' => 'Für den Abend', 'gast_rider' => 'Stagerider mit Kanalliste und Bühnenplan', 'gast_setlist' => 'Setliste zum Ausdrucken',
   'gast_songs' => 'Die Lieder', 'gast_no_setlist' => 'Eine Setliste steht noch nicht fest.', 'gast_back' => 'Zurück zum Termin',
   'gast_no_lyrics' => 'Zu diesem Lied ist kein Text hinterlegt.',
+  'guest_contact_hint' => 'E-Mail-Adresse oder Telefonnummer — eines von beiden muss sein, sonst erreicht die Einladung niemanden.',
+  'fl_guest_contact_required' => 'Eine E-Mail-Adresse oder eine Telefonnummer muss sein — sonst erreicht die Einladung niemanden.',
+  'guest_send_whatsapp' => 'per WhatsApp', 'guest_send_sms' => 'per SMS',
+  'guest_share_msg' => 'Hallo %1$s, %2$s fragt dich für den %3$s (%4$s) an. Bitte sag hier zu oder ab: %5$s',
   'guest_rate' => 'Bewerten', 'guest_rating' => 'Bewertung', 'guest_rating_hint' => 'Wie war die Zusammenarbeit? Nur für die Band sichtbar.',
   'guest_rating_none' => 'noch nicht bewertet', 'guest_rating_comment_ph' => 'eine Zeile dazu (optional)',
   'fl_guest_rated' => 'Bewertung gespeichert.',
@@ -5285,12 +5289,44 @@ function guest_stars(float $avg): string {
   return str_repeat('★', max(0, min(5, $voll))) . str_repeat('☆', 5 - max(0, min(5, $voll)));
 }
 
+/**
+ * Eine Telefonnummer, wie sie WhatsApp und die SMS-App brauchen: nur Ziffern,
+ * mit Ländervorwahl ohne Plus. „0170 12345" wird zu „4917012345" — die 49 ist
+ * die Vorgabe, weil die Anwendung von deutschen Bands ausgeht; wer anderswo
+ * spielt, schreibt die Nummer mit +Vorwahl, und die bleibt, wie sie ist.
+ */
+function phone_digits_intl(string $roh): string {
+  $z = preg_replace('~[^\d+]~', '', $roh) ?? '';
+  if (str_starts_with($z, '+')) return substr($z, 1);
+  if (str_starts_with($z, '00')) return substr($z, 2);
+  if (str_starts_with($z, '0')) return '49' . substr($z, 1);
+  return $z;
+}
+
+/**
+ * Die Einladung eines Gasts als Nachricht fürs Handy (#299): Links, die auf
+ * dem Gerät des Mitglieds WhatsApp oder die SMS-App mit fertigem Text öffnen.
+ * Verschickt wird dort erst auf Tippen — der Server redet mit niemandem, es
+ * kostet nichts, und es braucht kein Konto bei irgendwem. Ohne Nummer leer.
+ */
+function guest_share_links(array $b): array {
+  $nummer = phone_digits_intl((string) ($b['guest_phone'] ?? ''));
+  if ($nummer === '') return [];
+  $text = sprintf(t('guest_share_msg'), trim((string) $b['guest_name']), setting('band_name'),
+                  fmt_date($b['date']), $b['title'], absolute_url('/gast/' . $b['token']));
+  return [
+    'whatsapp' => 'https://wa.me/' . $nummer . '?text=' . rawurlencode($text),
+    'sms' => 'sms:+' . $nummer . '?body=' . rawurlencode($text),
+  ];
+}
+
 /** Buchungen je Termin, für die Karten: Gastname, Funktion, Status. */
 function guest_bookings_map(array $eventIds): array {
   if (!$eventIds) return [];
   $ph = implode(',', array_fill(0, count($eventIds), '?'));
   $out = [];
-  foreach (rows("SELECT b.*, g.name AS guest_name, g.email AS guest_email FROM guest_bookings b
+  foreach (rows("SELECT b.*, g.name AS guest_name, g.email AS guest_email, g.phone AS guest_phone, e.title, e.date FROM guest_bookings b
+                 JOIN events e ON e.id = b.event_id
                  JOIN guests g ON g.id = b.guest_id WHERE b.event_id IN ($ph) ORDER BY g.name", $eventIds) as $b) {
     $out[(int) $b['event_id']][] = $b;
   }
