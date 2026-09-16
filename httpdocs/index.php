@@ -2529,8 +2529,12 @@ if (str_starts_with($path, '/intern')) {
   // Nach dem Abend: Sterne für den Gast, je Mitglied eine Stimme, jederzeit
   // änderbar. Nur für zugesagte Einsätze — wer nicht da war, wird nicht beurteilt.
   if (preg_match('~^/intern/gaeste/buchung/(\d+)/bewerten$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/termine');
     $gSterne = (int) ($_POST['stars'] ?? 0);
-    $gBuchung = row("SELECT id FROM guest_bookings WHERE id = ? AND status = 'zugesagt'", [$m[1]]);
+    // Beurteilt wird, was war: nur zugesagte Einsätze vergangener Termine —
+    // dieselbe Bedingung, unter der die Karte das Formular zeigt.
+    $gBuchung = row("SELECT b.id FROM guest_bookings b JOIN events e ON e.id = b.event_id
+                     WHERE b.id = ? AND b.status = 'zugesagt' AND e.date < ?", [$m[1], $today]);
     if ($gBuchung && $gSterne >= 1 && $gSterne <= 5) {
       q('INSERT INTO guest_ratings (booking_id, user_id, stars, comment) VALUES (?,?,?,?)
          ON DUPLICATE KEY UPDATE stars = VALUES(stars), comment = VALUES(comment), created_at = NOW()',
@@ -2748,6 +2752,10 @@ if (str_starts_with($path, '/intern')) {
     deny_in_demo('/intern/mitglieder');
     $ziel = row('SELECT id, email, first_name, name FROM users WHERE id = ?', [$m[1]]);
     if (!$ziel) redirect('/intern/mitglieder');
+    // Ohne Adresse gibt es nichts zu schicken — und ein neues Passwort für
+    // niemanden wäre nur ein weggenommenes (#291). Der Knopf fehlt in der
+    // Liste; die Route entscheidet trotzdem selbst.
+    if ($ziel['email'] === null) { flash(t('mem_no_email')); redirect('/intern/mitglieder'); }
     [$sent, $startPw] = access_send($ziel, (int) $me['id']);
     flash($sent ? t('fl_access_sent') : t('fl_access_nomail') . ' ' . $startPw);
     redirect('/intern/mitglieder');

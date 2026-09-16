@@ -3017,6 +3017,14 @@ if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
 // beurteilt — ohne Zeile für den neuen Bereich wäre er für alle Bestehenden zu.
 // Mitglieder bekommen ihn, wie die Vorlage ihn gibt; Ersatzleute nicht, Admins
 // haben ihn ohnehin. Einmalig, damit ein späterer Entzug bestehen bleibt.
+// Die Queue-ID des Mailservers zur Einladung merken (#296): Postfix nennt die
+// Message-ID nur einmal, beim Annehmen; das Ergebnis eines zurückgestellten
+// Versuchs kommt Stunden später und trägt nur noch die Queue-ID. Ohne sie
+// bliebe die Zeile für immer bei „wird erneut versucht".
+if (!column_exists('mail_log', 'queue_id')) {
+  $db->exec("ALTER TABLE mail_log ADD COLUMN queue_id VARCHAR(20) NOT NULL DEFAULT '', ADD INDEX (queue_id)");
+}
+
 if (setting('migr_gaeste_perm') === '') {
   foreach (rows("SELECT DISTINCT u.id FROM users u JOIN permissions p ON p.user_id = u.id WHERE u.role = 'member'") as $gRow) {
     q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$gRow['id'], 'gaeste']);
@@ -5341,13 +5349,22 @@ function mail_status_apply(iterable $zeilen): int {
   foreach ($zeilen as $z) {
     if (preg_match('~postfix/cleanup\[\d+\]: ([A-F0-9]+): message-id=<([^>]+)>~', $z, $m)) {
       $queue[$m[1]] = $m[2];
+      // Die Queue-ID an die Zeile heften, solange die cleanup-Zeile noch im
+      // Ausschnitt steht — ein späterer Zustellversuch nennt nur noch sie (#296).
+      q("UPDATE mail_log SET queue_id = ? WHERE message_id = ? AND queue_id = ''", [$m[1], $m[2]]);
       continue;
     }
     if (!preg_match('~^(\w{3} +\d+ \d\d:\d\d:\d\d) \S+ postfix/(?:smtp|local|error|pipe|virtual)\[\d+\]: ([A-F0-9]+): to=<([^>]+)>,(?: orig_to=<[^>]*>,)? relay=([^,]+),.*? dsn=([\d.]+), status=(\w+) \((.*)\)~', $z, $m)) {
       continue;
     }
     [, $wann, $qid, $an, $relay, $dsn, $status, $grund] = $m;
-    if (!isset($queue[$qid])) continue;
+    // Erst der Ausschnitt, dann das Gedächtnis: Eine Queue-ID, die hier nicht
+    // mehr vorkommt, steht vielleicht seit gestern an der Zeile.
+    if (!isset($queue[$qid])) {
+      $bekannt = row('SELECT message_id FROM mail_log WHERE queue_id = ? AND to_email = ?', [$qid, strtolower($an)]);
+      if (!$bekannt) continue;
+      $queue[$qid] = $bekannt['message_id'];
+    }
     // Syslog kennt kein Jahr; ein Datum in der Zukunft war letztes Jahr.
     $ts = strtotime($wann . ' ' . date('Y')) ?: time();
     if ($ts > time() + 86400) $ts = strtotime($wann . ' ' . (date('Y') - 1)) ?: $ts;
