@@ -567,8 +567,14 @@ function demo_install_bereiche(array $members, int $evPast, int $evNext, int $su
     'answered_at' => date('Y-m-d H:i:s', strtotime($evPastDate . ' -20 days')),
     'access_until' => guest_access_until($evPastDate), 'created_by' => $members[0],
   ]);
-  demo_insert('guest_ratings', ['booking_id' => $buchungPast, 'user_id' => $members[0], 'stars' => 5, 'comment' => 'Calm, quick, great mix.']);
-  demo_insert('guest_ratings', ['booking_id' => $buchungPast, 'user_id' => $members[1], 'stars' => 4, 'comment' => '']);
+  // guest_ratings hat keinen eigenen Schlüssel, sondern Buchung und Mitglied —
+  // also roh per q() wie bei song_ratings. Über demo_insert getrackt bräche das
+  // Entfernen der Demo ab: ein DELETE … WHERE id auf eine Tabelle ohne id.
+  // Aufräumen läuft unten über die Buchung.
+  foreach ([[$members[0], 5, 'Calm, quick, great mix.'], [$members[1], 4, '']] as [$wer, $sterne, $wort]) {
+    q('INSERT IGNORE INTO guest_ratings (booking_id, user_id, stars, comment) VALUES (?,?,?,?)',
+      [$buchungPast, $wer, $sterne, $wort]);
+  }
   // Zugesagt für den kommenden Gig: der Link ist gültig, die Gastseite zeigt
   // Rider und Setliste — mit dem Token aus der Buchung lässt sich das ansehen.
   demo_insert('guest_bookings', [
@@ -963,6 +969,10 @@ function demo_remove(): void {
     q('DELETE FROM comments WHERE event_id = ?', [$eventId]);
     q('DELETE FROM event_equipment WHERE event_id = ?', [$eventId]);
     q('UPDATE finances SET event_id = NULL WHERE event_id = ?', [$eventId]);
+    // Ein Gast, den die Band selbst an einen Beispieltermin gebucht hat, hängt
+    // genauso an diesem Termin. Die Sterne zuerst: sie kennen nur die Buchung.
+    q('DELETE FROM guest_ratings WHERE booking_id IN (SELECT id FROM guest_bookings WHERE event_id = ?)', [$eventId]);
+    q('DELETE FROM guest_bookings WHERE event_id = ?', [$eventId]);
   }
   // Dieselbe Aufräumliste wie beim Löschen eines echten Mitglieds — sie wohnt
   // in user_purge(), damit nicht zwei Listen auseinanderlaufen.
@@ -979,6 +989,11 @@ function demo_remove(): void {
     q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$eqId]);
     q('DELETE FROM event_equipment WHERE equipment_id = ?', [$eqId]);
   }
+  // Die Sterne für einen Gast hängen an der Buchung und haben keinen eigenen
+  // Schlüssel — sie stehen deshalb in keiner Demo-Liste und müssen hier weg.
+  foreach ($byTable['guest_bookings'] ?? [] as $bookingId) {
+    q('DELETE FROM guest_ratings WHERE booking_id = ?', [$bookingId]);
+  }
   // Schlagwörter und Personen hängen an der Foto-Zeile und stehen in keiner
   // eigenen Demo-Liste; ohne sie hier bleiben sie als Waisen zurück.
   foreach ($byTable['photos'] ?? [] as $photoId) {
@@ -987,10 +1002,12 @@ function demo_remove(): void {
   }
 
   // Kindzeilen zuerst, dann die Haupttabellen
-  // Kinder vor Eltern: Bewertungen vor Buchungen vor Gästen, Antworten vor
-  // Nachrichten; mail_log vor den Konten, auf die es zeigt (#297).
+  // Kinder vor Eltern: Buchungen vor Gästen, Antworten vor Nachrichten;
+  // mail_log vor den Konten, auf die es zeigt (#297). Die Bewertungen sind
+  // oben schon weg — sie haben keinen eigenen Schlüssel und gehören hier
+  // deshalb nicht in die Liste.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
-            'guest_ratings', 'guest_bookings', 'guests', 'post_replies', 'post_messages',
+            'guest_bookings', 'guests', 'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
   foreach (array_unique([...$order, ...array_keys($byTable)]) as $table) {

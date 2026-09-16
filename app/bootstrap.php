@@ -3065,6 +3065,18 @@ if (setting('migr_kasse_repair') === '') {
   set_setting('migr_kasse_repair', '1');
 }
 
+// Die Demodaten aus v1.260.0 trugen ihre Gästebewertungen in die Demo-Liste
+// ein, als hätten sie einen eigenen Schlüssel. Haben sie nicht — guest_ratings
+// steht auf Buchung und Mitglied. In der Liste steht deshalb zweimal die Null,
+// und das Entfernen der Demodaten lief in ein DELETE … WHERE id auf eine
+// Tabelle ohne id: Abbruch mittendrin, halb entfernte Demo. Die Zeilen sind
+// nichts wert, sie zeigen auf keine Bewertung; das Aufräumen läuft jetzt über
+// die Buchung.
+if (setting('migr_demo_guest_ratings') === '') {
+  q("DELETE FROM demo_rows WHERE table_name = 'guest_ratings'");
+  set_setting('migr_demo_guest_ratings', '1');
+}
+
 // Wer sich vor v1.244.0 angemeldet hat, hinterließ davon keinen Stempel — ein
 // Passwort-Login schreibt nichts mit. Was sich beweisen lässt, wird einmalig
 // nachgetragen: ein Passkey, ein bestätigter zweiter Faktor, ein Merkmal für
