@@ -5334,7 +5334,8 @@ function mail_status_by_user(): array {
  * reicht die Zeilen durch (tail … | php bin/mail-status.php). Zurück kommt die
  * Zahl der geänderten Einträge.
  *
- * Postfix schreibt je Nachricht mehrere Zeilen mit derselben Queue-ID:
+ * Postfix schreibt je Nachricht mehrere Zeilen mit derselben Queue-ID — kurz
+ * als Hex, mit enable_long_queue_ids als gemischte Buchstaben und Ziffern:
  *   cleanup[…]: 21087C13DA: message-id=<bandregie-…@tonrausch.app>
  *   smtp[…]:    21087C13DA: to=<x@gmail.com>, relay=…, dsn=2.0.0, status=sent (250 …)
  * Die erste verbindet die Queue-ID mit unserer Message-ID, die zweite sagt,
@@ -5347,14 +5348,14 @@ function mail_status_apply(iterable $zeilen): int {
   $queue = [];
   $geaendert = 0;
   foreach ($zeilen as $z) {
-    if (preg_match('~postfix/cleanup\[\d+\]: ([A-F0-9]+): message-id=<([^>]+)>~', $z, $m)) {
+    if (preg_match('~postfix/cleanup\[\d+\]: ([0-9A-Za-z]+): message-id=<([^>]+)>~', $z, $m)) {
       $queue[$m[1]] = $m[2];
       // Die Queue-ID an die Zeile heften, solange die cleanup-Zeile noch im
       // Ausschnitt steht — ein späterer Zustellversuch nennt nur noch sie (#296).
       q("UPDATE mail_log SET queue_id = ? WHERE message_id = ? AND queue_id = ''", [$m[1], $m[2]]);
       continue;
     }
-    if (!preg_match('~^(\w{3} +\d+ \d\d:\d\d:\d\d) \S+ postfix/(?:smtp|local|error|pipe|virtual)\[\d+\]: ([A-F0-9]+): to=<([^>]+)>,(?: orig_to=<[^>]*>,)? relay=([^,]+),.*? dsn=([\d.]+), status=(\w+) \((.*)\)~', $z, $m)) {
+    if (!preg_match('~^(\w{3} +\d+ \d\d:\d\d:\d\d) \S+ postfix/(?:smtp|local|error|pipe|virtual)\[\d+\]: ([0-9A-Za-z]+): to=<([^>]+)>,(?: orig_to=<[^>]*>,)? relay=([^,]+),.*? dsn=([\d.]+), status=(\w+) \((.*)\)~', $z, $m)) {
       continue;
     }
     [, $wann, $qid, $an, $relay, $dsn, $status, $grund] = $m;
