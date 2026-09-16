@@ -352,7 +352,7 @@ TXT,
     'venue_id' => $venue2, 'location' => '', 'notes' => 'Bring our own PA, backline is provided.',
     'is_public' => 1, 'setlist_id' => $slNext, 'status' => 'bestaetigt',
     'fee' => '750 €', 'invoice_no' => '', 'public_title' => '', 'public_link' => '',
-    'public_info' => 'Doors at 8 pm',
+    'public_info' => 'Doors at 8 pm', 'support_act' => 'The Sample Openers',
   ]);
   demo_insert('events', [
     'type' => 'probe', 'title' => 'Rehearsal before the show', 'date' => $d('+2 weeks'),
@@ -538,9 +538,102 @@ TXT,
   demo_install_stage_plot($members);
   demo_install_topics($members);
   demo_install_orders($members);
-  demo_install_substitute($members, $evNext, $pw);
+  $sub = demo_install_substitute($members, $evNext, $pw);
   demo_install_photos($members[0], $evPast, $members);
+  demo_install_bereiche($members, $evPast, $evNext, $sub);
   demo_write_logins($logins);
+}
+
+/**
+ * Was der Demoband sonst fehlte (#297): Gäste mit Buchung und Bewertung, ein
+ * Supportact steht schon am Gig, Musik-Links, ein Download, eine Nachricht im
+ * Postfach samt Antwort, eine Rechnung, ein Mitglied ohne Adresse und der
+ * Zustellstatus einer Einladung. Sonst zeigte die Demo an genau diesen Stellen
+ * leere Seiten — dort, wo die Anwendung am meisten zu zeigen hat.
+ */
+function demo_install_bereiche(array $members, int $evPast, int $evNext, int $sub): void {
+  // --- Gäste: eine Tontechnikerin, die schon da war und bewertet ist, und ein
+  // Trompeter, der für den kommenden Gig angefragt ist. So haben Karte, Liste,
+  // Sterne und die Gastseite hinter dem Link etwas zu zeigen.
+  $ton = demo_insert('guests', ['name' => 'Sam Lang', 'function_name' => 'Sound', 'email' => 'sam@example.com',
+                                 'phone' => '0170 0000001', 'notes' => 'Own mixing console, knows the town hall PA.']);
+  $blech = demo_insert('guests', ['name' => 'Kim Horn', 'function_name' => 'Trumpet', 'email' => 'kim@example.com',
+                                   'phone' => '', 'notes' => '']);
+  $evPastDate = (string) (row('SELECT date FROM events WHERE id = ?', [$evPast])['date'] ?? date('Y-m-d'));
+  $evNextDate = (string) (row('SELECT date FROM events WHERE id = ?', [$evNext])['date'] ?? date('Y-m-d'));
+  $buchungPast = demo_insert('guest_bookings', [
+    'guest_id' => $ton, 'event_id' => $evPast, 'function_name' => 'FOH', 'token' => bin2hex(random_bytes(32)),
+    'status' => 'zugesagt', 'invited_at' => date('Y-m-d H:i:s', strtotime($evPastDate . ' -3 weeks')),
+    'answered_at' => date('Y-m-d H:i:s', strtotime($evPastDate . ' -20 days')),
+    'access_until' => guest_access_until($evPastDate), 'created_by' => $members[0],
+  ]);
+  demo_insert('guest_ratings', ['booking_id' => $buchungPast, 'user_id' => $members[0], 'stars' => 5, 'comment' => 'Calm, quick, great mix.']);
+  demo_insert('guest_ratings', ['booking_id' => $buchungPast, 'user_id' => $members[1], 'stars' => 4, 'comment' => '']);
+  // Zugesagt für den kommenden Gig: der Link ist gültig, die Gastseite zeigt
+  // Rider und Setliste — mit dem Token aus der Buchung lässt sich das ansehen.
+  demo_insert('guest_bookings', [
+    'guest_id' => $ton, 'event_id' => $evNext, 'function_name' => 'FOH', 'token' => bin2hex(random_bytes(32)),
+    'status' => 'zugesagt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
+    'answered_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
+    'access_until' => guest_access_until($evNextDate), 'created_by' => $members[0],
+  ]);
+  demo_insert('guest_bookings', [
+    'guest_id' => $blech, 'event_id' => $evNext, 'function_name' => 'Trumpet, two songs', 'token' => bin2hex(random_bytes(32)),
+    'status' => 'angefragt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-1 day')), 'answered_at' => null,
+    'access_until' => guest_access_until($evNextDate), 'created_by' => $members[0],
+  ]);
+
+  // --- Musik & Videos
+  demo_insert('media_links', ['title' => 'Summer Rain – live at the town hall', 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+  demo_insert('media_links', ['title' => 'Neon Light (single)', 'url' => 'https://open.spotify.com/track/example']);
+
+  // --- Ein Download für Veranstalter. Über denselben Weg wie ein Upload, damit
+  // die Datei genauso liegt und, wo ein Schlüssel gesetzt ist, genauso
+  // verschlüsselt ist. Getrackt wie alles andere.
+  $downloadId = file_store_content('download', 0,
+    "Technical rider (demo)\n\nStage 8 x 6 m, 5 monitor mixes, 16 channels.\nGet-in 17:00, soundcheck 18:30.\n",
+    'tech-rider-demo.txt', $members[0]);
+  if ($downloadId) demo_track('files', $downloadId);
+
+  // --- Post: eine Anfrage und die Antwort darauf
+  $nachricht = demo_insert('post_messages', [
+    'uid' => 900001, 'folder' => 'INBOX', 'from_name' => 'Culture office Sampleton', 'from_mail' => 'kultur@example.com',
+    'subject' => 'Request: town festival next summer', 'sent_at' => date('Y-m-d H:i:s', strtotime('-9 days')),
+    'body_text' => "Hello,\n\nwould you be available for the town festival on the last Saturday in June? 90 minutes, outdoor stage, PA provided.\n\nBest regards\nCulture office",
+    'size_bytes' => 640, 'event_id' => null, 'replied_at' => date('Y-m-d H:i:s', strtotime('-8 days')),
+    'fetched_at' => date('Y-m-d H:i:s', strtotime('-9 days')),
+  ]);
+  demo_insert('post_replies', [
+    'message_id' => $nachricht, 'sent_by' => $members[0], 'to_mail' => 'kultur@example.com',
+    'subject' => 'Re: Request: town festival next summer',
+    'body' => "Hello,\n\nyes, the date is free — we would love to. Our fee for 90 minutes is 900 €; rider attached.\n\nBest\nLisa",
+    'sent_at' => date('Y-m-d H:i:s', strtotime('-8 days')),
+  ]);
+
+  // --- Eine Rechnung im Bestand
+  demo_insert('invoices', ['supplier' => 'Music store (demo)', 'order_no' => 'B-2026-0042', 'invoice_no' => 'RE-77123',
+                           'invoice_date' => date('Y-m-d', strtotime('-5 weeks')), 'total_cents' => 24900,
+                           'notes' => 'Two microphone stands and cables.']);
+
+  // --- Ein Mitglied ohne Adresse (#291): Konto ohne Zugang, die Liste sagt es.
+  $ohne = demo_insert('users', [
+    'name' => 'Mika Sonne', 'first_name' => 'Mika', 'last_name' => 'Sonne', 'stage_name' => '',
+    'email' => null, 'password_hash' => password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT),
+    'role' => 'member', 'instrument' => 'Keys', 'must_change_pw' => 0,
+  ]);
+  perm_apply_template($ohne, 'member');
+
+  // --- Zustellstatus (#293): die Einladung der Aushilfe kam an. Ihr Konto war
+  // nie angemeldet, also zeigt die Liste die Zeile — bis jemand sich als Nora
+  // einloggt, dann verschwindet sie, wie im echten Betrieb.
+  q('UPDATE users SET start_pw_at = ? WHERE id = ?', [date('Y-m-d H:i:s', strtotime('-2 days')), $sub]);
+  demo_insert('mail_log', [
+    'user_id' => $sub, 'to_email' => 'nora@example.com', 'kind' => 'einladung',
+    'message_id' => 'bandregie-' . bin2hex(random_bytes(16)) . '@demo.example', 'queued_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
+    'status' => 'sent', 'status_at' => date('Y-m-d H:i:s', strtotime('-2 days +2 seconds')),
+    'detail' => '2.0.0 · mx.example.com · 250 2.0.0 OK', 'queue_id' => strtoupper(bin2hex(random_bytes(5))),
+  ]);
+  set_setting('mail_status_checked_at', date('Y-m-d H:i:s'));
 }
 
 /**
@@ -622,7 +715,7 @@ function demo_install_orders(array $members): void {
  * Eine Aushilfe samt Anfrage für den kommenden Gig. Ohne sie ist von den
  * eingeschränkten Rechten und der Anfrage-Logik nichts zu sehen.
  */
-function demo_install_substitute(array $members, int $eventId, callable $pw): void {
+function demo_install_substitute(array $members, int $eventId, callable $pw): int {
   $sub = demo_insert('users', [
     'name' => 'Nora Falk', 'first_name' => 'Nora', 'last_name' => 'Falk', 'stage_name' => '',
     'email' => 'nora@example.com', 'password_hash' => $pw('nora@example.com'),
@@ -632,6 +725,7 @@ function demo_install_substitute(array $members, int $eventId, callable $pw): vo
   perm_apply_template($sub, 'ersatz');
   q('INSERT IGNORE INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,?)',
     [$eventId, $sub, $members[0], $members[0]]);
+  return $sub;
 }
 
 /**
@@ -841,6 +935,11 @@ function demo_remove(): void {
                  JOIN demo_rows d ON d.table_name = ? AND d.row_id = p.id', ['photos']) as $p) {
     @unlink(UPLOADS_DIR . '/' . $p['filename']);
   }
+  // Der Demo-Download ebenso: erst die Datei im Dateispeicher, dann die Zeile.
+  foreach (rows('SELECT f.filename FROM files f
+                 JOIN demo_rows d ON d.table_name = ? AND d.row_id = f.id', ['files']) as $f) {
+    @unlink(FILES_DIR . '/' . $f['filename']);
+  }
   $rows = rows('SELECT table_name, row_id FROM demo_rows');
   if (!$rows) return;
 
@@ -878,7 +977,11 @@ function demo_remove(): void {
   }
 
   // Kindzeilen zuerst, dann die Haupttabellen
+  // Kinder vor Eltern: Bewertungen vor Buchungen vor Gästen, Antworten vor
+  // Nachrichten; mail_log vor den Konten, auf die es zeigt (#297).
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
+            'guest_ratings', 'guest_bookings', 'guests', 'post_replies', 'post_messages',
+            'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
   foreach (array_unique([...$order, ...array_keys($byTable)]) as $table) {
     foreach ($byTable[$table] ?? [] as $id) {
