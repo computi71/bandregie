@@ -16,7 +16,8 @@
     <label><?= e(t('email')) ?><input type="email" name="email" placeholder="<?= e(t('optional')) ?>"></label>
     <label><?= e(t('instrument')) ?><input name="instrument" placeholder="<?= e(t('mem_instrument_ph')) ?>"></label>
     <label><?= e(t('role')) ?>
-      <select name="role"><option value="member"><?= e(t('role_member')) ?></option><option value="ersatz"><?= e(t('role_ersatz')) ?></option><option value="admin"><?= e(t('role_admin')) ?></option></select>
+      <select name="role"><option value="member"><?= e(t('role_member')) ?></option><option value="ersatz"><?= e(t('role_ersatz')) ?></option><option value="booking"><?= e(t('role_booking')) ?></option><option value="admin"><?= e(t('role_admin')) ?></option></select>
+      <span class="muted small"><?= e(t('role_booking_hint')) ?></span>
     </label>
     <p class="muted small span2"><?= e(t('mem_invite_hint')) ?></p>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
@@ -202,6 +203,7 @@
               ? 'disabled title="' . e(t('mem_own_role')) . '"'
               : (is_demo() ? 'disabled title="' . e(t('demo_locked_hint')) . '"' : '') ?>>
               <option value="member" <?= $mFull['role'] === 'member' ? 'selected' : '' ?>><?= e(t('role_member')) ?></option>
+              <option value="booking" <?= $mFull['role'] === 'booking' ? 'selected' : '' ?>><?= e(t('role_booking')) ?></option>
               <option value="admin" <?= $mFull['role'] === 'admin' ? 'selected' : '' ?>><?= e(t('role_admin')) ?></option>
               <option value="ersatz" <?= $mFull['role'] === 'ersatz' ? 'selected' : '' ?>><?= e(t('role_ersatz')) ?></option>
             </select>

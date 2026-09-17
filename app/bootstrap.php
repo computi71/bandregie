@@ -445,6 +445,8 @@ const UI_STRINGS = [
   'name' => 'Name', 'email' => 'E-Mail', 'phone' => 'Telefon', 'notes' => 'Notizen',
   'status' => 'Status', 'date' => 'Datum', 'title_lbl' => 'Titel', 'unknown' => 'Unbekannt',
   'instrument' => 'Instrument', 'role' => 'Rolle', 'role_member' => 'Mitglied', 'role_admin' => 'Admin', 'role_ersatz' => 'Ersatz',
+  'role_booking' => 'Bookingagent',
+  'role_booking_hint' => 'Jemand von außen, der für euch bucht: sieht Termine, Orte, Rider und Verträge. Von den Themen sieht er nur die, die er selbst aufgemacht hat — zu allen anderen müsst ihr ihn einzeln dazuholen.',
   'stage_name' => 'Künstlername', 'copied' => 'Kopiert', 'own_song' => 'eigener', 'optional' => 'optional',
   // Termin-Arten
   'evtype_gig' => 'Gig', 'evtype_probe' => 'Probe', 'evtype_party' => 'Party',
@@ -665,6 +667,70 @@ const UI_STRINGS = [
   'mem_share_msg' => 'Hallo %1$s, dein Zugang zum Bandbereich von %2$s: %3$s — der Link gilt eine Stunde, danach frag noch mal nach.',
   'mem_share_none' => 'Dafür fehlt die Mobilnummer.',
   'help_shot_alt' => 'Bildschirmfoto: %s',
+  // Verträge (#303)
+  'inav_vertraege' => 'Verträge',
+  // Themen: wen die Band von außen dazuholt (#308)
+  'topic_guests' => 'Von außen dabei',
+  'topic_guests_hint' => 'Wer nicht in der Band ist, sieht dieses Thema nur, wenn er hier steht. Für Mitglieder ändert das nichts — die sehen ohnehin alles.',
+  'topic_guest_add' => 'Dazuholen', 'topic_guest_remove' => 'Wieder herausnehmen',
+  'topic_guests_none' => 'Niemand von außen.',
+  'fl_topic_guest_added' => '%s sieht dieses Thema jetzt.',
+  'fl_topic_guest_removed' => '%s sieht dieses Thema nicht mehr.',
+  'contract_title' => 'Verträge',
+  'contract_intro' => 'Der Gastspielvertrag zu einem Auftritt. Datum, Ort, Spielzeit und Gage stehen schon am Termin — hier kommt der Wortlaut dazu, und ihr seht auf einen Blick, wo noch kein unterschriebenes Blatt zurückgekommen ist.',
+  'contract_none' => 'Noch kein Vertrag angelegt.',
+  'contract_new' => 'Neuer Vertrag',
+  'contract_sheet_title' => 'Gastspielvertrag',
+  'contract_no' => 'Vertragsnummer',
+  'contract_date' => 'Vertragsdatum',
+  'contract_event' => 'Termin',
+  'contract_promoter' => 'Veranstalter',
+  'contract_promoter_hint' => 'Der Vertragspartner, nicht die Halle. Eine Halle heißt „Stadtfest", gebucht wird sie oft über eine Agentur — und die unterschreibt.',
+  'contract_promoter_new' => '– neuer Veranstalter –',
+  'contract_fee' => 'Gage',
+  'contract_fee_hint' => 'Aus einem Angebot übernehmbar, sonst von Hand.',
+  'contract_play_from' => 'Spielbeginn', 'contract_play_to' => 'Spielende',
+  'contract_get_in' => 'Raum geöffnet ab',
+  'contract_status' => 'Stand',
+  'contract_status_entwurf' => 'Entwurf',
+  'contract_status_verschickt' => 'verschickt',
+  'contract_status_unterschrieben' => 'unterschrieben zurück',
+  'contract_mark_sent' => 'Als verschickt vermerken',
+  'contract_mark_signed' => 'Unterschrieben zurück',
+  'contract_mark_draft' => 'Zurück auf Entwurf',
+  'contract_body' => 'Wortlaut',
+  'contract_body_hint' => 'Beim Anlegen aus eurer Vorlage gebildet und danach eingefroren: Was verschickt wurde, soll sich nicht ändern, weil jemand später die Vorlage anfasst. Ändern könnt ihr ihn hier trotzdem, solange er Entwurf ist.',
+  'contract_rebuild' => 'Aus der Vorlage neu bilden',
+  'contract_rebuild_confirm' => 'Den Wortlaut aus der Vorlage neu bilden? Eigene Änderungen daran gehen verloren.',
+  'contract_print' => 'Vertrag drucken',
+  'contract_from_quote' => 'Gage aus dem Angebot',
+  'contract_delete_confirm' => 'Diesen Vertrag wirklich löschen?',
+  'contract_signed_file' => 'Das unterschriebene Blatt kommt als Scan an den Termin — dort liegen die Dateien zum Auftritt.',
+  'contract_open_missing' => 'Ohne Vertrag',
+  'fl_contract_saved' => 'Vertrag gespeichert.',
+  'fl_contract_deleted' => 'Vertrag gelöscht.',
+  'fl_contract_event_required' => 'Ein Vertrag gehört zu einem Termin — such einen aus.',
+  'fl_contract_promoter_required' => 'Ohne Veranstalter kein Vertragspartner. Name genügt.',
+  'fl_contract_status' => 'Stand geändert: %s.',
+  'printdoc_contract' => 'Vertrag',
+  // Veranstalter
+  'promoter_title' => 'Veranstalter',
+  'promoter_name' => 'Name oder Firma',
+  'promoter_contact' => 'Ansprechpartner',
+  'promoter_none' => 'Noch kein Veranstalter angelegt.',
+  // Vorlage in den Einstellungen
+  'set_contract_title' => 'Vertragsvorlage',
+  'set_contract_intro' => 'Der Wortlaut, aus dem jeder neue Vertrag gebildet wird. Er gehört euch: Ändert ihn, wie eure Band es braucht. Solange hier nichts steht, gilt die mitgelieferte Fassung.',
+  'set_contract_legal' => 'Das ist eine Schreibhilfe und keine Rechtsberatung. Was ihr unterschreibt, verantwortet ihr — im Zweifel lasst den Text einmal von jemandem ansehen, der das beurteilen kann.',
+  'set_contract_fields' => 'Platzhalter: Was in geschweiften Klammern steht, wird beim Anlegen durch die Angaben des Termins ersetzt.',
+  'set_contract_reset' => 'Auf die mitgelieferte Vorlage zurücksetzen',
+  'set_contract_reset_confirm' => 'Eure Fassung verwerfen und die mitgelieferte Vorlage nehmen?',
+  // Hilfe
+  'help_vertraege' => 'Ein Auftritt wird per Vertrag vereinbart, und fast alles, was darin steht, kennt das Programm schon: Datum, Ort, Spielzeit und Gage stehen am Termin. Hier kommt der Wortlaut dazu, und ihr seht in der Liste, bei welchem Auftritt noch kein unterschriebenes Blatt zurück ist.',
+  'help_vertraege_2' => 'Der Vertragspartner ist der Veranstalter und nicht die Halle. Eine Halle heißt „Stadtfest" und wird oft über eine Agentur gebucht — unterschreiben tut die Agentur. Deshalb gibt es eine eigene Liste dafür.',
+  'help_vertraege_3' => 'Der Wortlaut wird beim Anlegen aus eurer Vorlage gebildet und bleibt dann stehen. Das ist Absicht: Was verschickt und unterschrieben wurde, darf sich nicht ändern, weil ein halbes Jahr später jemand die Vorlage anfasst. Solange ein Vertrag Entwurf ist, könnt ihr seinen Text trotzdem ändern.',
+  'help_vertraege_4' => 'Gedruckt wird er wie eure anderen Blätter, mit Logo und Wasserzeichen. Unterschrieben kommt er als Scan zurück und gehört zu den Dateien des Termins. Elektronische Unterschriften gibt es hier bewusst nicht: Sie sind ein eigenes Thema mit eigenen Anforderungen, und für eine Band bringen sie nichts, was ein eingescanntes Blatt nicht auch bringt.',
+  'contract_template' => 'GASTSPIELVERTRAG\n\nzwischen\n{veranstalter}\n{veranstalter_anschrift}\n— nachfolgend Veranstalter —\n\nund\n{band}\n— nachfolgend Künstler —\n\n§ 1 Gegenstand des Vertrages\nDer Veranstalter engagiert den Künstler für folgendes Gastspiel:\na) Veranstaltungsort: {ort}\nb) Veranstaltungstag: {datum}\nc) Spieldauer: {spielzeit}\nd) Der Veranstaltungsraum ist für Aufbau und Soundcheck geöffnet ab: {einlass}\n\n§ 2 Entgelt\na) Der Veranstalter zahlt an den Künstler eine Festgage in Höhe von {gage}.\nb) Der Betrag ist vor dem Auftritt in bar oder nach Rechnung zu zahlen.\nc) Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der\n   Veranstalter.\nd) Entfällt der Auftritt aus einem vom Veranstalter zu vertretenden Grund,\n   bleibt die vereinbarte Gage geschuldet. Entfällt er aus einem vom Künstler\n   zu vertretenden Grund, entfällt der Anspruch. Bei Krankheit ist unverzüglich\n   zu informieren; Auftritts- und Zahlungspflicht entfallen dann beide.\n\n§ 3 Pflichten des Veranstalters\na) Der Veranstalter stellt eine bespielbare Bühne mit Stromversorgung bereit.\nb) Die beigefügte Bühnenanweisung ist Bestandteil dieses Vertrages.\nc) Ton-, Film- und Fotoaufnahmen des Auftritts bedürfen der Zustimmung des\n   Künstlers.\nd) Der Veranstalter stellt eine abschließbare Garderobe sowie Getränke in\n   angemessenem Umfang.\n\n§ 4 Pflichten und Rechte des Künstlers\na) Der Künstler erscheint pünktlich zu den vereinbarten Zeiten.\nb) Der Künstler ist in der Gestaltung seines Programms frei.\n\n§ 5 Salvatorische Klausel\nSollte eine Bestimmung dieses Vertrages unwirksam sein, bleibt die Wirksamkeit\nder übrigen Bestimmungen unberührt.\n\n§ 6 Schlussbestimmungen\nMündliche Nebenabreden bestehen nicht. Änderungen bedürfen der Schriftform.\nDurch diesen Vertrag wird kein Arbeitsverhältnis begründet.\n\n\nOrt, Datum: ......................        Ort, Datum: {heute}\n\n\n__________________________                __________________________\nDer Veranstalter                          Der Künstler',
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
   'help_open' => 'Diesen Bereich öffnen',
@@ -1724,6 +1790,10 @@ const PERM_MODULES = [
   // Hand: Wer die Preisliste und die Rabatte sieht, sieht auch, was die Band
   // wirklich verlangt (#302).
   'angebote'      => ['/intern/angebote'],
+  // Verträge stehen neben den Angeboten und doch für sich: Wer rechnen darf,
+  // muss nicht unterschreiben dürfen, und ein Bookingagent von außen bekommt
+  // genau diese beiden und sonst nichts (#303, #308).
+  'vertraege'     => ['/intern/vertraege'],
 ];
 
 /** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
@@ -1776,7 +1846,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
-    'mailversand' => [1, 1], 'gaeste' => [1, 1], 'angebote' => [1, 1],
+    'mailversand' => [1, 1], 'gaeste' => [1, 1], 'angebote' => [1, 1], 'vertraege' => [1, 1],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
@@ -1787,7 +1857,18 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
-    'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [0, 0],
+    'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [0, 0], 'vertraege' => [0, 0],
+  ],
+  // Ein Bookingagent arbeitet für die Band, ohne in ihr zu sein: Er braucht die
+  // Termine und die Verträge, und er muss ein Thema aufmachen können. Was die
+  // Band unter sich bespricht, geht ihn nichts an — deshalb sieht er von den
+  // Themen nur die eigenen und die, zu denen sie ihn dazuholt (#308).
+  'booking' => [
+    'termine' => [1, 1], 'post' => [0, 0], 'songs' => [0, 0], 'setlists' => [0, 0], 'orte' => [1, 0],
+    'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [1, 1],
+    'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
+    'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
+    'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [1, 0], 'vertraege' => [1, 1],
   ],
 ];
 
@@ -2280,6 +2361,47 @@ $tables = [
     PRIMARY KEY (booking_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Der Veranstalter ist nicht der Ort (#303): Eine Halle heißt „Strandfest",
+  // gebucht wird sie über eine Agentur zwei Orte weiter, und der Vertrag geht
+  // an die Agentur.
+  "CREATE TABLE IF NOT EXISTS promoters (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(190) NOT NULL,
+    contact_name VARCHAR(190) NOT NULL DEFAULT '',
+    email VARCHAR(190) NOT NULL DEFAULT '',
+    phone VARCHAR(60) NOT NULL DEFAULT '',
+    mobile VARCHAR(60) NOT NULL DEFAULT '',
+    street VARCHAR(190) NOT NULL DEFAULT '',
+    postcode VARCHAR(20) NOT NULL DEFAULT '',
+    city VARCHAR(190) NOT NULL DEFAULT '',
+    notes TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Der Wortlaut steht in der Zeile und nicht in der Vorlage: Was verschickt
+  // und unterschrieben wurde, darf sich nicht ändern, weil die Band ein halbes
+  // Jahr später ihre Vorlage anfasst.
+  "CREATE TABLE IF NOT EXISTS contracts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NULL,
+    promoter_id INT NULL,
+    quote_id INT NULL,
+    contract_no VARCHAR(60) NOT NULL DEFAULT '',
+    contract_date DATE NOT NULL,
+    fee_cents INT NOT NULL DEFAULT 0,
+    play_from VARCHAR(5) NOT NULL DEFAULT '',
+    play_to VARCHAR(5) NOT NULL DEFAULT '',
+    get_in VARCHAR(5) NOT NULL DEFAULT '',
+    status VARCHAR(20) NOT NULL DEFAULT 'entwurf',
+    sent_at DATETIME NULL,
+    signed_at DATETIME NULL,
+    body MEDIUMTEXT,
+    notes TEXT,
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event (event_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Ein Angebot friert seine Posten ein (#302): Ändert die Band später ihre
   // Preisliste, darf ein verschicktes Angebot nicht plötzlich anders aussehen.
   // Deshalb stehen die gerechneten Zeilen als Zeilen in der Datenbank und
@@ -2459,6 +2581,15 @@ $tables = [
     created_by INT NULL,
     closed TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Wer von außen ein Thema sehen darf (#308). Die Liste lässt nur zu und nimmt
+  // nie weg: Mitglieder sehen weiterhin alles, hier stehen ausschließlich die
+  // Konten, die sonst nichts sähen.
+  "CREATE TABLE IF NOT EXISTS topic_access (
+    topic_id INT NOT NULL,
+    user_id INT NOT NULL,
+    PRIMARY KEY (topic_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS topic_posts (
@@ -3061,6 +3192,10 @@ $defaults = [
   'quote_km_cents' => '0', 'quote_km_free' => '0',
   'quote_night_cents' => '0', 'quote_pa_cents' => '0',
   'quote_min_cents' => '0', 'quote_discount_private' => '0',
+  // Der Vertragstext gehört der Band, nicht diesem Programm. Leer heißt: Es
+  // gilt die mitgelieferte Vorlage in der Sprache der Installation. Sobald
+  // jemand sie bearbeitet, steht sie hier und wird nie wieder überschrieben.
+  'contract_text' => '',
   'rider_stage' => '', 'rider_power' => '', 'rider_pa' => '', 'rider_monitor' => '',
   'rider_light' => '', 'rider_getin' => '', 'rider_extras' => '', 'rider_positions' => '',
   'rider_contact_tech' => '', 'rider_contact_booking' => '',
@@ -3165,7 +3300,8 @@ if (setting('downloads_mode') === '') set_setting('downloads_mode', 'token');
 if (setting('permissions_migrated') !== '1' && row('SELECT 1 FROM users LIMIT 1')) {
   foreach (rows('SELECT id, role, can_finance FROM users') as $permUser) {
     if ($permUser['role'] === 'admin') continue;
-    perm_apply_template((int) $permUser['id'], $permUser['role'] === 'ersatz' ? 'ersatz' : 'member');
+    perm_apply_template((int) $permUser['id'],
+                       in_array($permUser['role'], ['ersatz', 'booking'], true) ? $permUser['role'] : 'member');
     if ($permUser['role'] !== 'ersatz' && (int) $permUser['can_finance'] === 1) {
       q("UPDATE permissions SET can_write = 1 WHERE user_id = ? AND module = 'kasse'", [$permUser['id']]);
     }
@@ -3245,6 +3381,24 @@ foreach (['mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
 }
 if (!column_exists('venues', 'contact_mobile')) {
   $db->exec("ALTER TABLE venues ADD COLUMN contact_mobile VARCHAR(60) NOT NULL DEFAULT '' AFTER contact_phone");
+}
+
+// Verträge sehen und schreiben darf, wer schon Rechte-Zeilen hat (#303).
+if (setting('migr_vertraege_perm') === '') {
+  foreach (rows("SELECT DISTINCT u.id FROM users u JOIN permissions p ON p.user_id = u.id WHERE u.role = 'member'") as $vRow) {
+    q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$vRow['id'], 'vertraege']);
+  }
+  set_setting('migr_vertraege_perm', '1');
+}
+
+// Der Vertrag ist ein Druckbogen wie die anderen.
+if (setting('migr_contract_print_docs') === '') {
+  foreach (['print_logo_docs', 'print_watermark_docs'] as $druckListe2) {
+    $teile2 = array_filter(array_map('trim', explode(',', (string) setting($druckListe2))));
+    if (!in_array('contract', $teile2, true)) $teile2[] = 'contract';
+    set_setting($druckListe2, implode(',', $teile2));
+  }
+  set_setting('migr_contract_print_docs', '1');
 }
 
 if (setting('migr_angebote_perm') === '') {
@@ -4614,6 +4768,115 @@ function invoice_label(array $inv): string {
 function invoice_item_count(int $invoiceId): int {
   return (int) (row('SELECT COUNT(*) AS n FROM equipment WHERE invoice_id = ?', [$invoiceId])['n'] ?? 0);
 }
+/**
+ * Steht dieses Konto außerhalb der Band? (#308)
+ *
+ * Für solche Konten sind Themen nicht offen, sondern werden einzeln
+ * freigegeben. Mitglieder, Ersatzleute und die Bandleitung sind innen — für sie
+ * ändert sich nichts.
+ */
+function is_outsider(?array $user): bool {
+  return ($user['role'] ?? '') === 'booking';
+}
+
+/**
+ * Welche Themen dieses Konto sehen darf.
+ *
+ * Gibt null zurück, wenn alle — das ist der Normalfall und spart der
+ * Themenliste jede zusätzliche Bedingung. Für Konten von außen kommt die Liste
+ * aus zwei Quellen: was sie selbst aufgemacht haben, und wozu die Band sie
+ * geholt hat.
+ */
+function visible_topic_ids(?array $user): ?array {
+  if (!$user || !is_outsider($user)) return null;
+  $eigene = array_column(rows('SELECT id FROM topics WHERE created_by = ?', [(int) $user['id']]), 'id');
+  $geteilt = array_column(rows('SELECT topic_id FROM topic_access WHERE user_id = ?', [(int) $user['id']]), 'topic_id');
+  return array_map('intval', array_unique([...$eigene, ...$geteilt]));
+}
+
+/** Darf dieses Konto dieses eine Thema sehen? */
+function may_see_topic(?array $user, int $topicId): bool {
+  $erlaubt = visible_topic_ids($user);
+  return $erlaubt === null || in_array($topicId, $erlaubt, true);
+}
+
+/** Wer von außen zu diesem Thema geholt wurde, mit Namen. */
+function topic_outsiders(int $topicId): array {
+  return rows('SELECT u.id, u.name FROM topic_access a JOIN users u ON u.id = a.user_id
+               WHERE a.topic_id = ? ORDER BY u.name', [$topicId]);
+}
+
+// ---------- Verträge (#303) ----------
+
+/** Was ein Vertrag durchläuft. Mehr Zustände braucht niemand. */
+const CONTRACT_STATUSES = ['entwurf', 'verschickt', 'unterschrieben'];
+
+/**
+ * Die Platzhalter der Vertragsvorlage. Der Schlüssel steht im Text in
+ * geschweiften Klammern, der Wert kommt aus Termin, Ort, Veranstalter und
+ * Angebot. Was nicht bekannt ist, bleibt als Punktreihe stehen — ein Vertrag
+ * mit einer sichtbaren Lücke ist besser als einer, der eine Lücke verschweigt.
+ */
+function contract_values(array $vertrag): array {
+  $punkte = '.....................';
+  $ort = trim(event_place($vertrag));
+  $spiel = trim((string) $vertrag['play_from']) !== '' && trim((string) $vertrag['play_to']) !== ''
+    ? $vertrag['play_from'] . '–' . $vertrag['play_to'] . ' Uhr' : $punkte;
+  return [
+    '{band}' => setting('band_name') ?: $punkte,
+    '{veranstalter}' => trim((string) ($vertrag['promoter_name'] ?? '')) ?: $punkte,
+    '{veranstalter_anschrift}' => trim(implode(', ', array_filter([
+      trim((string) ($vertrag['promoter_street'] ?? '')),
+      trim(trim((string) ($vertrag['promoter_postcode'] ?? '')) . ' ' . trim((string) ($vertrag['promoter_city'] ?? ''))),
+    ]))) ?: $punkte,
+    '{ort}' => $ort !== '' ? $ort : $punkte,
+    '{datum}' => !empty($vertrag['event_date']) ? fmt_date($vertrag['event_date']) : $punkte,
+    '{spielzeit}' => $spiel,
+    '{einlass}' => trim((string) $vertrag['get_in']) !== '' ? $vertrag['get_in'] . ' Uhr' : $punkte,
+    '{gage}' => (int) $vertrag['fee_cents'] > 0 ? fmt_money((int) $vertrag['fee_cents']) : $punkte,
+    '{vertragsnummer}' => trim((string) $vertrag['contract_no']) ?: $punkte,
+    '{heute}' => fmt_date(date('Y-m-d')),
+  ];
+}
+
+/** Die Vorlage: was die Band eingetragen hat, sonst die mitgelieferte. */
+function contract_template(): string {
+  $eigen = (string) setting('contract_text');
+  return trim($eigen) !== '' ? $eigen : t('contract_template');
+}
+
+/** Aus der Vorlage wird der Wortlaut dieses Vertrages. */
+function contract_render(array $vertrag): string {
+  return strtr(contract_template(), contract_values($vertrag));
+}
+
+/** Ein Vertrag mit allem, was sein Wortlaut braucht. */
+function contract_full(int $id): ?array {
+  return row('SELECT c.*, p.name AS promoter_name, p.contact_name AS promoter_contact,
+                     p.email AS promoter_email, p.street AS promoter_street,
+                     p.postcode AS promoter_postcode, p.city AS promoter_city,
+                     e.title AS event_title, e.date AS event_date, ' . EVENT_PLACE_COLS . '
+              FROM contracts c
+              LEFT JOIN promoters p ON p.id = c.promoter_id
+              LEFT JOIN events e ON e.id = c.event_id ' . EVENT_PLACE_JOIN . '
+              WHERE c.id = ?', [$id]);
+}
+
+/** Der Vertragsstand je Termin, für die Terminkarte. */
+function contract_status_by_event(array $eventIds): array {
+  if (!$eventIds) return [];
+  $marken = implode(',', array_fill(0, count($eventIds), '?'));
+  $karte = [];
+  foreach (rows("SELECT id, event_id, status FROM contracts WHERE event_id IN ($marken) ORDER BY id", $eventIds) as $z) {
+    $karte[(int) $z['event_id']] = $z;
+  }
+  return $karte;
+}
+
+function contract_status_label(string $status): string {
+  return t('contract_status_' . $status);
+}
+
 // ---------- Kalkulation (#302) ----------
 //
 // Gerechnet wird durchgehend in Cent. Ein Angebot, das sich um einen Cent nicht
@@ -5284,7 +5547,7 @@ const MODULE_ICONS = [
   'abwesenheiten' => '🏖', 'aufgaben' => '✅', 'themen' => '💬', 'kasse' => '💰',
   'equipment' => '🎛', 'rider' => '📋', 'fotos' => '📷', 'post' => '✉',
   'musik' => '🎬', 'downloads' => '⬇', 'mitglieder' => '👥', 'gaeste' => '🎟',
-  'angebote' => '🧮', 'mailversand' => '📨',
+  'angebote' => '🧮', 'vertraege' => '✍', 'mailversand' => '📨',
 ];
 
 /**
@@ -5310,7 +5573,7 @@ const HELP_TASKS = [
   ['', 'help_task_notify', 'hilfe-push'],
 ];
 
-const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote'];
+const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote', 'contract'];
 
 /**
  * Trägt dieser Bogen Logo beziehungsweise Wasserzeichen? Je Dokument
@@ -7104,6 +7367,10 @@ function event_view_data(array $events, array $me): array {
     'guestsByEvent' => $guestsByEvent,
     'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
     'guestRatings' => guest_ratings_map($guestBookingIds, (int) $me['id']),
+    // Der Vertragsstand je Termin (#303): Nur wer Verträge sehen darf,
+    // bekommt die Abfrage überhaupt — sonst fragt die Terminliste Zeilen
+    // ab, die der Lesende nie zu Gesicht bekommt.
+    'contractByEvent' => perm_allows($me, 'vertraege') ? contract_status_by_event($ids) : [],
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
   ];

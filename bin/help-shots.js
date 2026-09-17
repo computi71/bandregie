@@ -55,6 +55,7 @@ const AUFNAHMEN = [
   { name: 'mitglieder',    pfad: '/intern/mitglieder',    bild: ['section.card', 'table'] },
   { name: 'gaeste',        pfad: '/intern/gaeste',        bild: ['section.card'] },
   { name: 'angebote',      pfad: '/intern/angebote',      bild: ['section.card'] },
+  { name: 'vertraege',     pfad: '/intern/vertraege',     bild: ['section.card'] },
   { name: 'steuer',        pfad: '/intern/kasse/steuer',  bild: ['section.card', 'table'] },
 ];
 

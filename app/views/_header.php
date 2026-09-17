@@ -121,6 +121,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/orte' => [MODULE_ICONS['orte'], t('inav_orte')],
             '/intern/gaeste' => [MODULE_ICONS['gaeste'], t('inav_gaeste')],
             '/intern/angebote' => [MODULE_ICONS['angebote'], t('inav_angebote')],
+            '/intern/vertraege' => [MODULE_ICONS['vertraege'], t('inav_vertraege')],
           ]],
           ['🎼', t('inavg_musik'), [
             '/intern/songs' => [MODULE_ICONS['songs'], t('inav_songs')],

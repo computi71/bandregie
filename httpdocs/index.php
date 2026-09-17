@@ -2601,6 +2601,156 @@ if (str_starts_with($path, '/intern')) {
     back('/intern/termine');
   }
 
+  // ---------- Verträge (#303) ----------
+  if ($path === '/intern/vertraege' && $method === 'GET') {
+    $vertraege = rows('SELECT c.*, p.name AS promoter_name, e.title AS event_title, e.date AS event_date
+                       FROM contracts c
+                       LEFT JOIN promoters p ON p.id = c.promoter_id
+                       LEFT JOIN events e ON e.id = c.event_id
+                       ORDER BY COALESCE(e.date, c.contract_date) DESC, c.id DESC');
+    view('intern/vertraege', [
+      'title' => t('contract_title'),
+      'contracts' => $vertraege,
+      'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
+      'events' => rows("SELECT id, title, date, time, time_end, time_meet FROM events
+                        WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
+      // Welche Auftritte noch ohne Vertrag dastehen — das ist die Frage, die
+      // vier Wochen vorher gestellt wird.
+      'ohneVertrag' => rows("SELECT e.id, e.title, e.date FROM events e
+                             LEFT JOIN contracts c ON c.event_id = e.id
+                             WHERE e.type = 'gig' AND e.status <> 'abgesagt' AND e.date >= ? AND c.id IS NULL
+                             ORDER BY e.date", [$today]),
+    ]);
+  }
+  if ($path === '/intern/vertraege' && $method === 'POST') {
+    $vEvent = row('SELECT * FROM events WHERE id = ?', [(int) ($_POST['event_id'] ?? 0)]);
+    if (!$vEvent) { flash(t('fl_contract_event_required')); redirect('/intern/vertraege'); }
+    // Veranstalter: entweder einer aus der Liste oder einer, der hier entsteht.
+    $vPromoter = (int) ($_POST['promoter_id'] ?? 0);
+    $vNeu = trim((string) ($_POST['new_promoter'] ?? ''));
+    if ($vPromoter <= 0 && $vNeu !== '') {
+      q('INSERT INTO promoters (name) VALUES (?)', [mb_substr($vNeu, 0, 190)]);
+      $vPromoter = (int) $db->lastInsertId();
+    }
+    if ($vPromoter <= 0) { flash(t('fl_contract_promoter_required')); redirect('/intern/vertraege'); }
+    // Die Gage kommt aus dem Angebot zum selben Termin, wenn es eines gibt —
+    // abschreiben ist die Stelle, an der zwei Zahlen auseinanderlaufen.
+    $vAngebot = row('SELECT * FROM quotes WHERE event_id = ? ORDER BY id DESC LIMIT 1', [$vEvent['id']]);
+    $vGage = $vAngebot ? quote_totals($vAngebot, quote_items((int) $vAngebot['id']))['total'] : 0;
+    q('INSERT INTO contracts (event_id, promoter_id, quote_id, contract_date, fee_cents,
+                              play_from, play_to, get_in, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?)', [
+      $vEvent['id'], $vPromoter, $vAngebot['id'] ?? null, $today, $vGage,
+      (string) $vEvent['time'], (string) $vEvent['time_end'], (string) $vEvent['time_meet'], $me['id'],
+    ]);
+    $vId = (int) $db->lastInsertId();
+    // Wortlaut gleich bilden und einfrieren.
+    q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render(contract_full($vId) ?? []), $vId]);
+    flash(t('fl_contract_saved'));
+    redirect('/intern/vertraege/' . $vId);
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)$~', $path, $m) && $method === 'GET') {
+    $vertrag = contract_full((int) $m[1]);
+    if (!$vertrag) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
+    view('intern/vertrag', [
+      'title' => t('contract_sheet_title'),
+      'contract' => $vertrag,
+      'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
+      'events' => rows("SELECT id, title, date FROM events WHERE type = 'gig' ORDER BY date DESC LIMIT 100"),
+      'quote' => $vertrag['quote_id'] ? row('SELECT * FROM quotes WHERE id = ?', [$vertrag['quote_id']]) : null,
+    ]);
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)/update$~', $path, $m) && $method === 'POST') {
+    $vertrag = row('SELECT * FROM contracts WHERE id = ?', [$m[1]]);
+    if (!$vertrag) back('/intern/vertraege');
+    $vGage = price_to_cents((string) ($_POST['fee'] ?? ''));
+    $vZeit = static fn(string $feld): string =>
+      preg_match('~^\d{1,2}:\d{2}$~', (string) ($_POST[$feld] ?? '')) ? $_POST[$feld] : '';
+    // Der Wortlaut ist nur änderbar, solange nichts verschickt ist. Danach steht
+    // er so, wie er das Haus verlassen hat.
+    $vBody = $vertrag['status'] === 'entwurf' ? (string) ($_POST['body'] ?? $vertrag['body']) : $vertrag['body'];
+    q('UPDATE contracts SET event_id = ?, promoter_id = ?, contract_no = ?, contract_date = ?, fee_cents = ?,
+         play_from = ?, play_to = ?, get_in = ?, body = ?, notes = ? WHERE id = ?', [
+      ((int) ($_POST['event_id'] ?? 0) ?: null),
+      ((int) ($_POST['promoter_id'] ?? 0) ?: null),
+      mb_substr(trim((string) ($_POST['contract_no'] ?? '')), 0, 60),
+      preg_match('~^\d{4}-\d{2}-\d{2}$~', (string) ($_POST['contract_date'] ?? '')) ? $_POST['contract_date'] : $vertrag['contract_date'],
+      max(0, $vGage ?? 0), $vZeit('play_from'), $vZeit('play_to'), $vZeit('get_in'),
+      $vBody, trim((string) ($_POST['notes'] ?? '')), $m[1],
+    ]);
+    flash(t('fl_contract_saved'));
+    redirect('/intern/vertraege/' . $m[1]);
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)/stand$~', $path, $m) && $method === 'POST') {
+    $vStand = (string) ($_POST['status'] ?? '');
+    if (!in_array($vStand, CONTRACT_STATUSES, true)) back('/intern/vertraege/' . $m[1]);
+    // Die Stempel gehören zum Stand: „verschickt" ohne Datum ist eine Behauptung.
+    q('UPDATE contracts SET status = ?,
+         sent_at = CASE WHEN ? IN (\'verschickt\', \'unterschrieben\') THEN COALESCE(sent_at, NOW()) ELSE NULL END,
+         signed_at = CASE WHEN ? = \'unterschrieben\' THEN COALESCE(signed_at, NOW()) ELSE NULL END
+       WHERE id = ?', [$vStand, $vStand, $vStand, $m[1]]);
+    flash(sprintf(t('fl_contract_status'), contract_status_label($vStand)));
+    back('/intern/vertraege/' . $m[1]);
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)/neu-bilden$~', $path, $m) && $method === 'POST') {
+    $vertrag = contract_full((int) $m[1]);
+    if ($vertrag && $vertrag['status'] === 'entwurf') {
+      q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render($vertrag), $m[1]]);
+      flash(t('fl_contract_saved'));
+    }
+    back('/intern/vertraege/' . $m[1]);
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM contracts WHERE id = ?', [$m[1]]);
+    flash(t('fl_contract_deleted'));
+    redirect('/intern/vertraege');
+  }
+  if (preg_match('~^/intern/vertraege/(\d+)/druck$~', $path, $m) && $method === 'GET') {
+    $vertrag = contract_full((int) $m[1]);
+    if (!$vertrag) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
+    view('intern/vertrag_print', [
+      'title' => t('contract_sheet_title') . ' · ' . ($vertrag['event_title'] ?? ''),
+      'contract' => $vertrag,
+    ]);
+  }
+  // Veranstalter pflegen — die Liste lebt bei den Verträgen, sie hat sonst
+  // keinen Ort und wäre als eigener Menüpunkt eine leere Seite.
+  if ($path === '/intern/vertraege/veranstalter' && $method === 'POST') {
+    $pName = trim((string) ($_POST['name'] ?? ''));
+    if ($pName === '') { flash(t('fl_contract_promoter_required')); back('/intern/vertraege'); }
+    $pK = $gastKontakt($_POST);
+    q('INSERT INTO promoters (name, contact_name, email, phone, mobile, street, postcode, city, notes)
+       VALUES (?,?,?,?,?,?,?,?,?)', [
+      mb_substr($pName, 0, 190), mb_substr(trim((string) ($_POST['contact_name'] ?? '')), 0, 190),
+      $pK['email'], $pK['phone'], $pK['mobile'], $pK['street'], $pK['postcode'], $pK['city'],
+      trim((string) ($_POST['notes'] ?? '')),
+    ]);
+    flash(t('fl_contract_saved'));
+    back('/intern/vertraege');
+  }
+  if (preg_match('~^/intern/vertraege/veranstalter/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
+    if ($m[2] === 'delete') {
+      // Ein Veranstalter, an dem ein Vertrag hängt, verschwindet nicht — sonst
+      // stünde im Vertrag plötzlich niemand mehr.
+      if (!row('SELECT id FROM contracts WHERE promoter_id = ? LIMIT 1', [$m[1]])) {
+        q('DELETE FROM promoters WHERE id = ?', [$m[1]]);
+        flash(t('fl_contract_deleted'));
+      }
+      back('/intern/vertraege');
+    }
+    $pName = trim((string) ($_POST['name'] ?? ''));
+    if ($pName === '') { flash(t('fl_contract_promoter_required')); back('/intern/vertraege'); }
+    $pK = $gastKontakt($_POST);
+    q('UPDATE promoters SET name = ?, contact_name = ?, email = ?, phone = ?, mobile = ?,
+         street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
+      mb_substr($pName, 0, 190), mb_substr(trim((string) ($_POST['contact_name'] ?? '')), 0, 190),
+      $pK['email'], $pK['phone'], $pK['mobile'], $pK['street'], $pK['postcode'], $pK['city'],
+      trim((string) ($_POST['notes'] ?? '')), $m[1],
+    ]);
+    flash(t('fl_contract_saved'));
+    back('/intern/vertraege');
+  }
+
   // ---------- Angebote (#302) ----------
   if ($path === '/intern/angebote' && $method === 'GET') {
     $angebote = rows('SELECT q.*, e.title AS event_title, e.date AS event_date
@@ -2832,7 +2982,7 @@ if (str_starts_with($path, '/intern')) {
         // Rolle: nur Admin, und nicht die eigene (sonst sperrt man sich aus).
         // In der Demo gar nicht — siehe oben.
         if (!is_demo() && (int) $m[1] !== (int) $me['id']
-            && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz'], true)) {
+            && in_array($_POST['role'] ?? '', ['admin', 'member', 'ersatz', 'booking'], true)) {
           $roleBefore = row('SELECT role FROM users WHERE id = ?', [$m[1]])['role'] ?? '';
           q('UPDATE users SET role = ? WHERE id = ?', [$_POST['role'], $m[1]]);
           // Eine neue Rolle bringt ihre Rechte mit; einzeln nachbessern geht
@@ -2877,7 +3027,7 @@ if (str_starts_with($path, '/intern')) {
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? ''),
           trim($_POST['first_name'] ?? ''), trim($_POST['last_name'] ?? ''),
           $email !== '' ? $email : null, password_hash($startPw, PASSWORD_DEFAULT),
-          in_array($_POST['role'] ?? '', ['admin', 'ersatz'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
+          in_array($_POST['role'] ?? '', ['admin', 'ersatz', 'booking'], true) ? $_POST['role'] : 'member', $_POST['instrument'] ?? '',
           $email !== '' ? 1 : 0, $email !== '' ? date('Y-m-d H:i:s') : null,
         ]);
         // Rechte nach der Vorlage der Rolle; Admins brauchen keine Zeilen
@@ -3468,13 +3618,24 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Diskussionsthemen ----------
   if ($path === '/intern/themen' && $method === 'GET') {
+    // Für Konten von außen wird die Liste eingeschränkt (#308). null heißt
+    // „alle" — dann bleibt die Abfrage genau die, die sie immer war.
+    $themenIds = visible_topic_ids($me);
+    $themenWo = '';
+    $themenArgs = [];
+    if ($themenIds !== null) {
+      if (!$themenIds) $themenIds = [0];   // nichts sehen heißt: keine Zeile trifft zu
+      $themenWo = ' WHERE t.id IN (' . implode(',', array_fill(0, count($themenIds), '?')) . ')';
+      $themenArgs = $themenIds;
+    }
     view('intern/themen', [
       'title' => t('inav_themen'),
       'topics' => rows('SELECT t.*, u.name AS author,
                                (SELECT COUNT(*) FROM topic_posts p WHERE p.topic_id = t.id) AS posts,
                                (SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id) AS last_post
-                        FROM topics t LEFT JOIN users u ON u.id = t.created_by
-                        ORDER BY t.closed, COALESCE((SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id), t.created_at) DESC'),
+                        FROM topics t LEFT JOIN users u ON u.id = t.created_by' . $themenWo . '
+                        ORDER BY t.closed, COALESCE((SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id), t.created_at) DESC',
+                       $themenArgs),
     ]);
   }
   if ($path === '/intern/themen' && $method === 'POST') {
@@ -3492,18 +3653,42 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/themen/(\d+)$~', $path, $m) && $method === 'GET') {
     $topic = row('SELECT t.*, u.name AS author FROM topics t LEFT JOIN users u ON u.id = t.created_by WHERE t.id = ?', [$m[1]]);
-    if (!$topic) { http_response_code(404); view('404', ['title' => t('inav_themen')]); }
+    // Nicht sehen dürfen und nicht vorhanden sehen gleich aus — sonst verrät
+    // die Antwort, dass es das Thema gibt.
+    if (!$topic || !may_see_topic($me, (int) $topic['id'])) { http_response_code(404); view('404', ['title' => t('inav_themen')]); }
     view('intern/thema', [
       'title' => $topic['title'],
       'topic' => $topic,
+      'outsiders' => topic_outsiders((int) $topic['id']),
+      // Wen die Band überhaupt dazuholen könnte: alle Konten von außen.
+      'outsideAccounts' => rows("SELECT id, name FROM users WHERE role = 'booking' ORDER BY name"),
       'posts' => rows('SELECT p.*, u.name AS author FROM topic_posts p LEFT JOIN users u ON u.id = p.user_id
                        WHERE p.topic_id = ? ORDER BY p.created_at', [$m[1]]),
     ]);
   }
+  // Jemanden von außen zu einem Thema holen oder wieder herausnehmen (#308).
+  // Nur wer schreiben darf, und niemals durch das Konto selbst.
+  if (preg_match('~^/intern/themen/(\d+)/gast$~', $path, $m) && $method === 'POST') {
+    if (is_outsider($me)) { flash(t('fl_no_permission')); redirect('/intern/themen'); }
+    $tKonto = row("SELECT id, name FROM users WHERE id = ? AND role = 'booking'", [(int) ($_POST['user_id'] ?? 0)]);
+    if ($tKonto && row('SELECT id FROM topics WHERE id = ?', [$m[1]])) {
+      if (($_POST['do'] ?? '') === 'remove') {
+        q('DELETE FROM topic_access WHERE topic_id = ? AND user_id = ?', [$m[1], $tKonto['id']]);
+        flash(sprintf(t('fl_topic_guest_removed'), $tKonto['name']));
+      } else {
+        q('INSERT IGNORE INTO topic_access (topic_id, user_id) VALUES (?,?)', [$m[1], $tKonto['id']]);
+        flash(sprintf(t('fl_topic_guest_added'), $tKonto['name']));
+      }
+    }
+    back('/intern/themen/' . $m[1]);
+  }
   if (preg_match('~^/intern/themen/(\d+)/(antwort|schliessen|delete)$~', $path, $m) && $method === 'POST') {
     [$_, $topicId, $action] = $m;
     $topic = row('SELECT * FROM topics WHERE id = ?', [$topicId]);
-    if (!$topic) redirect('/intern/themen');
+    // Antworten, schließen und löschen setzen voraus, dass man das Thema
+    // überhaupt sehen darf — sonst ließe sich ein fremdes über seine Nummer
+    // erreichen (#308).
+    if (!$topic || !may_see_topic($me, (int) $topic['id'])) redirect('/intern/themen');
     if ($action === 'antwort' && !$topic['closed'] && trim($_POST['text'] ?? '') !== '') {
       q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)', [$topicId, $me['id'], trim($_POST['text'])]);
     }
@@ -4203,6 +4388,15 @@ if (str_starts_with($path, '/intern')) {
     set_setting('quote_km_free', (string) max(0, (int) ($_POST['quote_km_free'] ?? 0)));
     set_setting('quote_discount_private',
                 (string) max(0, min(100, (float) str_replace(',', '.', (string) ($_POST['quote_discount_private'] ?? 0)))));
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Die Vertragsvorlage (#303). Leer heißt „nimm die mitgelieferte" — deshalb
+  // wird der Text nur gespeichert, wenn er sich von ihr unterscheidet.
+  if ($path === '/intern/einstellungen/vertrag' && $method === 'POST') {
+    require_admin();
+    $vText = trim((string) ($_POST['contract_text'] ?? ''));
+    set_setting('contract_text', $vText === '' || $vText === trim(t('contract_template')) ? '' : $vText);
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }

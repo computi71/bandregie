@@ -40,4 +40,37 @@
     </form>
   <?php endif; ?>
 </div>
+
+<?php // Wen die Band von außen dazugeholt hat (#308). Für Mitglieder ist das
+      // eine Randnotiz; für den Bookingagenten ist es der Unterschied zwischen
+      // „sieht das Thema" und „sieht es nicht". ?>
+<?php if (!is_outsider($user) && ($outsideAccounts ?? [])): ?>
+  <details class="card acc">
+    <summary>👤 <?= e(t('topic_guests')) ?><?= $outsiders ? ' (' . count($outsiders) . ')' : '' ?></summary>
+    <p class="muted small"><?= e(t('topic_guests_hint')) ?></p>
+    <?php if (!$outsiders): ?><p class="muted small"><?= e(t('topic_guests_none')) ?></p><?php endif; ?>
+    <?php foreach ($outsiders as $ou): ?>
+      <p class="row-buttons">
+        <span><?= e($ou['name']) ?></span>
+        <?php if (perm_allows($user, 'themen', 'write')): ?>
+          <form class="inline" method="post" action="/intern/themen/<?= (int) $topic['id'] ?>/gast"><?= csrf_field() ?>
+            <input type="hidden" name="user_id" value="<?= (int) $ou['id'] ?>">
+            <input type="hidden" name="do" value="remove">
+            <button class="btn btn-tiny btn-danger"><?= e(t('topic_guest_remove')) ?></button>
+          </form>
+        <?php endif; ?>
+      </p>
+    <?php endforeach; ?>
+    <?php if (perm_allows($user, 'themen', 'write')): ?>
+      <form method="post" action="/intern/themen/<?= (int) $topic['id'] ?>/gast" class="row-buttons"><?= csrf_field() ?>
+        <select name="user_id">
+          <?php foreach ($outsideAccounts as $oa): ?>
+            <option value="<?= (int) $oa['id'] ?>"><?= e($oa['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <button class="btn btn-small"><?= e(t('topic_guest_add')) ?></button>
+      </form>
+    <?php endif; ?>
+  </details>
+<?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

@@ -167,6 +167,23 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 <?php // Die Preisliste der Kalkulation (#302): einmal hinterlegt, danach rechnet
       // jede Anfrage damit. Leer lassen ist erlaubt — dann zählt nur, was von
       // Hand im Angebot steht. ?>
+<?php // Die Vertragsvorlage (#303). Sie gehört der Band; wir liefern nur eine
+      // erste Fassung mit und sagen dazu, dass wir keine Rechtsberatung sind. ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_contract_title')) ?></summary>
+  <p class="muted small"><?= e(t('set_contract_intro')) ?></p>
+  <p class="warn small">⚖ <?= e(t('set_contract_legal')) ?></p>
+  <form method="post" action="/intern/einstellungen/vertrag" class="form-grid"><?= csrf_field() ?>
+    <label class="span2"><?= e(t('contract_body')) ?>
+      <textarea name="contract_text" rows="20"><?= e(contract_template()) ?></textarea>
+      <span class="muted small"><?= e(t('set_contract_fields')) ?></span></label>
+    <p class="muted small span2"><?= e(implode('  ', array_keys(contract_values([
+        'play_from' => '', 'play_to' => '', 'get_in' => '', 'fee_cents' => 0, 'contract_no' => '',
+      ])))) ?></p>
+    <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
+  </form>
+</details>
+
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_quote_title')) ?></summary>
   <p class="muted small"><?= e(t('set_quote_intro')) ?></p>

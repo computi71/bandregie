@@ -538,6 +538,7 @@ TXT,
   demo_install_stage_plot($members);
   demo_install_topics($members);
   demo_install_quote($evNext, $members[0]);
+  demo_install_contract($evNext, $members[0]);
   demo_install_orders($members);
   $sub = demo_install_substitute($members, $evNext, $pw);
   demo_install_photos($members[0], $evPast, $members);
@@ -707,6 +708,31 @@ function demo_install_quote(int $eventId, int $wer): void {
   quote_save_items($id, $angebot, [['label' => 'Sound engineer (guest)', 'amount_cents' => 18000]]);
   $zwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], quote_items($id)));
   q('UPDATE quotes SET discount_cents = ? WHERE id = ?', [(int) round($zwischen * 0.10), $id]);
+}
+
+/**
+ * Ein Veranstalter und ein Vertrag zum kommenden Gig (#303) — sonst steht der
+ * Bereich in der Demo leer da und niemand sieht, wozu er gut ist.
+ */
+function demo_install_contract(int $eventId, int $wer): void {
+  $event = row('SELECT * FROM events WHERE id = ?', [$eventId]);
+  if (!$event) return;
+  $veranstalter = demo_insert('promoters', [
+    'name' => 'Sampleton Town Council', 'contact_name' => 'Ms Sommer',
+    'email' => 'buehne@example.com', 'phone' => '0123 456789',
+    'street' => '3 Hall Lane', 'postcode' => '12345', 'city' => 'Sampleton',
+    'notes' => 'Pays by invoice within two weeks.',
+  ]);
+  $angebot = row('SELECT * FROM quotes WHERE event_id = ? ORDER BY id DESC LIMIT 1', [$eventId]);
+  $gage = $angebot ? quote_totals($angebot, quote_items((int) $angebot['id']))['total'] : 0;
+  $id = demo_insert('contracts', [
+    'event_id' => $eventId, 'promoter_id' => $veranstalter, 'quote_id' => $angebot['id'] ?? null,
+    'contract_no' => 'V-2026-014', 'contract_date' => date('Y-m-d', strtotime('-5 days')),
+    'fee_cents' => $gage, 'play_from' => (string) $event['time'], 'play_to' => (string) $event['time_end'],
+    'get_in' => (string) $event['time_meet'], 'status' => 'verschickt',
+    'sent_at' => date('Y-m-d H:i:s', strtotime('-4 days')), 'created_by' => $wer,
+  ]);
+  q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render(contract_full($id) ?? []), $id]);
 }
 
 function demo_write_logins(array $logins): void {
@@ -1070,7 +1096,7 @@ function demo_remove(): void {
   // oben schon weg — sie haben keinen eigenen Schlüssel und gehören hier
   // deshalb nicht in die Liste.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
-            'guest_bookings', 'guests', 'quotes',
+            'guest_bookings', 'guests', 'contracts', 'promoters', 'quotes',
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];

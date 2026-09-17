@@ -36,5 +36,13 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
   <?php if ($naviDest !== ''): ?><a class="badge link navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener" title="<?= e(t('geo_navigate')) ?>">🧭 <?= e(t('geo_navigate')) ?></a><?php endif; ?>
   <?php if ($ev['is_public'] && public_page_active()): ?><span class="badge public"><?= e(t('ev_public_badge')) ?></span><?php endif; ?>
   <?php if ($ev['setlist_id']): ?><a class="badge link" href="/intern/setlists/<?= (int) $ev['setlist_id'] ?>">🎵 <?= e(t('ev_setlist')) ?></a><?php endif; ?>
+  <?php // Der Vertragsstand steht hier und nicht in einer eigenen Liste: Die
+        // Frage „ist das Papier zurück?" stellt sich beim Blick auf den Termin
+        // und nirgends sonst (#303). ?>
+  <?php $evVertrag = ($contractByEvent ?? [])[(int) $ev['id']] ?? null; ?>
+  <?php if ($evVertrag): ?>
+    <a class="badge link <?= $evVertrag['status'] === 'unterschrieben' ? 'public' : '' ?>"
+       href="/intern/vertraege/<?= (int) $evVertrag['id'] ?>">✍ <?= e(contract_status_label((string) $evVertrag['status'])) ?></a>
+  <?php endif; ?>
 </div>
 <?php if ($zeiten): ?><p class="muted small"><?= e(implode(' · ', $zeiten)) ?></p><?php endif; ?>
