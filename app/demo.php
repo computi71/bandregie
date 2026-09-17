@@ -1057,6 +1057,12 @@ function demo_remove(): void {
     q('DELETE FROM photo_tags WHERE photo_id = ?', [$photoId]);
     q('DELETE FROM photo_people WHERE photo_id = ?', [$photoId]);
   }
+  // Die Posten eines Angebots werden von quote_save_items() geschrieben, nicht
+  // von demo_insert() — sie stehen in keiner Demo-Liste und blieben sonst als
+  // Waisen zurück, wenn ihr Angebot verschwindet.
+  foreach ($byTable['quotes'] ?? [] as $quoteId) {
+    q('DELETE FROM quote_items WHERE quote_id = ?', [$quoteId]);
+  }
 
   // Kindzeilen zuerst, dann die Haupttabellen
   // Kinder vor Eltern: Buchungen vor Gästen, Antworten vor Nachrichten;
@@ -1064,7 +1070,7 @@ function demo_remove(): void {
   // oben schon weg — sie haben keinen eigenen Schlüssel und gehören hier
   // deshalb nicht in die Liste.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
-            'guest_bookings', 'guests', 'quote_items', 'quotes',
+            'guest_bookings', 'guests', 'quotes',
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
