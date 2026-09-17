@@ -237,6 +237,12 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 /* Die Bilder sind gezeichnet und nehmen die Farben der Oberfläche an. Ein
    Bildschirmfoto wäre in einer Sprache richtig und nach der nächsten Änderung
    falsch; eine Zeichnung zeigt die Form und bleibt stehen. */
+/* Ein Bildschirmfoto aus der Demo: gerahmt, damit es sich vom Text abhebt, und
+   breiter als eine Zeichnung, weil darauf Beschriftungen lesbar bleiben müssen. */
+.helpshot {
+  display: block; width: 100%; max-width: 34rem; height: auto;
+  margin: 0.2rem 0 1rem; border: 1px solid var(--border); border-radius: 10px;
+}
 .helpfig { display: block; width: 100%; max-width: 22rem; height: auto; margin: 0.2rem 0 1rem; }
 .helpfig .hf-card { fill: var(--bg-elevated); stroke: var(--border); stroke-width: 1.5; }
 .helpfig .hf-card-fill { fill: var(--bg-card); }

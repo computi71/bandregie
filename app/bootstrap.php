@@ -659,6 +659,7 @@ const UI_STRINGS = [
   // Der alte Einleitungssatz bleibt stehen — seine Übersetzungen auch. Der
   // zweite Satz kommt dazu, statt den ersten zu ersetzen.
   'help_intro2' => 'Jeder Bereich ist mit einem Bild erklärt, in normalen Worten. Du musst nichts auswendig können: Such dir unten die Zeile, die zu deinem Vorhaben passt.',
+  'help_shot_alt' => 'Bildschirmfoto: %s',
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
   'help_open' => 'Diesen Bereich öffnen',

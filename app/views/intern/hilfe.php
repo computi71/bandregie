@@ -37,7 +37,7 @@ require_once BASE_DIR . '/app/help_figures.php';
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
   <details id="hilfe-<?= e($helpMod) ?>" class="card acc" name="helpacc" <?= $helpFirst ? 'open' : '' ?>>
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
-    <?= help_figure($helpMod) ?>
+    <?= help_picture($helpMod, t('inav_' . $helpMod)) ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
     <?php // Bis zu drei Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
           // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
@@ -63,7 +63,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php if (perm_allows($user, 'kasse')): ?>
   <details id="hilfe-steuer" class="card acc" name="helpacc">
     <summary>⚖ <?= e(t('taxr_title')) ?></summary>
-    <?= help_figure('steuer') ?>
+    <?= help_picture('steuer', t('taxr_title')) ?>
     <p class="help-lead"><?= e(t('help_taxr_what')) ?></p>
     <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
     <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
@@ -147,7 +147,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php if (push_available()): ?>
   <details id="hilfe-push" class="card acc" name="helpacc">
     <summary>🔕 <?= e(t('help_push_trouble_title')) ?></summary>
-    <?= help_figure('push') ?>
+    <?= help_picture('push', t('help_push_trouble_title')) ?>
     <p class="help-lead"><?= e(t('help_push_trouble_intro')) ?></p>
     <ul class="task-list">
       <li><?= e(t('help_push_trouble_app')) ?></li>
@@ -168,7 +168,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php if (totp_available() || totp_active((int) $user['id'])): ?>
   <details id="hilfe-totp" class="card acc" name="helpacc">
     <summary>🔑 <?= e(t('help_totp_title')) ?></summary>
-    <?= help_figure('totp') ?>
+    <?= help_picture('totp', t('help_totp_title')) ?>
     <p class="help-lead"><?= e(t('help_totp_what')) ?></p>
     <p class="muted"><?= e(t('help_totp_apps')) ?></p>
     <p class="muted"><?= e(t('help_totp_setup')) ?></p>
@@ -183,7 +183,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php if (passkey_available()): ?>
   <details id="hilfe-passkey" class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
-    <?= help_figure('passkey') ?>
+    <?= help_picture('passkey', t('help_passkey_title')) ?>
     <p class="help-lead"><?= e(t('help_passkey')) ?></p>
     <p class="muted">☁ <?= e(t('help_passkey_sync')) ?></p>
     <p class="muted small"><a href="/intern/profil"><?= e(t('prof_passkeys')) ?> →</a></p>
@@ -192,7 +192,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 
 <details id="hilfe-app" class="card acc" name="helpacc">
   <summary>📱 <?= e(t('app_install')) ?></summary>
-  <?= help_figure('app') ?>
+  <?= help_picture('app', t('app_install')) ?>
   <p class="help-lead"><?= e(t('app_install_hint')) ?></p>
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>
