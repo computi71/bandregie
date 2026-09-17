@@ -93,4 +93,36 @@ $entwurf = $contract['status'] === 'entwurf';
   </form>
 </div>
 <?php endif; ?>
+
+<?php // Wen die Band von außen zu diesem Vertrag geholt hat (#309). Ein
+      // Bookingagent sieht sonst nur, was er selbst angelegt hat. ?>
+<?php if (!is_outsider($user) && ($outsideAccounts ?? [])): ?>
+  <details class="card acc">
+    <summary>👤 <?= e(t('contract_guests')) ?><?= $outsiders ? ' (' . count($outsiders) . ')' : '' ?></summary>
+    <p class="muted small"><?= e(t('contract_guests_hint')) ?></p>
+    <?php if (!$outsiders): ?><p class="muted small"><?= e(t('contract_guests_none')) ?></p><?php endif; ?>
+    <?php foreach ($outsiders as $ou): ?>
+      <p class="row-buttons">
+        <span><?= e($ou['name']) ?></span>
+        <?php if ($darf): ?>
+          <form class="inline" method="post" action="/intern/vertraege/<?= (int) $contract['id'] ?>/gast"><?= csrf_field() ?>
+            <input type="hidden" name="user_id" value="<?= (int) $ou['id'] ?>">
+            <input type="hidden" name="do" value="remove">
+            <button class="btn btn-tiny btn-danger"><?= e(t('topic_guest_remove')) ?></button>
+          </form>
+        <?php endif; ?>
+      </p>
+    <?php endforeach; ?>
+    <?php if ($darf): ?>
+      <form method="post" action="/intern/vertraege/<?= (int) $contract['id'] ?>/gast" class="row-buttons"><?= csrf_field() ?>
+        <select name="user_id">
+          <?php foreach ($outsideAccounts as $oa): ?>
+            <option value="<?= (int) $oa['id'] ?>"><?= e($oa['name']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <button class="btn btn-small"><?= e(t('topic_guest_add')) ?></button>
+      </form>
+    <?php endif; ?>
+  </details>
+<?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

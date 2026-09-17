@@ -670,6 +670,17 @@ const UI_STRINGS = [
   // Verträge (#303)
   'inav_vertraege' => 'Verträge',
   // Themen: wen die Band von außen dazuholt (#308)
+  'ev_busy' => 'Belegt',
+  'contract_guests' => 'Von außen dabei',
+  'contract_guests_hint' => 'Ein Bookingagent sieht nur die Verträge, die er selbst angelegt hat. Wen ihr hier eintragt, der sieht auch diesen.',
+  'contract_guests_none' => 'Niemand von außen.',
+  'fl_contract_guest_added' => '%s sieht diesen Vertrag jetzt.',
+  'fl_contract_guest_removed' => '%s sieht diesen Vertrag nicht mehr.',
+  'set_booking_title' => 'Bookingagent',
+  'set_booking_scope' => 'Was ein Bookingagent im Kalender sieht',
+  'set_booking_scope_busy' => 'nur, dass ein Tag belegt ist',
+  'set_booking_scope_all' => 'die Termine mit Inhalt',
+  'set_booking_scope_hint' => 'Wer von außen bucht, muss wissen, ob ein Samstag noch frei ist — nicht, was die Band an dem Abend macht. Was er selbst einträgt, sieht er in jedem Fall vollständig.',
   'topic_guests' => 'Von außen dabei',
   'topic_guests_hint' => 'Wer nicht in der Band ist, sieht dieses Thema nur, wenn er hier steht. Für Mitglieder ändert das nichts — die sehen ohnehin alles.',
   'topic_guest_add' => 'Dazuholen', 'topic_guest_remove' => 'Wieder herausnehmen',
@@ -2378,6 +2389,14 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Wer von außen welchen Vertrag sehen darf (#309) — dieselbe Idee wie bei den
+  // Themen: Die Liste lässt zu und nimmt nie weg.
+  "CREATE TABLE IF NOT EXISTS contract_access (
+    contract_id INT NOT NULL,
+    user_id INT NOT NULL,
+    PRIMARY KEY (contract_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Der Wortlaut steht in der Zeile und nicht in der Vorlage: Was verschickt
   // und unterschrieben wurde, darf sich nicht ändern, weil die Band ein halbes
   // Jahr später ihre Vorlage anfasst.
@@ -3196,6 +3215,10 @@ $defaults = [
   // gilt die mitgelieferte Vorlage in der Sprache der Installation. Sobald
   // jemand sie bearbeitet, steht sie hier und wird nie wieder überschrieben.
   'contract_text' => '',
+  // Wie viel ein Bookingagent vom Kalender sieht (#309). Zu heißt zu, solange
+  // niemand etwas anderes sagt: Eine Rolle, die mit offenem Kalender ankommt,
+  // hat schon durchgereicht, bevor jemand ans Zumachen denkt.
+  'booking_event_scope' => 'busy',
   'rider_stage' => '', 'rider_power' => '', 'rider_pa' => '', 'rider_monitor' => '',
   'rider_light' => '', 'rider_getin' => '', 'rider_extras' => '', 'rider_positions' => '',
   'rider_contact_tech' => '', 'rider_contact_booking' => '',
@@ -3381,6 +3404,14 @@ foreach (['mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
 }
 if (!column_exists('venues', 'contact_mobile')) {
   $db->exec("ALTER TABLE venues ADD COLUMN contact_mobile VARCHAR(60) NOT NULL DEFAULT '' AFTER contact_phone");
+}
+
+// Wer einen Termin eingetragen hat (#309). Gebraucht für den Bookingagenten:
+// Seine eigenen Anfragen muss er sehen, auch wenn ihm der übrige Kalender nur
+// als „belegt" erscheint. Bestehende Termine bleiben ohne Urheber — sie sind
+// von der Band und gehören damit zur zweiten Gruppe.
+if (!column_exists('events', 'created_by')) {
+  $db->exec('ALTER TABLE events ADD COLUMN created_by INT NULL');
 }
 
 // Verträge sehen und schreiben darf, wer schon Rechte-Zeilen hat (#303).
@@ -4768,6 +4799,76 @@ function invoice_label(array $inv): string {
 function invoice_item_count(int $invoiceId): int {
   return (int) (row('SELECT COUNT(*) AS n FROM equipment WHERE invoice_id = ?', [$invoiceId])['n'] ?? 0);
 }
+/**
+ * Welche Verträge dieses Konto sehen darf (#309).
+ *
+ * null heißt alle. Für Konten von außen: die selbst angelegten und die, zu
+ * denen die Band sie geholt hat — wie bei den Themen.
+ */
+function visible_contract_ids(?array $user): ?array {
+  if (!$user || !is_outsider($user)) return null;
+  $eigene = array_column(rows('SELECT id FROM contracts WHERE created_by = ?', [(int) $user['id']]), 'id');
+  $geteilt = array_column(rows('SELECT contract_id FROM contract_access WHERE user_id = ?', [(int) $user['id']]), 'contract_id');
+  return array_map('intval', array_unique([...$eigene, ...$geteilt]));
+}
+
+function may_see_contract(?array $user, int $contractId): bool {
+  $erlaubt = visible_contract_ids($user);
+  return $erlaubt === null || in_array($contractId, $erlaubt, true);
+}
+
+/** Wer von außen zu diesem Vertrag geholt wurde. */
+function contract_outsiders(int $contractId): array {
+  return rows('SELECT u.id, u.name FROM contract_access a JOIN users u ON u.id = a.user_id
+               WHERE a.contract_id = ? ORDER BY u.name', [$contractId]);
+}
+
+/**
+ * Sieht dieses Konto den Kalender mit Inhalt oder nur als belegt? (#309)
+ *
+ * Für alle in der Band: mit Inhalt. Für ein Konto von außen entscheidet die
+ * Band per Einstellung — und selbst dann bleiben die eigenen Einträge offen,
+ * sonst könnte ein Bookingagent mit seiner eigenen Anfrage nicht arbeiten.
+ */
+function event_scope_busy_only(?array $user): bool {
+  return is_outsider($user) && setting('booking_event_scope', 'busy') !== 'all';
+}
+
+/**
+ * Nimmt den Terminen ihren Inhalt, die dieses Konto nur als belegt sehen darf.
+ *
+ * Geschwärzt wird hier, wo die Zeilen gelesen werden, und nicht in den
+ * Ansichten. Eine Terminliste zieht Kommentare, Zusagen, Gäste und Dateien mit;
+ * eine Ansicht, die den Titel verbirgt, während ein Teilstück darunter den Ort
+ * ausgibt, hat nichts verborgen. Was hier zurückkommt, ist gefahrlos.
+ *
+ * Zurück kommen die bereinigten Termine und die Kennungen derer, die geschwärzt
+ * wurden — der Aufrufer wirft ihre Nebendaten damit gleich mit weg.
+ */
+function events_redact(array $events, ?array $user): array {
+  if (!event_scope_busy_only($user)) return [$events, []];
+  $geschwaerzt = [];
+  foreach ($events as $i => $ev) {
+    if ((int) ($ev['created_by'] ?? 0) === (int) $user['id']) continue;
+    $geschwaerzt[] = (int) $ev['id'];
+    $events[$i] = [
+      'id' => (int) $ev['id'], 'date' => $ev['date'], 'type' => $ev['type'],
+      'status' => $ev['status'], 'title' => t('ev_busy'),
+      // Alles Weitere ist leer und nicht etwa ausgelassen: Die Ansichten lesen
+      // diese Schlüssel, und ein fehlender Schlüssel wäre eine Warnung statt
+      // einer leeren Zeile.
+      'time' => '', 'time_meet' => '', 'time_end' => '', 'location' => '', 'notes' => '',
+      'is_public' => 0, 'setlist_id' => null, 'responsible_id' => null, 'fee' => '',
+      'invoice_no' => '', 'public_title' => '', 'public_link' => '', 'public_info' => '',
+      'support_act' => '', 'venue_id' => null, 'venue_name' => '', 'venue_city' => '',
+      'venue_address' => '', 'venue_postcode' => '', 'venue_lat' => null, 'venue_lng' => null,
+      'pa_source' => '', 'light_source' => '', 'created_by' => $ev['created_by'] ?? null,
+      'created_at' => $ev['created_at'] ?? null, 'redacted' => true,
+    ];
+  }
+  return [$events, $geschwaerzt];
+}
+
 /**
  * Steht dieses Konto außerhalb der Band? (#308)
  *
@@ -7318,6 +7419,10 @@ function dashboard_events(?array $sichtbar, string $heute): array {
  * nebeneinander zu pflegen ginge eine Weile gut und dann nicht mehr.
  */
 function event_view_data(array $events, array $me): array {
+  // Geschwärzt wird hier, an der einen Stelle, an der alle Terminansichten ihre
+  // Daten holen (#309). Danach sind die Zeilen gefahrlos, und keine Ansicht
+  // muss sich merken, dass sie etwas verbergen soll.
+  [$events, $verdeckt] = events_redact($events, $me);
   $ids = array_column($events, 'id');
   $comments = [];
   if ($ids) {
@@ -7346,31 +7451,34 @@ function event_view_data(array $events, array $me): array {
   $guestsByEvent = guest_bookings_map($ids);
   $guestBookingIds = [];
   foreach ($guestsByEvent as $liste) foreach ($liste as $b) $guestBookingIds[] = (int) $b['id'];
+  // Die Nebendaten eines verdeckten Termins sind genauso vertraulich wie er
+  // selbst: ein Kommentar, eine Zusage, ein Dateiname verraten dasselbe.
+  $ohne = static fn(array $karte): array => $verdeckt ? array_diff_key($karte, array_flip($verdeckt)) : $karte;
   return [
     'events' => $events,
     'members' => rows('SELECT id, name FROM users ORDER BY name'),
     'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
     'venues' => $venues,
     'venueMap' => array_column($venues, null, 'id'),
-    'absentByEvent' => $absentByEvent,
+    'absentByEvent' => $ohne($absentByEvent),
     'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
                          WHERE disposed_on IS NULL ORDER BY category, name'),
-    'gearByEvent' => event_gear_map($ids),
-    'gearConflicts' => event_gear_conflicts($ids),
-    'filesByEvent' => files_map('event', $ids),
-    'comments' => $comments,
-    'attendance' => attendance_map($ids),
-    'mine' => my_attendance($ids, (int) $me['id']),
+    'gearByEvent' => $ohne(event_gear_map($ids)),
+    'gearConflicts' => $ohne(event_gear_conflicts($ids)),
+    'filesByEvent' => $ohne(files_map('event', $ids)),
+    'comments' => $ohne($comments),
+    'attendance' => $ohne(attendance_map($ids)),
+    'mine' => $ohne(my_attendance($ids, (int) $me['id'])),
     'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
-    'subRequests' => substitute_requests_map($ids),
+    'subRequests' => $ohne(substitute_requests_map($ids)),
     // Gebuchte Gäste je Termin und die Kontaktliste fürs Buchen (#294).
-    'guestsByEvent' => $guestsByEvent,
+    'guestsByEvent' => $ohne($guestsByEvent),
     'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
     'guestRatings' => guest_ratings_map($guestBookingIds, (int) $me['id']),
     // Der Vertragsstand je Termin (#303): Nur wer Verträge sehen darf,
     // bekommt die Abfrage überhaupt — sonst fragt die Terminliste Zeilen
     // ab, die der Lesende nie zu Gesicht bekommt.
-    'contractByEvent' => perm_allows($me, 'vertraege') ? contract_status_by_event($ids) : [],
+    'contractByEvent' => perm_allows($me, 'vertraege') ? $ohne(contract_status_by_event($ids)) : [],
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
   ];

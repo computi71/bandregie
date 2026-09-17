@@ -449,11 +449,16 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
   $band = setting('band_name');
   echo "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//$band//DE\r\nX-WR-CALNAME:$band\r\n";
   [$icalWhere, $icalArgs] = visible_clause($icalIds, 'e.id');
+  // Auch der Kalenderabruf zeigt einem Konto von außen nur, was es sehen darf.
   $icalEvents = rows('SELECT e.*, ' . EVENT_PLACE_COLS . ' FROM events e ' . EVENT_PLACE_JOIN
                      . ' WHERE 1 = 1' . $icalWhere . ' ORDER BY e.date', $icalArgs);
+  // Derselbe Schutz wie im Bandbereich (#309): Ein Kalenderabruf ist keine
+  // Hintertür. Ohne das stünden die Titel im Telefonkalender des Agenten.
+  [$icalEvents, $icalVerdeckt] = events_redact($icalEvents, $icalUser);
   // Zugesagte Gäste stehen mit im Eintrag (#294): Wer am Abend mischt oder
   // mitspielt, gehört zum Ablauf.
   $icalGuests = guest_bookings_map(array_map(fn($e) => (int) $e['id'], $icalEvents));
+  if ($icalVerdeckt) $icalGuests = array_diff_key($icalGuests, array_flip($icalVerdeckt));
   foreach ($icalEvents as $ev) {
     $uid = "event-{$ev['id']}@" . ($_SERVER['HTTP_HOST'] ?? 'bandregie.local');
     if ($ev['status'] === 'abgesagt') continue;
@@ -770,6 +775,23 @@ if (str_starts_with($path, '/intern')) {
     }
   }
 
+  // Fremde Verträge sind auch über ihre Nummer nicht erreichbar (#309).
+  if (preg_match('~^/intern/vertraege/(\d+)~', $path, $vGuard) && !may_see_contract($me, (int) $vGuard[1])) {
+    http_response_code(404);
+    view('404', ['title' => t('contract_title')]);
+  }
+
+  // Wer den Kalender nur als „belegt" sieht, darf einen fremden Termin auch
+  // nicht über seine Nummer anfassen (#309). Ohne das ließe sich der Inhalt
+  // über die Bearbeitung oder einen Kommentar zurückholen.
+  if (event_scope_busy_only($me) && preg_match('~^/intern/termine/(\d+)~', $path, $evGuard)) {
+    $evEigen = row('SELECT created_by FROM events WHERE id = ?', [$evGuard[1]]);
+    if (!$evEigen || (int) $evEigen['created_by'] !== (int) $me['id']) {
+      flash(t('fl_no_permission'));
+      redirect('/intern/termine');
+    }
+  }
+
   // Versionsabfrage hinter der Fußzeile. Ein Admin loest damit eine frische
   // Nachfrage aus; fuer alle anderen bleibt es bei dem, was zuletzt bekannt
   // war — sie koennen ohnehin nichts aktualisieren.
@@ -950,11 +972,11 @@ if (str_starts_with($path, '/intern')) {
 
   if ($path === '/intern/termine' && $method === 'POST') {
     if (($_POST['title'] ?? '') && ($_POST['date'] ?? '')) {
-      q('INSERT INTO events (type, title, date, time, location, notes, is_public, setlist_id,
+      q('INSERT INTO events (created_by, type, title, date, time, location, notes, is_public, setlist_id,
                              time_meet, time_end, status, responsible_id, fee, invoice_no,
                              public_title, public_link, public_info, venue_id,
                              pa_source, light_source, support_act)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', event_values());
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [$me['id'], ...event_values()]);
       $newEventId = (int) $db->lastInsertId();
       save_event_gear($newEventId);
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
@@ -2603,11 +2625,21 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Verträge (#303) ----------
   if ($path === '/intern/vertraege' && $method === 'GET') {
+    // Ein Konto von außen sieht nur die eigenen und die freigeschalteten
+    // Verträge (#309). null heißt alle — dann bleibt die Abfrage unverändert.
+    $vIds = visible_contract_ids($me);
+    $vWo = '';
+    $vArgs = [];
+    if ($vIds !== null) {
+      if (!$vIds) $vIds = [0];
+      $vWo = ' WHERE c.id IN (' . implode(',', array_fill(0, count($vIds), '?')) . ')';
+      $vArgs = $vIds;
+    }
     $vertraege = rows('SELECT c.*, p.name AS promoter_name, e.title AS event_title, e.date AS event_date
                        FROM contracts c
                        LEFT JOIN promoters p ON p.id = c.promoter_id
-                       LEFT JOIN events e ON e.id = c.event_id
-                       ORDER BY COALESCE(e.date, c.contract_date) DESC, c.id DESC');
+                       LEFT JOIN events e ON e.id = c.event_id' . $vWo . '
+                       ORDER BY COALESCE(e.date, c.contract_date) DESC, c.id DESC', $vArgs);
     view('intern/vertraege', [
       'title' => t('contract_title'),
       'contracts' => $vertraege,
@@ -2616,7 +2648,7 @@ if (str_starts_with($path, '/intern')) {
                         WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
       // Welche Auftritte noch ohne Vertrag dastehen — das ist die Frage, die
       // vier Wochen vorher gestellt wird.
-      'ohneVertrag' => rows("SELECT e.id, e.title, e.date FROM events e
+      'ohneVertrag' => is_outsider($me) ? [] : rows("SELECT e.id, e.title, e.date FROM events e
                              LEFT JOIN contracts c ON c.event_id = e.id
                              WHERE e.type = 'gig' AND e.status <> 'abgesagt' AND e.date >= ? AND c.id IS NULL
                              ORDER BY e.date", [$today]),
@@ -2651,13 +2683,16 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/vertraege/(\d+)$~', $path, $m) && $method === 'GET') {
     $vertrag = contract_full((int) $m[1]);
-    if (!$vertrag) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
+    // Nicht sehen dürfen sieht aus wie nicht vorhanden.
+    if (!$vertrag || !may_see_contract($me, (int) $vertrag['id'])) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
     view('intern/vertrag', [
       'title' => t('contract_sheet_title'),
       'contract' => $vertrag,
       'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
       'events' => rows("SELECT id, title, date FROM events WHERE type = 'gig' ORDER BY date DESC LIMIT 100"),
       'quote' => $vertrag['quote_id'] ? row('SELECT * FROM quotes WHERE id = ?', [$vertrag['quote_id']]) : null,
+      'outsiders' => contract_outsiders((int) $vertrag['id']),
+      'outsideAccounts' => is_outsider($me) ? [] : rows("SELECT id, name FROM users WHERE role = 'booking' ORDER BY name"),
     ]);
   }
   if (preg_match('~^/intern/vertraege/(\d+)/update$~', $path, $m) && $method === 'POST') {
@@ -2712,6 +2747,21 @@ if (str_starts_with($path, '/intern')) {
       'title' => t('contract_sheet_title') . ' · ' . ($vertrag['event_title'] ?? ''),
       'contract' => $vertrag,
     ]);
+  }
+  // Einen Bookingagenten zu einem fremden Vertrag dazuholen (#309).
+  if (preg_match('~^/intern/vertraege/(\d+)/gast$~', $path, $m) && $method === 'POST') {
+    if (is_outsider($me)) { flash(t('fl_no_permission')); redirect('/intern/vertraege'); }
+    $vKonto = row("SELECT id, name FROM users WHERE id = ? AND role = 'booking'", [(int) ($_POST['user_id'] ?? 0)]);
+    if ($vKonto && row('SELECT id FROM contracts WHERE id = ?', [$m[1]])) {
+      if (($_POST['do'] ?? '') === 'remove') {
+        q('DELETE FROM contract_access WHERE contract_id = ? AND user_id = ?', [$m[1], $vKonto['id']]);
+        flash(sprintf(t('fl_contract_guest_removed'), $vKonto['name']));
+      } else {
+        q('INSERT IGNORE INTO contract_access (contract_id, user_id) VALUES (?,?)', [$m[1], $vKonto['id']]);
+        flash(sprintf(t('fl_contract_guest_added'), $vKonto['name']));
+      }
+    }
+    back('/intern/vertraege/' . $m[1]);
   }
   // Veranstalter pflegen — die Liste lebt bei den Verträgen, sie hat sonst
   // keinen Ort und wäre als eigener Menüpunkt eine leere Seite.
@@ -4393,6 +4443,12 @@ if (str_starts_with($path, '/intern')) {
   }
   // Die Vertragsvorlage (#303). Leer heißt „nimm die mitgelieferte" — deshalb
   // wird der Text nur gespeichert, wenn er sich von ihr unterscheidet.
+  if ($path === '/intern/einstellungen/booking' && $method === 'POST') {
+    require_admin();
+    set_setting('booking_event_scope', ($_POST['booking_event_scope'] ?? '') === 'all' ? 'all' : 'busy');
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/vertrag' && $method === 'POST') {
     require_admin();
     $vText = trim((string) ($_POST['contract_text'] ?? ''));

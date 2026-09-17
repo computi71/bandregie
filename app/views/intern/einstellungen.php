@@ -169,6 +169,21 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       // Hand im Angebot steht. ?>
 <?php // Die Vertragsvorlage (#303). Sie gehört der Band; wir liefern nur eine
       // erste Fassung mit und sagen dazu, dass wir keine Rechtsberatung sind. ?>
+<?php // Wie viel ein Bookingagent vom Kalender sieht (#309). ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_booking_title')) ?></summary>
+  <form method="post" action="/intern/einstellungen/booking" class="form-grid"><?= csrf_field() ?>
+    <label class="span2"><?= e(t('set_booking_scope')) ?>
+      <select name="booking_event_scope">
+        <?php foreach (['busy' => 'set_booking_scope_busy', 'all' => 'set_booking_scope_all'] as $bWert => $bKey): ?>
+          <option value="<?= e($bWert) ?>" <?= setting('booking_event_scope', 'busy') === $bWert ? 'selected' : '' ?>><?= e(t($bKey)) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('set_booking_scope_hint')) ?></span></label>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_contract_title')) ?></summary>
   <p class="muted small"><?= e(t('set_contract_intro')) ?></p>
