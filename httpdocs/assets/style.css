@@ -232,6 +232,15 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 }
 .pubfields { border: 1px dashed var(--border); border-radius: 8px; padding: 0.7rem 1rem; display: grid; gap: 0.6rem; }
 .pubfields legend { color: var(--muted); font-size: 0.85rem; padding: 0 0.4rem; }
+
+/* Angebote (#302): Beträge stehen rechts, damit man sie übereinander liest,
+   und die Endsumme hebt sich ab — das ist die Zeile, die gesucht wird. */
+.table td.num, .table th.num { text-align: right; white-space: nowrap; }
+.table tr.sum td { font-weight: 700; border-top: 2px solid var(--border); }
+/* Bezeichnung und Betrag eines frei eingetragenen Postens nebeneinander. */
+.row-fields { display: flex; gap: 0.4rem; margin: 0.3rem 0; }
+.row-fields input { flex: 1 1 auto; min-width: 0; }
+.row-fields input:last-child { flex: 0 0 8rem; }
 .comment-form.grow { flex: 1; }
 
 .attendance { display: flex; gap: 0.35rem; margin: 0.5rem 0; flex-wrap: wrap; }

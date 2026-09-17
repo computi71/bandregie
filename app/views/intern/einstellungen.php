@@ -164,6 +164,37 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   </form>
 </details>
 
+<?php // Die Preisliste der Kalkulation (#302): einmal hinterlegt, danach rechnet
+      // jede Anfrage damit. Leer lassen ist erlaubt — dann zählt nur, was von
+      // Hand im Angebot steht. ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_quote_title')) ?></summary>
+  <p class="muted small"><?= e(t('set_quote_intro')) ?></p>
+  <form method="post" action="/intern/einstellungen/angebote" class="form-grid"><?= csrf_field() ?>
+    <label><?= e(t('set_quote_base')) ?>
+      <input name="quote_base_cents" value="<?= e(number_format((int) ($settings['quote_base_cents'] ?? 0) / 100, 2, ',', '')) ?>">
+      <span class="muted small"><?= e(t('set_quote_base_hint')) ?></span></label>
+    <label><?= e(t('set_quote_hour')) ?>
+      <input name="quote_hour_cents" value="<?= e(number_format((int) ($settings['quote_hour_cents'] ?? 0) / 100, 2, ',', '')) ?>"></label>
+    <label><?= e(t('set_quote_km')) ?>
+      <input name="quote_km_cents" value="<?= e(number_format((int) ($settings['quote_km_cents'] ?? 0) / 100, 2, ',', '')) ?>"></label>
+    <label><?= e(t('set_quote_km_free')) ?>
+      <input type="number" name="quote_km_free" min="0" value="<?= (int) ($settings['quote_km_free'] ?? 0) ?>">
+      <span class="muted small"><?= e(t('set_quote_km_free_hint')) ?></span></label>
+    <label><?= e(t('set_quote_night')) ?>
+      <input name="quote_night_cents" value="<?= e(number_format((int) ($settings['quote_night_cents'] ?? 0) / 100, 2, ',', '')) ?>"></label>
+    <label><?= e(t('set_quote_pa')) ?>
+      <input name="quote_pa_cents" value="<?= e(number_format((int) ($settings['quote_pa_cents'] ?? 0) / 100, 2, ',', '')) ?>"></label>
+    <label><?= e(t('set_quote_min')) ?>
+      <input name="quote_min_cents" value="<?= e(number_format((int) ($settings['quote_min_cents'] ?? 0) / 100, 2, ',', '')) ?>">
+      <span class="muted small"><?= e(t('set_quote_min_hint')) ?></span></label>
+    <label><?= e(t('set_quote_discount_private')) ?>
+      <input name="quote_discount_private" value="<?= e((string) ($settings['quote_discount_private'] ?? '0')) ?>">
+      <span class="muted small"><?= e(t('set_quote_discount_private_hint')) ?></span></label>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_branding')) ?></summary>
   <form method="post" action="/intern/einstellungen/branding" enctype="multipart/form-data" class="form-grid"><?= csrf_field() ?>
@@ -196,7 +227,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <span class="muted small"><?= e(t('set_watermark_hint')) ?></span></label>
     <?php foreach (['logo' => 'set_print_logo_on', 'watermark' => 'set_print_watermark_on'] as $art => $tkey): ?>
       <?php $an = array_map('trim', explode(',', (string) ($settings['print_' . $art . '_docs'] ?? ''))); ?>
-      <fieldset class="span2">
+      <fieldset class="pubfields span2">
         <legend><?= e(t($tkey)) ?></legend>
         <?php foreach (PRINT_DOCS as $doc): ?>
           <label class="checkbox"><input type="checkbox" name="print_<?= e($art) ?>_docs[]" value="<?= e($doc) ?>"

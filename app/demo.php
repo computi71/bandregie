@@ -537,6 +537,7 @@ TXT,
   demo_install_background();
   demo_install_stage_plot($members);
   demo_install_topics($members);
+  demo_install_quote($evNext, $members[0]);
   demo_install_orders($members);
   $sub = demo_install_substitute($members, $evNext, $pw);
   demo_install_photos($members[0], $evPast, $members);
@@ -667,6 +668,47 @@ function demo_install_bereiche(array $members, int $evPast, int $evNext, int $su
  * Ein festes Passwort wie „demo" wäre die Alternative gewesen; das steht dann
  * aber auch auf einer Installation, die längst echt genutzt wird.
  */
+/**
+ * Ein gerechnetes Angebot für den kommenden Gig (#302) — mit Preisliste, damit
+ * die Posten Zahlen tragen und nicht 0,00 €.
+ *
+ * Die Sätze werden nur gesetzt, wenn noch keiner steht: Wer eigene Preise
+ * eingetragen hat, bekommt sie von den Demodaten nicht überschrieben.
+ */
+function demo_install_quote(int $eventId, int $wer): void {
+  if ((int) setting('quote_base_cents') === 0) {
+    foreach (['quote_base_cents' => '65000', 'quote_hour_cents' => '25000',
+              'quote_km_cents' => '45', 'quote_km_free' => '30',
+              'quote_night_cents' => '8000', 'quote_pa_cents' => '30000',
+              'quote_min_cents' => '50000', 'quote_discount_private' => '10'] as $k => $v) {
+      set_setting($k, $v);
+    }
+    set_setting('demo_quote_rates', '1');
+  }
+  $event = row('SELECT * FROM events WHERE id = ?', [$eventId]);
+  if (!$event) return;
+  $minuten = quote_minutes_from_event($event) ?: 180;
+  $angebot = [
+    'play_minutes' => $minuten, 'km' => 85, 'nights' => 0, 'own_pa' => 1,
+    'surcharge_percent' => 0.0, 'discount_show' => 1,
+  ];
+  $id = demo_insert('quotes', [
+    'event_id' => $eventId,
+    'title' => (string) $event['title'],
+    'customer' => 'Sampleton Town Council',
+    'quote_date' => date('Y-m-d', strtotime('-6 days')),
+    'play_minutes' => $minuten, 'km' => 85, 'nights' => 0, 'own_pa' => 1,
+    'discount_mode' => 'percent', 'discount_percent' => 10, 'discount_cents' => 0,
+    'discount_label' => 'Village festival', 'discount_show' => 1,
+    'notes' => 'Valid for four weeks. Stage and power as per the stage rider.',
+    'created_by' => $wer,
+  ]);
+  // Erst die Zeilen, dann der Rabatt — er bezieht sich auf ihre Summe.
+  quote_save_items($id, $angebot, [['label' => 'Sound engineer (guest)', 'amount_cents' => 18000]]);
+  $zwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], quote_items($id)));
+  q('UPDATE quotes SET discount_cents = ? WHERE id = ?', [(int) round($zwischen * 0.10), $id]);
+}
+
 function demo_write_logins(array $logins): void {
   if (!$logins) return;
   $text = "Bandregie - demo accounts
@@ -953,6 +995,12 @@ function demo_remove(): void {
   // Das Bild hängt an keiner Zeile, es erkennt sich am eigenen Namen — und
   // muss deshalb auch weg, wenn sonst nichts mehr zu löschen ist.
   demo_remove_background();
+  // Dasselbe für die Preisliste: Sie steht in den Einstellungen und nicht in
+  // einer Zeile. Zurückgesetzt wird sie nur, wenn die Demo sie gesetzt hat.
+  if (setting('demo_quote_rates') === '1') {
+    foreach (QUOTE_RATES as $satz) set_setting($satz, '0');
+    set_setting('demo_quote_rates', '');
+  }
   @unlink(DATA_DIR . '/DEMO-LOGINS.txt');
   // Fotodateien liegen auf der Platte, nicht in der Tabelle. Erst die Datei,
   // dann fällt die Zeile weiter unten mit allen anderen.
@@ -1016,7 +1064,8 @@ function demo_remove(): void {
   // oben schon weg — sie haben keinen eigenen Schlüssel und gehören hier
   // deshalb nicht in die Liste.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
-            'guest_bookings', 'guests', 'post_replies', 'post_messages',
+            'guest_bookings', 'guests', 'quote_items', 'quotes',
+            'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
   foreach (array_unique([...$order, ...array_keys($byTable)]) as $table) {

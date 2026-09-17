@@ -120,6 +120,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/post' => ['✉', t('inav_post')],
             '/intern/orte' => ['📍', t('inav_orte')],
             '/intern/gaeste' => ['🎟', t('inav_gaeste')],
+            '/intern/angebote' => ['🧮', t('inav_angebote')],
           ]],
           ['🎼', t('inavg_musik'), [
             '/intern/songs' => ['🎵', t('inav_songs')],

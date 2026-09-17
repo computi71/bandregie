@@ -2572,6 +2572,145 @@ if (str_starts_with($path, '/intern')) {
     back('/intern/termine');
   }
 
+  // ---------- Angebote (#302) ----------
+  if ($path === '/intern/angebote' && $method === 'GET') {
+    $angebote = rows('SELECT q.*, e.title AS event_title, e.date AS event_date
+                      FROM quotes q LEFT JOIN events e ON e.id = q.event_id
+                      ORDER BY q.quote_date DESC, q.id DESC');
+    $angebotSummen = [];
+    foreach ($angebote as $qZeile) {
+      $angebotSummen[(int) $qZeile['id']] = quote_totals($qZeile, quote_items((int) $qZeile['id']));
+    }
+    view('intern/angebote', [
+      'title' => t('quote_title'),
+      'quotes' => $angebote,
+      'totals' => $angebotSummen,
+      'events' => rows("SELECT id, title, date, time, time_end FROM events
+                        WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
+      // Ohne Grundpreis rechnet die Preisliste nichts — das soll dastehen,
+      // bevor jemand ein leeres Angebot für kaputt hält.
+      'ratesMissing' => (int) setting('quote_base_cents') === 0,
+    ]);
+  }
+  if ($path === '/intern/angebote' && $method === 'POST') {
+    $qEventId = (int) ($_POST['event_id'] ?? 0);
+    $qEvent = $qEventId > 0 ? row('SELECT * FROM events WHERE id = ?', [$qEventId]) : null;
+    $qTitel = trim((string) ($_POST['title'] ?? ''));
+    if ($qTitel === '' && $qEvent) $qTitel = (string) $qEvent['title'];
+    if ($qTitel === '') { flash(t('fl_quote_title_required')); redirect('/intern/angebote'); }
+    // Die Spielzeit steht schon am Termin — dieselbe Spanne, die später im
+    // Vertrag unter „Spieldauer" landet.
+    $qMinuten = $qEvent ? quote_minutes_from_event($qEvent) : 0;
+    $qNeu = [
+      'event_id' => $qEvent ? (int) $qEvent['id'] : null,
+      'title' => mb_substr($qTitel, 0, 190),
+      'customer' => mb_substr(trim((string) ($_POST['customer'] ?? '')), 0, 190),
+      'quote_date' => $today,
+      'play_minutes' => $qMinuten,
+      'discount_percent' => (float) setting('quote_discount_private'),
+    ];
+    q('INSERT INTO quotes (event_id, title, customer, quote_date, play_minutes, created_by) VALUES (?,?,?,?,?,?)',
+      [$qNeu['event_id'], $qNeu['title'], $qNeu['customer'], $qNeu['quote_date'], $qNeu['play_minutes'], $me['id']]);
+    $qId = (int) $db->lastInsertId();
+    quote_save_items($qId, $qNeu, []);
+    redirect('/intern/angebote/' . $qId);
+  }
+  if (preg_match('~^/intern/angebote/(\d+)$~', $path, $m) && $method === 'GET') {
+    $angebot = row('SELECT q.*, e.title AS event_title, e.date AS event_date, e.fee AS event_fee
+                    FROM quotes q LEFT JOIN events e ON e.id = q.event_id WHERE q.id = ?', [$m[1]]);
+    if (!$angebot) { http_response_code(404); view('404', ['title' => t('quote_title')]); }
+    $angebotPosten = quote_items((int) $angebot['id']);
+    view('intern/angebot', [
+      'title' => $angebot['title'],
+      'quote' => $angebot,
+      'items' => $angebotPosten,
+      'standardCount' => count(quote_standard_lines($angebot)),
+      'sums' => quote_totals($angebot, $angebotPosten),
+      'memberCount' => (int) (row("SELECT COUNT(*) AS n FROM users WHERE role <> 'ersatz'")['n'] ?? 1),
+      'events' => rows("SELECT id, title, date, time, time_end FROM events
+                        WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
+    ]);
+  }
+  if (preg_match('~^/intern/angebote/(\d+)/update$~', $path, $m) && $method === 'POST') {
+    $angebot = row('SELECT * FROM quotes WHERE id = ?', [$m[1]]);
+    if (!$angebot) back('/intern/angebote');
+    $qEventId = (int) ($_POST['event_id'] ?? 0);
+    $qNeu = [
+      'event_id' => $qEventId > 0 && row('SELECT id FROM events WHERE id = ?', [$qEventId]) ? $qEventId : null,
+      'title' => mb_substr(trim((string) ($_POST['title'] ?? '')), 0, 190),
+      'customer' => mb_substr(trim((string) ($_POST['customer'] ?? '')), 0, 190),
+      'quote_date' => preg_match('~^\d{4}-\d{2}-\d{2}$~', (string) ($_POST['quote_date'] ?? '')) ? $_POST['quote_date'] : $angebot['quote_date'],
+      'play_minutes' => max(0, (int) ($_POST['play_minutes'] ?? 0)),
+      'km' => max(0, (int) ($_POST['km'] ?? 0)),
+      'nights' => max(0, (int) ($_POST['nights'] ?? 0)),
+      'own_pa' => isset($_POST['own_pa']) ? 1 : 0,
+      'surcharge_percent' => max(0, min(999, (float) str_replace(',', '.', (string) ($_POST['surcharge_percent'] ?? 0)))),
+      'surcharge_label' => mb_substr(trim((string) ($_POST['surcharge_label'] ?? '')), 0, 120),
+      'discount_label' => mb_substr(trim((string) ($_POST['discount_label'] ?? '')), 0, 120),
+      'discount_show' => isset($_POST['discount_show']) ? 1 : 0,
+      'notes' => trim((string) ($_POST['notes'] ?? '')),
+    ];
+    if ($qNeu['title'] === '') { flash(t('fl_quote_title_required')); back('/intern/angebote/' . $m[1]); }
+
+    // Erst die Posten, dann der Rabatt: Wovon abgezogen wird, muss feststehen,
+    // bevor sich ein Prozentsatz oder eine Endsumme darauf beziehen kann.
+    $qFrei = quote_free_lines_from_post($_POST);
+    quote_save_items((int) $m[1], $qNeu, $qFrei);
+    $qPosten = quote_items((int) $m[1]);
+    $qZwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], $qPosten));
+    $qVorRabatt = $qZwischen + (int) round($qZwischen * $qNeu['surcharge_percent'] / 100);
+
+    $qModus = (string) ($_POST['discount_mode'] ?? 'none');
+    if (!in_array($qModus, ['none', 'percent', 'total'], true)) $qModus = 'none';
+    [$qRabatt, $qFehler] = quote_discount_cents($qModus, (string) ($_POST['discount_percent'] ?? ''),
+                                                (string) ($_POST['discount_total'] ?? ''), $qVorRabatt);
+    // Eine unbrauchbare Rabatteingabe verwirft nur den Rabatt, nicht die übrige
+    // Arbeit — und sie bleibt sichtbar, statt still zu verschwinden.
+    if ($qFehler !== null) { flash(t($qFehler)); $qModus = 'none'; }
+
+    q('UPDATE quotes SET event_id = ?, title = ?, customer = ?, quote_date = ?, play_minutes = ?, km = ?,
+         nights = ?, own_pa = ?, surcharge_percent = ?, surcharge_label = ?, discount_mode = ?,
+         discount_percent = ?, discount_cents = ?, discount_label = ?, discount_show = ?, notes = ?
+       WHERE id = ?',
+      [$qNeu['event_id'], $qNeu['title'], $qNeu['customer'], $qNeu['quote_date'], $qNeu['play_minutes'],
+       $qNeu['km'], $qNeu['nights'], $qNeu['own_pa'], $qNeu['surcharge_percent'], $qNeu['surcharge_label'],
+       $qModus, (float) str_replace(',', '.', (string) ($_POST['discount_percent'] ?? 0)), $qRabatt,
+       $qNeu['discount_label'], $qNeu['discount_show'], $qNeu['notes'], $m[1]]);
+    flash(t('fl_quote_saved'));
+    redirect('/intern/angebote/' . $m[1]);
+  }
+  if (preg_match('~^/intern/angebote/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM quote_items WHERE quote_id = ?', [$m[1]]);
+    q('DELETE FROM quotes WHERE id = ?', [$m[1]]);
+    flash(t('fl_quote_deleted'));
+    redirect('/intern/angebote');
+  }
+  // Den Betrag als Gage in den Termin: abschreiben ist die Stelle, an der sich
+  // zwei Zahlen auseinanderentwickeln.
+  if (preg_match('~^/intern/angebote/(\d+)/gage$~', $path, $m) && $method === 'POST') {
+    $angebot = row('SELECT * FROM quotes WHERE id = ?', [$m[1]]);
+    if (!$angebot || !$angebot['event_id']) { flash(t('fl_quote_no_event')); back('/intern/angebote'); }
+    $qSummen = quote_totals($angebot, quote_items((int) $angebot['id']));
+    $qBetrag = fmt_money($qSummen['total']);
+    q('UPDATE events SET fee = ? WHERE id = ?', [$qBetrag, $angebot['event_id']]);
+    flash(sprintf(t('fl_quote_to_fee'), $qBetrag));
+    back('/intern/angebote/' . $m[1]);
+  }
+  if (preg_match('~^/intern/angebote/(\d+)/druck$~', $path, $m) && $method === 'GET') {
+    $angebot = row('SELECT q.*, e.title AS event_title, e.date AS event_date, e.time AS event_time,
+                           e.time_end AS event_time_end, ' . EVENT_PLACE_COLS . '
+                    FROM quotes q LEFT JOIN events e ON e.id = q.event_id ' . EVENT_PLACE_JOIN . '
+                    WHERE q.id = ?', [$m[1]]);
+    if (!$angebot) { http_response_code(404); view('404', ['title' => t('quote_title')]); }
+    $angebotPosten = quote_items((int) $angebot['id']);
+    view('intern/angebot_print', [
+      'title' => t('quote_title') . ' · ' . $angebot['title'],
+      'quote' => $angebot,
+      'lines' => quote_display_lines($angebot, $angebotPosten),
+      'sums' => quote_totals($angebot, $angebotPosten),
+    ]);
+  }
+
   // ---------- Mitglieder ----------
   if ($path === '/intern/mitglieder' && $method === 'GET') {
     $permByUser = [];
@@ -3999,6 +4138,21 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/einstellungen/kasse' && $method === 'POST') {
     require_admin();
     set_setting('fin_open_fees', isset($_POST['fin_open_fees']) ? '1' : '0');
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  // Die Preisliste der Angebote (#302). Beträge in Cent, Zahlen als Zahlen —
+  // ein leeres Feld heißt „null" und nicht „unverändert", sonst ließe sich ein
+  // einmal gesetzter Satz nie wieder streichen.
+  if ($path === '/intern/einstellungen/angebote' && $method === 'POST') {
+    require_admin();
+    foreach (['quote_base_cents', 'quote_hour_cents', 'quote_km_cents',
+              'quote_night_cents', 'quote_pa_cents', 'quote_min_cents'] as $satz) {
+      set_setting($satz, (string) max(0, price_to_cents((string) ($_POST[$satz] ?? '')) ?? 0));
+    }
+    set_setting('quote_km_free', (string) max(0, (int) ($_POST['quote_km_free'] ?? 0)));
+    set_setting('quote_discount_private',
+                (string) max(0, min(100, (float) str_replace(',', '.', (string) ($_POST['quote_discount_private'] ?? 0)))));
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }

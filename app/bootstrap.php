@@ -655,6 +655,93 @@ const UI_STRINGS = [
   'set_slot_logo' => 'Logo', 'set_slot_background' => 'Hintergrundbild',
   'set_slot_favicon' => 'Site-Icon', 'set_slot_welcome' => 'Bild neben der Anrede',
   'set_slot_printlogo' => 'Logo für Ausdrucke', 'set_slot_watermark' => 'Wasserzeichen',
+  // Kalkulation (#302)
+  'inav_angebote' => 'Angebote',
+  'quote_title' => 'Angebote',
+  'quote_intro' => 'Was ein Auftritt kosten soll, aus einer Preisliste gerechnet statt im Kopf. Das Ergebnis lässt sich drucken und als Gage in den Termin übernehmen.',
+  'quote_none' => 'Noch kein Angebot gerechnet.',
+  'quote_new' => 'Neues Angebot',
+  'quote_open' => 'Angebot öffnen',
+  'quote_unit_min' => 'Min', 'quote_unit_hour' => 'Std',
+  'quote_line_base' => 'Auftritt, erste %s (mit Auf- und Abbau)',
+  'quote_line_hours' => 'Weitere Spielzeit, %s',
+  'quote_line_travel' => 'Anfahrt, %d km einfach (hin und zurück)',
+  'quote_line_nights' => 'Übernachtung, %d Zimmer',
+  'quote_line_pa' => 'Eigene Anlage und Licht',
+  'quote_surcharge' => 'Zuschlag',
+  'quote_event' => 'Termin', 'quote_event_none' => '– ohne Termin –',
+  'quote_customer' => 'Veranstalter',
+  'quote_customer_ph' => 'Name, an den das Angebot geht',
+  'quote_for' => 'Angebot für',
+  'quote_date' => 'Angebotsdatum',
+  'quote_playtime' => 'Spielzeit in Minuten',
+  'quote_playtime_hint' => 'Kommt aus Beginn und Ende des Termins, wenn beides eingetragen ist. Die erste Stunde kostet den Grundpreis, weil Auf- und Abbau darin stecken; alles darüber wird anteilig gerechnet.',
+  'quote_km' => 'Entfernung in km (einfach)',
+  'quote_km_hint' => 'Einfache Strecke. Berechnet wird sie doppelt, hin und zurück.',
+  'quote_nights' => 'Übernachtungen (Zimmer)',
+  'quote_own_pa' => 'Eigene Anlage und Licht stellen',
+  'quote_extra' => 'Weitere Posten',
+  'quote_extra_hint' => 'Für alles, was die Preisliste nicht kennt: ein Gasthonorar, eine zweite Bühne, ein Sonderwunsch. Zeilen ohne Text werden nicht gespeichert.',
+  'quote_extra_label' => 'Bezeichnung', 'quote_extra_amount' => 'Betrag',
+  'quote_surcharge_percent' => 'Zuschlag in %',
+  'quote_surcharge_label' => 'Grund des Zuschlags',
+  'quote_surcharge_ph' => 'z. B. Feiertag',
+  'quote_discount' => 'Rabatt',
+  'quote_discount_mode' => 'Rabatt angeben als',
+  'quote_discount_none' => 'kein Rabatt',
+  'quote_discount_as_percent' => 'Prozent',
+  'quote_discount_as_total' => 'Endsumme',
+  'quote_discount_percent_lbl' => 'Rabatt in %',
+  'quote_discount_total_lbl' => 'Endsumme, die der Kunde zahlt',
+  'quote_discount_total_hint' => 'Der Betrag, der unten unter dem Strich stehen soll — einschließlich Steuer, falls welche ausgewiesen wird. Der Rabatt wird daraus zurückgerechnet.',
+  'quote_discount_label' => 'Grund des Rabatts',
+  'quote_discount_ph' => 'z. B. private Feier',
+  'quote_discount_show' => 'Rabatt im Angebot ausweisen',
+  'quote_discount_show_hint' => 'Aus: Die Posten stehen mit bereits ermäßigten Preisen da und addieren sich zur Endsumme. So fällt beim Nachrechnen nichts auf. Die Band sieht hier weiterhin beides.',
+  'quote_subtotal' => 'Zwischensumme',
+  'quote_net' => 'Netto',
+  'quote_vat' => 'Umsatzsteuer %d %%',
+  'quote_total' => 'Gesamtbetrag',
+  'quote_list_price' => 'Listenpreis',
+  'quote_discount_given' => 'Gewährter Nachlass',
+  'quote_small_business' => 'Kein Ausweis von Umsatzsteuer nach § 19 UStG (Kleinunternehmerregelung).',
+  'quote_footnote' => 'Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der Veranstalter.',
+  'quote_min_warn' => 'Das liegt unter eurer Mindestgage von %s.',
+  'quote_rates_missing' => 'In der Preisliste steht noch kein Grundpreis. Bis dahin rechnet das Angebot nur die Posten, die ihr von Hand eintragt — die Sätze stehen in den Einstellungen unter „Angebote".',
+  'quote_per_member' => 'Bleibt je Mitglied',
+  'quote_per_member_hint' => 'Der Nettobetrag ohne Fahrtkosten und Fremdhonorare, geteilt durch die Zahl der Mitglieder. Eine Hausnummer für die Band, nicht für den Veranstalter — im Angebot steht sie nicht.',
+  'quote_print' => 'Angebot drucken',
+  'quote_to_fee' => 'Als Gage in den Termin',
+  'quote_delete_confirm' => 'Dieses Angebot wirklich löschen?',
+  'fl_quote_title_required' => 'Ein Titel muss sein — oder ein Termin, dessen Titel genommen wird.',
+  'fl_quote_saved' => 'Angebot gespeichert.',
+  'fl_quote_deleted' => 'Angebot gelöscht.',
+  'fl_quote_total_above' => 'Die Endsumme liegt über dem Listenpreis. Das wäre kein Rabatt — erhöhe stattdessen die Posten.',
+  'fl_quote_total_unclear' => 'Die Endsumme lässt sich nicht als Betrag lesen.',
+  'fl_quote_discount_high' => 'Ein Rabatt über 100 % ergibt keinen Sinn.',
+  'fl_quote_to_fee' => 'Gage im Termin auf %s gesetzt.',
+  'fl_quote_no_event' => 'Dieses Angebot hängt an keinem Termin.',
+  'printdoc_quote' => 'Angebot',
+  // Preisliste in den Einstellungen
+  'set_quote_title' => 'Angebote',
+  'set_quote_intro' => 'Eure Preisliste. Jede Anfrage wird damit gleich gerechnet, und im Angebot steht am Ende eine Zahl, die ihr begründen könnt. Alles leer lassen geht auch — dann rechnet das Angebot nur die Posten, die ihr von Hand einträgt.',
+  'set_quote_base' => 'Grundpreis erste Stunde',
+  'set_quote_base_hint' => 'Darin stecken Auf- und Abbau, Soundcheck und die Fahrtzeit. Deshalb kostet die erste Stunde mehr als jede weitere.',
+  'set_quote_hour' => 'Preis je weitere Stunde',
+  'set_quote_km' => 'Fahrtkosten je Kilometer',
+  'set_quote_km_free' => 'Freie Entfernung in km',
+  'set_quote_km_free_hint' => 'Bis hierhin wird keine Fahrt berechnet. Gemeint ist die einfache Strecke.',
+  'set_quote_night' => 'Übernachtung je Zimmer',
+  'set_quote_pa' => 'Eigene Anlage und Licht',
+  'set_quote_min' => 'Mindestgage',
+  'set_quote_min_hint' => 'Liegt ein Angebot darunter, gibt es einen Hinweis. Gesperrt wird nichts — manchmal spielt man unter Preis, und das ist eure Entscheidung.',
+  'set_quote_discount_private' => 'Rabatt für private Feiern in %',
+  'set_quote_discount_private_hint' => 'Nur ein Vorschlag, der im Angebot voreingetragen wird. Ändern lässt er sich bei jeder Anfrage.',
+  // Hilfe
+  'help_angebote' => 'Wenn jemand fragt, was ein Auftritt kostet, rechnet ihr die Antwort hier aus statt im Kopf. Einmal hinterlegt ihr in den Einstellungen eure Preise: was die erste Stunde kostet, was jede weitere, was der Kilometer und was eine Übernachtung. Danach reicht bei jeder Anfrage die Spielzeit, und wenn ein Termin dranhängt, kommt die sogar von selbst aus Beginn und Ende.',
+  'help_angebote_2' => 'Die erste Stunde ist teurer als die folgenden, und das hat einen Grund: Auf- und Abbau, Soundcheck und die Fahrt fallen einmal an, egal wie lange gespielt wird. Wer nur 45 Minuten spielt, zahlt sie trotzdem. Alles über der ersten Stunde wird anteilig gerechnet, eine halbe Stunde kostet also die Hälfte.',
+  'help_angebote_3' => 'Einen Rabatt gebt ihr auf zwei Arten: als Prozentsatz oder einfach als die Summe, die am Ende dastehen soll — „für achthundert machen wir es". Ob der Nachlass im Angebot sichtbar ist, entscheidet ein Haken. Ist er aus, stehen die Posten mit bereits ermäßigten Preisen da und addieren sich sauber zur Endsumme; gerechnet hat dann niemand etwas zu bemängeln. Ihr selbst seht immer beides, den Listenpreis und den gewährten Nachlass.',
+  'help_angebote_4' => 'Das fertige Angebot lässt sich drucken, mit Logo und Wasserzeichen wie eure anderen Blätter. Ein Knopf trägt den Betrag als Gage in den Termin ein, damit ihr ihn nicht abschreiben müsst. Was am Ende steuerlich gilt, entscheidet eure Steuerberatung — das Programm zeigt nur, was ihr in den Einstellungen hinterlegt habt.',
   'help_setlists_3' => 'Gedruckt sieht die Setliste aus wie die anderen Blätter der Band: oben rechts das Logo, dahinter blass das Wasserzeichen. Beides steht in den Einstellungen unter „Logo & Hintergrund". Fürs Papier gibt es dort ein eigenes Logo, denn ein helles Logo von der Website verschwindet auf weißem Papier. Und es steht dort, welche Blätter das Wasserzeichen tragen und welche nicht.',
   'help_rider_3' => 'Der Stagerider wird gedruckt oder als Datei verschickt und sieht aus wie die Setliste: Logo oben rechts, ein Strich darunter, dann die Anforderungen. Wer das ändern will, findet es in den Einstellungen unter „Logo & Hintergrund".',
   // Druckbögen (#304)
@@ -1604,6 +1691,10 @@ const PERM_MODULES = [
   // wirklich versenden: die Antwort im Postfach und die Einladung eines neuen
   // Mitglieds (#270).
   'mailversand'   => [],
+  // Angebote rechnen und verschicken ist Bandleitung und Booking, nicht jede
+  // Hand: Wer die Preisliste und die Rabatte sieht, sieht auch, was die Band
+  // wirklich verlangt (#302).
+  'angebote'      => ['/intern/angebote'],
 ];
 
 /** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
@@ -1656,7 +1747,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [1, 1], 'aufgaben' => [1, 1], 'themen' => [1, 1],
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
-    'mailversand' => [1, 1], 'gaeste' => [1, 1],
+    'mailversand' => [1, 1], 'gaeste' => [1, 1], 'angebote' => [1, 1],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
@@ -1667,7 +1758,7 @@ const PERM_TEMPLATES = [
     'abwesenheiten' => [0, 0], 'aufgaben' => [0, 0], 'themen' => [0, 0],
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
-    'mailversand' => [0, 0], 'gaeste' => [0, 0],
+    'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [0, 0],
   ],
 ];
 
@@ -2158,6 +2249,42 @@ $tables = [
     comment VARCHAR(255) NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (booking_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Ein Angebot friert seine Posten ein (#302): Ändert die Band später ihre
+  // Preisliste, darf ein verschicktes Angebot nicht plötzlich anders aussehen.
+  // Deshalb stehen die gerechneten Zeilen als Zeilen in der Datenbank und
+  // werden erst beim Speichern neu gebildet.
+  "CREATE TABLE IF NOT EXISTS quotes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NULL,
+    title VARCHAR(190) NOT NULL DEFAULT '',
+    customer VARCHAR(190) NOT NULL DEFAULT '',
+    quote_date DATE NOT NULL,
+    play_minutes INT NOT NULL DEFAULT 0,
+    km INT NOT NULL DEFAULT 0,
+    nights INT NOT NULL DEFAULT 0,
+    own_pa TINYINT(1) NOT NULL DEFAULT 0,
+    surcharge_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    surcharge_label VARCHAR(120) NOT NULL DEFAULT '',
+    discount_mode VARCHAR(10) NOT NULL DEFAULT 'none',
+    discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    discount_cents INT NOT NULL DEFAULT 0,
+    discount_label VARCHAR(120) NOT NULL DEFAULT '',
+    discount_show TINYINT(1) NOT NULL DEFAULT 1,
+    notes TEXT,
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event (event_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS quote_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    quote_id INT NOT NULL,
+    label VARCHAR(190) NOT NULL,
+    amount_cents INT NOT NULL DEFAULT 0,
+    sort INT NOT NULL DEFAULT 0,
+    INDEX idx_quote (quote_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS mail_log (
@@ -2891,7 +3018,14 @@ $defaults = [
   // Es sagt, von wem das Blatt ist. Das Wasserzeichen nur auf der Setliste —
   // Steuerübersicht und GEMA-Meldung sind Formulare, dort stört ein Bild
   // hinter den Zahlen. Angebot und Vertrag tragen es, sobald es sie gibt.
-  'print_logo_docs' => 'setlist,rider,tax,gema', 'print_watermark_docs' => 'setlist',
+  'print_logo_docs' => 'setlist,rider,tax,gema,quote', 'print_watermark_docs' => 'setlist,quote',
+  // Preisliste der Kalkulation (#302), alles in Cent. Leer ausgeliefert:
+  // Was eine Band verlangt, weiß nur sie selbst, und eine erfundene Zahl
+  // im Angebot wäre schlimmer als ein leeres Feld.
+  'quote_base_cents' => '0', 'quote_hour_cents' => '0',
+  'quote_km_cents' => '0', 'quote_km_free' => '0',
+  'quote_night_cents' => '0', 'quote_pa_cents' => '0',
+  'quote_min_cents' => '0', 'quote_discount_private' => '0',
   'rider_stage' => '', 'rider_power' => '', 'rider_pa' => '', 'rider_monitor' => '',
   'rider_light' => '', 'rider_getin' => '', 'rider_extras' => '', 'rider_positions' => '',
   'rider_contact_tech' => '', 'rider_contact_booking' => '',
@@ -3061,6 +3195,27 @@ if (setting('migr_gaeste_perm') === '') {
     q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$gRow['id'], 'gaeste']);
   }
   set_setting('migr_gaeste_perm', '1');
+}
+
+// Angebote rechnen darf, wer schon Rechte-Zeilen hat — sonst stünde der neue
+// Bereich bei bestehenden Bands auf „nein" und niemand fände ihn (#302).
+if (setting('migr_angebote_perm') === '') {
+  foreach (rows("SELECT DISTINCT u.id FROM users u JOIN permissions p ON p.user_id = u.id WHERE u.role = 'member'") as $aRow) {
+    q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$aRow['id'], 'angebote']);
+  }
+  set_setting('migr_angebote_perm', '1');
+}
+
+// Das Angebot ist ein Druckbogen wie die anderen und soll Logo und
+// Wasserzeichen tragen. Bestehende Installationen haben die Listen schon, also
+// wird es einmalig angehängt — ohne eine abgewählte Setliste wieder anzuhaken.
+if (setting('migr_quote_print_docs') === '') {
+  foreach (['print_logo_docs', 'print_watermark_docs'] as $druckListe) {
+    $teile = array_filter(array_map('trim', explode(',', (string) setting($druckListe))));
+    if (!in_array('quote', $teile, true)) $teile[] = 'quote';
+    set_setting($druckListe, implode(',', $teile));
+  }
+  set_setting('migr_quote_print_docs', '1');
 }
 
 if (setting('migr_post_explicit') === '') {
@@ -4411,6 +4566,213 @@ function invoice_label(array $inv): string {
 function invoice_item_count(int $invoiceId): int {
   return (int) (row('SELECT COUNT(*) AS n FROM equipment WHERE invoice_id = ?', [$invoiceId])['n'] ?? 0);
 }
+// ---------- Kalkulation (#302) ----------
+//
+// Gerechnet wird durchgehend in Cent. Ein Angebot, das sich um einen Cent nicht
+// aufaddiert, nimmt ein Veranstalter nicht ernst — und mit Fließkomma passiert
+// genau das.
+
+/** Die Sätze der Preisliste, so wie sie in den Einstellungen stehen. */
+const QUOTE_RATES = [
+  'quote_base_cents', 'quote_hour_cents', 'quote_km_cents', 'quote_km_free',
+  'quote_night_cents', 'quote_pa_cents', 'quote_min_cents', 'quote_discount_private',
+];
+
+/** „90" wird zu „1,5 Std", „45" zu „45 Min" — so, wie man es sagt. */
+function quote_time_text(int $minuten): string {
+  if ($minuten <= 0) return '';
+  if ($minuten < 60) return $minuten . ' ' . t('quote_unit_min');
+  $stunden = $minuten / 60;
+  $text = fmod($stunden, 1.0) === 0.0 ? (string) (int) $stunden : number_format($stunden, 1, ',', '');
+  return $text . ' ' . t('quote_unit_hour');
+}
+
+/**
+ * Die Spielzeit eines Termins in Minuten, aus Beginn und Ende — dieselbe
+ * Spanne, die später im Vertrag unter „Spieldauer" steht. Über Mitternacht
+ * hinaus zählt der nächste Tag mit; ein Auftritt von 22 bis 1 Uhr dauert drei
+ * Stunden und nicht minus einundzwanzig.
+ */
+function quote_minutes_from_event(array $event): int {
+  $von = trim((string) ($event['time'] ?? ''));
+  $bis = trim((string) ($event['time_end'] ?? ''));
+  if ($von === '' || $bis === '') return 0;
+  [$vs, $vm] = array_map('intval', array_pad(explode(':', $von), 2, 0));
+  [$bs, $bm] = array_map('intval', array_pad(explode(':', $bis), 2, 0));
+  $minuten = ($bs * 60 + $bm) - ($vs * 60 + $vm);
+  return $minuten < 0 ? $minuten + 24 * 60 : $minuten;
+}
+
+/**
+ * Die Posten, die sich aus der Preisliste ergeben.
+ *
+ * Die erste Stunde kostet den Grundpreis, egal ob gespielt oder nicht: Auf- und
+ * Abbau, Soundcheck, Hin- und Rückfahrtzeit stecken darin, und die fallen auch
+ * für einen 45-Minuten-Auftritt an. Alles darüber wird anteilig gerechnet —
+ * eine halbe Stunde kostet die Hälfte, denn aufzurunden wäre eine
+ * Preiserhöhung, die niemand vereinbart hat.
+ */
+function quote_standard_lines(array $a): array {
+  $zeilen = [];
+  $minuten = max(0, (int) ($a['play_minutes'] ?? 0));
+  if ($minuten > 0) {
+    $zeilen[] = ['label' => sprintf(t('quote_line_base'), quote_time_text(min(60, $minuten))),
+                 'amount_cents' => (int) setting('quote_base_cents')];
+    $weitere = $minuten - 60;
+    if ($weitere > 0) {
+      $zeilen[] = ['label' => sprintf(t('quote_line_hours'), quote_time_text($weitere)),
+                   'amount_cents' => (int) round((int) setting('quote_hour_cents') * $weitere / 60)];
+    }
+  }
+  // Der Weg zählt einfach, berechnet wird er doppelt — hin und zurück.
+  $km = max(0, (int) ($a['km'] ?? 0));
+  $frei = max(0, (int) setting('quote_km_free'));
+  if ($km > $frei && (int) setting('quote_km_cents') > 0) {
+    $zeilen[] = ['label' => sprintf(t('quote_line_travel'), $km - $frei),
+                 'amount_cents' => ($km - $frei) * 2 * (int) setting('quote_km_cents')];
+  }
+  $naechte = max(0, (int) ($a['nights'] ?? 0));
+  if ($naechte > 0 && (int) setting('quote_night_cents') > 0) {
+    $zeilen[] = ['label' => sprintf(t('quote_line_nights'), $naechte),
+                 'amount_cents' => $naechte * (int) setting('quote_night_cents')];
+  }
+  if (!empty($a['own_pa']) && (int) setting('quote_pa_cents') > 0) {
+    $zeilen[] = ['label' => t('quote_line_pa'), 'amount_cents' => (int) setting('quote_pa_cents')];
+  }
+  return $zeilen;
+}
+
+/**
+ * Der Steuersatz fürs Angebot. Unter der Kleinunternehmerregelung steht keine
+ * Steuerzeile auf der Rechnung, sondern der Hinweis auf § 19 UStG — welcher
+ * Satz sonst gilt, hat die Band in den Einstellungen hinterlegt. Entschieden
+ * wird das von ihrer Steuerberatung, nicht von diesem Programm.
+ */
+function quote_vat_rate(): int {
+  return setting('tax_small_business', '0') === '1' ? 0 : (int) setting('tax_vat_rate', '19');
+}
+
+/**
+ * Was ein Rabatt in Cent ausmacht — eingegeben als Prozentsatz oder als die
+ * Endsumme, die der Kunde zahlt. Die Endsumme versteht sich einschließlich
+ * Steuer, denn genau die Zahl nennt man am Telefon.
+ *
+ * Gibt [Cent, Fehlerschlüssel|null] zurück. Eine Endsumme über dem Listenpreis
+ * ist kein Rabatt: Dann stünden im Angebot ermäßigte Preise, die zusammen mehr
+ * ergeben als die Preisliste.
+ */
+function quote_discount_cents(string $modus, string $prozent, string $ziel, int $vorRabatt): array {
+  if ($modus === 'percent') {
+    $wert = (float) str_replace(',', '.', trim($prozent));
+    if ($wert <= 0) return [0, null];
+    if ($wert > 100) return [0, 'fl_quote_discount_high'];
+    return [(int) round($vorRabatt * $wert / 100), null];
+  }
+  if ($modus === 'total') {
+    $zielCents = price_to_cents($ziel);
+    if ($zielCents === null || $zielCents < 0) return [0, 'fl_quote_total_unclear'];
+    $satz = quote_vat_rate();
+    $zielNetto = $satz > 0 ? (int) round($zielCents * 100 / (100 + $satz)) : $zielCents;
+    if ($zielNetto > $vorRabatt) return [0, 'fl_quote_total_above'];
+    return [$vorRabatt - $zielNetto, null];
+  }
+  return [0, null];
+}
+
+/**
+ * Verteilt einen Rabatt auf die Posten.
+ *
+ * Gebraucht, wenn der Rabatt nicht ausgewiesen werden soll: Eine kleinere
+ * Endsumme unter unveränderten Posten fällt jedem auf, der nachrechnet, und
+ * lässt die Band schlampig aussehen. Der Restcent landet auf dem größten
+ * Posten — irgendwo muss er hin, und dort fällt er am wenigsten auf.
+ */
+function quote_spread_discount(array $posten, int $rabatt): array {
+  $summe = array_sum(array_map(fn($p) => (int) $p['amount_cents'], $posten));
+  if ($rabatt <= 0 || $summe <= 0) return $posten;
+
+  $groesster = 0;
+  foreach ($posten as $i => $p) {
+    if ((int) $p['amount_cents'] > (int) $posten[$groesster]['amount_cents']) $groesster = $i;
+  }
+  $verteilt = 0;
+  foreach ($posten as $i => $p) {
+    $anteil = (int) floor($rabatt * (int) $p['amount_cents'] / $summe);
+    $posten[$i]['amount_cents'] = (int) $p['amount_cents'] - $anteil;
+    $verteilt += $anteil;
+  }
+  $posten[$groesster]['amount_cents'] -= $rabatt - $verteilt;
+  return $posten;
+}
+
+/**
+ * Alle Summen eines Angebots. Der Zuschlag zählt wie ein Posten, der Rabatt
+ * geht von allem ab, und die Steuer kommt zuletzt obendrauf.
+ */
+function quote_totals(array $angebot, array $posten): array {
+  $zwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], $posten));
+  $zuschlag = (int) round($zwischen * (float) ($angebot['surcharge_percent'] ?? 0) / 100);
+  $vorRabatt = $zwischen + $zuschlag;
+  $rabatt = max(0, min($vorRabatt, (int) ($angebot['discount_cents'] ?? 0)));
+  $netto = $vorRabatt - $rabatt;
+  $satz = quote_vat_rate();
+  $ust = (int) round($netto * $satz / 100);
+  return [
+    'items' => $zwischen, 'surcharge' => $zuschlag, 'before_discount' => $vorRabatt,
+    'discount' => $rabatt, 'net' => $netto, 'vat' => $ust, 'total' => $netto + $ust,
+    'vat_rate' => $satz,
+    'discount_percent' => $vorRabatt > 0 ? round($rabatt * 100 / $vorRabatt, 1) : 0.0,
+  ];
+}
+
+/**
+ * Die Zeilen, wie sie im Angebot stehen — mit dem Zuschlag als eigener Zeile
+ * und, wenn der Rabatt nicht ausgewiesen wird, bereits ermäßigten Preisen.
+ */
+function quote_display_lines(array $angebot, array $posten): array {
+  $summen = quote_totals($angebot, $posten);
+  $zeilen = array_map(fn($p) => ['label' => (string) $p['label'], 'amount_cents' => (int) $p['amount_cents']], $posten);
+  if ($summen['surcharge'] !== 0) {
+    $zeilen[] = ['label' => ($angebot['surcharge_label'] ?? '') !== '' ? (string) $angebot['surcharge_label'] : t('quote_surcharge'),
+                 'amount_cents' => $summen['surcharge']];
+  }
+  return empty($angebot['discount_show']) ? quote_spread_discount($zeilen, $summen['discount']) : $zeilen;
+}
+
+/**
+ * Schreibt die Posten eines Angebots neu: erst die aus der Preisliste
+ * gerechneten, dann die von Hand eingetragenen. Sie werden bei jedem Speichern
+ * neu gebildet und bleiben danach stehen — ändert die Band später ihre Preise,
+ * sieht ein verschicktes Angebot trotzdem aus wie beim Verschicken.
+ */
+function quote_save_items(int $quoteId, array $angebot, array $frei): void {
+  q('DELETE FROM quote_items WHERE quote_id = ?', [$quoteId]);
+  $sort = 0;
+  foreach ([...quote_standard_lines($angebot), ...$frei] as $zeile) {
+    $text = trim((string) ($zeile['label'] ?? ''));
+    if ($text === '') continue;
+    q('INSERT INTO quote_items (quote_id, label, amount_cents, sort) VALUES (?,?,?,?)',
+      [$quoteId, mb_substr($text, 0, 190), (int) ($zeile['amount_cents'] ?? 0), $sort++]);
+  }
+}
+
+/** Die von Hand eingetragenen Zeilen aus dem Formular, leere fallen weg. */
+function quote_free_lines_from_post(array $post): array {
+  $frei = [];
+  foreach ((array) ($post['extra_label'] ?? []) as $i => $text) {
+    $text = trim((string) $text);
+    $betrag = price_to_cents((string) (($post['extra_amount'] ?? [])[$i] ?? ''));
+    if ($text === '' || $betrag === null) continue;
+    $frei[] = ['label' => $text, 'amount_cents' => $betrag];
+  }
+  return $frei;
+}
+
+/** Die Posten eines Angebots in ihrer Reihenfolge. */
+function quote_items(int $quoteId): array {
+  return rows('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort, id', [$quoteId]);
+}
+
 function fmt_money(int $cents): string { return number_format($cents / 100, 2, ',', '.') . ' €'; }
 
 /**
@@ -4864,7 +5226,7 @@ const BRANDING_SLOTS = [
  * beiden Listen unten — mehr braucht ein neues Dokument nicht, um Logo und
  * Wasserzeichen zu erben.
  */
-const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema'];
+const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote'];
 
 /**
  * Trägt dieser Bogen Logo beziehungsweise Wasserzeichen? Je Dokument
