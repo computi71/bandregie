@@ -2704,7 +2704,7 @@ if (str_starts_with($path, '/intern')) {
     if (!$angebot) { http_response_code(404); view('404', ['title' => t('quote_title')]); }
     $angebotPosten = quote_items((int) $angebot['id']);
     view('intern/angebot_print', [
-      'title' => t('quote_title') . ' · ' . $angebot['title'],
+      'title' => t('quote_sheet_title') . ' · ' . $angebot['title'],
       'quote' => $angebot,
       'lines' => quote_display_lines($angebot, $angebotPosten),
       'sums' => quote_totals($angebot, $angebotPosten),

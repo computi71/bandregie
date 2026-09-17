@@ -658,6 +658,10 @@ const UI_STRINGS = [
   // Kalkulation (#302)
   'inav_angebote' => 'Angebote',
   'quote_title' => 'Angebote',
+  // Ein einzelner Bogen heißt „Angebot", die Liste „Angebote" — auf dem
+  // Papier steht die Einzahl, sonst liest es sich wie ein Katalog.
+  'quote_sheet_title' => 'Angebot',
+  'quote_playtime_short' => 'Spielzeit',
   'quote_intro' => 'Was ein Auftritt kosten soll, aus einer Preisliste gerechnet statt im Kopf. Das Ergebnis lässt sich drucken und als Gage in den Termin übernehmen.',
   'quote_none' => 'Noch kein Angebot gerechnet.',
   'quote_new' => 'Neues Angebot',

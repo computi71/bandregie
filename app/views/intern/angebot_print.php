@@ -14,7 +14,7 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= e(t('quote_title')) ?> · <?= e($quote['title']) ?></title>
+  <title><?= e(t('quote_sheet_title')) ?> · <?= e($quote['title']) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
     body { font-size: 10.5pt; }
@@ -39,7 +39,7 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
   <?= print_watermark_html($printDoc) ?>
   <div class="head-row">
     <div>
-      <h1><?= e(t('quote_title')) ?></h1>
+      <h1><?= e(t('quote_sheet_title')) ?></h1>
       <div class="muted"><?= e(setting('band_name')) ?> · <?= e(fmt_date($quote['quote_date'])) ?></div>
     </div>
     <?= print_logo_html($printDoc) ?>
@@ -59,7 +59,7 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
       <?php if ($ort !== ''): ?><div><b><?= e(t('quote_event')) ?>:</b> <?= e($ort) ?></div><?php endif; ?>
     <?php endif; ?>
     <?php if ((int) $quote['play_minutes'] > 0): ?>
-      <div><b><?= e(t('quote_playtime')) ?>:</b> <?= e(quote_time_text((int) $quote['play_minutes'])) ?></div>
+      <div><b><?= e(t('quote_playtime_short')) ?>:</b> <?= e(quote_time_text((int) $quote['play_minutes'])) ?></div>
     <?php endif; ?>
   </div>
 

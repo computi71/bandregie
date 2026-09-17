@@ -434,5 +434,15 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','help_angebote','Quando qualcuno chiede quanto costa un concerto, la risposta si calcola qui invece che a mente. Una volta sola registrate i vostri prezzi nelle impostazioni: quanto costa la prima ora, ogni ora successiva, il chilometro e un pernottamento. Dopo, a ogni richiesta serve solo il tempo di esecuzione, e se c’è una data collegata arriva perfino da sé da inizio e fine.'),
 ('it','help_angebote_2','La prima ora è più cara delle successive, e c’è un motivo: montaggio, smontaggio, prova del suono e viaggio avvengono una volta sola, per quanto si suoni. Chi suona solo 45 minuti li paga lo stesso. Tutto ciò che va oltre la prima ora si calcola in proporzione, quindi mezz’ora costa la metà.'),
 ('it','help_angebote_3','Uno sconto si dà in due modi: come percentuale oppure semplicemente come la somma che deve comparire alla fine, «ve lo facciamo per ottocento». Una casella decide se lo sconto si vede sul preventivo. Se è spenta, le voci compaiono con prezzi già ridotti e sommano esattamente all''importo finale; chi rifà i conti non ha nulla da obiettare. Voi vedete sempre entrambi, il prezzo di listino e lo sconto concesso.'),
-('it','help_angebote_4','Il preventivo finito si stampa, con logo e filigrana come gli altri vostri fogli. Un pulsante riporta l''importo come cachet nella data, così non serve ricopiarlo. Cosa valga fiscalmente lo decide il vostro commercialista; il programma mostra solo ciò che avete messo nelle impostazioni.')
+('it','help_angebote_4','Il preventivo finito si stampa, con logo e filigrana come gli altri vostri fogli. Un pulsante riporta l''importo come cachet nella data, così non serve ricopiarlo. Cosa valga fiscalmente lo decide il vostro commercialista; il programma mostra solo ciò che avete messo nelle impostazioni.'),
+('en','quote_sheet_title','Quote'),
+('en','quote_playtime_short','Playing time'),
+('nl','quote_sheet_title','Offerte'),
+('nl','quote_playtime_short','Speeltijd'),
+('fr','quote_sheet_title','Devis'),
+('fr','quote_playtime_short','Temps de jeu'),
+('es','quote_sheet_title','Presupuesto'),
+('es','quote_playtime_short','Tiempo de actuación'),
+('it','quote_sheet_title','Preventivo'),
+('it','quote_playtime_short','Tempo di esecuzione')
 ON DUPLICATE KEY UPDATE value = value;
