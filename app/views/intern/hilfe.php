@@ -1,26 +1,59 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
+<?php
+// Die Hilfe für Leute, die kein Programm bedienen wollen, sondern Musik machen
+// (#305). Drei Regeln halten sie brauchbar:
+//
+//   1. Jeder Bereich beginnt mit einem Bild. Wer nicht liest, sieht wenigstens,
+//      wie die Stelle aussieht, um die es geht.
+//   2. Der erste Satz beantwortet „wofür ist das?" und steht deshalb größer.
+//   3. Ganz oben steht „Ich möchte …", denn wer eine Frage hat, kennt selten
+//      den Namen des Bereichs, in dem die Antwort wohnt.
+//
+// Gezeigt wird nur, was diesem Konto offensteht. Eine Hilfe, die von Knöpfen
+// erzählt, die es für den Lesenden nicht gibt, verunsichert mehr, als sie hilft.
+require_once BASE_DIR . '/app/help_figures.php';
+?>
+<?= help_figure_defs() ?>
 <h1>❓ <?= e(t('help_title')) ?></h1>
 <p class="muted"><?= e(t('help_intro')) ?></p>
+<p class="muted"><?= e(t('help_intro2')) ?></p>
+
+<?php // „Ich möchte …" — Einstieg über das Vorhaben statt über den Bereichsnamen. ?>
+<h2><?= e(t('help_tasks_title')) ?></h2>
+<p class="muted small"><?= e(t('help_tasks_hint')) ?></p>
+<ul class="help-tasks">
+  <?php foreach (HELP_TASKS as [$taskMod, $taskKey, $taskAnker]): ?>
+    <?php if ($taskMod !== '' && !perm_allows($user, $taskMod)) continue; ?>
+    <?php // Die beiden Einträge ohne Bereich betreffen das eigene Gerät und
+          // stehen jedem offen; sie tragen deshalb ein eigenes Zeichen. ?>
+    <?php $taskIcon = $taskMod !== '' ? (MODULE_ICONS[$taskMod] ?? '•') : ($taskAnker === 'hilfe-app' ? '📱' : '🔔'); ?>
+    <?php if ($taskAnker === 'hilfe-push' && !push_available()) continue; ?>
+    <li><a href="#<?= e($taskAnker) ?>"><span class="tick"><?= $taskIcon ?></span> <?= e(t($taskKey)) ?></a></li>
+  <?php endforeach; ?>
+</ul>
 
 <?php $helpFirst = true; ?>
-<?php foreach (array_keys(PERM_MODULES) as $helpMod): ?>
+<?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
-  <details class="card acc" name="helpacc" <?= $helpFirst ? 'open' : '' ?>>
-    <summary><?= e(t('inav_' . $helpMod)) ?></summary>
-    <p class="muted"><?= e(t('help_' . $helpMod)) ?></p>
-    <?php // Ein zweiter Absatz, wo einer gebraucht wird. So lässt sich ein Thema
-          // nachtragen, ohne einen gewachsenen Text in sechs Sprachen neu zu
-          // schreiben — fehlt der Schlüssel, liefert t() ihn selbst zurück, und
-          // dann steht hier nichts (#276). ?>
+  <details id="hilfe-<?= e($helpMod) ?>" class="card acc" name="helpacc" <?= $helpFirst ? 'open' : '' ?>>
+    <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
+    <?= help_figure($helpMod) ?>
+    <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
     <?php // Bis zu drei Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
           // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
-          // Übersetzungen stehen (#298). ?>
+          // Übersetzungen stehen. Fehlt der Schlüssel, liefert t() ihn selbst
+          // zurück, und dann steht hier nichts (#276, #298). ?>
     <?php foreach (['_2', '_3', '_4'] as $helpNr): ?>
       <?php $helpMehr = t('help_' . $helpMod . $helpNr); ?>
       <?php if ($helpMehr !== 'help_' . $helpMod . $helpNr): ?>
         <p class="muted"><?= e($helpMehr) ?></p>
       <?php endif; ?>
     <?php endforeach; ?>
+    <?php // Der Weg dorthin, direkt aus der Erklärung heraus. „E-Mail-Versand"
+          // hat keine eigene Seite und deshalb keinen Link. ?>
+    <?php if (!empty($helpPfade[0])): ?>
+      <p class="muted small"><a href="<?= e($helpPfade[0]) ?>"><?= e(t('help_open')) ?> →</a></p>
+    <?php endif; ?>
   </details>
   <?php $helpFirst = false; ?>
 <?php endforeach; ?>
@@ -28,9 +61,10 @@
 <?php // Den Jahresbericht hat jeder, der die Kasse sieht — die eigenen Zahlen
       // hängen nicht daran, ob die Band die Kleinunternehmerregelung nutzt. ?>
 <?php if (perm_allows($user, 'kasse')): ?>
-  <details class="card acc" name="helpacc">
+  <details id="hilfe-steuer" class="card acc" name="helpacc">
     <summary>⚖ <?= e(t('taxr_title')) ?></summary>
-    <p class="muted"><?= e(t('help_taxr_what')) ?></p>
+    <?= help_figure('steuer') ?>
+    <p class="help-lead"><?= e(t('help_taxr_what')) ?></p>
     <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
     <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
     <p class="muted"><?= e(t('help_taxr_shares')) ?></p>
@@ -49,9 +83,9 @@
 <?php // Nur wer die Kasse sieht, und nur wenn die Band die Regelung nutzt —
       // sonst erklärt die Hilfe etwas, das nirgends vorkommt. ?>
 <?php if (perm_allows($user, 'kasse') && setting('tax_small_business', '0') === '1'): ?>
-  <details class="card acc" name="helpacc">
+  <details id="hilfe-kleinunternehmer" class="card acc" name="helpacc">
     <summary>⚖ <?= e(t('help_tax_title')) ?></summary>
-    <p class="muted"><?= e(t('help_tax_what')) ?></p>
+    <p class="help-lead"><?= e(t('help_tax_what')) ?></p>
     <p class="muted"><?= e(t('help_tax_limits')) ?></p>
     <p class="muted"><?= e(t('help_tax_band')) ?></p>
     <p class="muted"><?= e(t('help_tax_counts')) ?></p>
@@ -111,9 +145,10 @@
       // sondern an einem von vier Schaltern, die alle stumm sperren. Die
       // Reihenfolge ist die Suchreihenfolge: von innen nach außen. ?>
 <?php if (push_available()): ?>
-  <details class="card acc" name="helpacc">
+  <details id="hilfe-push" class="card acc" name="helpacc">
     <summary>🔕 <?= e(t('help_push_trouble_title')) ?></summary>
-    <p class="muted"><?= e(t('help_push_trouble_intro')) ?></p>
+    <?= help_figure('push') ?>
+    <p class="help-lead"><?= e(t('help_push_trouble_intro')) ?></p>
     <ul class="task-list">
       <li><?= e(t('help_push_trouble_app')) ?></li>
       <li><?= e(t('help_push_trouble_site')) ?></li>
@@ -131,9 +166,10 @@
 <?php // totp_active() statt totp_active_for($user): $user kommt aus
       // current_user() und trägt die Felder des zweiten Faktors nicht mit. ?>
 <?php if (totp_available() || totp_active((int) $user['id'])): ?>
-  <details class="card acc" name="helpacc">
+  <details id="hilfe-totp" class="card acc" name="helpacc">
     <summary>🔑 <?= e(t('help_totp_title')) ?></summary>
-    <p class="muted"><?= e(t('help_totp_what')) ?></p>
+    <?= help_figure('totp') ?>
+    <p class="help-lead"><?= e(t('help_totp_what')) ?></p>
     <p class="muted"><?= e(t('help_totp_apps')) ?></p>
     <p class="muted"><?= e(t('help_totp_setup')) ?></p>
     <p class="muted">📄 <?= e(t('help_totp_recovery')) ?></p>
@@ -145,17 +181,19 @@
 <?php endif; ?>
 
 <?php if (passkey_available()): ?>
-  <details class="card acc" name="helpacc">
+  <details id="hilfe-passkey" class="card acc" name="helpacc">
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
-    <p class="muted"><?= e(t('help_passkey')) ?></p>
+    <?= help_figure('passkey') ?>
+    <p class="help-lead"><?= e(t('help_passkey')) ?></p>
     <p class="muted">☁ <?= e(t('help_passkey_sync')) ?></p>
     <p class="muted small"><a href="/intern/profil"><?= e(t('prof_passkeys')) ?> →</a></p>
   </details>
 <?php endif; ?>
 
-<details class="card acc" name="helpacc">
+<details id="hilfe-app" class="card acc" name="helpacc">
   <summary>📱 <?= e(t('app_install')) ?></summary>
-  <p class="muted"><?= e(t('app_install_hint')) ?></p>
+  <?= help_figure('app') ?>
+  <p class="help-lead"><?= e(t('app_install_hint')) ?></p>
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>
   <p class="muted"><?= e(t('off_help')) ?></p>

@@ -655,6 +655,25 @@ const UI_STRINGS = [
   'set_slot_logo' => 'Logo', 'set_slot_background' => 'Hintergrundbild',
   'set_slot_favicon' => 'Site-Icon', 'set_slot_welcome' => 'Bild neben der Anrede',
   'set_slot_printlogo' => 'Logo für Ausdrucke', 'set_slot_watermark' => 'Wasserzeichen',
+  // Bebilderte Hilfe (#305)
+  // Der alte Einleitungssatz bleibt stehen — seine Übersetzungen auch. Der
+  // zweite Satz kommt dazu, statt den ersten zu ersetzen.
+  'help_intro2' => 'Jeder Bereich ist mit einem Bild erklärt, in normalen Worten. Du musst nichts auswendig können: Such dir unten die Zeile, die zu deinem Vorhaben passt.',
+  'help_tasks_title' => 'Ich möchte …',
+  'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
+  'help_open' => 'Diesen Bereich öffnen',
+  'help_task_answer' => 'zu einem Termin zu- oder absagen',
+  'help_task_newgig' => 'einen Auftritt oder eine Probe eintragen',
+  'help_task_setlist' => 'eine Setliste zusammenstellen und ausdrucken',
+  'help_task_rider' => 'dem Veranstalter schicken, was wir an Technik brauchen',
+  'help_task_quote' => 'ausrechnen, was ein Auftritt kosten soll',
+  'help_task_guest' => 'einen Aushilfsmusiker oder Techniker dazuholen',
+  'help_task_money' => 'eine Ausgabe oder eine Gage buchen',
+  'help_task_absence' => 'eintragen, wann ich nicht kann',
+  'help_task_photo' => 'Fotos hochladen und ordnen',
+  'help_task_member' => 'jemanden neu in die Band aufnehmen',
+  'help_task_app' => 'die App auf mein Handy holen',
+  'help_task_notify' => 'Mitteilungen aufs Handy bekommen',
   // Kalkulation (#302)
   'inav_angebote' => 'Angebote',
   'quote_title' => 'Angebote',
@@ -5230,6 +5249,42 @@ const BRANDING_SLOTS = [
  * beiden Listen unten — mehr braucht ein neues Dokument nicht, um Logo und
  * Wasserzeichen zu erben.
  */
+/**
+ * Das Zeichen eines Bereichs. Es steht im Menü und auf der Hilfeseite — an
+ * einer Stelle, damit beide dasselbe zeigen: Wer im Menü nach dem Zelt sucht,
+ * findet in der Hilfe sonst eine Eintrittskarte und glaubt, er sei falsch.
+ */
+const MODULE_ICONS = [
+  'termine' => '📅', 'songs' => '🎵', 'setlists' => '🎤', 'orte' => '📍',
+  'abwesenheiten' => '🏖', 'aufgaben' => '✅', 'themen' => '💬', 'kasse' => '💰',
+  'equipment' => '🎛', 'rider' => '📋', 'fotos' => '📷', 'post' => '✉',
+  'musik' => '🎬', 'downloads' => '⬇', 'mitglieder' => '👥', 'gaeste' => '🎟',
+  'angebote' => '🧮', 'mailversand' => '📨',
+];
+
+/**
+ * „Ich möchte …" — der Einstieg in die Hilfe für alle, die nicht wissen, wie
+ * der Bereich heißt, in dem ihre Frage wohnt (#305). Je Eintrag: der Bereich,
+ * dessen Recht man dafür braucht, und die Sprungmarke.
+ *
+ * Wer ein Recht nicht hat, sieht den Eintrag nicht — sonst schickt die Hilfe
+ * jemanden zu einer Seite, die ihm verschlossen ist.
+ */
+const HELP_TASKS = [
+  ['termine', 'help_task_answer', 'hilfe-termine'],
+  ['termine', 'help_task_newgig', 'hilfe-termine'],
+  ['setlists', 'help_task_setlist', 'hilfe-setlists'],
+  ['rider', 'help_task_rider', 'hilfe-rider'],
+  ['angebote', 'help_task_quote', 'hilfe-angebote'],
+  ['gaeste', 'help_task_guest', 'hilfe-gaeste'],
+  ['kasse', 'help_task_money', 'hilfe-kasse'],
+  ['abwesenheiten', 'help_task_absence', 'hilfe-abwesenheiten'],
+  ['fotos', 'help_task_photo', 'hilfe-fotos'],
+  ['mitglieder', 'help_task_member', 'hilfe-mitglieder'],
+  ['', 'help_task_app', 'hilfe-app'],
+  ['', 'help_task_notify', 'hilfe-push'],
+];
+
 const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote'];
 
 /**

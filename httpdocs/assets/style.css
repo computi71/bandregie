@@ -233,6 +233,51 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .pubfields { border: 1px dashed var(--border); border-radius: 8px; padding: 0.7rem 1rem; display: grid; gap: 0.6rem; }
 .pubfields legend { color: var(--muted); font-size: 0.85rem; padding: 0 0.4rem; }
 
+/* ---------- Bebilderte Hilfe (#305) ---------- */
+/* Die Bilder sind gezeichnet und nehmen die Farben der Oberfläche an. Ein
+   Bildschirmfoto wäre in einer Sprache richtig und nach der nächsten Änderung
+   falsch; eine Zeichnung zeigt die Form und bleibt stehen. */
+.helpfig { display: block; width: 100%; max-width: 22rem; height: auto; margin: 0.2rem 0 1rem; }
+.helpfig .hf-card { fill: var(--bg-elevated); stroke: var(--border); stroke-width: 1.5; }
+.helpfig .hf-card-fill { fill: var(--bg-card); }
+.helpfig .hf-card-fill-stroke { fill: none; stroke: var(--bg-card); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.helpfig .hf-stroke { stroke: var(--border); stroke-width: 1.5; }
+/* Ein bedrucktes Blatt ist weiß, auch im dunklen Programm — sonst sieht der
+   Ausdruck auf dem Bild anders aus als auf dem Papier. */
+.helpfig .hf-sheet { fill: #f6f4f1; stroke: var(--border); stroke-width: 1.5; }
+.helpfig .hf-ink { fill: #3a3028; }
+.helpfig .hf-line { fill: var(--text); }
+.helpfig .hf-line-fill { fill: var(--muted); }
+.helpfig .hf-line-soft { fill: var(--muted); opacity: 0.5; }
+.helpfig .hf-line-soft-stroke { fill: none; stroke: var(--muted); stroke-width: 2; opacity: 0.5; }
+.helpfig .hf-accent, .helpfig .hf-accent-fill { fill: var(--accent); }
+.helpfig .hf-accent-soft { fill: var(--accent); opacity: 0.4; }
+.helpfig .hf-accent-stroke { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
+.helpfig .hf-ok { fill: var(--ok); }
+.helpfig .hf-ok-stroke { fill: none; stroke: var(--ok); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.helpfig .hf-no { fill: var(--danger); }
+.helpfig .hf-no-stroke { fill: none; stroke: var(--danger); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.helpfig .hf-maybe { fill: var(--maybe); }
+.helpfig .hf-box { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.helpfig .hf-edge { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.helpfig .hf-edge-fill { fill: var(--muted); }
+
+/* „Ich möchte …": der Einstieg für alle, die den Namen des Bereichs nicht
+   kennen. Große Ziele, weil das hier oft auf dem Telefon gelesen wird. */
+.help-tasks { list-style: none; margin: 0.4rem 0 1.4rem; padding: 0; display: grid; gap: 0.4rem; }
+.help-tasks a {
+  display: flex; align-items: center; gap: 0.6rem;
+  min-height: 2.75rem; padding: 0.5rem 0.8rem;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); text-decoration: none;
+}
+.help-tasks a:hover, .help-tasks a:focus-visible { border-color: var(--accent); }
+.help-tasks .tick { font-size: 1.2rem; flex: 0 0 auto; }
+/* Der erste Satz eines Bereichs beantwortet „wofür ist das?" und darf deshalb
+   größer sein als der Rest. */
+.help-lead { font-size: 1.05rem; color: var(--text); margin: 0 0 0.6rem; }
+@media (min-width: 40rem) { .help-tasks { grid-template-columns: 1fr 1fr; } }
+
 /* Angebote (#302): Beträge stehen rechts, damit man sie übereinander liest,
    und die Endsumme hebt sich ab — das ist die Zeile, die gesucht wird. */
 .table td.num, .table th.num { text-align: right; white-space: nowrap; }

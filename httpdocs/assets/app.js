@@ -69,3 +69,18 @@ if ('serviceWorker' in navigator) {
     document.addEventListener('visibilitychange', gesehen);
   });
 }
+
+// Ein Link auf einen Abschnitt der Hilfe soll ihn auch aufklappen (#305).
+// Die Abschnitte sind <details>, und ein Sprung auf ein zugeklapptes <details>
+// zeigt in vielen Browsern nichts als die Überschrift — der Leser landet dort
+// und glaubt, der Link sei kaputt.
+(function () {
+  const aufklappen = () => {
+    const ziel = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+    if (!ziel || ziel.tagName !== 'DETAILS') return;
+    ziel.open = true;
+    ziel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+  window.addEventListener('hashchange', aufklappen);
+  document.addEventListener('DOMContentLoaded', aufklappen);
+})();

@@ -113,32 +113,32 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           // den Medien — sie ist eingehende Korrespondenz und nicht etwas, das
           // die Band veröffentlicht (#268).
           ['🗂', t('inavg_planung'), [
-            '/intern/termine' => ['📅', t('inav_termine')],
-            '/intern/aufgaben' => ['✅', t('inav_aufgaben')],
-            '/intern/abwesenheiten' => ['🏖', t('inav_abwesenheiten')],
-            '/intern/themen' => ['💬', t('inav_themen')],
-            '/intern/post' => ['✉', t('inav_post')],
-            '/intern/orte' => ['📍', t('inav_orte')],
-            '/intern/gaeste' => ['🎟', t('inav_gaeste')],
-            '/intern/angebote' => ['🧮', t('inav_angebote')],
+            '/intern/termine' => [MODULE_ICONS['termine'], t('inav_termine')],
+            '/intern/aufgaben' => [MODULE_ICONS['aufgaben'], t('inav_aufgaben')],
+            '/intern/abwesenheiten' => [MODULE_ICONS['abwesenheiten'], t('inav_abwesenheiten')],
+            '/intern/themen' => [MODULE_ICONS['themen'], t('inav_themen')],
+            '/intern/post' => [MODULE_ICONS['post'], t('inav_post')],
+            '/intern/orte' => [MODULE_ICONS['orte'], t('inav_orte')],
+            '/intern/gaeste' => [MODULE_ICONS['gaeste'], t('inav_gaeste')],
+            '/intern/angebote' => [MODULE_ICONS['angebote'], t('inav_angebote')],
           ]],
           ['🎼', t('inavg_musik'), [
-            '/intern/songs' => ['🎵', t('inav_songs')],
-            '/intern/setlists' => ['🎤', t('inav_setlists')],
+            '/intern/songs' => [MODULE_ICONS['songs'], t('inav_songs')],
+            '/intern/setlists' => [MODULE_ICONS['setlists'], t('inav_setlists')],
           ]],
           ['🔌', t('inavg_technik'), [
-            '/intern/equipment' => ['🎛', t('inav_equipment')],
-            '/intern/stagerider' => ['📋', t('inav_rider')],
+            '/intern/equipment' => [MODULE_ICONS['equipment'], t('inav_equipment')],
+            '/intern/stagerider' => [MODULE_ICONS['rider'], t('inav_rider')],
             '/intern/kanaele' => ['🎚', t('inav_kanaele')],
           ]],
           ['📦', t('inavg_material'), [
-            '/intern/fotos' => ['📷', t('inav_fotos')],
-            '/intern/musik' => ['🎬', t('inav_musik')],
-            '/intern/downloads' => ['⬇', t('inav_downloads')],
+            '/intern/fotos' => [MODULE_ICONS['fotos'], t('inav_fotos')],
+            '/intern/musik' => [MODULE_ICONS['musik'], t('inav_musik')],
+            '/intern/downloads' => [MODULE_ICONS['downloads'], t('inav_downloads')],
           ]],
           ['🎸', t('inavg_band'), [
-            '/intern/kasse' => ['💰', t('inav_kasse')],
-            '/intern/mitglieder' => ['👥', t('inav_mitglieder')],
+            '/intern/kasse' => [MODULE_ICONS['kasse'], t('inav_kasse')],
+            '/intern/mitglieder' => [MODULE_ICONS['mitglieder'], t('inav_mitglieder')],
           ]],
           // „Über" erzählt von der Anwendung — das liest man einmal. Es stand
           // zwischen den beiden Einträgen, an denen man etwas tut (#268).
