@@ -32,6 +32,21 @@ require_once BASE_DIR . '/app/help_figures.php';
   <?php endforeach; ?>
 </ul>
 
+<?php // Wie die Bereiche zusammenhängen (#310). Steht vor den Bereichen, weil
+      // die häufigste Frage nicht „was ist X" lautet, sondern „warum steht das
+      // hier und nicht dort". Nur die Absätze, deren Bereich offensteht. ?>
+<details id="hilfe-zusammenhang" class="card acc" name="helpacc">
+  <summary>🔗 <?= e(t('help_flow_title')) ?></summary>
+  <?= help_figure('flow') ?>
+  <p class="help-lead"><?= e(t('help_flow_intro')) ?></p>
+  <?php foreach ([['termine', 'help_flow_gig'], ['setlists', 'help_flow_setlist'],
+                  ['gaeste', 'help_flow_guest'], ['termine', 'help_flow_booking'],
+                  ['mitglieder', 'help_flow_rights'], ['kasse', 'help_flow_money']] as [$flowMod, $flowKey]): ?>
+    <?php if (!perm_allows($user, $flowMod)) continue; ?>
+    <p class="muted"><?= e(t($flowKey)) ?></p>
+  <?php endforeach; ?>
+</details>
+
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>

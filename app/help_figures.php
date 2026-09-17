@@ -105,4 +105,24 @@ const HELP_FIGURES = [
      <rect class="hf-line-soft" x="246" y="34" width="22" height="22" rx="6"/>
      <rect class="hf-line-soft" x="216" y="66" width="22" height="22" rx="6"/>
      <rect class="hf-line-soft" x="246" y="66" width="22" height="22" rx="6"/>',
+
+  // Wie alles zusammenhängt: Anfrage, Angebot, Vertrag, Auftritt, Kasse.
+  'flow' =>
+    '<rect class="hf-card" x="6" y="44" width="52" height="42" rx="8"/>
+     <path class="hf-edge" d="M62 65 H78" marker-end="url(#hf-tip)"/>
+     <rect class="hf-card" x="82" y="44" width="52" height="42" rx="8"/>
+     <path class="hf-edge" d="M138 65 H154" marker-end="url(#hf-tip)"/>
+     <rect class="hf-accent-soft hf-stroke" x="158" y="44" width="52" height="42" rx="8"/>
+     <path class="hf-edge" d="M214 65 H230" marker-end="url(#hf-tip)"/>
+     <rect class="hf-card" x="234" y="44" width="52" height="42" rx="8"/>
+     <path class="hf-edge" d="M290 65 H306" marker-end="url(#hf-tip)"/>
+     <rect class="hf-line-soft" x="18" y="60" width="28" height="6" rx="3"/>
+     <rect class="hf-line-soft" x="94" y="60" width="28" height="6" rx="3"/>
+     <rect class="hf-line" x="170" y="60" width="28" height="6" rx="3"/>
+     <rect class="hf-line-soft" x="246" y="60" width="28" height="6" rx="3"/>
+     <circle class="hf-ok" cx="312" cy="65" r="8"/>
+     <path class="hf-edge" d="M108 40 V22 H184 V40" marker-end="url(#hf-tip)"/>
+     <rect class="hf-line-soft" x="126" y="10" width="40" height="6" rx="3"/>
+     <path class="hf-edge" d="M184 90 V108 H108 V90" marker-end="url(#hf-tip)"/>
+     <rect class="hf-line-soft" x="126" y="114" width="40" height="6" rx="3"/>',
 ];
