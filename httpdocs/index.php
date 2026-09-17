@@ -2444,6 +2444,12 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/hilfe' && $method === 'GET') {
     view('intern/hilfe', ['title' => t('help_title')]);
   }
+  // Dieselbe Hilfe zum Ausdrucken (#311): alles aufgeklappt, jeder Abschnitt auf
+  // eigenem Blatt. Eine zweite Datei hätte eine zweite Hilfe bedeutet, von der
+  // eine still veraltet.
+  if ($path === '/intern/hilfe/druck' && $method === 'GET') {
+    view('intern/hilfe', ['title' => t('help_title'), 'druck' => true]);
+  }
 
   // ---------- Rechte je Bereich ----------
   // Die Rechte stehen jetzt beim jeweiligen Mitglied; alte Lesezeichen und

@@ -2,7 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Gezeichnete Bilder für die Hilfeseite (#305).
+ * Die Hilfeseite: ihre Abschnitte und ihre Bilder (#305, #311).
+ *
+ * Gezeichnete Bilder
  *
  * Die meisten Bereiche zeigen ein Bildschirmfoto aus der Demo — man erkennt
  * seine eigene Seite darin wieder, und das hilft mehr als jede Zeichnung.
@@ -14,6 +16,46 @@ declare(strict_types=1);
  * einem Telefon lesbar. Die Fotos entstehen mit bin/help-shots.js neu, sobald
  * sich die Oberfläche ändert.
  */
+
+/**
+ * Welche Abschnitte die Hilfe für dieses Konto hat — in der Reihenfolge, in der
+ * sie auf der Seite stehen (#311).
+ *
+ * Eine Stelle für die Bedingungen: Register, Druckansicht und die Seite selbst
+ * müssen sich einig sein, was es überhaupt gibt. Stünden die Bedingungen
+ * dreimal da, zeigte das Register irgendwann auf einen Abschnitt, den es für
+ * diesen Leser nicht gibt.
+ *
+ * Je Eintrag: Sprungmarke, Zeichen und Beschriftung.
+ */
+function help_sections(array $user): array {
+  $abschnitte = ['zusammenhang' => ['🔗', t('help_flow_title')]];
+  foreach (array_keys(PERM_MODULES) as $mod) {
+    if (perm_allows($user, $mod)) $abschnitte[$mod] = [MODULE_ICONS[$mod] ?? '•', t('inav_' . $mod)];
+  }
+  if (perm_allows($user, 'kasse')) {
+    $abschnitte['steuer'] = ['⚖', t('taxr_title')];
+    if (setting('tax_small_business', '0') === '1') {
+      $abschnitte['kleinunternehmer'] = ['⚖', t('help_tax_title')];
+    }
+  }
+  if (push_available()) $abschnitte['push'] = ['🔕', t('help_push_trouble_title')];
+  if (totp_available() || totp_active((int) $user['id'])) $abschnitte['totp'] = ['🔑', t('help_totp_title')];
+  if (passkey_available()) $abschnitte['passkey'] = ['🔐', t('help_passkey_title')];
+  $abschnitte['app'] = ['📱', t('app_install')];
+  return $abschnitte;
+}
+
+/**
+ * Dieselben Abschnitte, nach Beschriftung sortiert — das Register für alle, die
+ * den Namen kennen und nicht das Vorhaben. Sortiert wird mit der Sprache des
+ * Lesers: „Übersicht" gehört hinter „Termine" und nicht ans Ende.
+ */
+function help_sections_sorted(array $user): array {
+  $abschnitte = help_sections($user);
+  uasort($abschnitte, static fn(array $a, array $b): int => strcoll($a[1], $b[1]));
+  return $abschnitte;
+}
 
 /** Ein Bild der Hilfeseite als SVG. Unbekannter Name gibt nichts zurück. */
 function help_figure(string $name): string {

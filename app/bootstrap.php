@@ -666,6 +666,10 @@ const UI_STRINGS = [
   'mem_share_hint' => 'Dieses Mitglied hat keine E-Mail-Adresse. Schick ihm den Zugangslink von deinem eigenen Handy — er gilt eine Stunde und genau einmal.',
   'mem_share_msg' => 'Hallo %1$s, dein Zugang zum Bandbereich von %2$s: %3$s — der Link gilt eine Stunde, danach frag noch mal nach.',
   'mem_share_none' => 'Dafür fehlt die Mobilnummer.',
+  'help_register_title' => 'Alle Bereiche von A bis Z',
+  'help_print' => 'Hilfe drucken',
+  'help_print_hint' => 'Alles aufgeklappt, jeder Abschnitt auf einem eigenen Blatt — zum Mitgeben an jemanden, der gerade neu dabei ist.',
+  'printdoc_help' => 'Hilfe',
   'help_shot_alt' => 'Bildschirmfoto: %s',
   // Hilfe: wie die Bereiche zusammenhängen (#310)
   'help_mitglieder_4' => 'Neben Mitglied, Ersatz und Bandleitung gibt es den Bookingagenten: jemand von außen, der für euch bucht. Er sieht Termine, Orte, Rider und Verträge, aber weder Kasse noch Fotos noch das Postfach. Wie viel er vom Kalender sieht, stellt ihr in den Einstellungen ein. Von Themen und Verträgen sieht er nur die eigenen — alles Weitere schaltet ihr ihm einzeln frei.',
@@ -3214,7 +3218,7 @@ $defaults = [
   // Es sagt, von wem das Blatt ist. Das Wasserzeichen nur auf der Setliste —
   // Steuerübersicht und GEMA-Meldung sind Formulare, dort stört ein Bild
   // hinter den Zahlen. Angebot und Vertrag tragen es, sobald es sie gibt.
-  'print_logo_docs' => 'setlist,rider,tax,gema,quote', 'print_watermark_docs' => 'setlist,quote',
+  'print_logo_docs' => 'setlist,rider,tax,gema,quote,help', 'print_watermark_docs' => 'setlist,quote',
   // Preisliste der Kalkulation (#302), alles in Cent. Leer ausgeliefert:
   // Was eine Band verlangt, weiß nur sie selbst, und eine erfundene Zahl
   // im Angebot wäre schlimmer als ein leeres Feld.
@@ -3434,6 +3438,13 @@ if (setting('migr_vertraege_perm') === '') {
 }
 
 // Der Vertrag ist ein Druckbogen wie die anderen.
+if (setting('migr_help_print_docs') === '') {
+  $hTeile = array_filter(array_map('trim', explode(',', (string) setting('print_logo_docs'))));
+  if (!in_array('help', $hTeile, true)) $hTeile[] = 'help';
+  set_setting('print_logo_docs', implode(',', $hTeile));
+  set_setting('migr_help_print_docs', '1');
+}
+
 if (setting('migr_contract_print_docs') === '') {
   foreach (['print_logo_docs', 'print_watermark_docs'] as $druckListe2) {
     $teile2 = array_filter(array_map('trim', explode(',', (string) setting($druckListe2))));
@@ -5685,7 +5696,7 @@ const HELP_TASKS = [
   ['', 'help_task_notify', 'hilfe-push'],
 ];
 
-const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote', 'contract'];
+const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote', 'contract', 'help'];
 
 /**
  * Trägt dieser Bogen Logo beziehungsweise Wasserzeichen? Je Dokument

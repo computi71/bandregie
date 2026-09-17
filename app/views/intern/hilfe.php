@@ -1,4 +1,48 @@
+<?php
+// Zwei Fassungen, eine Datei: die Seite im Bandbereich und dieselbe zum Drucken
+// (#311). Zwei Dateien bedeuteten zwei Hilfen, von denen eine still veraltet.
+$druck = !empty($druck);
+require_once BASE_DIR . '/app/help.php';
+?>
+<?php if ($druck): $printDoc = 'help'; ?>
+<!DOCTYPE html>
+<html lang="<?= e(current_lang()) ?>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= e(t('help_title')) ?> · <?= e(setting('band_name')) ?></title>
+  <style>
+<?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
+    body { font-size: 10.5pt; }
+    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
+    h1 { font-size: 17pt; margin: 0 0 1mm; }
+    /* Jeder Abschnitt beginnt auf einer neuen Seite: So lässt sich ein einzelnes
+       Blatt herausziehen und jemandem in die Hand drücken. */
+    details { break-before: page; margin-top: 6mm; }
+    details:first-of-type { break-before: auto; }
+    summary { font-size: 13pt; font-weight: 700; list-style: none; margin-bottom: 2mm; }
+    summary::-webkit-details-marker { display: none; }
+    .help-lead { font-size: 11.5pt; }
+    p { margin: 0 0 2.5mm; }
+    .helpshot, .helpfig { max-width: 120mm; }
+    .help-tasks { display: none; }
+    @media screen { body { padding: 1rem 0; } }
+  </style>
+</head>
+<body>
+<?php $zurueckUrl = '/intern/hilfe'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<div class="sheet">
+  <?= print_watermark_html($printDoc) ?>
+  <div class="head-row">
+    <div>
+      <h1><?= e(t('help_title')) ?></h1>
+      <div class="muted"><?= e(setting('band_name')) ?> · <?= e(fmt_date(date('Y-m-d'))) ?></div>
+    </div>
+    <?= print_logo_html($printDoc) ?>
+  </div>
+<?php else: ?>
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
+<?php endif; ?>
 <?php
 // Die Hilfe für Leute, die kein Programm bedienen wollen, sondern Musik machen
 // (#305). Drei Regeln halten sie brauchbar:
@@ -11,7 +55,6 @@
 //
 // Gezeigt wird nur, was diesem Konto offensteht. Eine Hilfe, die von Knöpfen
 // erzählt, die es für den Lesenden nicht gibt, verunsichert mehr, als sie hilft.
-require_once BASE_DIR . '/app/help_figures.php';
 ?>
 <?= help_figure_defs() ?>
 <h1>❓ <?= e(t('help_title')) ?></h1>
@@ -32,10 +75,26 @@ require_once BASE_DIR . '/app/help_figures.php';
   <?php endforeach; ?>
 </ul>
 
+<?php // Der zweite Einstieg: über den Namen, für alle, die ihn kennen (#311).
+      // Sortiert wird mit der Sprache des Lesers. ?>
+<details class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
+  <summary>🔤 <?= e(t('help_register_title')) ?></summary>
+  <ul class="help-tasks">
+    <?php foreach (help_sections_sorted($user) as $regAnker => [$regIcon, $regName]): ?>
+      <li><a href="#hilfe-<?= e($regAnker) ?>"><span class="tick"><?= $regIcon ?></span> <?= e($regName) ?></a></li>
+    <?php endforeach; ?>
+  </ul>
+</details>
+
+<?php if (!$druck): ?>
+  <p class="muted small"><a href="/intern/hilfe/druck" target="_blank" rel="noopener">🖨 <?= e(t('help_print')) ?></a>
+    — <?= e(t('help_print_hint')) ?></p>
+<?php endif; ?>
+
 <?php // Wie die Bereiche zusammenhängen (#310). Steht vor den Bereichen, weil
       // die häufigste Frage nicht „was ist X" lautet, sondern „warum steht das
       // hier und nicht dort". Nur die Absätze, deren Bereich offensteht. ?>
-<details id="hilfe-zusammenhang" class="card acc" name="helpacc">
+<details id="hilfe-zusammenhang" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
   <summary>🔗 <?= e(t('help_flow_title')) ?></summary>
   <?= help_figure('flow') ?>
   <p class="help-lead"><?= e(t('help_flow_intro')) ?></p>
@@ -50,7 +109,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
-  <details id="hilfe-<?= e($helpMod) ?>" class="card acc" name="helpacc" <?= $helpFirst ? 'open' : '' ?>>
+  <details id="hilfe-<?= e($helpMod) ?>" class="card acc" name="helpacc" <?= $druck || $helpFirst ? 'open' : '' ?>>
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
     <?= help_picture($helpMod, t('inav_' . $helpMod)) ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
@@ -76,7 +135,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php // Den Jahresbericht hat jeder, der die Kasse sieht — die eigenen Zahlen
       // hängen nicht daran, ob die Band die Kleinunternehmerregelung nutzt. ?>
 <?php if (perm_allows($user, 'kasse')): ?>
-  <details id="hilfe-steuer" class="card acc" name="helpacc">
+  <details id="hilfe-steuer" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
     <summary>⚖ <?= e(t('taxr_title')) ?></summary>
     <?= help_picture('steuer', t('taxr_title')) ?>
     <p class="help-lead"><?= e(t('help_taxr_what')) ?></p>
@@ -98,7 +157,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php // Nur wer die Kasse sieht, und nur wenn die Band die Regelung nutzt —
       // sonst erklärt die Hilfe etwas, das nirgends vorkommt. ?>
 <?php if (perm_allows($user, 'kasse') && setting('tax_small_business', '0') === '1'): ?>
-  <details id="hilfe-kleinunternehmer" class="card acc" name="helpacc">
+  <details id="hilfe-kleinunternehmer" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
     <summary>⚖ <?= e(t('help_tax_title')) ?></summary>
     <p class="help-lead"><?= e(t('help_tax_what')) ?></p>
     <p class="muted"><?= e(t('help_tax_limits')) ?></p>
@@ -160,7 +219,7 @@ require_once BASE_DIR . '/app/help_figures.php';
       // sondern an einem von vier Schaltern, die alle stumm sperren. Die
       // Reihenfolge ist die Suchreihenfolge: von innen nach außen. ?>
 <?php if (push_available()): ?>
-  <details id="hilfe-push" class="card acc" name="helpacc">
+  <details id="hilfe-push" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
     <summary>🔕 <?= e(t('help_push_trouble_title')) ?></summary>
     <?= help_picture('push', t('help_push_trouble_title')) ?>
     <p class="help-lead"><?= e(t('help_push_trouble_intro')) ?></p>
@@ -181,7 +240,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php // totp_active() statt totp_active_for($user): $user kommt aus
       // current_user() und trägt die Felder des zweiten Faktors nicht mit. ?>
 <?php if (totp_available() || totp_active((int) $user['id'])): ?>
-  <details id="hilfe-totp" class="card acc" name="helpacc">
+  <details id="hilfe-totp" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
     <summary>🔑 <?= e(t('help_totp_title')) ?></summary>
     <?= help_picture('totp', t('help_totp_title')) ?>
     <p class="help-lead"><?= e(t('help_totp_what')) ?></p>
@@ -196,7 +255,7 @@ require_once BASE_DIR . '/app/help_figures.php';
 <?php endif; ?>
 
 <?php if (passkey_available()): ?>
-  <details id="hilfe-passkey" class="card acc" name="helpacc">
+  <details id="hilfe-passkey" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
     <?= help_picture('passkey', t('help_passkey_title')) ?>
     <p class="help-lead"><?= e(t('help_passkey')) ?></p>
@@ -205,7 +264,7 @@ require_once BASE_DIR . '/app/help_figures.php';
   </details>
 <?php endif; ?>
 
-<details id="hilfe-app" class="card acc" name="helpacc">
+<details id="hilfe-app" class="card acc" name="helpacc" <?= $druck ? 'open' : '' ?>>
   <summary>📱 <?= e(t('app_install')) ?></summary>
   <?= help_picture('app', t('app_install')) ?>
   <p class="help-lead"><?= e(t('app_install_hint')) ?></p>
@@ -221,5 +280,11 @@ require_once BASE_DIR . '/app/help_figures.php';
 </details>
 
 
+<?php if ($druck): ?>
+</div>
+</body>
+</html>
+<?php else: ?>
 <p class="muted small"><?= e(t('help_more')) ?> <a href="/intern/ueber"><?= e(t('about_open')) ?> →</a></p>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
+<?php endif; ?>

@@ -1,0 +1,23 @@
+-- Hilfe: Register von A bis Z und die Druckansicht (#311)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','help_register_title','All areas from A to Z'),
+('en','help_print','Print the help'),
+('en','help_print_hint','Everything open, each section on a sheet of its own — to hand to somebody who has just joined.'),
+('en','printdoc_help','Help'),
+('nl','help_register_title','Alle onderdelen van A tot Z'),
+('nl','help_print','Hulp afdrukken'),
+('nl','help_print_hint','Alles opengeklapt, elk onderdeel op een eigen blad — om mee te geven aan iemand die net begonnen is.'),
+('nl','printdoc_help','Hulp'),
+('fr','help_register_title','Tous les domaines de A à Z'),
+('fr','help_print','Imprimer l''aide'),
+('fr','help_print_hint','Tout déplié, chaque section sur sa propre feuille — à donner à quelqu''un qui vient d''arriver.'),
+('fr','printdoc_help','Aide'),
+('es','help_register_title','Todas las áreas de la A a la Z'),
+('es','help_print','Imprimir la ayuda'),
+('es','help_print_hint','Todo desplegado, cada sección en su propia hoja — para dársela a alguien que acaba de entrar.'),
+('es','printdoc_help','Ayuda'),
+('it','help_register_title','Tutte le aree dalla A alla Z'),
+('it','help_print','Stampa la guida'),
+('it','help_print_hint','Tutto aperto, ogni sezione su un foglio a sé — da dare a chi è appena arrivato.'),
+('it','printdoc_help','Guida')
+ON DUPLICATE KEY UPDATE value = value;
