@@ -15,9 +15,9 @@ foreach ($entries as $entry) {
 }
 $sets = array_values(array_filter($sets, fn($s) => $s !== []));
 
-// Fürs Papier das Druck-Logo (dunkel auf weiß) bevorzugen, sonst Website-Logo
-$logo = ($settings['print_logo_file'] ?? '') ?: ($settings['logo_file'] ?? '');
-$watermark = $settings['print_watermark_file'] ?? '';
+// Logo-Ecke und Wasserzeichen kommen aus dem gemeinsamen Druckkopf (#304) —
+// welches Bild, ob überhaupt, und woher der Ersatz kommt, entscheidet er.
+$printDoc = 'setlist';
 
 // Infozeile: ganzer Gig (alle Sets zusammen)
 $songCount = count(array_filter($entries, fn($x) => !$x['is_break']));
@@ -72,14 +72,12 @@ $fontFor = function (array $set): int {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Setlist · <?= e($setlist['name']) ?></title>
   <style>
-    /* Ränder fest ins Blatt eingebaut (Padding) statt über @page — so stimmen sie
-       unabhängig von der Rand-Einstellung im Druckdialog des Browsers. */
-    @page { size: A4 portrait; margin: 0; }
-    body { font-family: Calibri, Arial, Helvetica, sans-serif; color: #000; background: #fff; margin: 0; }
-    .sheet { box-sizing: border-box; width: 210mm; height: 296mm; padding: 12mm 14mm 10mm;
-             break-after: page; position: relative; overflow: hidden; }
+<?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
+    /* Eigenes Blatt: feste Höhe, weil pro Set genau eine Seite gedruckt wird und
+       die Schriftgröße darauf gerechnet ist. Knappere Ränder als sonst — jeder
+       Millimeter hier ist unten eine Zeile Repertoire. */
+    .sheet { height: 296mm; padding: 12mm 14mm 10mm; break-after: page; overflow: hidden; }
     .sheet:last-child { break-after: auto; }
-    .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
     /* Der Titel bleibt auf einer Zeile: „Setlist Mittwochs Konzert Zündstoff –
        19. August 2026" brach neben dem Logo um und stand zweizeilig unter dem
        Bandnamen. Ein Kopf, der über zwei Zeilen läuft, drückt die Songs nach
@@ -100,8 +98,10 @@ $fontFor = function (array $set): int {
     .head.head-long { font-size: 12pt; }
     .head.head-verylong { font-size: 10.5pt; }
     .sub { font-size: 12pt; margin-top: 4mm; line-height: 1.35; }
+    /* Größer als auf den anderen Bögen: Die Setliste liest jemand aus zwei
+       Metern Entfernung, im Halbdunkel, auf der Bühne. */
     .logo img { max-height: 22mm; max-width: 75mm; }
-    .logo .bandname { font-size: 22pt; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+    .logo .bandname { font-size: 22pt; }
     .songs { margin-top: 8mm; position: relative; z-index: 1; }
     .song { font-weight: 700; line-height: 1.18; }
     .song .note { font-weight: 400; font-size: 55%; }
@@ -158,14 +158,6 @@ $fontFor = function (array $set): int {
       letter-spacing: 0.04em;
       white-space: nowrap;
     }
-    /* position:fixed wiederholt das Wasserzeichen beim Druck auf jeder Seite */
-    /* Wasserzeichen liegt in jedem Blatt; pointer-events: none, damit es keine Klicks schluckt */
-    .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; pointer-events: none; }
-    .watermark img { width: 72%; opacity: 0.07; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    @media screen {
-      body { background: #777; padding: 1rem; }
-      .sheet { margin: 0 auto 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.4); background: #fff; }
-    }
   </style>
 </head>
 <body>
@@ -195,9 +187,7 @@ $fontFor = function (array $set): int {
     require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
-      <?php if ($watermark): ?>
-        <div class="watermark"><img src="/uploads/<?= e($watermark) ?>" alt=""></div>
-      <?php endif; ?>
+      <?= print_watermark_html($printDoc) ?>
       <div class="head-row">
         <div>
           <?php // Je länger der Name, desto kleiner die Zeile — gerechnet, nicht
@@ -212,13 +202,7 @@ $fontFor = function (array $set): int {
             if ($totalMin > 0): ?> = <?= e(str_replace('%1', (string) $totalMin, t('sl_print_min'))) ?><?php endif; ?><?php
             if ($pauseText !== ''): ?> <?= e($pauseText) ?><?php endif; ?></div>
         </div>
-        <div class="logo">
-          <?php if ($logo): ?>
-            <img src="/uploads/<?= e($logo) ?>" alt="<?= e($settings['band_name']) ?>">
-          <?php else: ?>
-            <span class="bandname"><?= e($settings['band_name']) ?></span>
-          <?php endif; ?>
-        </div>
+        <?= print_logo_html($printDoc) ?>
       </div>
       <div class="songs" style="font-size: <?= $fontFor($set) ?>pt">
         <?php

@@ -3,6 +3,7 @@
 // verständlich ist. Es nennt deshalb oben, wessen Zahlen es zeigt, und unten,
 // mit welchen Werten gerechnet wurde — auf dem Papier kann niemand nachsehen.
 $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] ?? '');
+$printDoc = 'tax';
 ?>
 <!DOCTYPE html>
 <html lang="<?= e(current_lang()) ?>">
@@ -11,11 +12,9 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e(t('taxr_title')) ?> <?= (int) $year ?> · <?= e($taxOwner) ?></title>
   <style>
-    @page { size: A4 portrait; margin: 0; }
-    body { font-family: Calibri, Arial, Helvetica, sans-serif; color: #000; background: #fff; margin: 0; font-size: 10.5pt; }
-    .sheet { box-sizing: border-box; width: 210mm; min-height: 296mm; padding: 14mm 16mm 12mm; }
-    .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm;
-                border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
+<?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
+    body { font-size: 10.5pt; }
+    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
     h1 { font-size: 17pt; margin: 0 0 1mm; }
     h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; text-transform: uppercase; letter-spacing: 0.04em; }
     table { width: 100%; border-collapse: collapse; font-size: 10pt; }
@@ -25,19 +24,20 @@ $taxOwner = $scope === 'band' ? ($settings['band_name'] ?? '') : ($user['name'] 
     .sum td { border-top: 0.4mm solid #000; border-bottom: 0; font-weight: 700; }
     .muted { color: #555; }
     .note { font-size: 9pt; color: #555; margin-top: 6mm; }
-    @media screen { body { background: #777; padding: 1rem 0; }
-                    .sheet { margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); } }
   </style>
 </head>
 <body>
 <?php $zurueckUrl = '/intern/kasse/steuer'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
+  <?= print_watermark_html($printDoc) ?>
   <div class="head-row">
     <div>
       <h1><?= e(t('taxr_title')) ?> <?= (int) $year ?></h1>
-      <div class="muted"><?= e($taxOwner) ?> · <?= e(fmt_date(date('Y-m-d'))) ?></div>
+      <?php // Wessen Zahlen, wann gedruckt, welcher Umfang — auf dem Papier kann
+            // niemand nachsehen, also steht es in einer Zeile beieinander. ?>
+      <div class="muted"><?= e($taxOwner) ?> · <?= e(fmt_date(date('Y-m-d'))) ?> · <?= e($scope === 'band' ? t('taxr_scope_band') : t('taxr_scope_own')) ?></div>
     </div>
-    <div class="muted"><?= e($scope === 'band' ? t('taxr_scope_band') : t('taxr_scope_own')) ?></div>
+    <?= print_logo_html($printDoc) ?>
   </div>
 
   <h2><?= e(t('fin_by_category')) ?></h2>

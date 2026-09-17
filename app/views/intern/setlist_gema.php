@@ -6,6 +6,7 @@ function hms(int|string|null $sec): string {
 $totalSec = array_sum(array_map(fn($x) => (int) $x['duration_sec'], $entries));
 $missingComposer = array_filter($entries, fn($x) => trim((string) $x['composer']) === '');
 $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] === 0);
+$printDoc = 'gema';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -14,7 +15,8 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GEMA-Musikfolge · <?= e($setlist['name']) ?></title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; margin: 1.5rem 2rem; font-size: 11pt; }
+<?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
+    body { font-size: 11pt; }
     h1 { font-size: 1.3rem; margin: 0 0 0.2rem; }
     .frame { border: 1px solid #999; padding: 0.6rem 0.9rem; margin: 0.8rem 0 1rem; }
     .frame div { margin: 0.15rem 0; }
@@ -28,13 +30,20 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
     tfoot td { font-weight: 700; }
     .warn { background: #fff3cd; border: 1px solid #d4a017; padding: 0.5rem 0.8rem; margin: 0.8rem 0; }
     .hint { color: #555; font-size: 9.5pt; margin-top: 0.8rem; }
+    /* Der Warnkasten ist eine Ansage an die Band, keine an die GEMA — er steht
+       am Bildschirm und nicht auf dem eingereichten Blatt. */
     @media print { .toolbar, .warn { display: none; } }
   </style>
 </head>
 <body>
 <?php $zurueckUrl = '/intern/setlists/' . (int) $setlist['id']; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 
-  <h1>Musikfolge (Setlist) für die GEMA-Meldung</h1>
+<div class="sheet">
+  <?= print_watermark_html($printDoc) ?>
+  <div class="head-row">
+    <h1>Musikfolge (Setlist) für die GEMA-Meldung</h1>
+    <?= print_logo_html($printDoc) ?>
+  </div>
 
   <div class="frame">
     <div><b>Ausführende Band:</b> <?= e($settings['band_name']) ?></div>
@@ -83,6 +92,7 @@ $missingDuration = array_filter($entries, fn($x) => (int) $x['duration_sec'] ===
     Medleys sind mit „P" (Potpourri), Ausschnitte mit „F" (Fragment) zu kennzeichnen.
     Diese Liste dient als Vorlage/Beleg für die Meldung.
   </p>
+</div>
 <script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>

@@ -185,6 +185,26 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     </label>
     <label><?= e(t('set_welcome_file_lbl')) ?><input type="file" name="welcome" accept="image/*"></label>
     <p class="muted small span2"><?= e(t('set_upload_to_media')) ?></p>
+
+    <?php // Was auf Papier geht (#304): eigenes Logo für weißen Grund, ein
+          // Wasserzeichen, und je Blatt die Entscheidung, ob beides mitkommt. ?>
+    <h3 class="span2"><?= e(t('set_print_title')) ?></h3>
+    <p class="muted small span2"><?= e(t('set_print_intro')) ?></p>
+    <label><?= e(t('set_printlogo_lbl')) ?><input type="file" name="printlogo" accept="image/*">
+      <span class="muted small"><?= e(t('set_printlogo_hint')) ?></span></label>
+    <label><?= e(t('set_watermark_lbl')) ?><input type="file" name="watermark" accept="image/*">
+      <span class="muted small"><?= e(t('set_watermark_hint')) ?></span></label>
+    <?php foreach (['logo' => 'set_print_logo_on', 'watermark' => 'set_print_watermark_on'] as $art => $tkey): ?>
+      <?php $an = array_map('trim', explode(',', (string) ($settings['print_' . $art . '_docs'] ?? ''))); ?>
+      <fieldset class="span2">
+        <legend><?= e(t($tkey)) ?></legend>
+        <?php foreach (PRINT_DOCS as $doc): ?>
+          <label class="checkbox"><input type="checkbox" name="print_<?= e($art) ?>_docs[]" value="<?= e($doc) ?>"
+                 <?= in_array($doc, $an, true) ? 'checked' : '' ?>> <?= e(t('printdoc_' . $doc)) ?></label>
+        <?php endforeach; ?>
+        <?php if ($art === 'watermark'): ?><p class="muted small"><?= e(t('set_print_watermark_off_hint')) ?></p><?php endif; ?>
+      </fieldset>
+    <?php endforeach; ?>
     <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
   </form>
   <?php // Aus der Galerie übernehmen (#289). Bilder statt Dateinamen, wie beim
@@ -226,6 +246,14 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <?php if (!empty($settings['welcome_file'])): ?>
       <img src="/uploads/<?= e($settings['welcome_file']) ?>" alt="<?= e(t('set_welcome_img_own')) ?>" style="max-height:60px">
       <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_del')) ?></button></form>
+    <?php endif; ?>
+    <?php if (!empty($settings['print_logo_file'])): ?>
+      <img src="/uploads/<?= e($settings['print_logo_file']) ?>" alt="<?= e(t('set_slot_printlogo')) ?>" style="max-height:60px">
+      <form class="inline" method="post" action="/intern/einstellungen/branding/printlogo/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_printlogo_remove')) ?></button></form>
+    <?php endif; ?>
+    <?php if (!empty($settings['print_watermark_file'])): ?>
+      <img src="/uploads/<?= e($settings['print_watermark_file']) ?>" alt="<?= e(t('set_slot_watermark')) ?>" style="max-height:60px">
+      <form class="inline" method="post" action="/intern/einstellungen/branding/watermark/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_watermark_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['favicon_file'])): ?>
       <img src="/uploads/<?= e($settings['favicon_file']) ?>" alt="Favicon" style="max-height:32px">

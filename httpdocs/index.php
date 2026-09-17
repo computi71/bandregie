@@ -4255,6 +4255,14 @@ if (str_starts_with($path, '/intern')) {
     set_setting('welcome_text', trim((string) ($_POST['welcome_text'] ?? '')));
     $bildwahl = (string) ($_POST['welcome_image'] ?? 'flagge');
     set_setting('welcome_image', in_array($bildwahl, ['flagge', 'logo', 'eigen', 'keins'], true) ? $bildwahl : 'flagge');
+    // Welche Druckbögen Logo und Wasserzeichen tragen (#304). Kein Haken heißt
+    // „auf keinem" und ist eine Aussage, kein Versehen — deshalb wird auch die
+    // leere Liste geschrieben. Gefiltert gegen die bekannten Bögen, damit aus
+    // dem Formular nichts Erfundenes in der Einstellung landet.
+    foreach (['logo', 'watermark'] as $druckArt) {
+      $gewaehlt = array_values(array_intersect(PRINT_DOCS, (array) ($_POST['print_' . $druckArt . '_docs'] ?? [])));
+      set_setting('print_' . $druckArt . '_docs', implode(',', $gewaehlt));
+    }
     foreach (BRANDING_SLOTS as $slot => $slotInfo) {
       if (upload_rejected((int) ($_FILES[$slot]['error'] ?? UPLOAD_ERR_NO_FILE))) continue;
       $tmp = $_FILES[$slot]['tmp_name'] ?? '';

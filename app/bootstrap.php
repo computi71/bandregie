@@ -654,6 +654,22 @@ const UI_STRINGS = [
   'set_from_media_hint' => 'Bild anklicken und darunter sagen, was es werden soll. Die Galerie behält ihr Foto, hier landet eine Kopie.',
   'set_slot_logo' => 'Logo', 'set_slot_background' => 'Hintergrundbild',
   'set_slot_favicon' => 'Site-Icon', 'set_slot_welcome' => 'Bild neben der Anrede',
+  'set_slot_printlogo' => 'Logo für Ausdrucke', 'set_slot_watermark' => 'Wasserzeichen',
+  'help_setlists_3' => 'Gedruckt sieht die Setliste aus wie die anderen Blätter der Band: oben rechts das Logo, dahinter blass das Wasserzeichen. Beides steht in den Einstellungen unter „Logo & Hintergrund". Fürs Papier gibt es dort ein eigenes Logo, denn ein helles Logo von der Website verschwindet auf weißem Papier. Und es steht dort, welche Blätter das Wasserzeichen tragen und welche nicht.',
+  'help_rider_3' => 'Der Stagerider wird gedruckt oder als Datei verschickt und sieht aus wie die Setliste: Logo oben rechts, ein Strich darunter, dann die Anforderungen. Wer das ändern will, findet es in den Einstellungen unter „Logo & Hintergrund".',
+  // Druckbögen (#304)
+  'set_print_title' => 'Ausdrucke',
+  'set_print_intro' => 'Setliste, Stagerider, Steuerübersicht und GEMA-Meldung sind gedruckte Blätter. Hier steht, welches davon euer Logo trägt und hinter welchem das Wasserzeichen liegt.',
+  'set_printlogo_lbl' => 'Logo für Ausdrucke (dunkel auf weiß, max. 5 MB)',
+  'set_printlogo_hint' => 'Auf Papier ist der Grund weiß. Ein helles Logo für die Website verschwindet dort. Fehlt hier ein Bild, nimmt der Ausdruck das Logo der Website, und fehlt auch das, steht der Bandname da.',
+  'set_watermark_lbl' => 'Wasserzeichen (max. 5 MB)',
+  'set_watermark_hint' => 'Liegt blass hinter dem Text, quer über das Blatt. Ein Logo als PNG passt am besten.',
+  'set_print_logo_on' => 'Logo auf diesen Blättern',
+  'set_print_watermark_on' => 'Wasserzeichen auf diesen Blättern',
+  'set_print_watermark_off_hint' => 'Auf der GEMA-Meldung und der Steuerübersicht besser aus: Das sind Formulare für andere, und ein Bild hinter Zahlen macht sie schwerer lesbar.',
+  'printdoc_setlist' => 'Setliste', 'printdoc_rider' => 'Stagerider',
+  'printdoc_tax' => 'Steuerübersicht', 'printdoc_gema' => 'GEMA-Meldung',
+  'set_printlogo_remove' => 'Druck-Logo entfernen', 'set_watermark_remove' => 'Wasserzeichen entfernen',
   'set_take' => 'Übernehmen',
   'fl_branding_from_photo' => 'Bild übernommen als %s.',
   'set_logo_lbl' => 'Logo (PNG mit Transparenz empfohlen, max. 5 MB)',
@@ -2871,6 +2887,11 @@ $defaults = [
   'facebook_url' => '', 'instagram_url' => '', 'spotify_url' => '', 'youtube_url' => '',
   'logo_file' => '', 'background_file' => '', 'favicon_file' => '',
   'print_logo_file' => '', 'print_watermark_file' => '',
+  // Welche Druckbögen Logo und Wasserzeichen tragen (#304). Das Logo überall:
+  // Es sagt, von wem das Blatt ist. Das Wasserzeichen nur auf der Setliste —
+  // Steuerübersicht und GEMA-Meldung sind Formulare, dort stört ein Bild
+  // hinter den Zahlen. Angebot und Vertrag tragen es, sobald es sie gibt.
+  'print_logo_docs' => 'setlist,rider,tax,gema', 'print_watermark_docs' => 'setlist',
   'rider_stage' => '', 'rider_power' => '', 'rider_pa' => '', 'rider_monitor' => '',
   'rider_light' => '', 'rider_getin' => '', 'rider_extras' => '', 'rider_positions' => '',
   'rider_contact_tech' => '', 'rider_contact_booking' => '',
@@ -4822,16 +4843,61 @@ function tag_norm(string $tag): string {
 }
 
 /**
- * Die vier Bilder des Erscheinungsbilds: Formularfeld => Einstellung, Schlagwort
- * in der Galerie. Logo, Hintergrund und Favicon stehen auf der öffentlichen
- * Seite, das vierte neben der Anrede auf der Übersicht (#267).
+ * Die Bilder des Erscheinungsbilds: Formularfeld => Einstellung, Schlagwort in
+ * der Galerie. Logo, Hintergrund und Favicon stehen auf der öffentlichen Seite,
+ * das Begrüßungsbild neben der Anrede auf der Übersicht (#267). Die letzten
+ * zwei gehören aufs Papier: ein Logo für weißen Grund und das Wasserzeichen
+ * hinter dem Text. Beide gab es als Einstellung schon, nur ohne Bedienung —
+ * setzen ließen sie sich bisher nur von Hand in der Datenbank (#304).
  */
 const BRANDING_SLOTS = [
-  'logo'       => ['key' => 'logo_file',       'tag' => 'logo'],
-  'background' => ['key' => 'background_file', 'tag' => 'hintergrund'],
-  'favicon'    => ['key' => 'favicon_file',    'tag' => 'favicon'],
-  'welcome'    => ['key' => 'welcome_file',    'tag' => 'begrüßung'],
+  'logo'       => ['key' => 'logo_file',           'tag' => 'logo'],
+  'background' => ['key' => 'background_file',     'tag' => 'hintergrund'],
+  'favicon'    => ['key' => 'favicon_file',        'tag' => 'favicon'],
+  'welcome'    => ['key' => 'welcome_file',        'tag' => 'begrüßung'],
+  'printlogo'  => ['key' => 'print_logo_file',     'tag' => 'druck-logo'],
+  'watermark'  => ['key' => 'print_watermark_file', 'tag' => 'wasserzeichen'],
 ];
+
+/**
+ * Die Druckbögen, die es gibt. Der Schlüssel steht im Bogen selbst und in den
+ * beiden Listen unten — mehr braucht ein neues Dokument nicht, um Logo und
+ * Wasserzeichen zu erben.
+ */
+const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema'];
+
+/**
+ * Trägt dieser Bogen Logo beziehungsweise Wasserzeichen? Je Dokument
+ * entscheidbar, weil ein Formular für die GEMA kein Bild hinter den Zahlen
+ * verträgt und eine Steuerübersicht erst recht nicht.
+ */
+function print_brand_on(string $doc, string $art): bool {
+  $liste = explode(',', (string) setting('print_' . $art . '_docs'));
+  return in_array($doc, array_map('trim', $liste), true);
+}
+
+/**
+ * Die Logo-Ecke eines Druckbogens. Fürs Papier zählt das Druck-Logo (dunkel auf
+ * weiß); fehlt es, tut es das Logo der Website, und fehlt auch das, steht der
+ * Bandname da. Leer bleibt die Ecke nie — ein Blatt ohne Absender ist auf dem
+ * Pult eines fremden Technikers wertlos.
+ */
+function print_logo_html(string $doc): string {
+  if (!print_brand_on($doc, 'logo')) return '';
+  $datei = (string) (setting('print_logo_file') ?: setting('logo_file'));
+  $name = (string) setting('band_name');
+  $inhalt = $datei !== ''
+    ? '<img src="/uploads/' . e($datei) . '" alt="' . e($name) . '">'
+    : '<span class="bandname">' . e($name) . '</span>';
+  return '<div class="logo">' . $inhalt . '</div>';
+}
+
+/** Das Wasserzeichen eines Blattes. Gehört in das Blatt, nicht davor. */
+function print_watermark_html(string $doc): string {
+  $datei = (string) setting('print_watermark_file');
+  if ($datei === '' || !print_brand_on($doc, 'watermark')) return '';
+  return '<div class="watermark"><img src="/uploads/' . e($datei) . '" alt=""></div>';
+}
 
 /**
  * Setzt eines der vier Bilder aus einer Datei — hochgeladen oder aus der
