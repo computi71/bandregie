@@ -2,6 +2,10 @@
 // Zwei Fassungen, eine Datei: die Seite im Bandbereich und dieselbe zum Drucken
 // (#311). Zwei Dateien bedeuteten zwei Hilfen, von denen eine still veraltet.
 $druck = !empty($druck);
+// Auf Papier kosten neunzehn dunkle Bildschirmfotos viel Farbe, und die
+// Erklärung steht daneben im Text. Deshalb ist der Ausdruck ohne Bilder die
+// Vorgabe und mit Bildern ein Klick (#311).
+$druckBilder = $druck && ($_GET['bilder'] ?? '') === '1';
 require_once BASE_DIR . '/app/help.php';
 ?>
 <?php if ($druck): $printDoc = 'help'; ?>
@@ -30,7 +34,12 @@ require_once BASE_DIR . '/app/help.php';
   </style>
 </head>
 <body>
-<?php $zurueckUrl = '/intern/hilfe'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php
+  $zurueckUrl = '/intern/hilfe';
+  $leisteExtra = '<a href="/intern/hilfe/druck' . ($druckBilder ? '' : '?bilder=1') . '">'
+    . ($druckBilder ? '📄 ' . e(t('help_print_nopics')) : '🖼 ' . e(t('help_print_pics'))) . '</a>';
+  require BASE_DIR . '/app/views/intern/_printbar.php';
+?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
   <div class="head-row">
@@ -96,7 +105,7 @@ require_once BASE_DIR . '/app/help.php';
       // hier und nicht dort". Nur die Absätze, deren Bereich offensteht. ?>
 <details id="hilfe-zusammenhang" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
   <summary>🔗 <?= e(t('help_flow_title')) ?></summary>
-  <?= help_figure('flow') ?>
+  <?php if (!$druck || $druckBilder) echo help_figure('flow'); ?>
   <p class="help-lead"><?= e(t('help_flow_intro')) ?></p>
   <?php foreach ([['termine', 'help_flow_gig'], ['setlists', 'help_flow_setlist'],
                   ['gaeste', 'help_flow_guest'], ['termine', 'help_flow_booking'],
@@ -111,7 +120,7 @@ require_once BASE_DIR . '/app/help.php';
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
   <details id="hilfe-<?= e($helpMod) ?>" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck || $helpFirst ? 'open' : '' ?>>
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
-    <?= help_picture($helpMod, t('inav_' . $helpMod)) ?>
+    <?php if (!$druck || $druckBilder) echo help_picture($helpMod, t('inav_' . $helpMod)); ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
     <?php // Bis zu drei Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
           // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
@@ -137,7 +146,7 @@ require_once BASE_DIR . '/app/help.php';
 <?php if (perm_allows($user, 'kasse')): ?>
   <details id="hilfe-steuer" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
     <summary>⚖ <?= e(t('taxr_title')) ?></summary>
-    <?= help_picture('steuer', t('taxr_title')) ?>
+    <?php if (!$druck || $druckBilder) echo help_picture('steuer', t('taxr_title')); ?>
     <p class="help-lead"><?= e(t('help_taxr_what')) ?></p>
     <p class="muted"><?= e(t('help_taxr_scope')) ?></p>
     <p class="muted"><?= e(t('help_taxr_afa')) ?></p>
@@ -221,7 +230,7 @@ require_once BASE_DIR . '/app/help.php';
 <?php if (push_available()): ?>
   <details id="hilfe-push" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
     <summary>🔕 <?= e(t('help_push_trouble_title')) ?></summary>
-    <?= help_picture('push', t('help_push_trouble_title')) ?>
+    <?php if (!$druck || $druckBilder) echo help_picture('push', t('help_push_trouble_title')); ?>
     <p class="help-lead"><?= e(t('help_push_trouble_intro')) ?></p>
     <ul class="task-list">
       <li><?= e(t('help_push_trouble_app')) ?></li>
@@ -242,7 +251,7 @@ require_once BASE_DIR . '/app/help.php';
 <?php if (totp_available() || totp_active((int) $user['id'])): ?>
   <details id="hilfe-totp" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
     <summary>🔑 <?= e(t('help_totp_title')) ?></summary>
-    <?= help_picture('totp', t('help_totp_title')) ?>
+    <?php if (!$druck || $druckBilder) echo help_picture('totp', t('help_totp_title')); ?>
     <p class="help-lead"><?= e(t('help_totp_what')) ?></p>
     <p class="muted"><?= e(t('help_totp_apps')) ?></p>
     <p class="muted"><?= e(t('help_totp_setup')) ?></p>
@@ -257,7 +266,7 @@ require_once BASE_DIR . '/app/help.php';
 <?php if (passkey_available()): ?>
   <details id="hilfe-passkey" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
     <summary>🔐 <?= e(t('help_passkey_title')) ?></summary>
-    <?= help_picture('passkey', t('help_passkey_title')) ?>
+    <?php if (!$druck || $druckBilder) echo help_picture('passkey', t('help_passkey_title')); ?>
     <p class="help-lead"><?= e(t('help_passkey')) ?></p>
     <p class="muted">☁ <?= e(t('help_passkey_sync')) ?></p>
     <p class="muted small"><a href="/intern/profil"><?= e(t('prof_passkeys')) ?> →</a></p>
@@ -266,7 +275,7 @@ require_once BASE_DIR . '/app/help.php';
 
 <details id="hilfe-app" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
   <summary>📱 <?= e(t('app_install')) ?></summary>
-  <?= help_picture('app', t('app_install')) ?>
+  <?php if (!$druck || $druckBilder) echo help_picture('app', t('app_install')); ?>
   <p class="help-lead"><?= e(t('app_install_hint')) ?></p>
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>

@@ -19,5 +19,15 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('it','help_register_title','Tutte le aree dalla A alla Z'),
 ('it','help_print','Stampa la guida'),
 ('it','help_print_hint','Tutto aperto, ogni sezione su un foglio a sé — da dare a chi è appena arrivato.'),
-('it','printdoc_help','Guida')
+('it','printdoc_help','Guida'),
+('en','help_print_pics','print with pictures'),
+('en','help_print_nopics','print without pictures'),
+('nl','help_print_pics','met afbeeldingen afdrukken'),
+('nl','help_print_nopics','zonder afbeeldingen afdrukken'),
+('fr','help_print_pics','imprimer avec les images'),
+('fr','help_print_nopics','imprimer sans les images'),
+('es','help_print_pics','imprimir con imágenes'),
+('es','help_print_nopics','imprimir sin imágenes'),
+('it','help_print_pics','stampa con le immagini'),
+('it','help_print_nopics','stampa senza immagini')
 ON DUPLICATE KEY UPDATE value = value;
