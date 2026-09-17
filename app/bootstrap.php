@@ -659,6 +659,11 @@ const UI_STRINGS = [
   // Der alte Einleitungssatz bleibt stehen — seine Übersetzungen auch. Der
   // zweite Satz kommt dazu, statt den ersten zu ersetzen.
   'help_intro2' => 'Jeder Bereich ist mit einem Bild erklärt, in normalen Worten. Du musst nichts auswendig können: Such dir unten die Zeile, die zu deinem Vorhaben passt.',
+  // Zugangslink per Messenger (#307)
+  'mem_share_title' => 'Zugang ohne E-Mail',
+  'mem_share_hint' => 'Dieses Mitglied hat keine E-Mail-Adresse. Schick ihm den Zugangslink von deinem eigenen Handy — er gilt eine Stunde und genau einmal.',
+  'mem_share_msg' => 'Hallo %1$s, dein Zugang zum Bandbereich von %2$s: %3$s — der Link gilt eine Stunde, danach frag noch mal nach.',
+  'mem_share_none' => 'Dafür fehlt die Mobilnummer.',
   'help_shot_alt' => 'Bildschirmfoto: %s',
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
@@ -2736,6 +2741,12 @@ foreach (['first_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'last_name' => "VARCHAR(120) NOT NULL DEFAULT ''",
           'phone' => "VARCHAR(60) NOT NULL DEFAULT ''",
           'mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
+          // Anschrift (#306): Ein Mitglied hatte zwei Nummern und keine Adresse.
+          // Gebraucht wird sie, sobald jemand etwas verschickt — Merch, ein
+          // Vertrag, eine Weihnachtskarte.
+          'street' => "VARCHAR(190) NOT NULL DEFAULT ''",
+          'postcode' => "VARCHAR(20) NOT NULL DEFAULT ''",
+          'city' => "VARCHAR(190) NOT NULL DEFAULT ''",
           'substitute_for' => 'INT NULL',
           // Reihenfolge unter mehreren Ersatzleuten desselben Mitglieds
           'substitute_rank' => 'INT NOT NULL DEFAULT 0'] as $col => $ddl) {
@@ -3223,6 +3234,19 @@ if (setting('migr_gaeste_perm') === '') {
 
 // Angebote rechnen darf, wer schon Rechte-Zeilen hat — sonst stünde der neue
 // Bereich bei bestehenden Bands auf „nein" und niemand fände ihn (#302).
+// Derselbe Kontaktblock überall (#306): Der Gast bekommt die Mobilnummer, die
+// die Einladung per WhatsApp ohnehin braucht, und eine Anschrift; der
+// Ansprechpartner eines Ortes bekommt seine Mobilnummer.
+foreach (['mobile' => "VARCHAR(60) NOT NULL DEFAULT ''",
+          'street' => "VARCHAR(190) NOT NULL DEFAULT ''",
+          'postcode' => "VARCHAR(20) NOT NULL DEFAULT ''",
+          'city' => "VARCHAR(190) NOT NULL DEFAULT ''"] as $gastSpalte => $gastDdl) {
+  if (!column_exists('guests', $gastSpalte)) $db->exec("ALTER TABLE guests ADD COLUMN `$gastSpalte` $gastDdl");
+}
+if (!column_exists('venues', 'contact_mobile')) {
+  $db->exec("ALTER TABLE venues ADD COLUMN contact_mobile VARCHAR(60) NOT NULL DEFAULT '' AFTER contact_phone");
+}
+
 if (setting('migr_angebote_perm') === '') {
   foreach (rows("SELECT DISTINCT u.id FROM users u JOIN permissions p ON p.user_id = u.id WHERE u.role = 'member'") as $aRow) {
     q('INSERT IGNORE INTO permissions (user_id, module, can_read, can_write) VALUES (?, ?, 1, 1)', [$aRow['id'], 'angebote']);
@@ -5809,15 +5833,57 @@ function phone_digits_intl(string $roh): string {
  * Verschickt wird dort erst auf Tippen — der Server redet mit niemandem, es
  * kostet nichts, und es braucht kein Konto bei irgendwem. Ohne Nummer leer.
  */
-function guest_share_links(array $b): array {
-  $nummer = phone_digits_intl((string) ($b['guest_phone'] ?? ''));
+/**
+ * Zwei Links, die auf dem eigenen Handy WhatsApp oder die Kurznachricht mit
+ * fertigem Text öffnen. Gesendet wird dort, von der eigenen Nummer — das
+ * kostet nichts, braucht keinen fremden Dienst und niemand muss abtippen.
+ *
+ * Ohne Nummer gibt es nichts zurück; der Aufrufer zeigt dann eben keine Knöpfe.
+ */
+function share_links(string $rohNummer, string $text): array {
+  $nummer = phone_digits_intl($rohNummer);
   if ($nummer === '') return [];
-  $text = sprintf(t('guest_share_msg'), trim((string) $b['guest_name']), setting('band_name'),
-                  fmt_date($b['date']), $b['title'], absolute_url('/gast/' . $b['token']));
   return [
     'whatsapp' => 'https://wa.me/' . $nummer . '?text=' . rawurlencode($text),
     'sms' => 'sms:+' . $nummer . '?body=' . rawurlencode($text),
   ];
+}
+
+function guest_share_links(array $b): array {
+  return share_links((string) ($b['guest_phone'] ?? ''),
+    sprintf(t('guest_share_msg'), trim((string) $b['guest_name']), setting('band_name'),
+            fmt_date($b['date']), $b['title'], absolute_url('/gast/' . $b['token'])));
+}
+
+/**
+ * Ein frischer Link, mit dem ein Mitglied sein Kennwort setzt (#307).
+ *
+ * Für Mitglieder ohne Mailadresse: Ihr Zugang lässt sich sonst nur bekannt
+ * geben, indem jemand ein Kennwort vorliest. Ein Link ist das kleinere Übel —
+ * er gilt eine Stunde und genau einmal, ein vorgelesenes Kennwort dagegen so
+ * lange, bis es jemand ändert.
+ *
+ * Dass er durch einen Messenger geht, bleibt eine Abwägung: Dort liegt er in
+ * einer fremden App. Deshalb die kurze Frist, und deshalb sagt der Text sie an.
+ */
+function member_reset_link(int $userId): string {
+  $token = bin2hex(random_bytes(32));
+  q('UPDATE users SET reset_token = ?, reset_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
+    [$token, $userId]);
+  return absolute_url('/passwort-reset/' . $token);
+}
+
+/**
+ * Die beiden Knöpfe für den Zugangslink eines Mitglieds.
+ *
+ * Der Link kommt von außen herein und wird hier nicht erzeugt: Ein Token
+ * entsteht beim Drücken eines Knopfes, nicht beim Anzeigen einer Liste. Sonst
+ * bekäme jedes Mitglied bei jedem Seitenaufruf einen neuen, und der eben
+ * verschickte wäre tot, bevor ihn jemand öffnet.
+ */
+function member_share_links(array $mitglied, string $link): array {
+  return share_links((string) ($mitglied['mobile'] ?? ''), sprintf(t('mem_share_msg'),
+    trim((string) ($mitglied['first_name'] ?: $mitglied['name'])), setting('band_name'), $link));
 }
 
 /** Buchungen je Termin, für die Karten: Gastname, Funktion, Status. */

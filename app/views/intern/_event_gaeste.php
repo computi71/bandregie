@@ -69,6 +69,7 @@
           <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name"></label>
           <label><?= e(t('email')) ?> (<?= e(t('guest_book_new')) ?>)<input type="email" name="new_email"></label>
           <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
+          <label><?= e(t('mem_mobile')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_mobile" maxlength="60"></label>
           <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
           <div class="span2 row-buttons"><button class="btn btn-small">✉ <?= e(t('guest_invite_send')) ?></button></div>
         </form>

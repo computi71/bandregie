@@ -16,6 +16,7 @@
     <label><?= e(t('contact_person')) ?><input name="contact_name"></label>
     <label><?= e(t('email')) ?><input type="email" name="contact_email"></label>
     <label><?= e(t('phone')) ?><input name="contact_phone"></label>
+    <label><?= e(t('mem_mobile')) ?><input name="contact_mobile"></label>
     <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2" placeholder="<?= e(t('venues_notes_ph')) ?>"></textarea></label>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
   </form>
@@ -68,6 +69,7 @@
         <label><?= e(t('contact_person')) ?><input name="contact_name" value="<?= e($v['contact_name']) ?>"></label>
         <label><?= e(t('email')) ?><input type="email" name="contact_email" value="<?= e($v['contact_email']) ?>"></label>
         <label><?= e(t('phone')) ?><input name="contact_phone" value="<?= e($v['contact_phone']) ?>"></label>
+        <label><?= e(t('mem_mobile')) ?><input name="contact_mobile" value="<?= e($v['contact_mobile'] ?? '') ?>"></label>
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e($v['notes']) ?></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>

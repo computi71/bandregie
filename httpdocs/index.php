@@ -1904,14 +1904,16 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/orte' && $method === 'POST') {
     if (($_POST['name'] ?? '') !== '') {
-      q('INSERT INTO venues (name, city, postcode, address, notes, contact_name, contact_email, contact_phone, lat, lng)
-         VALUES (?,?,?,?,?,?,?,?,?,?)', venue_values());
+      q('INSERT INTO venues (name, city, postcode, address, notes, contact_name, contact_email,
+                             contact_phone, contact_mobile, lat, lng)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)', venue_values());
     }
     redirect('/intern/orte');
   }
   if (preg_match('~^/intern/orte/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?, contact_phone=?, lat=?, lng=? WHERE id=?',
+      q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?,
+                          contact_phone=?, contact_mobile=?, lat=?, lng=? WHERE id=?',
         [...venue_values(), $m[1]]);
     } else {
       q('DELETE FROM venues WHERE id = ?', [$m[1]]);
@@ -2280,11 +2282,16 @@ if (str_starts_with($path, '/intern')) {
         // aus. Der Rest ist gerade das, was man ausprobieren will.
         $email = is_demo() ? $me['email'] : strtolower(trim($_POST['email']));
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?, pref_lang=?,
-                            first_name=?, last_name=?, phone=?, mobile=?, stage_figure=?, on_stage=? WHERE id=?', [
+                            first_name=?, last_name=?, phone=?, mobile=?, street=?, postcode=?, city=?,
+                            stage_figure=?, on_stage=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           $email, $prefLang,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
+          // Anschrift (#306): drei Felder, gemeinsamer Block wie bei Gästen und Orten.
+          mb_substr(trim((string) ($_POST['street'] ?? '')), 0, 190),
+          mb_substr(trim((string) ($_POST['postcode'] ?? '')), 0, 20),
+          mb_substr(trim((string) ($_POST['city'] ?? '')), 0, 190),
           // Nur eine der angebotenen Figuren; alles andere wird neutral.
           array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? $_POST['stage_figure'] : '',
           isset($_POST['on_stage']) ? 1 : 0,
@@ -2447,6 +2454,18 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Gäste (#294) ----------
+  // Die Kontaktfelder eines Gastes aus dem Formular, gekürzt auf das, was in
+  // die Spalten passt (#306). Dieselben Namen wie im gemeinsamen Block.
+  $gastKontakt = static function (array $post, string $vorsatz = ''): array {
+    return [
+      'email' => strtolower(trim((string) ($post[$vorsatz . 'email'] ?? ''))),
+      'phone' => mb_substr(trim((string) ($post[$vorsatz . 'phone'] ?? '')), 0, 60),
+      'mobile' => mb_substr(trim((string) ($post[$vorsatz . 'mobile'] ?? '')), 0, 60),
+      'street' => mb_substr(trim((string) ($post[$vorsatz . 'street'] ?? '')), 0, 190),
+      'postcode' => mb_substr(trim((string) ($post[$vorsatz . 'postcode'] ?? '')), 0, 20),
+      'city' => mb_substr(trim((string) ($post[$vorsatz . 'city'] ?? '')), 0, 190),
+    ];
+  };
   if ($path === '/intern/gaeste' && $method === 'GET') {
     $gaesteBuchungen = [];
     $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
@@ -2465,12 +2484,15 @@ if (str_starts_with($path, '/intern')) {
     // Adresse oder Nummer, eines von beiden (#299): Eine Einladung muss jemanden
     // erreichen, und ein Gast, von dem nur der Name da ist, ist der, den am
     // Abend vorher niemand anrufen kann.
-    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === '') {
+    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === ''
+        && trim((string) ($_POST['mobile'] ?? '')) === '') {
       flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
     }
-    q('INSERT INTO guests (name, function_name, email, phone, notes) VALUES (?,?,?,?,?)', [
+    $gK = $gastKontakt($_POST);
+    q('INSERT INTO guests (name, function_name, email, phone, mobile, street, postcode, city, notes)
+       VALUES (?,?,?,?,?,?,?,?,?)', [
       mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
-      strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
+      $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
       trim((string) ($_POST['notes'] ?? '')),
     ]);
     flash(t('fl_guest_created'));
@@ -2490,12 +2512,15 @@ if (str_starts_with($path, '/intern')) {
     }
     $gName = trim((string) ($_POST['name'] ?? ''));
     if ($gName === '') { flash(t('fl_guest_name_required')); redirect('/intern/gaeste'); }
-    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === '') {
+    if (trim((string) ($_POST['email'] ?? '')) === '' && trim((string) ($_POST['phone'] ?? '')) === ''
+        && trim((string) ($_POST['mobile'] ?? '')) === '') {
       flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
     }
-    q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, notes = ? WHERE id = ?', [
+    $gK = $gastKontakt($_POST);
+    q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, mobile = ?,
+         street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
       mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
-      strtolower(trim((string) ($_POST['email'] ?? ''))), mb_substr(trim((string) ($_POST['phone'] ?? '')), 0, 60),
+      $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
       trim((string) ($_POST['notes'] ?? '')), $m[1],
     ]);
     flash(t('fl_guest_updated'));
@@ -2512,9 +2537,13 @@ if (str_starts_with($path, '/intern')) {
     if ($gId <= 0 && $gNeu !== '') {
       $gNeuMail = strtolower(trim((string) ($_POST['new_email'] ?? '')));
       $gNeuTel = mb_substr(trim((string) ($_POST['new_phone'] ?? '')), 0, 60);
-      if ($gNeuMail === '' && $gNeuTel === '') { flash(t('fl_guest_contact_required')); back('/intern/termine'); }
-      q('INSERT INTO guests (name, function_name, email, phone) VALUES (?,?,?,?)', [
-        mb_substr($gNeu, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120), $gNeuMail, $gNeuTel,
+      $gNeuMobil = mb_substr(trim((string) ($_POST['new_mobile'] ?? '')), 0, 60);
+      if ($gNeuMail === '' && $gNeuTel === '' && $gNeuMobil === '') {
+        flash(t('fl_guest_contact_required')); back('/intern/termine');
+      }
+      q('INSERT INTO guests (name, function_name, email, phone, mobile) VALUES (?,?,?,?,?)', [
+        mb_substr($gNeu, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+        $gNeuMail, $gNeuTel, $gNeuMobil,
       ]);
       $gId = (int) $db->lastInsertId();
     }
@@ -2711,6 +2740,24 @@ if (str_starts_with($path, '/intern')) {
     ]);
   }
 
+  // Zugangslink für ein Mitglied ohne Mailadresse (#307). Erzeugt wird der
+  // Link hier und nirgends sonst: Ein Token, das beim Anzeigen einer Liste
+  // entstünde, wäre bei jedem Neuladen ein anderes.
+  if (preg_match('~^/intern/mitglieder/(\d+)/zugangslink$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/mitglieder');
+    $zielMitglied = row('SELECT * FROM users WHERE id = ?', [$m[1]]);
+    if (!$zielMitglied) back('/intern/mitglieder');
+    if (trim((string) $zielMitglied['mobile']) === '') {
+      flash(t('mem_share_none'));
+      back('/intern/mitglieder');
+    }
+    // Die fertigen Adressen halten genau einen Seitenaufruf — danach ist der
+    // Knopf weg und der Link lebt nur noch in der verschickten Nachricht.
+    $_SESSION['mem_share'] = ['id' => (int) $zielMitglied['id']]
+      + member_share_links($zielMitglied, member_reset_link((int) $zielMitglied['id']));
+    back('/intern/mitglieder');
+  }
+
   // ---------- Mitglieder ----------
   if ($path === '/intern/mitglieder' && $method === 'GET') {
     $permByUser = [];
@@ -2765,13 +2812,16 @@ if (str_starts_with($path, '/intern')) {
         // gewählt") — ohne das Feld im Formular griff der Zweig sonst ins Leere.
         $figur = array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? (string) ($_POST['stage_figure'] ?? '') : '';
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
-                            first_name=?, last_name=?, phone=?, mobile=?, substitute_for=?,
-                            substitute_rank=?, profit_share=?, stage_figure=?, on_stage=? WHERE id=?', [
+                            first_name=?, last_name=?, phone=?, mobile=?, street=?, postcode=?, city=?,
+                            substitute_for=?, substitute_rank=?, profit_share=?, stage_figure=?, on_stage=? WHERE id=?', [
           display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '',
                        row('SELECT name FROM users WHERE id = ?', [$m[1]])['name'] ?? ''),
           $_POST['stage_name'] ?? '', $_POST['instrument'] ?? '',
           $email,
           $_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $_POST['phone'] ?? '', $_POST['mobile'] ?? '',
+          mb_substr(trim((string) ($_POST['street'] ?? '')), 0, 190),
+          mb_substr(trim((string) ($_POST['postcode'] ?? '')), 0, 20),
+          mb_substr(trim((string) ($_POST['city'] ?? '')), 0, 190),
           ((int) ($_POST['substitute_for'] ?? 0) ?: null),
           max(0, min(99, (int) ($_POST['substitute_rank'] ?? 0))),
           $anteil,
@@ -4553,6 +4603,7 @@ function venue_values(): array {
   return [
     $feld('name', 255), $feld('city', 190), $feld('postcode', 20), $feld('address', 500), $feld('notes', 16000),
     $feld('contact_name', 190), $feld('contact_email', 190), $feld('contact_phone', 100),
+    $feld('contact_mobile', 60),
     $lat, $lng,
   ];
 }

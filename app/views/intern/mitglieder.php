@@ -77,8 +77,24 @@
               // nie — und ausgerechnet die, die nie angekommen sind, hätten
               // keinen Knopf bekommen (#275). ?>
         <?php if ($m['email'] === null): ?>
-          <?php // Ohne Adresse gibt es nichts nachzusenden (#291). ?>
+          <?php // Ohne Adresse gibt es nichts nachzusenden (#291) — aber es gibt
+                // einen Weg über das eigene Handy: ein Zugangslink per WhatsApp
+                // oder Kurznachricht (#307). Gedrückt wird der Knopf einmal, und
+                // danach stehen die beiden Adressen für genau einen Aufruf da. ?>
           <span class="muted small">🚫 <?= e(t('mem_no_email')) ?></span>
+          <?php $mShare = ($_SESSION['mem_share'] ?? null); ?>
+          <?php if (is_array($mShare) && (int) ($mShare['id'] ?? 0) === (int) $m['id']): ?>
+            <?php unset($_SESSION['mem_share']); ?>
+            <?php foreach (['whatsapp' => '💬', 'sms' => '📱'] as $mWeg => $mZeichen): ?>
+              <?php if (empty($mShare[$mWeg])) continue; ?>
+              <a class="badge link" href="<?= e($mShare[$mWeg]) ?>" target="_blank" rel="noopener">
+                <?= $mZeichen ?> <?= e(t('guest_send_' . $mWeg)) ?></a>
+            <?php endforeach; ?>
+          <?php elseif (perm_allows($user, 'mitglieder', 'write') && trim((string) ($m['mobile'] ?? '')) !== '' && !is_demo()): ?>
+            <form class="inline" method="post" action="/intern/mitglieder/<?= (int) $m['id'] ?>/zugangslink"><?= csrf_field() ?>
+              <button class="btn btn-tiny btn-ghost" title="<?= e(t('mem_share_hint')) ?>">🔑 <?= e(t('mem_share_title')) ?></button>
+            </form>
+          <?php endif; ?>
         <?php // Die Auskunft (nie angemeldet, Frist, Zustellstatus) sieht ein Admin
               // auch in der Demo — nur der Knopf, der ein Passwort nimmt und eine
               // Mail schickt, bleibt dort weg (#297). ?>
@@ -133,8 +149,9 @@
           <p class="muted small span2"><?= e(t('mem_name_hint')) ?></p>
           <label><?= e(t('mem_first_name')) ?><input name="first_name" value="<?= e($mFull['first_name'] ?? '') ?>" required></label>
           <label><?= e(t('mem_last_name')) ?><input name="last_name" value="<?= e($mFull['last_name'] ?? '') ?>"></label>
-          <label><?= e(t('phone')) ?><input name="phone" value="<?= e($mFull['phone'] ?? '') ?>"></label>
-          <label><?= e(t('mem_mobile')) ?><input name="mobile" value="<?= e($mFull['mobile'] ?? '') ?>"></label>
+          <?php // Derselbe Kontaktblock wie bei Gästen und Orten (#306). ?>
+          <?php $kfWerte = $mFull; $kfFelder = ['phone', 'mobile', 'street', 'postcode', 'city']; $kfNamen = '';
+                require BASE_DIR . '/app/views/_contact_fields.php'; ?>
           <label><?= e(t('instrument')) ?>
             <input name="instrument" value="<?= e($mFull['instrument']) ?>" list="instrument-list">
             <span class="muted small"><?= e($instruments ? t('mem_instrument_pick') : t('mem_instrument_free')) ?></span>
