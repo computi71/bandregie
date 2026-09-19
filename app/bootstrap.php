@@ -679,6 +679,7 @@ const UI_STRINGS = [
   // Hilfe: wie die Bereiche zusammenhängen (#310)
   'help_mitglieder_4' => 'Neben Mitglied, Ersatz und Bandleitung gibt es den Bookingagenten: jemand von außen, der für euch bucht. Er sieht Termine, Orte, Rider und Verträge, aber weder Kasse noch Fotos noch das Postfach. Wie viel er vom Kalender sieht, stellt ihr in den Einstellungen ein. Von Themen und Verträgen sieht er nur die eigenen — alles Weitere schaltet ihr ihm einzeln frei.',
   'help_themen_2' => 'Untereinander seht ihr alle Themen. Hat jemand von außen ein Konto, etwa ein Bookingagent, gilt das nicht für ihn: Er sieht nur, was er selbst aufgemacht hat. Braucht ihr seine Antwort in einem anderen Thema, holt ihr ihn unten im Thema dazu und nehmt ihn danach wieder heraus.',
+  'help_themen_3' => 'Schreibt jemand etwas, bekommen die anderen eine Mitteilung — Thema, Name und die ersten Zeilen. Abwählen lässt sie sich im Profil unter „Neue Beiträge im Chat“, wie jede andere auch. Was du noch nicht gelesen hast, steht als Zahl am Thema, in der Übersicht als eigene Karte und in der Zahl am App-Symbol; geöffnet gilt gelesen. Wer neu dazukommt, erbt nichts: Gezählt wird erst ab dem Tag, an dem sein Konto entstand.',
   'help_flow_title' => 'Wie alles zusammenhängt',
   'help_flow_intro' => 'Die Bereiche sind keine getrennten Schubladen. Was ihr an einer Stelle eintragt, taucht an anderer wieder auf — hier steht, in welcher Reihenfolge und warum.',
   'help_flow_gig' => 'Von der Anfrage bis zum Geld: Jemand fragt an, ihr legt einen Termin an. Aus dem Termin rechnet ihr ein Angebot — Datum und Spielzeit holt es sich von dort. Sagt der Veranstalter zu, wird aus dem Angebot ein Vertrag, und die Gage wandert mit, damit nicht zwei Zahlen nebeneinander leben. Am Termin steht danach, ob das unterschriebene Blatt zurück ist. Nach dem Auftritt übernehmt ihr die Gage in die Kasse, und am Jahresende steht sie in der Steuerübersicht.',
@@ -1230,6 +1231,9 @@ Zeile zwei
   'push_topic_attendance' => 'Zusagen und Absagen',
   'push_topic_photos' => 'Neue Bilder',
   'push_topic_post' => 'Neue Post',
+  'push_topic_topics' => 'Neue Beiträge im Chat',
+  'topic_unread' => 'neu',
+  'dash_unread_chat' => 'Neu im Chat', 'dash_all_chat' => 'Zum Chat',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
   'prof_push_ios' => 'Am iPhone zuerst „Zum Home-Bildschirm" hinzufügen — Push gibt es dort nur für die installierte App.',
@@ -1298,6 +1302,7 @@ Zeile zwei
   'set_od_auto' => 'OneDrive-Ordner täglich nachsehen',
   'set_od_auto_hint' => 'Einmal am Tag, beim ersten Seitenaufruf oder per Cron. Bei neuen Bildern geht eine Mitteilung an alle, die das Thema „Neue Bilder" nicht abgewählt haben. Geholt wird nichts von selbst — das bleibt der Knopf am Ordner.',
   'push_comment_title' => 'Neuer Kommentar',
+  'push_chat_title' => 'Neuer Beitrag',
   'push_att_yes' => '%1 hat für „%2" zugesagt',
   'push_att_no' => '%1 hat für „%2" abgesagt',
   'push_att_maybe' => '%1 hat für „%2" mit Vielleicht geantwortet',
@@ -2619,6 +2624,16 @@ $tables = [
     UNIQUE KEY uniq_number (number)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Wer ein Thema wann zuletzt gesehen hat (#317). Ohne diesen Stand lässt sich
+  // „ungelesen" nicht sagen, und die Zahl am Symbol könnte den Chat nicht
+  // mitzählen.
+  "CREATE TABLE IF NOT EXISTS topic_reads (
+    user_id INT NOT NULL,
+    topic_id INT NOT NULL,
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, topic_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS topics (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -2951,7 +2966,7 @@ if (!column_exists('songs', 'composer')) {
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post'];
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
 /**
@@ -4934,6 +4949,69 @@ function visible_topic_ids(?array $user): ?array {
 function may_see_topic(?array $user, int $topicId): bool {
   $erlaubt = visible_topic_ids($user);
   return $erlaubt === null || in_array($topicId, $erlaubt, true);
+}
+
+/**
+ * Ein Beitrag im Chat: anlegen und die Mitteilung dazu (#316).
+ *
+ * Beides an einer Stelle, weil es zwei Wege zu einem Beitrag gibt — das neue
+ * Thema mit erstem Beitrag und die Antwort. Getrennt gepflegt, hätte der eine
+ * Weg früher oder später wieder still geschrieben.
+ */
+function topic_post_add(int $topicId, array $author, string $text): void {
+  q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)',
+    [$topicId, (int) $author['id'], $text]);
+  $titel = (string) (row('SELECT title FROM topics WHERE id = ?', [$topicId])['title'] ?? '');
+  $wer = (string) $author['name'];
+  // Der Anriss, nicht der ganze Text — eine Mitteilung ist kein Chatfenster.
+  $anriss = mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
+  push_notify('topics', (int) $author['id'], fn(string $lang): array => [
+    'title' => push_t($lang, 'push_chat_title') . ' · ' . $titel,
+    'body'  => $wer . ': ' . $anriss,
+    'url'   => '/intern/themen/' . $topicId,
+  ], 0, $topicId);
+}
+
+/**
+ * Ungelesene Beiträge je Thema: Themennummer => Anzahl (#317).
+ *
+ * Eigene Beiträge zählen nie — man liest nicht, was man selbst geschrieben hat.
+ * Wer ein Thema noch nie geöffnet hat, bekommt nicht die ganze Geschichte
+ * aufgetischt: Dann gilt der Tag, an dem sein Konto entstand. Sonst stünde vor
+ * einem neuen Mitglied am ersten Tag eine dreistellige Zahl.
+ *
+ * Konten von außen zählen nur, was sie auch sehen dürfen.
+ */
+function topic_unread(?array $user): array {
+  $uid = (int) ($user['id'] ?? 0);
+  if (!$uid) return [];
+  $sichtbar = visible_topic_ids($user);
+  if ($sichtbar === []) return [];
+  $nurDiese = '';
+  $werte = [$uid, $uid, $uid];
+  if ($sichtbar !== null) {
+    $nurDiese = ' AND p.topic_id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
+    $werte = [...$werte, ...$sichtbar];
+  }
+  // Ein Beitrag ohne Verfasser (ausgetretenes Mitglied) bleibt ein fremder
+  // Beitrag: „NULL <> 5" ist weder wahr noch falsch und fiele sonst heraus.
+  $zeilen = rows(
+    'SELECT p.topic_id, COUNT(*) AS neu
+       FROM topic_posts p
+       LEFT JOIN topic_reads r ON r.topic_id = p.topic_id AND r.user_id = ?
+       JOIN users u ON u.id = ?
+      WHERE (p.user_id IS NULL OR p.user_id <> ?)
+        AND p.created_at > COALESCE(r.seen_at, u.created_at)' . $nurDiese
+    . ' GROUP BY p.topic_id', $werte);
+  $offen = [];
+  foreach ($zeilen as $z) $offen[(int) $z['topic_id']] = (int) $z['neu'];
+  return $offen;
+}
+
+/** Dieses Thema ist bis jetzt gelesen. */
+function topic_mark_read(int $topicId, int $userId): void {
+  q('INSERT INTO topic_reads (user_id, topic_id, seen_at) VALUES (?,?,NOW())
+     ON DUPLICATE KEY UPDATE seen_at = NOW()', [$userId, $topicId]);
 }
 
 /** Wer von außen zu diesem Thema geholt wurde, mit Namen. */
@@ -7083,14 +7161,18 @@ function open_votes(array $user): array {
 }
 
 /**
- * Was am App-Symbol steht: eigene offene Aufgaben und fehlende Rückmeldungen.
- * Die zweite Hälfte kommt aus open_votes(), damit Zahl und Liste nicht
- * auseinanderlaufen können.
+ * Was am App-Symbol steht: eigene offene Aufgaben, fehlende Rückmeldungen und
+ * ungelesene Beiträge im Chat (#317).
+ *
+ * Alle drei Teile kommen aus denselben Funktionen, aus denen die Listen im
+ * Überblick gebaut werden — so können Zahl und Liste nicht auseinanderlaufen.
+ * Wer einen Bereich nicht sehen darf, zählt ihn auch nicht mit.
  */
 function open_items_count(array $user): int {
   $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
                      [(int) $user['id']])['c'];
-  return $offen + count(open_votes($user));
+  $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
+  return $offen + count(open_votes($user)) + $chat;
 }
 
 /**
@@ -7111,7 +7193,7 @@ function open_items_count(array $user): int {
 function user_purge(int $userId): void {
   foreach (['attendance', 'permissions', 'song_chords', 'song_ratings',
             'push_subscriptions', 'passkeys', 'substitute_requests',
-            'absences'] as $table) {
+            'absences', 'topic_reads'] as $table) {
     q("DELETE FROM $table WHERE user_id = ?", [$userId]);
   }
   // Private Daueraufträge sterben mit ihrem Besitzer. Sonst buchen sie weiter,

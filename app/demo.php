@@ -1090,6 +1090,20 @@ function demo_remove(): void {
     q('DELETE FROM quote_items WHERE quote_id = ?', [$quoteId]);
   }
 
+  // Dasselbe beim Chat: Der Lesestand entsteht beim Öffnen eines Themas (#317)
+  // und die Freischaltung nach außen beim Zuschalten (#308) — beides schreibt
+  // niemand über demo_insert(), beides bliebe sonst als Waise zurück. Keine
+  // der beiden Tabellen hat einen eigenen Schlüssel; sie gehören deshalb hier
+  // hin und nicht in die Liste unten.
+  foreach ($byTable['topics'] ?? [] as $topicId) {
+    q('DELETE FROM topic_reads WHERE topic_id = ?', [$topicId]);
+    q('DELETE FROM topic_access WHERE topic_id = ?', [$topicId]);
+  }
+  foreach ($byTable['users'] ?? [] as $userId) {
+    q('DELETE FROM topic_reads WHERE user_id = ?', [$userId]);
+    q('DELETE FROM topic_access WHERE user_id = ?', [$userId]);
+  }
+
   // Kindzeilen zuerst, dann die Haupttabellen
   // Kinder vor Eltern: Buchungen vor Gästen, Antworten vor Nachrichten;
   // mail_log vor den Konten, auf die es zeigt (#297). Die Bewertungen sind

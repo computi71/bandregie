@@ -288,10 +288,15 @@ function push_t(string $lang, string $key): string {
  * Termintitel und Kommentar-Anriss wäre sonst genau die Umgehung der
  * Sichtbarkeit, die die Listen sorgfältig einhalten.
  *
+ * $topicId tut dasselbe für ein Chatthema (#316). Ein Konto von außen sieht nur
+ * seine eigenen Themen und die, zu denen die Band es geholt hat; Titel und
+ * Anriss eines fremden Themas dürfen es auch auf dem Handy nicht erreichen.
+ *
  * Gesendet wird erst NACH der Antwort (fastcgi_finish_request): niemand wartet
  * beim Speichern eines Kommentars auf die Push-Dienste von Google und Apple.
  */
-function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0): void {
+function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0,
+                     int $topicId = 0): void {
   if (!push_available()) return;
   // Die Themen werden hier gefiltert, nicht in SQL: „nichts eingestellt" heißt
   // alle Themen, und das lässt sich mit FIND_IN_SET nicht ausdrücken.
@@ -306,6 +311,9 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
     fn(array $s): bool => in_array($topic, push_topics($s), true)));
   if ($eventId) {
     $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_event($s, $eventId)));
+  }
+  if ($topicId) {
+    $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_topic($s, $topicId)));
   }
   if (!$subs) return;
   register_shutdown_function(function () use ($subs, $topic, $build): void {

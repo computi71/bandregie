@@ -924,6 +924,15 @@ if (str_starts_with($path, '/intern')) {
     // Ohne Terminrecht zeigt die Übersicht keine Karte — dann braucht sie auch
     // deren Daten nicht (#279).
     $kartenDaten = perm_allows($me, 'termine') ? event_view_data($events, $me) : [];
+    // Ungelesenes aus dem Chat zählt am Symbol mit, also muss es auch hier
+    // stehen — sonst sucht man eine Zahl, zu der nichts zu sehen ist (#317).
+    $unreadTopics = [];
+    if (perm_allows($me, 'themen') && ($neuJeThema = topic_unread($me))) {
+      $unreadTopics = rows('SELECT id, title FROM topics WHERE id IN ('
+        . implode(',', array_fill(0, count($neuJeThema), '?')) . ') ORDER BY title',
+        array_keys($neuJeThema));
+      foreach ($unreadTopics as $i => $ut) $unreadTopics[$i]['neu'] = $neuJeThema[(int) $ut['id']];
+    }
     view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),
@@ -936,6 +945,7 @@ if (str_starts_with($path, '/intern')) {
       'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
       'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
                        WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
+      'unreadTopics' => $unreadTopics,
     ]);
   }
 
@@ -3698,6 +3708,7 @@ if (str_starts_with($path, '/intern')) {
                         FROM topics t LEFT JOIN users u ON u.id = t.created_by' . $themenWo . '
                         ORDER BY t.closed, COALESCE((SELECT MAX(p.created_at) FROM topic_posts p WHERE p.topic_id = t.id), t.created_at) DESC',
                        $themenArgs),
+      'unread' => topic_unread($me),
     ]);
   }
   if ($path === '/intern/themen' && $method === 'POST') {
@@ -3706,7 +3717,7 @@ if (str_starts_with($path, '/intern')) {
       q('INSERT INTO topics (title, created_by) VALUES (?,?)', [$title, $me['id']]);
       $topicId = (int) $db->lastInsertId();
       if (trim($_POST['text'] ?? '') !== '') {
-        q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)', [$topicId, $me['id'], trim($_POST['text'])]);
+        topic_post_add($topicId, $me, trim($_POST['text']));
       }
       flash(t('fl_topic_created'));
       redirect('/intern/themen/' . $topicId);
@@ -3718,6 +3729,9 @@ if (str_starts_with($path, '/intern')) {
     // Nicht sehen dürfen und nicht vorhanden sehen gleich aus — sonst verrät
     // die Antwort, dass es das Thema gibt.
     if (!$topic || !may_see_topic($me, (int) $topic['id'])) { http_response_code(404); view('404', ['title' => t('inav_themen')]); }
+    // Geöffnet heißt gelesen: Unten stehen alle Beiträge, es bleibt nichts
+    // übrig, was man noch entdecken müsste (#317).
+    topic_mark_read((int) $topic['id'], (int) $me['id']);
     view('intern/thema', [
       'title' => $topic['title'],
       'topic' => $topic,
@@ -3752,13 +3766,19 @@ if (str_starts_with($path, '/intern')) {
     // erreichen (#308).
     if (!$topic || !may_see_topic($me, (int) $topic['id'])) redirect('/intern/themen');
     if ($action === 'antwort' && !$topic['closed'] && trim($_POST['text'] ?? '') !== '') {
-      q('INSERT INTO topic_posts (topic_id, user_id, text) VALUES (?,?,?)', [$topicId, $me['id'], trim($_POST['text'])]);
+      topic_post_add((int) $topicId, $me, trim($_POST['text']));
     }
     if ($action === 'schliessen') {
       q('UPDATE topics SET closed = 1 - closed WHERE id = ?', [$topicId]);
     }
     if ($action === 'delete' && ((int) $topic['created_by'] === (int) $me['id'] || $me['role'] === 'admin')) {
       q('DELETE FROM topic_posts WHERE topic_id = ?', [$topicId]);
+      // Alles, was nur an diesem Thema hing, geht mit: der Lesestand (#317)
+      // und die Freischaltungen nach außen (#308). Zeilen, die auf eine
+      // Nummer zeigen, die es nicht mehr gibt, sind irgendwann ein Recht auf
+      // etwas Fremdes.
+      q('DELETE FROM topic_reads WHERE topic_id = ?', [$topicId]);
+      q('DELETE FROM topic_access WHERE topic_id = ?', [$topicId]);
       q('DELETE FROM topics WHERE id = ?', [$topicId]);
       flash(t('fl_topic_deleted'));
       redirect('/intern/themen');

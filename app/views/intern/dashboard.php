@@ -112,5 +112,22 @@
     <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
   </section>
   <?php endif; ?>
+  <?php // Eigene Karte statt einer Zeile bei den Aufgaben: Der Chat ist keine
+        // Aufgabe, und wer Aufgaben nicht sehen darf, soll ihn trotzdem
+        // finden (#317). ?>
+  <?php if ($unreadTopics): ?>
+  <section class="card">
+    <h2>💬 <?= e(t('dash_unread_chat')) ?></h2>
+    <ul class="task-list">
+      <?php foreach ($unreadTopics as $ut): ?>
+        <li>
+          <span class="badge"><?= (int) $ut['neu'] ?></span>
+          <a href="/intern/themen/<?= (int) $ut['id'] ?>"><strong><?= e($ut['title']) ?></strong></a>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+    <a class="btn" href="/intern/themen"><?= e(t('dash_all_chat')) ?></a>
+  </section>
+  <?php endif; ?>
 </div>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
