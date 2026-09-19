@@ -4995,13 +4995,20 @@ function topic_unread(?array $user): array {
   }
   // Ein Beitrag ohne Verfasser (ausgetretenes Mitglied) bleibt ein fremder
   // Beitrag: „NULL <> 5" ist weder wahr noch falsch und fiele sonst heraus.
+  //
+  // Die beiden Grenzen sind bewusst verschieden: Ab dem Beitritt zählt alles
+  // mit, was in derselben Sekunde oder später geschrieben wurde — wer dazukommt,
+  // während jemand tippt, soll den Beitrag sehen. Nach dem Lesen zählt nur, was
+  // danach kam, sonst stünde der gerade gelesene Beitrag gleich wieder als neu
+  // da, wenn er in derselben Sekunde entstand.
   $zeilen = rows(
     'SELECT p.topic_id, COUNT(*) AS neu
        FROM topic_posts p
        LEFT JOIN topic_reads r ON r.topic_id = p.topic_id AND r.user_id = ?
        JOIN users u ON u.id = ?
       WHERE (p.user_id IS NULL OR p.user_id <> ?)
-        AND p.created_at > COALESCE(r.seen_at, u.created_at)' . $nurDiese
+        AND ((r.seen_at IS NULL  AND p.created_at >= u.created_at)
+          OR (r.seen_at IS NOT NULL AND p.created_at >  r.seen_at))' . $nurDiese
     . ' GROUP BY p.topic_id', $werte);
   $offen = [];
   foreach ($zeilen as $z) $offen[(int) $z['topic_id']] = (int) $z['neu'];
