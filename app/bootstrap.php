@@ -3557,6 +3557,18 @@ if (setting('migr_login_backfill') === '') {
   set_setting('migr_login_backfill', '1');
 }
 
+// Ab jetzt zählt der Chat am App-Symbol mit (#317). Was am Tag des Updates
+// schon dasteht, gilt als gelesen: Sonst fände jedes Mitglied beim ersten
+// Öffnen die gesamte Geschichte der Band als ungelesen vor — eine Zahl, die
+// niemand durch Lesen wieder loswird, weil sie nie ungelesen war.
+// Nur einmal, und nur für die, die es jetzt schon gibt; wer später dazukommt,
+// fängt an seinem eigenen Beitrittstag an.
+if (setting('migr_topic_reads') === '') {
+  q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
+     SELECT u.id, t.id, NOW() FROM users u CROSS JOIN topics t');
+  set_setting('migr_topic_reads', '1');
+}
+
 // Mitgelieferte Übersetzungen einspielen — nicht nur bei der Erstinstallation,
 // sondern auch dann, wenn eine neue Version weitere Seed-Dateien mitbringt.
 // Die Seeds ergänzen ausschließlich fehlende Schlüssel; im Bandbereich von Hand
