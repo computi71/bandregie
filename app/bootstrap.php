@@ -679,6 +679,7 @@ const UI_STRINGS = [
   'help_flow_title' => 'Wie alles zusammenhängt',
   'help_flow_intro' => 'Die Bereiche sind keine getrennten Schubladen. Was ihr an einer Stelle eintragt, taucht an anderer wieder auf — hier steht, in welcher Reihenfolge und warum.',
   'help_flow_gig' => 'Von der Anfrage bis zum Geld: Jemand fragt an, ihr legt einen Termin an. Aus dem Termin rechnet ihr ein Angebot — Datum und Spielzeit holt es sich von dort. Sagt der Veranstalter zu, wird aus dem Angebot ein Vertrag, und die Gage wandert mit, damit nicht zwei Zahlen nebeneinander leben. Am Termin steht danach, ob das unterschriebene Blatt zurück ist. Nach dem Auftritt übernehmt ihr die Gage in die Kasse, und am Jahresende steht sie in der Steuerübersicht.',
+  'help_flow_direct' => 'Von der Anfrage bis zum Geld: Jemand fragt an, ihr legt einen Termin an und schickt den Vertrag dazu. Datum, Spielzeit und Gage holt er sich vom Termin, ihr müsst nichts abschreiben. Kommt er unterschrieben zurück, vermerkt ihr das, und am Termin steht ab da, dass das Papier da ist. Nach dem Auftritt übernehmt ihr die Gage in die Kasse, und am Jahresende steht sie in der Steuerübersicht. Will ein Veranstalter vorher einen Preis, stellt ihr in den Einstellungen auf den zweistufigen Weg um; dann kommt vor den Vertrag ein Angebot.',
   'help_flow_setlist' => 'Was auf der Bühne passiert: Songs sammelt ihr einmal, eine Setliste ist eine Auswahl daraus in Reihenfolge. Die Setliste hängt ihr an den Termin. Der Stagerider beschreibt, was ihr an Technik braucht, und gilt für alle Auftritte gleich — er hängt nicht am einzelnen Termin. Gedruckt sehen Setliste, Rider, Angebot und Vertrag gleich aus, weil sie sich denselben Kopf mit Logo und Wasserzeichen teilen.',
   'help_flow_guest' => 'Ein Gast ist jemand von außen, der einen Abend mitmacht: ein Tontechniker, ein Aushilfsmusiker. Ihr bucht ihn zu einem Termin, er bekommt eine Einladung per Mail — oder, wenn er keine Adresse hat, per WhatsApp oder Kurznachricht von eurem eigenen Handy. In der Einladung steckt ein Link, und dieser Link ist sein ganzer Zugang: kein Konto, kein Kennwort. Solange er nicht zugesagt hat, sieht er nur den Termin. Erst mit der Zusage öffnen sich Stagerider und Setliste, und auch die nur für diesen einen Abend. Am Tag danach ist der Link tot. Sagt er ab, ist er sofort tot.',
   'help_flow_booking' => 'Ein Bookingagent ist etwas anderes als ein Gast: Er hat ein richtiges Konto und arbeitet länger für euch. Er sieht Termine, Orte, den Rider und Verträge. Beim Kalender entscheidet ihr in den Einstellungen, ob er die Termine mit Inhalt sieht oder nur, dass ein Tag belegt ist — das Zweite reicht, um zu wissen, ob ein Samstag noch frei ist. Was er selbst einträgt, sieht er immer ganz. Bei Verträgen und Themen sieht er nur die eigenen; zu jedem weiteren holt ihr ihn einzeln dazu, unten am Vertrag beziehungsweise am Thema.',
@@ -747,6 +748,10 @@ const UI_STRINGS = [
   'promoter_contact' => 'Ansprechpartner',
   'promoter_none' => 'Noch kein Veranstalter angelegt.',
   // Vorlage in den Einstellungen
+  'set_flow_title' => 'Wie ihr Aufträge vereinbart',
+  'set_flow_direkt' => 'Vertrag direkt schicken',
+  'set_flow_angebot' => 'erst ein Angebot, dann den Vertrag',
+  'set_flow_hint' => 'Die meisten Bands schicken den Vertrag und bekommen ihn unterschrieben zurück. Ein Angebot lohnt sich, wenn ein Veranstalter erst einen Preis will, bevor er sich festlegt. Beim direkten Weg verschwindet der Bereich „Angebote" aus dem Menü — vorhandene Angebote bleiben erreichbar.',
   'set_contract_title' => 'Vertragsvorlage',
   'set_contract_intro' => 'Der Wortlaut, aus dem jeder neue Vertrag gebildet wird. Er gehört euch: Ändert ihn, wie eure Band es braucht. Solange hier nichts steht, gilt die mitgelieferte Fassung.',
   'set_contract_legal' => 'Das ist eine Schreibhilfe und keine Rechtsberatung. Was ihr unterschreibt, verantwortet ihr — im Zweifel lasst den Text einmal von jemandem ansehen, der das beurteilen kann.',
@@ -3231,6 +3236,9 @@ $defaults = [
   // Der Vertragstext gehört der Band, nicht diesem Programm. Leer heißt: Es
   // gilt die mitgelieferte Vorlage in der Sprache der Installation. Sobald
   // jemand sie bearbeitet, steht sie hier und wird nie wieder überschrieben.
+  // Wie die Band Aufträge vereinbart (#312). Der direkte Weg ist die Vorgabe,
+  // weil die meisten Bands den Vertrag schicken und nicht erst ein Angebot.
+  'contract_flow' => 'direkt',
   'contract_text' => '',
   // Wie viel ein Bookingagent vom Kalender sieht (#309). Zu heißt zu, solange
   // niemand etwas anderes sagt: Eine Rolle, die mit offenem Kalender ankommt,
@@ -4929,6 +4937,27 @@ function may_see_topic(?array $user, int $topicId): bool {
 function topic_outsiders(int $topicId): array {
   return rows('SELECT u.id, u.name FROM topic_access a JOIN users u ON u.id = a.user_id
                WHERE a.topic_id = ? ORDER BY u.name', [$topicId]);
+}
+
+/** Die beiden Wege, einen Auftrag zu vereinbaren (#312). */
+const CONTRACT_FLOWS = ['direkt', 'angebot'];
+
+/**
+ * Wird der Angebotsschritt überhaupt gebraucht?
+ *
+ * Nein, wenn die Band den Vertrag direkt schickt — dann verschwindet der
+ * Bereich aus Menü und Hilfe, denn ein Bereich, den niemand benutzt, ist eine
+ * Sache mehr, die erklärt werden muss.
+ *
+ * Doch, sobald schon ein Angebot existiert. Wer umstellt, soll nicht verlieren,
+ * was er geschrieben hat; die Zeilen blieben sonst in der Datenbank und wären
+ * über kein Menü mehr erreichbar.
+ */
+function quote_step_active(): bool {
+  if (setting('contract_flow', 'direkt') === 'angebot') return true;
+  static $vorhanden = null;
+  if ($vorhanden === null) $vorhanden = row('SELECT 1 FROM quotes LIMIT 1') !== null;
+  return $vorhanden;
 }
 
 // ---------- Verträge (#303) ----------

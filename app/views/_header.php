@@ -112,7 +112,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           // Aufgaben täglich. Die Post steht bei der Verständigung und nicht bei
           // den Medien — sie ist eingehende Korrespondenz und nicht etwas, das
           // die Band veröffentlicht (#268).
-          ['🗂', t('inavg_planung'), [
+          ['🗂', t('inavg_planung'), array_filter([
             '/intern/termine' => [MODULE_ICONS['termine'], t('inav_termine')],
             '/intern/aufgaben' => [MODULE_ICONS['aufgaben'], t('inav_aufgaben')],
             '/intern/abwesenheiten' => [MODULE_ICONS['abwesenheiten'], t('inav_abwesenheiten')],
@@ -120,9 +120,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             '/intern/post' => [MODULE_ICONS['post'], t('inav_post')],
             '/intern/orte' => [MODULE_ICONS['orte'], t('inav_orte')],
             '/intern/gaeste' => [MODULE_ICONS['gaeste'], t('inav_gaeste')],
-            '/intern/angebote' => [MODULE_ICONS['angebote'], t('inav_angebote')],
+            // Beim direkten Weg gibt es keinen Angebotsschritt (#312).
+            '/intern/angebote' => quote_step_active() ? [MODULE_ICONS['angebote'], t('inav_angebote')] : null,
             '/intern/vertraege' => [MODULE_ICONS['vertraege'], t('inav_vertraege')],
-          ]],
+          ])],
           ['🎼', t('inavg_musik'), [
             '/intern/songs' => [MODULE_ICONS['songs'], t('inav_songs')],
             '/intern/setlists' => [MODULE_ICONS['setlists'], t('inav_setlists')],

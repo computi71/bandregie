@@ -1,0 +1,28 @@
+-- Ein- oder zweistufig: Vertrag direkt oder Angebot zuerst (#312)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','set_flow_title','How you agree bookings'),
+('en','set_flow_direkt','send the contract straight away'),
+('en','set_flow_angebot','a quote first, then the contract'),
+('en','set_flow_hint','Most bands send the contract and get it back signed. A quote is worth it when a promoter wants a price before committing. On the direct way the quotes area disappears from the menu; quotes that already exist stay reachable.'),
+('en','help_flow_direct','From the request to the money: somebody asks, you enter an event and send the contract with it. Date, playing time and fee it takes from the event, so nothing has to be copied. When it comes back signed you note that, and from then on the event shows that the paper is in. After the gig you copy the fee into the treasury, and at the end of the year it appears in the tax summary. If a promoter wants a price first, switch to the two step way in the settings; a quote then comes before the contract.'),
+('nl','set_flow_title','Hoe jullie opdrachten vastleggen'),
+('nl','set_flow_direkt','het contract meteen sturen'),
+('nl','set_flow_angebot','eerst een offerte, dan het contract'),
+('nl','set_flow_hint','De meeste bands sturen het contract en krijgen het ondertekend terug. Een offerte loont als een organisator eerst een prijs wil voordat hij zich vastlegt. Bij de directe weg verdwijnt het onderdeel Offertes uit het menu; bestaande offertes blijven bereikbaar.'),
+('nl','help_flow_direct','Van de aanvraag tot het geld: iemand vraagt, jullie voeren een afspraak in en sturen het contract mee. Datum, speeltijd en gage haalt het uit de afspraak, je hoeft niets over te schrijven. Komt het ondertekend terug, dan noteer je dat, en vanaf dan staat bij de afspraak dat het papier binnen is. Na het optreden neem je de gage over in de kas, en aan het eind van het jaar staat hij in het belastingoverzicht. Wil een organisator eerst een prijs, zet dan in de instellingen de tweetraps weg aan; dan komt er een offerte voor het contract.'),
+('fr','set_flow_title','Comment vous concluez les engagements'),
+('fr','set_flow_direkt','envoyer le contrat directement'),
+('fr','set_flow_angebot','d''abord un devis, puis le contrat'),
+('fr','set_flow_hint','La plupart des groupes envoient le contrat et le récupèrent signé. Un devis vaut la peine quand un organisateur veut un prix avant de s''engager. Sur la voie directe, le domaine Devis disparaît du menu ; les devis existants restent accessibles.'),
+('fr','help_flow_direct','De la demande à l''argent : quelqu''un sollicite, vous créez une date et envoyez le contrat avec. La date, le temps de jeu et le cachet, il les prend de la date, rien à recopier. Quand il revient signé, vous le notez, et à partir de là la date indique que le papier est là. Après le concert vous reportez le cachet dans la caisse, et en fin d''année il figure au récapitulatif fiscal. Si un organisateur veut un prix d''abord, passez dans les réglages à la voie en deux temps ; un devis précède alors le contrat.'),
+('es','set_flow_title','Cómo cerráis los encargos'),
+('es','set_flow_direkt','enviar el contrato directamente'),
+('es','set_flow_angebot','primero un presupuesto, luego el contrato'),
+('es','set_flow_hint','La mayoría de los grupos envían el contrato y lo reciben firmado. Un presupuesto merece la pena cuando un organizador quiere un precio antes de comprometerse. Por la vía directa el área de Presupuestos desaparece del menú; los presupuestos existentes siguen accesibles.'),
+('es','help_flow_direct','De la petición al dinero: alguien pregunta, vosotros anotáis un evento y enviáis el contrato con él. La fecha, el tiempo de actuación y el caché los toma del evento, no hay que copiar nada. Cuando vuelve firmado lo anotáis, y desde entonces el evento indica que el papel está. Tras la actuación pasáis el caché a la caja, y a final de año figura en el resumen fiscal. Si un organizador quiere antes un precio, cambiad en los ajustes a la vía de dos pasos; entonces el presupuesto va delante del contrato.'),
+('it','set_flow_title','Come concludete gli ingaggi'),
+('it','set_flow_direkt','mandare subito il contratto'),
+('it','set_flow_angebot','prima un preventivo, poi il contratto'),
+('it','set_flow_hint','La maggior parte delle band manda il contratto e lo riceve firmato. Un preventivo conviene quando un organizzatore vuole un prezzo prima di impegnarsi. Sulla via diretta l''area Preventivi sparisce dal menu; i preventivi già esistenti restano raggiungibili.'),
+('it','help_flow_direct','Dalla richiesta al denaro: qualcuno chiede, voi inserite una data e mandate il contratto insieme. Data, tempo di esecuzione e cachet li prende dalla data, non c''è niente da ricopiare. Quando torna firmato lo annotate, e da lì in poi sulla data si vede che il foglio è arrivato. Dopo il concerto riportate il cachet in cassa, e a fine anno compare nel riepilogo fiscale. Se un organizzatore vuole prima un prezzo, passate nelle impostazioni alla via in due passi; allora il preventivo viene prima del contratto.')
+ON DUPLICATE KEY UPDATE value = value;

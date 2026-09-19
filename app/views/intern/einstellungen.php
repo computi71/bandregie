@@ -184,6 +184,22 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   </form>
 </details>
 
+<?php // Ein- oder zweistufig (#312). Steht vor der Vorlage, weil die Antwort
+      // darauf bestimmt, ob es den Angebotsbereich überhaupt gibt. ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_flow_title')) ?></summary>
+  <form method="post" action="/intern/einstellungen/ablauf" class="form-grid"><?= csrf_field() ?>
+    <label class="span2"><?= e(t('set_flow_title')) ?>
+      <select name="contract_flow">
+        <?php foreach (['direkt' => 'set_flow_direkt', 'angebot' => 'set_flow_angebot'] as $fWert => $fKey): ?>
+          <option value="<?= e($fWert) ?>" <?= setting('contract_flow', 'direkt') === $fWert ? 'selected' : '' ?>><?= e(t($fKey)) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('set_flow_hint')) ?></span></label>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_contract_title')) ?></summary>
   <p class="muted small"><?= e(t('set_contract_intro')) ?></p>

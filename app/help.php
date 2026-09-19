@@ -31,6 +31,9 @@ declare(strict_types=1);
 function help_sections(array $user): array {
   $abschnitte = ['zusammenhang' => ['🔗', t('help_flow_title')]];
   foreach (array_keys(PERM_MODULES) as $mod) {
+    // Wer den Angebotsschritt nicht benutzt, bekommt ihn auch nicht erklärt —
+    // sonst steht in der Hilfe ein Bereich, den es im Menü nicht gibt (#312).
+    if ($mod === 'angebote' && !quote_step_active()) continue;
     if (perm_allows($user, $mod)) $abschnitte[$mod] = [MODULE_ICONS[$mod] ?? '•', t('inav_' . $mod)];
   }
   if (perm_allows($user, 'kasse')) {

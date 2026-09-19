@@ -107,7 +107,9 @@ require_once BASE_DIR . '/app/help.php';
   <summary>🔗 <?= e(t('help_flow_title')) ?></summary>
   <?php if (!$druck || $druckBilder) echo help_figure('flow'); ?>
   <p class="help-lead"><?= e(t('help_flow_intro')) ?></p>
-  <?php foreach ([['termine', 'help_flow_gig'], ['setlists', 'help_flow_setlist'],
+  <?php // Die Kette hängt davon ab, wie die Band arbeitet: mit Angebot davor
+        // oder gleich mit dem Vertrag (#312). ?>
+  <?php foreach ([['termine', quote_step_active() ? 'help_flow_gig' : 'help_flow_direct'], ['setlists', 'help_flow_setlist'],
                   ['gaeste', 'help_flow_guest'], ['termine', 'help_flow_booking'],
                   ['mitglieder', 'help_flow_rights'], ['kasse', 'help_flow_money']] as [$flowMod, $flowKey]): ?>
     <?php if (!perm_allows($user, $flowMod)) continue; ?>
@@ -118,6 +120,8 @@ require_once BASE_DIR . '/app/help.php';
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
+  <?php // Kein Angebotsschritt, kein Angebotsabschnitt (#312). ?>
+  <?php if ($helpMod === 'angebote' && !quote_step_active()) continue; ?>
   <details id="hilfe-<?= e($helpMod) ?>" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck || $helpFirst ? 'open' : '' ?>>
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
     <?php if (!$druck || $druckBilder) echo help_picture($helpMod, t('inav_' . $helpMod)); ?>

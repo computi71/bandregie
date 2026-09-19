@@ -2674,7 +2674,13 @@ if (str_starts_with($path, '/intern')) {
     // Die Gage kommt aus dem Angebot zum selben Termin, wenn es eines gibt —
     // abschreiben ist die Stelle, an der zwei Zahlen auseinanderlaufen.
     $vAngebot = row('SELECT * FROM quotes WHERE event_id = ? ORDER BY id DESC LIMIT 1', [$vEvent['id']]);
-    $vGage = $vAngebot ? quote_totals($vAngebot, quote_items((int) $vAngebot['id']))['total'] : 0;
+    // Ohne Angebot steht die Gage am Termin — als Text, wie sie jemand dort
+    // eingetippt hat. Lässt sie sich nicht als Betrag lesen, bleibt das Feld
+    // leer und wird von Hand gefüllt; eine geratene Zahl im Vertrag wäre
+    // schlimmer als eine fehlende (#312).
+    $vGage = $vAngebot
+      ? quote_totals($vAngebot, quote_items((int) $vAngebot['id']))['total']
+      : max(0, price_to_cents((string) $vEvent['fee']) ?? 0);
     q('INSERT INTO contracts (event_id, promoter_id, quote_id, contract_date, fee_cents,
                               play_from, play_to, get_in, created_by)
        VALUES (?,?,?,?,?,?,?,?,?)', [
@@ -4452,6 +4458,13 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/einstellungen/booking' && $method === 'POST') {
     require_admin();
     set_setting('booking_event_scope', ($_POST['booking_event_scope'] ?? '') === 'all' ? 'all' : 'busy');
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
+  if ($path === '/intern/einstellungen/ablauf' && $method === 'POST') {
+    require_admin();
+    $vWeg = (string) ($_POST['contract_flow'] ?? '');
+    set_setting('contract_flow', in_array($vWeg, CONTRACT_FLOWS, true) ? $vWeg : 'direkt');
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
