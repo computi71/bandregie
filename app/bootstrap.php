@@ -397,6 +397,7 @@ const UI_STRINGS = [
   'help_post_2' => 'Das Postfach muss ausdrücklich vergeben werden, auch einem Admin: Dort liegen Anfragen, Rechnungen und private Antworten, und die Anwendung zu verwalten ist kein Grund, sie mitzulesen. Antworten setzt zusätzlich das Recht „E-Mail-Versand" voraus.',
   'help_termine_3' => 'Spielt an dem Abend noch eine andere Band — als Vorgruppe, oder ihr seid die Vorgruppe —, tragt ihr sie beim Auftritt unter „Supportact" ein. Der Name steht dann in der Terminzeile, im Kalender-Abo und in der Tabelle zum Herunterladen. Auf der öffentlichen Seite erscheint er absichtlich nicht: Eine Vorgruppe, die noch nicht sicher ist, soll nicht von selbst im Internet stehen.',
   'help_orte_2' => 'Ist ein Ort mit einem Termin verknüpft, steht seine volle Anschrift auch im Kalender-Abo und auf der öffentlichen Terminseite — nicht nur der Stadtname aus dem Freitextfeld. Im Kalendereintrag steckt außerdem ein Navi-Link, der auf dem Handy direkt die Navigation zum Ort öffnet.',
+  'help_orte_3' => 'Unter dem Namen steht, wie oft an diesem Ort schon etwas war: gespielt, geplant, angefragt, abgesagt. Gezählt wird nur, was mit dem Ort verknüpft ist — ein Termin, bei dem der Ort bloß als Freitext dasteht, zählt nicht mit. Die Absagen gehören dazu: Erst an ihnen sieht man, ob aus Anfragen von dort auch Auftritte werden.',
   'help_fotos_2' => 'Ein Bild aus der Galerie kann Logo, Hintergrundbild, Symbol im Browser oder das Bild neben der Begrüßung werden: In den Einstellungen unter „Logo & Hintergrund" gibt es dafür „Aus den Medien übernehmen", und an jedem Bild in der Galerie den Knopf „verwenden als". Umgekehrt landet alles, was ihr dort hochladet, auch in der Galerie — mit einem passenden Schlagwort, damit ihr es wiederfindet. Das Bild wird dabei kopiert: Löscht ihr es in der Galerie, bleibt das Logo trotzdem.',
   'help_rider_2' => 'Beim Ausdrucken beginnen Bühnenplan und Kanalliste jeweils auf einer eigenen Seite — das sind die zwei Blätter, die sich der Tontechniker ans Mischpult hängt. Habt ihr für einen Auftritt einen Gast gebucht, etwa einen Tontechniker, sieht er denselben Rider über seinen Einladungslink.',
   'help_mitglieder_3' => 'Ein Mitglied darf auch ohne E-Mail-Adresse angelegt werden — die Besetzung steht ja oft fest, bevor alle Adressen da sind. So ein Konto kann sich noch nicht anmelden; in der Liste steht „Kein Zugang — E-Mail-Adresse fehlt". Sobald ihr die Adresse unter „Bearbeiten" eintragt, geht die Einladung von selbst hinaus. Dasselbe passiert, wenn ihr bei einem Mitglied, das sich noch nie angemeldet hat, die Adresse korrigiert — die alte war dann wohl falsch geschrieben. Unter dem Konto steht danach, was aus der Einladung wurde: „zugestellt", oder „abgewiesen" mit dem Grund, den der Mailanbieter genannt hat. Steht dort nur „übergeben", weiß der Server das Ergebnis noch nicht.',
@@ -525,6 +526,8 @@ const UI_STRINGS = [
   'venues_name_ph' => 'z. B. Festhalle Musterstadt', 'city' => 'Stadt', 'address' => 'Adresse',
   'postcode' => 'PLZ',
   'contact_person' => 'Kontaktperson', 'venues_notes_ph' => 'Bühne, Strom, Parken, Erfahrungen ...',
+  'venues_stat_played' => 'gespielt', 'venues_stat_planned' => 'geplant',
+  'venues_stat_asked' => 'angefragt', 'venues_stat_cancelled' => 'abgesagt',
   'venues_events_here' => 'Termine an diesem Ort', 'venues_none' => 'Noch keine Veranstaltungsorte gespeichert.',
   // Abwesenheiten
   'abs_title' => 'Abwesenheiten',
@@ -5398,6 +5401,29 @@ function venue_dest(array $v): string {
   // und getrennt durch Komma sucht die Karten-App zwei.
   $ort = trim(trim((string) ($v['postcode'] ?? '')) . ' ' . trim((string) ($v['city'] ?? '')));
   return navi_dest($v['name'] ?? '', $v['address'] ?? '', $ort);
+}
+
+/**
+ * Wie oft an einem Ort etwas anstand: gespielt, geplant, angefragt, abgesagt
+ * (#315). Erst mit den Absagen wird die Zahl ehrlich — ein Ort, der dreimal
+ * anfragt und dreimal absagt, sähe sonst aus wie einer ohne Geschichte.
+ * „reserviert" und „blockiert" zählen nicht mit: Da steht noch nicht fest, ob
+ * es überhaupt um diesen Ort geht.
+ * Leere Zählstände fallen weg, damit an einem Ort mit einem einzigen Auftritt
+ * nicht drei Nullen stehen.
+ */
+function venue_stats(array $events, string $today): array {
+  $zahlen = ['played' => 0, 'planned' => 0, 'asked' => 0, 'cancelled' => 0];
+  foreach ($events as $ev) {
+    $feld = match ($ev['status']) {
+      'abgesagt'   => 'cancelled',
+      'angefragt'  => 'asked',
+      'bestaetigt' => $ev['date'] < $today ? 'played' : 'planned',
+      default      => null,
+    };
+    if ($feld !== null) $zahlen[$feld]++;
+  }
+  return array_filter($zahlen);
 }
 
 /**

@@ -32,13 +32,25 @@
       <?php if ($v['contact_phone']): ?><span class="muted">📞 <?= e($v['contact_phone']) ?></span><?php endif; ?>
       <?php if ($v['contact_email']): ?><a class="muted" href="mailto:<?= e($v['contact_email']) ?>">✉ <?= e($v['contact_email']) ?></a><?php endif; ?>
     </div>
+    <?php // Die Zählzeile gehört unter den Kopf: Wer den Ort überfliegt, soll die
+          // Häufigkeit sehen, ohne die Terminliste darunter abzuzählen (#315).
+          $venueEvents = $eventsByVenue[$v['id']] ?? [];
+          $venueStats  = venue_stats($venueEvents, $today);
+          $venueIcons  = ['played' => '🎤', 'planned' => '📅', 'asked' => '❓', 'cancelled' => '❌']; ?>
+    <?php if ($venueStats): ?>
+      <p class="muted small"><?php
+        $teile = [];
+        foreach ($venueStats as $was => $wieOft) {
+          $teile[] = $venueIcons[$was] . ' ' . $wieOft . '× ' . t('venues_stat_' . $was);
+        }
+        echo e(implode(' · ', $teile)); ?></p>
+    <?php endif; ?>
     <?php if ($v['address']): ?><p class="prewrap muted small"><?= e($v['address']) ?></p><?php endif; ?>
     <?php // Navi-Link: am Handy öffnet route.js die native Karten-App (Apple Karten
           // bzw. die eingestellte Android-App), am Desktop den Web-Link. ?>
     <?php $naviDest = venue_dest($v); ?>
     <?php if ($naviDest !== ''): ?><p><a class="btn btn-ghost btn-small navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener">🧭 <?= e(t('geo_navigate')) ?></a></p><?php endif; ?>
     <?php if ($v['notes']): ?><p class="prewrap muted"><?= e($v['notes']) ?></p><?php endif; ?>
-    <?php $venueEvents = $eventsByVenue[$v['id']] ?? []; ?>
     <?php if ($venueEvents): ?>
       <div class="subsection">
         <strong class="muted small"><?= e(t('venues_events_here')) ?></strong>

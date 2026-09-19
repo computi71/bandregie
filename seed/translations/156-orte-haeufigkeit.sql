@@ -1,0 +1,28 @@
+-- Wie oft an einem Ort etwas war: gespielt, geplant, angefragt, abgesagt (#315)
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','venues_stat_played','played'),
+('en','venues_stat_planned','planned'),
+('en','venues_stat_asked','asked'),
+('en','venues_stat_cancelled','cancelled'),
+('en','help_orte_3','Under the name you see how often something was on at this place: played, planned, asked, cancelled. Only events linked to the venue are counted — one that carries the place as free text only does not. The cancellations belong in there: they are what shows whether requests from that place ever turn into gigs.'),
+('nl','venues_stat_played','gespeeld'),
+('nl','venues_stat_planned','gepland'),
+('nl','venues_stat_asked','aangevraagd'),
+('nl','venues_stat_cancelled','afgezegd'),
+('nl','help_orte_3','Onder de naam staat hoe vaak er op deze plek iets was: gespeeld, gepland, aangevraagd, afgezegd. Meegeteld wordt alleen wat aan de locatie gekoppeld is — een afspraak waar de plaats alleen als vrije tekst staat, telt niet mee. De afzeggingen horen erbij: daaraan zie je pas of aanvragen van daar ook optredens worden.'),
+('fr','venues_stat_played','joué'),
+('fr','venues_stat_planned','prévu'),
+('fr','venues_stat_asked','demandé'),
+('fr','venues_stat_cancelled','annulé'),
+('fr','help_orte_3','Sous le nom figure combien de fois il s''est passé quelque chose à cet endroit : joué, prévu, demandé, annulé. Seules comptent les dates reliées au lieu — une date où le lieu n''est qu''un texte libre ne compte pas. Les annulations en font partie : c''est à elles qu''on voit si les demandes venues de là débouchent sur des concerts.'),
+('es','venues_stat_played','tocado'),
+('es','venues_stat_planned','previsto'),
+('es','venues_stat_asked','solicitado'),
+('es','venues_stat_cancelled','cancelado'),
+('es','help_orte_3','Bajo el nombre aparece cuántas veces hubo algo en este sitio: tocado, previsto, solicitado, cancelado. Solo se cuenta lo que está enlazado con el lugar — un evento que lleva el sitio solo como texto libre no cuenta. Las cancelaciones forman parte: en ellas se ve si las peticiones desde allí acaban en actuaciones.'),
+('it','venues_stat_played','suonato'),
+('it','venues_stat_planned','previsto'),
+('it','venues_stat_asked','richiesto'),
+('it','venues_stat_cancelled','annullato'),
+('it','help_orte_3','Sotto il nome si legge quante volte in questo posto c''è stato qualcosa: suonato, previsto, richiesto, annullato. Si conta solo ciò che è collegato al luogo — una data in cui il posto sta soltanto come testo libero non conta. Gli annullamenti ne fanno parte: sono loro a mostrare se dalle richieste di là nascono davvero concerti.')
+ON DUPLICATE KEY UPDATE value = value;
