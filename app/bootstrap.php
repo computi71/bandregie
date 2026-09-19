@@ -6655,7 +6655,12 @@ function app_icon_drawn(int $size): ?string {
 
   $dir = DATA_DIR . '/appicons';
   if (!is_dir($dir)) @mkdir($dir, 0700, true);
-  $name = 'icon-' . $size . '-' . substr(sha1($source . filemtime($source)), 0, 12) . '.png';
+  // Die Version gehört in den Namen: Ändert sich die Regel, nach der gezeichnet
+  // wird, muss auch ein unverändertes Logo ein neues Symbol ergeben. Sonst
+  // behielte eine bestehende Installation ihr altes Bild bis zum nächsten
+  // Logowechsel (#313).
+  $name = 'icon-' . $size . '-'
+        . substr(sha1($source . filemtime($source) . BANDREGIE_VERSION), 0, 12) . '.png';
   $target = $dir . '/' . $name;
   if (is_file($target)) return '/appicon/' . $name;
 
