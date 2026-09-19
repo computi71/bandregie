@@ -9,7 +9,10 @@
 //   $ev           — Termin-Zeile (Pflicht)
 //   $venue        — Ort-Zeile oder null (Pflicht)
 //   $memberNames  — id => Name, für den Verantwortlichen (optional)
+//   $kopfTag      — 'div' (Regelfall) oder 'summary', wenn die Karte
+//                   zusammengeklappt werden kann (#320)
 $memberNames = $memberNames ?? [];
+$kopfTag = ($kopfTag ?? 'div') === 'summary' ? 'summary' : 'div';
 // Navi-Link zum Ort: am Handy öffnet route.js die native Karten-App, am
 // Desktop führt der Link ins Web.
 $naviDest = $venue ? venue_dest($venue) : navi_dest((string) $ev['location']);
@@ -26,7 +29,7 @@ if ($ev['invoice_no']) $zeiten[] = t('ev_invoice') . ': ' . $ev['invoice_no'];
 if (!empty($ev['pa_source'])) $zeiten[] = t('prod_pa') . ': ' . production_label($ev['pa_source']);
 if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production_label($ev['light_source']);
 ?>
-<div class="event-head">
+<<?= $kopfTag ?> class="event-head">
   <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
   <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
   <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
@@ -44,5 +47,5 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
     <a class="badge link <?= $evVertrag['status'] === 'unterschrieben' ? 'public' : '' ?>"
        href="/intern/vertraege/<?= (int) $evVertrag['id'] ?>">✍ <?= e(contract_status_label((string) $evVertrag['status'])) ?></a>
   <?php endif; ?>
-</div>
+</<?= $kopfTag ?>>
 <?php if ($zeiten): ?><p class="muted small"><?= e(implode(' · ', $zeiten)) ?></p><?php endif; ?>

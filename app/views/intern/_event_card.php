@@ -8,9 +8,21 @@
 // (#277).
 //
 // Vorher setzen: $ev und alles, was event_view_data() liefert.
+// Freiwillig: $evFold — dann wird die Karte zusammenklappbar und ihr Kopf zur
+// Zusammenfassung. Die Übersicht braucht das, damit sie wieder in einen Blick
+// passt; die Terminliste zeigt weiter alles offen (#320). $evOpen bestimmt,
+// welche eine offen startet.
 ?>
-  <?php $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null; ?>
-  <section class="card event-card <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>">
+  <?php
+    $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null;
+    // Eine Fassung der Karte, zwei Hüllen: <section> offen, <details> gefaltet.
+    // Der Name gruppiert sie — ein Browser lässt dann nur eine offen.
+    $evFold = !empty($evFold);
+    $evTag = $evFold ? 'details' : 'section';
+    $kopfTag = $evFold ? 'summary' : 'div';
+  ?>
+  <<?= $evTag ?> class="card event-card <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>"
+     <?= $evFold ? 'name="dashev"' : '' ?><?= $evFold && !empty($evOpen) ? ' open' : '' ?>>
     <?php require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
     <?php $gear = $gearByEvent[$ev['id']] ?? []; ?>
     <?php if ($gear): ?>
@@ -186,4 +198,4 @@
       </form>
     </details>
     <?php endif; ?>
-  </section>
+  </<?= $evTag ?>>

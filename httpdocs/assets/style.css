@@ -196,6 +196,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
    Rückmelde-Knöpfe teilen sich die darunter. */
 .event-list li .event-head { flex: 1 1 100%; }
 .event-list li p.small { margin: 0; }
+/* Die Uebersicht faltet ihre Termine (#320): Der Kopf ist dort die
+   Zusammenfassung. Ein Flex-Kasten verliert das Dreieck des Browsers,
+   deshalb ein eigenes Zeichen am rechten Rand -- ohne eins sieht niemand,
+   dass da etwas aufgeht. */
+summary.event-head { cursor: pointer; list-style: none; }
+summary.event-head::-webkit-details-marker { display: none; }
+summary.event-head::after { content: 'be'; color: var(--muted); margin-left: auto; }
+details[open] > summary.event-head::after { content: 'b4'; }
 
 .badge {
   display: inline-block;

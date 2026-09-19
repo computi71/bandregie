@@ -58,6 +58,27 @@
     <a class="btn btn-tiny btn-ghost" href="/intern/equipment" style="margin-left:0.5rem">→</a>
   </div>
 <?php endif; ?>
+<?php // Was im Chat neu ist, steht ganz oben: Die Zahl am Symbol schickt einen
+      // hierher, und auf einem Telefon war die Karte unter den Terminen und den
+      // Aufgaben schlicht nicht zu finden (#320). Sie erscheint nur, wenn es
+      // etwas Ungelesenes gibt, und drängt die Termine sonst nicht nach unten. ?>
+<?php if ($unreadTopics): ?>
+  <section class="card">
+    <h2>💬 <?= e(t('dash_unread_chat')) ?></h2>
+    <ul class="task-list">
+      <?php foreach ($unreadTopics as $ut): ?>
+        <li>
+          <span class="badge"><?= (int) $ut['neu'] ?></span>
+          <?php // Der Sprung führt an die erste ungelesene Stelle; ohne eine
+                // solche (das Thema wurde inzwischen gelesen) an den Anfang. ?>
+          <a href="/intern/themen/<?= (int) $ut['id'] ?><?= $ut['ab'] ? '#neu' : '' ?>"><strong><?= e($ut['title']) ?></strong></a>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+    <a class="btn" href="/intern/themen"><?= e(t('dash_all_chat')) ?></a>
+  </section>
+<?php endif; ?>
+
 <?php // Die nächsten Termine sind ein Ausschnitt der Terminliste und sehen
       // deshalb genauso aus (#277). Über dem Raster, weil eine Karte in einer
       // halben Spalte nicht dieselbe Karte wäre. ?>
@@ -66,7 +87,10 @@
   <?php if (!$events): ?>
     <p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p>
   <?php endif; ?>
-  <?php foreach ($events as $ev): ?>
+  <?php // Zusammengeklappt passt die Übersicht wieder in einen Blick; der
+        // nächste Termin steht offen da, weil er der ist, um den es geht. ?>
+  <?php foreach ($events as $evNr => $ev): ?>
+    <?php $evFold = true; $evOpen = $evNr === 0; ?>
     <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
   <?php endforeach; ?>
   <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
@@ -110,25 +134,6 @@
       <?php endforeach; ?>
     </ul>
     <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
-  </section>
-  <?php endif; ?>
-  <?php // Eigene Karte statt einer Zeile bei den Aufgaben: Der Chat ist keine
-        // Aufgabe, und wer Aufgaben nicht sehen darf, soll ihn trotzdem
-        // finden (#317). ?>
-  <?php if ($unreadTopics): ?>
-  <section class="card">
-    <h2>💬 <?= e(t('dash_unread_chat')) ?></h2>
-    <ul class="task-list">
-      <?php foreach ($unreadTopics as $ut): ?>
-        <li>
-          <span class="badge"><?= (int) $ut['neu'] ?></span>
-          <?php // Der Sprung führt an die erste ungelesene Stelle; ohne eine
-                // solche (das Thema wurde inzwischen gelesen) an den Anfang. ?>
-          <a href="/intern/themen/<?= (int) $ut['id'] ?><?= $ut['ab'] ? '#neu' : '' ?>"><strong><?= e($ut['title']) ?></strong></a>
-        </li>
-      <?php endforeach; ?>
-    </ul>
-    <a class="btn" href="/intern/themen"><?= e(t('dash_all_chat')) ?></a>
   </section>
   <?php endif; ?>
 </div>
