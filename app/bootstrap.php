@@ -7020,8 +7020,26 @@ function is_substitute(?array $user): bool {
  * Nicht dabei: Abgesagtes (darüber stimmt niemand ab), Blockiertes (keine
  * Verabredung) und alles, was schon beantwortet ist — egal wie.
  */
+/**
+ * Zu welchen Terminen wird dieses Konto überhaupt gefragt? (#314)
+ *
+ * Sehen und gefragt werden sind zwei Fragen. Die Bandleitung muss jeden Termin
+ * sehen, um ihn zu führen — deshalb nimmt visible_event_ids() sie aus. Ob
+ * jemand zusagen soll, hängt aber nicht an seinen Rechten, sondern daran, ob er
+ * mitspielt. Ein Ersatzmann spielt mit, wenn er gerufen wird, und wird deshalb
+ * nur zu den Terminen gefragt, für die ihn jemand angefragt hat. Auch dann,
+ * wenn er zugleich die Bandleitung ist.
+ *
+ * null heißt: zu allen.
+ */
+function events_to_answer(?array $user): ?array {
+  if (!$user || !is_substitute($user)) return null;
+  return array_map('intval', array_column(
+    rows('SELECT event_id FROM substitute_requests WHERE user_id = ?', [$user['id']]), 'event_id'));
+}
+
 function open_votes(array $user): array {
-  $sichtbar = visible_event_ids($user);
+  $sichtbar = events_to_answer($user);
   if ($sichtbar === []) return [];               // Ersatz ohne Anfrage: keine Termine
   $nurDiese = '';
   $werte = [(int) $user['id']];
