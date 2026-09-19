@@ -3594,6 +3594,12 @@ if (setting('migr_login_backfill') === '') {
 // niemand durch Lesen wieder loswird, weil sie nie ungelesen war.
 // Nur einmal, und nur für die, die es jetzt schon gibt; wer später dazukommt,
 // fängt an seinem eigenen Beitrittstag an.
+// Der Stichtag der Marken (#321). Dateien tragen ihren Zeitstempel seit jeher
+// selbst — ohne diese Grenze stünde am Tag des Updates jede Datei der letzten
+// Jahre als „neu" da. Für alles andere ist die Grenze überflüssig und
+// trotzdem richtig.
+if (setting('marks_since') === '') set_setting('marks_since', date('Y-m-d H:i:s'));
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW() FROM users u CROSS JOIN topics t');
@@ -5191,10 +5197,11 @@ function items_unseen(?array $user, string $kind): array {
                     LEFT JOIN users w ON w.id = i.`$werSpalte`
                     JOIN users me ON me.id = ?
                    WHERE i.`$wannSpalte` IS NOT NULL
+                     AND i.`$wannSpalte` >= ?
                      AND (i.`$werSpalte` IS NULL OR i.`$werSpalte` <> ?)
                      AND ((s.seen_at IS NULL     AND i.`$wannSpalte` >= me.created_at)
                        OR (s.seen_at IS NOT NULL AND i.`$wannSpalte` >  s.seen_at))",
-                 [$kind, $uid, $uid, $uid]);
+                 [$kind, $uid, $uid, setting('marks_since', '1000-01-01'), $uid]);
   $offen = [];
   foreach ($zeilen as $z) {
     $offen[(int) $z['id']] = [
