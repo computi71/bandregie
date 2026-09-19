@@ -6676,8 +6676,13 @@ function app_icon_drawn(int $size): ?string {
     : imagecolorallocate($canvas, 0x17, 0x12, 0x0F)); // sonst die Hausfarbe
   imagealphablending($canvas, true);
 
-  // Bis auf einen Rand füllen: ein Symbol soll die Kachel ausnutzen
-  $rand = (int) round($size * 0.12);
+  // Ein Symbol, das schon eine gefüllte Kachel ist, wird nicht noch einmal
+  // gerahmt (#313). Sonst sitzt ein schwarzes Quadrat in einem hellen Rahmen,
+  // und das sieht auf dem Startbildschirm aus wie ein Bild an der Wand statt
+  // wie ein Symbol. Erkannt wird es daran, dass der Rand nirgends durchsichtig
+  // ist und das Bild quadratisch.
+  $randlos = app_icon_full_bleed($img);
+  $rand = $randlos ? 0 : (int) round($size * 0.12);
   $platz = $size - 2 * $rand;
   $scale = min($platz / max(1, imagesx($img)), $platz / max(1, imagesy($img)));
   $w = max(1, (int) round(imagesx($img) * $scale));
@@ -6693,6 +6698,32 @@ function app_icon_drawn(int $size): ?string {
     if ($alt !== $target) @unlink($alt);
   }
   return is_file($target) ? '/appicon/' . $name : null;
+}
+
+/**
+ * Füllt die Zeichnung ihre Fläche schon vollständig aus? (#313)
+ *
+ * Geprüft werden die vier Ränder: Ist dort nichts durchsichtig und ist das Bild
+ * quadratisch, dann ist es bereits eine fertige Kachel und braucht weder
+ * Hintergrund noch Rand.
+ */
+function app_icon_full_bleed($img): bool {
+  $breite = imagesx($img); $hoehe = imagesy($img);
+  if ($breite < 16 || $hoehe < 16) return false;
+  $verhaeltnis = $breite / max(1, $hoehe);
+  if ($verhaeltnis < 0.95 || $verhaeltnis > 1.05) return false;
+  $schritt = max(1, (int) (max($breite, $hoehe) / 48));
+  for ($x = 0; $x < $breite; $x += $schritt) {
+    foreach ([0, $hoehe - 1] as $y) {
+      if (((imagecolorat($img, $x, $y) >> 24) & 0x7F) > 64) return false;
+    }
+  }
+  for ($y = 0; $y < $hoehe; $y += $schritt) {
+    foreach ([0, $breite - 1] as $x) {
+      if (((imagecolorat($img, $x, $y) >> 24) & 0x7F) > 64) return false;
+    }
+  }
+  return true;
 }
 
 /**
