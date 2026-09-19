@@ -2189,10 +2189,13 @@ if (str_starts_with($path, '/intern')) {
   // dem, der es angelegt hat — abmelden kann es nur derselbe.
   if ($path === '/intern/profil/push-topics' && $method === 'POST') {
     $gewaehlt = array_values(array_intersect(PUSH_TOPICS, (array) ($_POST['topics'] ?? [])));
-    // Alles abgewählt wird als solches gespeichert, sonst käme beim nächsten
+    // Gespeichert wird das Abgewählte (#323): So ist ein Thema, das es morgen
+    // gibt, für alle an — außer für die, die es dann selbst abwählen.
+    $abgewaehlt = array_values(array_diff(PUSH_TOPICS, $gewaehlt));
+    // Alles abgewählt bekommt seinen eigenen Wert, sonst käme beim nächsten
     // Laden wieder alles zurück.
     q('UPDATE users SET push_topics = ? WHERE id = ?',
-      [$gewaehlt ? implode(',', $gewaehlt) : PUSH_NICHTS, $me['id']]);
+      [$gewaehlt ? implode(',', $abgewaehlt) : PUSH_NICHTS, $me['id']]);
     flash(t('fl_push_saved'));
     redirect('/intern/profil');
   }

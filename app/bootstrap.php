@@ -3003,17 +3003,24 @@ const PUSH_NICHTS = '-';
 /**
  * Die Themen eines Mitglieds — Abwahl statt Anwahl, wie beim Offline-Vorrat.
  *
- * Leer heißt „noch nie eingestellt": dann sind alle Themen dabei. Das schickt
+ * Gespeichert wird, was jemand ABGEWÄHLT hat, nicht was er behalten will
+ * (#323). Das ist der Unterschied zwischen „ich will den Chat nicht" und „den
+ * Chat gab es noch nicht, als ich gespeichert habe": Stünde hier die Liste des
+ * Behaltenen, fiele jedes später hinzugekommene Thema bei allen heraus, die
+ * überhaupt je gespeichert haben — und niemand käme darauf, warum.
+ *
+ * Leer heißt „nichts abgewählt": dann sind alle Themen dabei. Das schickt
  * niemandem etwas gegen seinen Willen — eine Mitteilung entsteht erst, wenn
  * jemand sein Gerät anmeldet, und dabei fragt der Browser selbst um Erlaubnis.
- * Wer alle Themen abwählt, speichert '-' und bekommt nichts; ohne diese
- * Unterscheidung bekäme genau der wieder alles, der es abbestellt hat.
+ * Wer alles abwählt, speichert '-' und bekommt nichts; ohne diesen eigenen
+ * Wert schliche sich ein neues Thema bei genau dem wieder ein, der alles
+ * abbestellt hat.
  */
 function push_topics(?array $user): array {
   $roh = trim((string) ($user['push_topics'] ?? ''));
   if ($roh === '') return PUSH_TOPICS;
   if ($roh === PUSH_NICHTS) return [];
-  return array_values(array_intersect(PUSH_TOPICS, array_map('trim', explode(',', $roh))));
+  return array_values(array_diff(PUSH_TOPICS, array_map('trim', explode(',', $roh))));
 }
 
 // Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
@@ -3599,6 +3606,22 @@ if (setting('migr_login_backfill') === '') {
 // Jahre als „neu" da. Für alles andere ist die Grenze überflüssig und
 // trotzdem richtig.
 if (setting('marks_since') === '') set_setting('marks_since', date('Y-m-d H:i:s'));
+
+// Die Themenliste speichert ab jetzt das Abgewählte (#323). Umgerechnet wird
+// gegen die fünf Themen, die es gab, ALS diese Listen geschrieben wurden — nicht
+// gegen die heutigen. Sonst würde genau das neue Thema, das bei allen fehlt, als
+// Abwahl festgeschrieben, und der Fehler wäre für immer eingebaut.
+if (setting('migr_push_abwahl') === '') {
+  $themenDamals = ['events', 'comments', 'attendance', 'photos', 'post'];
+  foreach (rows("SELECT id, push_topics FROM users
+                  WHERE push_topics <> '' AND push_topics <> ?", [PUSH_NICHTS]) as $zeile) {
+    $behalten = array_map('trim', explode(',', (string) $zeile['push_topics']));
+    $abgewaehlt = array_values(array_diff($themenDamals, $behalten));
+    q('UPDATE users SET push_topics = ? WHERE id = ?',
+      [$abgewaehlt ? implode(',', $abgewaehlt) : '', $zeile['id']]);
+  }
+  set_setting('migr_push_abwahl', '1');
+}
 
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
