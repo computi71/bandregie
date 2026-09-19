@@ -325,6 +325,10 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .comment-list { list-style: none; padding: 0; }
 .comment-list li { border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
 .comment-list p { margin: 0.15rem 0; }
+/* Wo der ungelesene Teil eines Themas anfaengt (#318): eine Trennlinie mit
+   Beschriftung, damit der Sprung aus der Uebersicht sichtbar landet. */
+.comment-list .new-mark { border-bottom: 0; padding: 0.6rem 0 0.2rem; text-align: center; }
+.comment-list .new-mark .badge { background: var(--accent); color: #1c1917; font-weight: 600; }
 .comment-form { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .comment-form input, .comment-form select { flex: 1; }
 

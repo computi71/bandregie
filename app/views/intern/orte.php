@@ -51,23 +51,22 @@
     <?php $naviDest = venue_dest($v); ?>
     <?php if ($naviDest !== ''): ?><p><a class="btn btn-ghost btn-small navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener">🧭 <?= e(t('geo_navigate')) ?></a></p><?php endif; ?>
     <?php if ($v['notes']): ?><p class="prewrap muted"><?= e($v['notes']) ?></p><?php endif; ?>
-    <?php if ($venueEvents): ?>
+    <?php // Absagen sehen in der Liste aus wie gespielte Termine und machen aus
+          // einer kurzen Geschichte eine lange. Sie stehen deshalb zusammen-
+          // geklappt darunter — nachsehen kann man sie weiterhin (#319). ?>
+    <?php $venueOff  = array_values(array_filter($venueEvents, fn(array $ev): bool => $ev['status'] === 'abgesagt'));
+          $venueLive = array_values(array_filter($venueEvents, fn(array $ev): bool => $ev['status'] !== 'abgesagt')); ?>
+    <?php if ($venueLive): ?>
       <div class="subsection">
         <strong class="muted small"><?= e(t('venues_events_here')) ?></strong>
-        <ul class="event-list">
-          <?php foreach ($venueEvents as $ev): ?>
-            <li>
-              <span class="event-date"><?= fmt_date($ev['date']) ?></span>
-              <?= $ev['date'] < $today ? '🔒' : '' ?>
-              <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
-              <?= e($ev['title']) ?>
-              <?php if ($ev['setlist_id']): ?>
-                <a class="badge link" href="/intern/setlists/<?= $ev['setlist_id'] ?>"><?= e(t('ev_setlist')) ?>: <?= e($ev['setlist_name']) ?></a>
-              <?php endif; ?>
-            </li>
-          <?php endforeach; ?>
-        </ul>
+        <?php $venueRows = $venueLive; require BASE_DIR . '/app/views/intern/_venue_events.php'; ?>
       </div>
+    <?php endif; ?>
+    <?php if ($venueOff): ?>
+      <details class="subsection">
+        <summary class="muted small">❌ <?= e(t('venues_events_cancelled')) ?> (<?= count($venueOff) ?>)</summary>
+        <?php $venueRows = $venueOff; require BASE_DIR . '/app/views/intern/_venue_events.php'; ?>
+      </details>
     <?php endif; ?>
     <?php $attachFiles = $filesByVenue[$v['id']] ?? []; $attachType = 'venue'; $attachId = $v['id']; require BASE_DIR . '/app/views/_dateien.php'; ?>
     <details class="subsection">

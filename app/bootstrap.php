@@ -528,7 +528,8 @@ const UI_STRINGS = [
   'contact_person' => 'Kontaktperson', 'venues_notes_ph' => 'Bühne, Strom, Parken, Erfahrungen ...',
   'venues_stat_played' => 'gespielt', 'venues_stat_planned' => 'geplant',
   'venues_stat_asked' => 'angefragt', 'venues_stat_cancelled' => 'abgesagt',
-  'venues_events_here' => 'Termine an diesem Ort', 'venues_none' => 'Noch keine Veranstaltungsorte gespeichert.',
+  'venues_events_here' => 'Termine an diesem Ort',
+  'venues_events_cancelled' => 'Abgesagte Termine', 'venues_none' => 'Noch keine Veranstaltungsorte gespeichert.',
   // Abwesenheiten
   'abs_title' => 'Abwesenheiten',
   'abs_intro' => 'Urlaub, Dienstreise, „Nicht-Band"-Termine — damit bei der Gig-Planung nichts schiefgeht. Termine an diesen Tagen zeigen automatisch eine Warnung.',
@@ -1232,7 +1233,7 @@ Zeile zwei
   'push_topic_photos' => 'Neue Bilder',
   'push_topic_post' => 'Neue Post',
   'push_topic_topics' => 'Neue Beiträge im Chat',
-  'topic_unread' => 'neu',
+  'topic_unread' => 'neu', 'topic_new_from_here' => 'Ab hier neu',
   'dash_unread_chat' => 'Neu im Chat', 'dash_all_chat' => 'Zum Chat',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
@@ -5025,6 +5026,29 @@ function topic_unread(?array $user): array {
   $offen = [];
   foreach ($zeilen as $z) $offen[(int) $z['topic_id']] = (int) $z['neu'];
   return $offen;
+}
+
+/**
+ * Der erste Beitrag, den dieses Konto in diesem Thema noch nicht gelesen hat,
+ * oder 0 (#318). Damit springt der Weg aus der Übersicht genau an die Stelle,
+ * an der man aufgehört hat, statt an den Anfang eines langen Verlaufs.
+ *
+ * Die Bedingungen sind dieselben wie beim Zählen — stünden sie hier anders,
+ * zeigte die Marke irgendwann auf einen anderen Beitrag, als die Zahl meint.
+ */
+function topic_first_unread(?array $user, int $topicId): int {
+  $uid = (int) ($user['id'] ?? 0);
+  if (!$uid || !may_see_topic($user, $topicId)) return 0;
+  $z = row('SELECT p.id
+              FROM topic_posts p
+              LEFT JOIN topic_reads r ON r.topic_id = p.topic_id AND r.user_id = ?
+              JOIN users u ON u.id = ?
+             WHERE p.topic_id = ?
+               AND (p.user_id IS NULL OR p.user_id <> ?)
+               AND ((r.seen_at IS NULL  AND p.created_at >= u.created_at)
+                 OR (r.seen_at IS NOT NULL AND p.created_at >  r.seen_at))
+             ORDER BY p.created_at, p.id LIMIT 1', [$uid, $uid, $topicId, $uid]);
+  return (int) ($z['id'] ?? 0);
 }
 
 /** Dieses Thema ist bis jetzt gelesen. */

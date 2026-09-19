@@ -931,7 +931,10 @@ if (str_starts_with($path, '/intern')) {
       $unreadTopics = rows('SELECT id, title FROM topics WHERE id IN ('
         . implode(',', array_fill(0, count($neuJeThema), '?')) . ') ORDER BY title',
         array_keys($neuJeThema));
-      foreach ($unreadTopics as $i => $ut) $unreadTopics[$i]['neu'] = $neuJeThema[(int) $ut['id']];
+      foreach ($unreadTopics as $i => $ut) {
+        $unreadTopics[$i]['neu'] = $neuJeThema[(int) $ut['id']];
+        $unreadTopics[$i]['ab'] = topic_first_unread($me, (int) $ut['id']);
+      }
     }
     view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
@@ -3729,12 +3732,16 @@ if (str_starts_with($path, '/intern')) {
     // Nicht sehen dürfen und nicht vorhanden sehen gleich aus — sonst verrät
     // die Antwort, dass es das Thema gibt.
     if (!$topic || !may_see_topic($me, (int) $topic['id'])) { http_response_code(404); view('404', ['title' => t('inav_themen')]); }
+    // Erst die Stelle merken, dann als gelesen vermerken — nach dem Vermerk
+    // gäbe es keine ungelesene Stelle mehr, und die Marke bliebe leer (#318).
+    $abHier = topic_first_unread($me, (int) $topic['id']);
     // Geöffnet heißt gelesen: Unten stehen alle Beiträge, es bleibt nichts
     // übrig, was man noch entdecken müsste (#317).
     topic_mark_read((int) $topic['id'], (int) $me['id']);
     view('intern/thema', [
       'title' => $topic['title'],
       'topic' => $topic,
+      'newFrom' => $abHier,
       'outsiders' => topic_outsiders((int) $topic['id']),
       // Wen die Band überhaupt dazuholen könnte: alle Konten von außen.
       'outsideAccounts' => rows("SELECT id, name FROM users WHERE role = 'booking' ORDER BY name"),

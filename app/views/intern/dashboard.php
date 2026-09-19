@@ -122,7 +122,9 @@
       <?php foreach ($unreadTopics as $ut): ?>
         <li>
           <span class="badge"><?= (int) $ut['neu'] ?></span>
-          <a href="/intern/themen/<?= (int) $ut['id'] ?>"><strong><?= e($ut['title']) ?></strong></a>
+          <?php // Der Sprung führt an die erste ungelesene Stelle; ohne eine
+                // solche (das Thema wurde inzwischen gelesen) an den Anfang. ?>
+          <a href="/intern/themen/<?= (int) $ut['id'] ?><?= $ut['ab'] ? '#neu' : '' ?>"><strong><?= e($ut['title']) ?></strong></a>
         </li>
       <?php endforeach; ?>
     </ul>

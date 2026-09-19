@@ -18,7 +18,12 @@
 <div class="card">
   <ul class="comment-list">
     <?php foreach ($posts as $post): ?>
-      <li>
+      <?php // Ein Anker je Beitrag, damit die Übersicht auf eine Stelle zeigen
+            // kann und nicht nur auf das Thema (#318). ?>
+      <?php if ((int) $post['id'] === (int) ($newFrom ?? 0)): ?>
+        <li class="new-mark" id="neu"><span class="badge"><?= e(t('topic_new_from_here')) ?></span></li>
+      <?php endif; ?>
+      <li id="p<?= (int) $post['id'] ?>">
         <strong><?= e($post['author'] ?? t('unknown')) ?></strong>
         <span class="muted small"><?= e(substr($post['created_at'], 0, 16)) ?></span>
         <p class="prewrap"><?= e($post['text']) ?></p>
