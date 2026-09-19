@@ -202,8 +202,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
    dass da etwas aufgeht. */
 summary.event-head { cursor: pointer; list-style: none; }
 summary.event-head::-webkit-details-marker { display: none; }
-summary.event-head::after { content: 'be'; color: var(--muted); margin-left: auto; }
-details[open] > summary.event-head::after { content: 'b4'; }
+summary.event-head::after { content: '▾'; color: var(--muted); margin-left: auto; }
+details[open] > summary.event-head::after { content: '▴'; }
 
 .badge {
   display: inline-block;
