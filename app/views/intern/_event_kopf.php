@@ -32,6 +32,7 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
 <<?= $kopfTag ?> class="event-head">
   <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
   <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
+  <?= item_mark_html($unseenEvents ?? [], (int) $ev['id']) ?>
   <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
   <strong><?= e($ev['title']) ?></strong>
   <?php if ($venue): ?><span class="muted">📍 <?= e($venue['name']) ?><?= $venue['city'] ? ', ' . e($venue['city']) : '' ?></span>

@@ -21,8 +21,16 @@
     $evTag = $evFold ? 'details' : 'section';
     $kopfTag = $evFold ? 'summary' : 'div';
   ?>
-  <<?= $evTag ?> class="card event-card <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>"
-     <?= $evFold ? 'name="dashev"' : '' ?><?= $evFold && !empty($evOpen) ? ' open' : '' ?>>
+  <?php // „acc" schaltet die Notlösung für Browser ohne name-Gruppierung frei.
+        // data-seen meldet dem Server, dass der Termin aufgeklappt wurde — erst
+        // dann ist er wirklich angesehen (#321). ?>
+  <?php // Der Anker macht die Karte adressierbar: Eine Mitteilung führt damit
+        // zu dem Termin, um den es geht, statt an den Anfang der Liste (#322).
+        // Zugeklappt macht accordion.js sie beim Sprung auf. ?>
+  <<?= $evTag ?> id="ev<?= (int) $ev['id'] ?>"
+     class="card event-card acc <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>"
+     <?= $evFold ? 'name="dashev"' : '' ?><?= $evFold && !empty($evOpen) ? ' open' : '' ?>
+     data-seen="event:<?= (int) $ev['id'] ?>" data-token="<?= e(csrf_token()) ?>">
     <?php require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
     <?php $gear = $gearByEvent[$ev['id']] ?? []; ?>
     <?php if ($gear): ?>

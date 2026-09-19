@@ -244,6 +244,7 @@ require_once BASE_DIR . '/app/help.php';
     </ul>
     <p class="muted">📱 <?= e(t('help_push_trouble_ios')) ?></p>
     <p class="muted">🔄 <?= e(t('help_push_trouble_dead')) ?></p>
+    <p class="muted">🎯 <?= e(t('help_push_trouble_ziel')) ?></p>
     <p class="muted small"><a href="/intern/profil#mitteilungen"><?= e(t('prof_push')) ?> →</a></p>
   </details>
 <?php endif; ?>

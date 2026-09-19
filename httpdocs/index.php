@@ -991,6 +991,7 @@ if (str_starts_with($path, '/intern')) {
                              pa_source, light_source, support_act)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [$me['id'], ...event_values()]);
       $newEventId = (int) $db->lastInsertId();
+      item_new('event', $newEventId, (int) $me['id']);
       save_event_gear($newEventId);
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
       // die den Termin auch sehen dürfen (#24, #149).
@@ -999,7 +1000,7 @@ if (str_starts_with($path, '/intern')) {
       push_notify('events', (int) $me['id'], fn(string $lang): array => [
         'title' => push_t($lang, 'push_ev_title'),
         'body' => $pushTitle . ' · ' . fmt_date($pushDate),
-        'url' => '/intern/termine',
+        'url' => '/intern/termine#ev' . $newEventId,
       ], $newEventId);
     } else {
       flash(t('fl_title_date_required'));
@@ -1014,11 +1015,15 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine?alle=1');
     }
     if ($action === 'update') {
+      // Die Zeile von vorher, um danach zu wissen, ob sich etwas geändert hat,
+      // das die anderen angeht (#321).
+      $evVorher = row('SELECT * FROM events WHERE id = ?', [$id]);
       q('UPDATE events SET type=?, title=?, date=?, time=?, location=?, notes=?, is_public=?, setlist_id=?,
                            time_meet=?, time_end=?, status=?, responsible_id=?, fee=?, invoice_no=?,
                            public_title=?, public_link=?, public_info=?, venue_id=?,
                            pa_source=?, light_source=?, support_act=? WHERE id=?',
         [...event_values(), $id]);
+      item_touch('event', (int) $id, $evVorher ?? [], (int) $me['id']);
       save_event_gear((int) $id);
       redirect('/intern/termine');
     }
@@ -1048,7 +1053,7 @@ if (str_starts_with($path, '/intern')) {
       push_notify('attendance', (int) $me['id'], fn(string $lang): array => [
         'title' => str_replace(['%1', '%2'], [$pushWho, $pushEvTitle], push_t($lang, $pushKey)),
         'body' => '',
-        'url' => '/intern/termine',
+        'url' => '/intern/termine#ev' . (int) $id,
       ], (int) $id);
       // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
       // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
@@ -1071,7 +1076,7 @@ if (str_starts_with($path, '/intern')) {
         push_notify('comments', (int) $me['id'], fn(string $lang): array => [
           'title' => push_t($lang, 'push_comment_title') . ' · ' . ($pushEv['title'] ?? ''),
           'body' => $pushWho . ': ' . $pushText,
-          'url' => '/intern/termine',
+          'url' => '/intern/termine#ev' . (int) $id,
         ], (int) $id);
       }
       back('/intern/termine');
@@ -1124,7 +1129,7 @@ if (str_starts_with($path, '/intern')) {
   };
   if ($path === '/intern/songs' && $method === 'GET') {
     view('intern/songs', $songList() + ['title' => t('inav_songs'), 'edit' => null,
-      'ratings' => song_ratings($me['id'])]);
+      'ratings' => song_ratings($me['id']), 'unseen' => items_unseen($me, 'song')]);
   }
   // Ein Lied zum Lesen: Text, Tonart, Tempo, Noten. Das ist die Seite, die auf
   // dem Notenständer liegt; geändert wird unter /edit.
@@ -1133,6 +1138,7 @@ if (str_starts_with($path, '/intern')) {
     // Die Liste filtert über visible_song_ids(); eine zweite Route auf denselben
     // Datensatz muss die Prüfung mitnehmen, sonst führt sie daran vorbei.
     if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
+    item_mark_seen($me, 'song', (int) $m[1]);
     view('intern/song', [
       'title' => $songOne['title'],
       'song' => $songOne,
@@ -1194,6 +1200,7 @@ if (str_starts_with($path, '/intern')) {
       'ratings' => song_ratings($me['id']),
       'edit' => $edit,
       'songFiles' => files_map('song', [(int) $m[1]])[(int) $m[1]] ?? [],
+      'unseen' => items_unseen($me, 'song'),
       'myChords' => song_chords_mine((int) $m[1], $me['id']),
       'otherChords' => array_values(array_filter(song_chords_all((int) $m[1], $me['id']), fn($c) => !$c['mine'])),
     ]);
@@ -1201,13 +1208,16 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/songs' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
       q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics, release_year) VALUES (?,?,?,?,?,?,?,?,?,?,?)', song_values());
+      item_new('song', (int) $db->lastInsertId(), (int) $me['id']);
       song_chords_set((int) $db->lastInsertId(), $me['id'], $_POST['chords'] ?? '');
     }
     redirect('/intern/songs');
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
+      $songVorher = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
       q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
+      item_touch('song', (int) $m[1], $songVorher ?? [], (int) $me['id']);
       song_chords_set((int) $m[1], $me['id'], $_POST['chords'] ?? '');
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
@@ -1232,10 +1242,14 @@ if (str_starts_with($path, '/intern')) {
               EXISTS(SELECT 1 FROM events e WHERE e.setlist_id = s.id AND e.date < ?) AS locked
        FROM setlists s LEFT JOIN setlist_songs ss ON ss.setlist_id = s.id LEFT JOIN songs so ON so.id = ss.song_id
        WHERE 1 = 1$slWhere
-       GROUP BY s.id ORDER BY s.created_at DESC", [$today, ...$slParams])]);
+       GROUP BY s.id ORDER BY s.created_at DESC", [$today, ...$slParams]),
+      'unseen' => items_unseen($me, 'setlist')]);
   }
   if ($path === '/intern/setlists' && $method === 'POST') {
-    if (($_POST['name'] ?? '') !== '') q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$_POST['name'], $_POST['notes'] ?? '']);
+    if (($_POST['name'] ?? '') !== '') {
+      q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$_POST['name'], $_POST['notes'] ?? '']);
+      item_new('setlist', (int) $db->lastInsertId(), (int) $me['id']);
+    }
     redirect('/intern/setlists');
   }
   if (preg_match('~^/intern/setlists/(\d+)$~', $path, $m) && $method === 'GET') {
@@ -1246,6 +1260,7 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_no_permission'));
       redirect('/intern/setlists');
     }
+    item_mark_seen($me, 'setlist', (int) $m[1]);
     $entries = setlist_entries((int) $m[1]);
     $used = array_filter(array_column($entries, 'id'));
     $notIn = $used ? 'AND id NOT IN (' . implode(',', array_map('intval', $used)) . ')' : '';
@@ -1296,6 +1311,7 @@ if (str_starts_with($path, '/intern')) {
       $src = row('SELECT * FROM setlists WHERE id = ?', [$id]);
       if ($src) {
         q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$src['name'] . ' (Kopie)', $src['notes']]);
+        item_new('setlist', (int) $db->lastInsertId(), (int) $me['id']);
         $newId = (int) $GLOBALS['db']->lastInsertId();
         // Die Anweisungen gehören zur Reihenfolge, also kommen sie mit (#241).
         q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note, bracket, bracket_note)
@@ -1466,6 +1482,9 @@ if (str_starts_with($path, '/intern')) {
         setlist_braces_normalize((int) $id);
       }
     }
+    // Jede dieser Handlungen ändert die Setliste, ohne eine ihrer eigenen
+    // Spalten anzufassen — deshalb wird hier ohne Vergleich markiert (#321).
+    item_touched('setlist', (int) $id, (int) $me['id']);
     redirect("/intern/setlists/$id");
   }
 
@@ -1545,6 +1564,7 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_title_date_required'));
       redirect('/intern/post/' . (int) $m[1]);
     }
+    // Auch ein aus einer Anfrage übernommener Termin ist für die Band neu.
     q('INSERT INTO events (type, title, date, time, time_end, location, fee, notes, status)
        VALUES (?,?,?,?,?,?,?,?,?)', [
       in_array($_POST['type'] ?? '', ['gig', 'probe'], true) ? $_POST['type'] : 'gig',
@@ -1559,6 +1579,7 @@ if (str_starts_with($path, '/intern')) {
       'angefragt',
     ]);
     $neu = (int) $db->lastInsertId();
+    item_new('event', $neu, (int) $me['id']);
     q('UPDATE post_messages SET event_id = ? WHERE id = ?', [$neu, $m[1]]);
     flash(t('fl_post_event'));
     redirect('/intern/termine');
@@ -2104,6 +2125,10 @@ if (str_starts_with($path, '/intern')) {
       http_response_code(404);
       exit('Datei nicht gefunden');
     }
+    // Nur ein echtes Herunterladen zählt als gesehen. Dieselbe Adresse liefert
+    // auch die Vorschaubilder in den Listen — ein Bild, das nebenbei geladen
+    // wird, hat niemand angesehen (#321).
+    if (isset($_GET['speichern'])) item_mark_seen($me, 'file', (int) $f['id']);
     file_serve($f, isset($_GET['speichern']));
   }
   // Anhang mit Rahmen: In der installierten App gibt es kein Zurück, wenn eine
@@ -2115,6 +2140,7 @@ if (str_starts_with($path, '/intern')) {
       http_response_code(404);
       exit('Datei nicht gefunden');
     }
+    item_mark_seen($me, 'file', (int) $f['id']);
     view('intern/datei', [
       'title'    => $f['original_name'],
       'file'     => $f,
@@ -2169,6 +2195,16 @@ if (str_starts_with($path, '/intern')) {
       [$gewaehlt ? implode(',', $gewaehlt) : PUSH_NICHTS, $me['id']]);
     flash(t('fl_push_saved'));
     redirect('/intern/profil');
+  }
+  if ($path === '/intern/gesehen' && $method === 'POST') {
+    $gArt = (string) ($_POST['art'] ?? '');
+    $gNr = (int) ($_POST['nr'] ?? 0);
+    // Die Sichtbarkeit gilt auch hier: Wer einen Termin nicht sehen darf, soll
+    // ihn nicht einmal als gesehen vermerken können — die Antwort verriete
+    // sonst, dass es ihn gibt.
+    if ($gArt === 'event' && $gNr && may_see_event($me, $gNr)) item_mark_seen($me, 'event', $gNr);
+    header('Content-Type: application/json');
+    exit(json_encode(['ok' => true]));
   }
   // Wie viele offene Punkte hat der Anfragende? Die Seite holt sich das beim
   // Öffnen und setzt damit die Zahl am Symbol — ohne diesen Abruf bliebe sie
@@ -2662,6 +2698,7 @@ if (str_starts_with($path, '/intern')) {
     view('intern/vertraege', [
       'title' => t('contract_title'),
       'contracts' => $vertraege,
+      'unseen' => items_unseen($me, 'contract'),
       'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
       'events' => rows("SELECT id, title, date, time, time_end, time_meet FROM events
                         WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
@@ -2701,6 +2738,7 @@ if (str_starts_with($path, '/intern')) {
       (string) $vEvent['time'], (string) $vEvent['time_end'], (string) $vEvent['time_meet'], $me['id'],
     ]);
     $vId = (int) $db->lastInsertId();
+    item_new('contract', $vId, (int) $me['id']);
     // Wortlaut gleich bilden und einfrieren.
     q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render(contract_full($vId) ?? []), $vId]);
     flash(t('fl_contract_saved'));
@@ -2710,6 +2748,7 @@ if (str_starts_with($path, '/intern')) {
     $vertrag = contract_full((int) $m[1]);
     // Nicht sehen dürfen sieht aus wie nicht vorhanden.
     if (!$vertrag || !may_see_contract($me, (int) $vertrag['id'])) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
+    item_mark_seen($me, 'contract', (int) $vertrag['id']);
     view('intern/vertrag', [
       'title' => t('contract_sheet_title'),
       'contract' => $vertrag,
@@ -2729,6 +2768,7 @@ if (str_starts_with($path, '/intern')) {
     // Der Wortlaut ist nur änderbar, solange nichts verschickt ist. Danach steht
     // er so, wie er das Haus verlassen hat.
     $vBody = $vertrag['status'] === 'entwurf' ? (string) ($_POST['body'] ?? $vertrag['body']) : $vertrag['body'];
+    $vVorher = row('SELECT * FROM contracts WHERE id = ?', [$m[1]]);
     q('UPDATE contracts SET event_id = ?, promoter_id = ?, contract_no = ?, contract_date = ?, fee_cents = ?,
          play_from = ?, play_to = ?, get_in = ?, body = ?, notes = ? WHERE id = ?', [
       ((int) ($_POST['event_id'] ?? 0) ?: null),
@@ -2738,17 +2778,20 @@ if (str_starts_with($path, '/intern')) {
       max(0, $vGage ?? 0), $vZeit('play_from'), $vZeit('play_to'), $vZeit('get_in'),
       $vBody, trim((string) ($_POST['notes'] ?? '')), $m[1],
     ]);
+    item_touch('contract', (int) $m[1], $vVorher ?? [], (int) $me['id']);
     flash(t('fl_contract_saved'));
     redirect('/intern/vertraege/' . $m[1]);
   }
   if (preg_match('~^/intern/vertraege/(\d+)/stand$~', $path, $m) && $method === 'POST') {
     $vStand = (string) ($_POST['status'] ?? '');
     if (!in_array($vStand, CONTRACT_STATUSES, true)) back('/intern/vertraege/' . $m[1]);
+    $vVorher = row('SELECT * FROM contracts WHERE id = ?', [$m[1]]);
     // Die Stempel gehören zum Stand: „verschickt" ohne Datum ist eine Behauptung.
     q('UPDATE contracts SET status = ?,
          sent_at = CASE WHEN ? IN (\'verschickt\', \'unterschrieben\') THEN COALESCE(sent_at, NOW()) ELSE NULL END,
          signed_at = CASE WHEN ? = \'unterschrieben\' THEN COALESCE(signed_at, NOW()) ELSE NULL END
        WHERE id = ?', [$vStand, $vStand, $vStand, $m[1]]);
+    item_touch('contract', (int) $m[1], $vVorher ?? [], (int) $me['id']);
     flash(sprintf(t('fl_contract_status'), contract_status_label($vStand)));
     back('/intern/vertraege/' . $m[1]);
   }
@@ -2838,6 +2881,7 @@ if (str_starts_with($path, '/intern')) {
     view('intern/angebote', [
       'title' => t('quote_title'),
       'quotes' => $angebote,
+      'unseen' => items_unseen($me, 'quote'),
       'totals' => $angebotSummen,
       'events' => rows("SELECT id, title, date, time, time_end FROM events
                         WHERE type = 'gig' AND status <> 'abgesagt' ORDER BY date DESC LIMIT 100"),
@@ -2866,6 +2910,7 @@ if (str_starts_with($path, '/intern')) {
     q('INSERT INTO quotes (event_id, title, customer, quote_date, play_minutes, created_by) VALUES (?,?,?,?,?,?)',
       [$qNeu['event_id'], $qNeu['title'], $qNeu['customer'], $qNeu['quote_date'], $qNeu['play_minutes'], $me['id']]);
     $qId = (int) $db->lastInsertId();
+    item_new('quote', $qId, (int) $me['id']);
     quote_save_items($qId, $qNeu, []);
     redirect('/intern/angebote/' . $qId);
   }
@@ -2873,6 +2918,7 @@ if (str_starts_with($path, '/intern')) {
     $angebot = row('SELECT q.*, e.title AS event_title, e.date AS event_date, e.fee AS event_fee
                     FROM quotes q LEFT JOIN events e ON e.id = q.event_id WHERE q.id = ?', [$m[1]]);
     if (!$angebot) { http_response_code(404); view('404', ['title' => t('quote_title')]); }
+    item_mark_seen($me, 'quote', (int) $angebot['id']);
     $angebotPosten = quote_items((int) $angebot['id']);
     view('intern/angebot', [
       'title' => $angebot['title'],
@@ -2909,6 +2955,7 @@ if (str_starts_with($path, '/intern')) {
     // Erst die Posten, dann der Rabatt: Wovon abgezogen wird, muss feststehen,
     // bevor sich ein Prozentsatz oder eine Endsumme darauf beziehen kann.
     $qFrei = quote_free_lines_from_post($_POST);
+    $qVorher = row('SELECT * FROM quotes WHERE id = ?', [$m[1]]);
     quote_save_items((int) $m[1], $qNeu, $qFrei);
     $qPosten = quote_items((int) $m[1]);
     $qZwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], $qPosten));
@@ -2930,6 +2977,7 @@ if (str_starts_with($path, '/intern')) {
        $qNeu['km'], $qNeu['nights'], $qNeu['own_pa'], $qNeu['surcharge_percent'], $qNeu['surcharge_label'],
        $qModus, (float) str_replace(',', '.', (string) ($_POST['discount_percent'] ?? 0)), $qRabatt,
        $qNeu['discount_label'], $qNeu['discount_show'], $qNeu['notes'], $m[1]]);
+    item_touch('quote', (int) $m[1], $qVorher ?? [], (int) $me['id']);
     flash(t('fl_quote_saved'));
     redirect('/intern/angebote/' . $m[1]);
   }
@@ -3819,6 +3867,7 @@ if (str_starts_with($path, '/intern')) {
     // Ziehen kann eine Klammer zerreißen — danach neu ordnen, damit Nummern und
     // Zeichnung wieder zur Reihenfolge passen (#242).
     setlist_braces_normalize($setlistId);
+    item_touched('setlist', $setlistId, (int) $me['id']);
     header('Content-Type: application/json');
     exit(json_encode(['ok' => true, 'count' => $pos]));
   }

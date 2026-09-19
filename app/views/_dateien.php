@@ -1,6 +1,10 @@
 <?php
 // Wiederverwendbarer Datei-Anhang-Block.
 // Erwartet: $attachFiles (Array), $attachType ('event'|'song'|'venue'), $attachId (int)
+// Freiwillig: $unseenFiles — dann tragen neue Dateien eine Marke, bis sie
+// geöffnet wurden (#321).
+$unseenFiles = $unseenFiles ?? [];
+$attachNeu = count(array_intersect_key($unseenFiles, array_column($attachFiles, null, 'id')));
 $fmtSize = function (int $b): string {
   if ($b >= 1048576) return round($b / 1048576, 1) . ' MB';
   if ($b >= 1024) return round($b / 1024) . ' KB';
@@ -8,7 +12,8 @@ $fmtSize = function (int $b): string {
 };
 ?>
 <details class="subsection">
-  <summary>📎 <?= e(t('files_word')) ?> (<?= count($attachFiles) ?>)</summary>
+  <summary>📎 <?= e(t('files_word')) ?> (<?= count($attachFiles) ?>)<?php
+    if ($attachNeu) echo ' <span class="badge neu">' . $attachNeu . ' ' . e(t('mark_new')) . '</span>'; ?></summary>
   <ul class="task-list">
     <?php foreach ($attachFiles as $f): ?>
       <?php $isImage = in_array(strtolower(pathinfo($f['original_name'], PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp'], true); ?>
@@ -21,6 +26,7 @@ $fmtSize = function (int $b): string {
           </a>
         <?php endif; ?>
         <a href="/intern/datei/<?= $f['id'] ?>/ansicht"><?= e($f['original_name']) ?></a>
+        <?= item_mark_html($unseenFiles, (int) $f['id']) ?>
         <span class="muted small"><?= $fmtSize((int) $f['size']) ?><?= $f['uploader'] ? ' · ' . e($f['uploader']) : '' ?></span>
         <?php if ((int) $f['uploaded_by'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
           <form class="inline" method="post" action="/intern/datei/<?= $f['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>

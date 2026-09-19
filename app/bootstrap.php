@@ -254,6 +254,7 @@ const UI_STRINGS = [
   'help_push_trouble_os' => '4. Das Betriebssystem: Der letzte Schalter liegt außerhalb des Browsers, und er ist der am leichtesten übersehene. Unter Windows in den Einstellungen bei „System → Benachrichtigungen" — dort muss der Browser selbst Mitteilungen zeigen dürfen, und „Nicht stören" darf nicht laufen. Auf dem Mac unter „Systemeinstellungen → Mitteilungen" dasselbe für den Browser. Auf dem Handy in den Einstellungen der jeweiligen App.',
   'help_push_trouble_ios' => 'Auf iPhone und iPad gibt es Mitteilungen ausschließlich für die installierte App vom Startbildschirm — solange Bandregie dort im Safari läuft, kommt keine an, egal was eingestellt ist. Erst „Zum Home-Bildschirm" wählen, die App von dort öffnen und dann im Profil aktivieren.',
   'help_push_trouble_dead' => 'Steht alles richtig und es kommt trotzdem nichts: Wahrscheinlich ist das Abo verwaist. Das passiert, wenn Mitteilungen zwischendurch abgeschaltet oder Browserdaten gelöscht wurden — der Zustelldienst nimmt die Nachricht dann weiter an und verwirft sie still, weshalb es hier wie ein Erfolg aussieht. Im Profil einmal abschalten und wieder aktivieren legt ein frisches an; das alte räumt sich nach drei Monaten ohne Lebenszeichen von selbst weg.',
+  'help_push_trouble_ziel' => 'Eine Mitteilung führt dorthin, wo sie entstanden ist: zum Termin, um den es geht, oder im Chat an die erste Stelle, die du noch nicht gelesen hast. Ist die Karte zugeklappt, geht sie beim Springen von selbst auf.',
   'push_off_here' => 'Mitteilungen sind auf diesem Gerät aus',
   'push_off_here_hint' => 'Du bekommst hier nichts mit, wenn ein Termin dazukommt oder jemand antwortet — die App bleibt einfach still. Tippen, um sie einzuschalten.',
   'pk_rename' => 'Umbenennen',
@@ -396,6 +397,7 @@ const UI_STRINGS = [
   'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen, Sprechpausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern. Drei Trenner gibt es, und sie bedeuten Verschiedenes: Eine **Pause** teilt den Abend — die Band geht von der Bühne, und im Druck beginnt ein neues Blatt. Eine **Sprechpause** trennt nur innerhalb des Blattes: gespielt wird nicht, geredet schon — Ansage, Bandvorstellung, Umstimmen. Sie steht als gestrichelte Linie, so wie der Strich auf einer Papier-Setliste, und die Ansage steht in der Linie. Der **Zugabe-Strich** trennt, was nur gespielt wird, wenn das Publikum es will. Dazu die **Klammer**: sie fasst Titel zusammen, die ohne Absetzen zusammen gespielt werden, mit einer Anweisung für alle darin — „Drop D" über den ersten drei Liedern heißt, diese drei in Drop D zu spielen. Anweisung und Ansage hängen an der Setliste, nicht am Lied: dasselbe Lied steht in vielen Setlisten, und beides gilt für einen Abend. Gezählt werden nur Lieder; Trenner tragen keine Nummer. Für die Bühne startet der Knopf „Teleprompter" den ganzen Satz: er beginnt beim ersten Lied mit Text, und am Liedende kommt das nächste von selbst nach oben — ein Tipp auf den Text startet es. Im Ausdruck wählst du oben unter „Mitdrucken", was neben dem Titel stehen soll: Interpret, Erscheinungsjahr, Tempo, Spielzeit und die Notiz zum Lied (erste Zeile oder komplett). Die Auswahl merkt sich dein Gerät.',
   'help_post_2' => 'Das Postfach muss ausdrücklich vergeben werden, auch einem Admin: Dort liegen Anfragen, Rechnungen und private Antworten, und die Anwendung zu verwalten ist kein Grund, sie mitzulesen. Antworten setzt zusätzlich das Recht „E-Mail-Versand" voraus.',
   'help_termine_3' => 'Spielt an dem Abend noch eine andere Band — als Vorgruppe, oder ihr seid die Vorgruppe —, tragt ihr sie beim Auftritt unter „Supportact" ein. Der Name steht dann in der Terminzeile, im Kalender-Abo und in der Tabelle zum Herunterladen. Auf der öffentlichen Seite erscheint er absichtlich nicht: Eine Vorgruppe, die noch nicht sicher ist, soll nicht von selbst im Internet stehen.',
+  'help_termine_4' => 'Was neu ist oder sich geändert hat, trägt eine Marke: „Neu“, oder „Geändert“ mit dem Namen und dem Tag. Sie verschwindet, sobald du den Eintrag aufklappst — nicht schon, wenn du die Liste überfliegst. Eigene Änderungen markieren nie, und wer neu dazukommt, findet nicht die ganze Bandgeschichte als ungesehen vor. Markiert wird, was die Band angeht: Datum, Zeiten, Ort, Gage, Stand, Setliste, Notizen. Eine nachgetragene Rechnungsnummer macht keine Marke. Dasselbe gilt für Setlisten, Lieder, Angebote, Verträge und neue Dateien.',
   'help_orte_2' => 'Ist ein Ort mit einem Termin verknüpft, steht seine volle Anschrift auch im Kalender-Abo und auf der öffentlichen Terminseite — nicht nur der Stadtname aus dem Freitextfeld. Im Kalendereintrag steckt außerdem ein Navi-Link, der auf dem Handy direkt die Navigation zum Ort öffnet.',
   'help_orte_3' => 'Unter dem Namen steht, wie oft an diesem Ort schon etwas war: gespielt, geplant, angefragt, abgesagt. Gezählt wird nur, was mit dem Ort verknüpft ist — ein Termin, bei dem der Ort bloß als Freitext dasteht, zählt nicht mit. Die Absagen gehören dazu: Erst an ihnen sieht man, ob aus Anfragen von dort auch Auftritte werden.',
   'help_orte_4' => 'Abgesagte Termine stehen nicht zwischen den gespielten, sondern zusammengeklappt darunter, mit ihrer Anzahl daneben. Aufklappen geht jederzeit; verschwunden ist nichts.',
@@ -1236,6 +1238,7 @@ Zeile zwei
   'push_topic_post' => 'Neue Post',
   'push_topic_topics' => 'Neue Beiträge im Chat',
   'topic_unread' => 'neu', 'topic_new_from_here' => 'Ab hier neu',
+  'mark_new' => 'Neu', 'mark_changed' => 'Geändert',
   'dash_unread_chat' => 'Neu im Chat', 'dash_all_chat' => 'Zum Chat',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',
@@ -2630,6 +2633,17 @@ $tables = [
   // Wer ein Thema wann zuletzt gesehen hat (#317). Ohne diesen Stand lässt sich
   // „ungelesen" nicht sagen, und die Zahl am Symbol könnte den Chat nicht
   // mitzählen.
+  // Wer was schon gesehen hat (#321). Eine Zeile je Mitglied und Eintrag,
+  // gesetzt beim Öffnen. Die Art steht als Wort dabei, damit nicht für jede
+  // Sorte eine eigene Tabelle entsteht, die dasselbe tut.
+  "CREATE TABLE IF NOT EXISTS seen_marks (
+    user_id INT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
+    item_id INT NOT NULL,
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, kind, item_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS topic_reads (
     user_id INT NOT NULL,
     topic_id INT NOT NULL,
@@ -2783,6 +2797,20 @@ $db->exec('CREATE TABLE IF NOT EXISTS push_subscriptions (
 if (!column_exists('push_subscriptions', 'last_seen_at')) {
   $db->exec('ALTER TABLE push_subscriptions ADD COLUMN last_seen_at DATETIME NULL');
 }
+// Wann und von wem zuletzt geändert (#321). Bestehende Zeilen bleiben leer:
+// Was es vor den Marken schon gab, ist für niemanden neu, und eine Bandhistorie
+// als Stapel ungesehener Punkte wäre der sichere Weg, dass niemand mehr
+// hinsieht. Lieder hatten bisher gar keinen Zeitstempel.
+if (!column_exists('songs', 'created_at')) {
+  $db->exec('ALTER TABLE songs ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+}
+foreach (['events', 'songs', 'setlists', 'quotes', 'contracts'] as $markiert) {
+  if (!column_exists($markiert, 'updated_at')) {
+    $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
+                                       ADD COLUMN updated_by INT NULL");
+  }
+}
+
 if (!column_exists('users', 'push_topics')) {
   $db->exec("ALTER TABLE users ADD COLUMN push_topics VARCHAR(190) NOT NULL DEFAULT ''");
 }
@@ -4983,7 +5011,9 @@ function topic_post_add(int $topicId, array $author, string $text): void {
   push_notify('topics', (int) $author['id'], fn(string $lang): array => [
     'title' => push_t($lang, 'push_chat_title') . ' · ' . $titel,
     'body'  => $wer . ': ' . $anriss,
-    'url'   => '/intern/themen/' . $topicId,
+    // „#neu" ist die Marke über dem ersten ungelesenen Beitrag. Wer alles
+    // gelesen hat, landet oben — dort steht dann auch nichts Neues (#322).
+    'url'   => '/intern/themen/' . $topicId . '#neu',
   ], 0, $topicId);
 }
 
@@ -5057,6 +5087,144 @@ function topic_first_unread(?array $user, int $topicId): int {
 function topic_mark_read(int $topicId, int $userId): void {
   q('INSERT INTO topic_reads (user_id, topic_id, seen_at) VALUES (?,?,NOW())
      ON DUPLICATE KEY UPDATE seen_at = NOW()', [$userId, $topicId]);
+}
+
+/**
+ * Was sich merken lässt und woran eine Änderung erkannt wird (#321).
+ *
+ * Je Art: die Tabelle und die Felder, deren Änderung die Band wirklich angeht.
+ * Was nicht dabeisteht — eine nachgetragene Rechnungsnummer, ein Feinschliff am
+ * öffentlichen Text —, macht keine Marke. Marken, die oft für nichts stehen,
+ * liest nach einer Woche niemand mehr.
+ *
+ * Dateien ändern sich nicht, sie kommen dazu; sie tragen ihren Zeitstempel
+ * deshalb seit jeher selbst und brauchen keine Feldliste.
+ */
+const ITEM_KINDS = [
+  'event'    => ['events',    ['type', 'title', 'date', 'time', 'time_meet', 'time_end',
+                               'location', 'venue_id', 'status', 'fee', 'setlist_id',
+                               'notes', 'responsible_id']],
+  'song'     => ['songs',     ['title', 'artist', 'song_key', 'tempo', 'duration_sec',
+                               'status', 'notes', 'lyrics', 'chords']],
+  'setlist'  => ['setlists',  ['name', 'notes']],
+  'quote'    => ['quotes',    ['title', 'customer', 'quote_date', 'play_minutes', 'km',
+                               'nights', 'own_pa', 'surcharge_percent', 'discount_mode',
+                               'discount_percent', 'discount_cents', 'notes']],
+  'contract' => ['contracts', ['event_id', 'promoter_id', 'contract_no', 'contract_date',
+                               'fee_cents', 'play_from', 'play_to', 'get_in', 'status', 'notes']],
+  'file'     => ['files',     []],
+];
+
+/** Tabelle und die beiden Spalten, die „wann" und „von wem" tragen. */
+function item_cols(string $kind): array {
+  [$tabelle] = ITEM_KINDS[$kind];
+  return $kind === 'file'
+    ? [$tabelle, 'created_at', 'uploaded_by']
+    : [$tabelle, 'updated_at', 'updated_by'];
+}
+
+/**
+ * Ein neuer Eintrag: ab jetzt für alle anderen „neu".
+ *
+ * Der Änderungszeitpunkt ist derselbe wie der Anlagezeitpunkt — genau daran
+ * unterscheidet die Anzeige später „neu" von „geändert", ohne dafür eine
+ * weitere Spalte zu brauchen.
+ */
+function item_new(string $kind, int $id, ?int $wer): void {
+  if ($kind === 'file' || !isset(ITEM_KINDS[$kind])) return;
+  [$tabelle] = ITEM_KINDS[$kind];
+  q("UPDATE `$tabelle` SET updated_at = created_at, updated_by = ? WHERE id = ?", [$wer, $id]);
+}
+
+/**
+ * Hat sich etwas geändert, das die Band angeht? Dann trägt der Eintrag den
+ * Zeitpunkt und den Urheber, und für alle anderen steht er als „geändert" da,
+ * bis sie ihn angesehen haben.
+ *
+ * Verglichen wird gegen die Zeile von vorher; der Aufrufer holt sie sich, bevor
+ * er schreibt. Gibt zurück, ob eine Marke gesetzt wurde — das ist die Antwort
+ * auf „warum steht da nichts?".
+ */
+function item_touch(string $kind, int $id, array $vorher, ?int $wer): bool {
+  if ($kind === 'file' || !isset(ITEM_KINDS[$kind])) return false;
+  [$tabelle, , ] = item_cols($kind);
+  [, $felder] = ITEM_KINDS[$kind];
+  $nachher = row("SELECT * FROM `$tabelle` WHERE id = ?", [$id]);
+  if (!$nachher) return false;
+  $anders = false;
+  foreach ($felder as $feld) {
+    // Lose verglichen wäre "0" gleich "" und eine abgeräumte Gage keine
+    // Änderung. Die Werte kommen beide aus der Datenbank, also als Text.
+    if ((string) ($vorher[$feld] ?? '') !== (string) ($nachher[$feld] ?? '')) { $anders = true; break; }
+  }
+  if (!$anders) return false;
+  q("UPDATE `$tabelle` SET updated_at = NOW(), updated_by = ? WHERE id = ?", [$wer, $id]);
+  return true;
+}
+
+/**
+ * Markieren ohne Vergleich — für Änderungen, die nicht in einem eigenen Feld
+ * stehen: Eine umgestellte Setliste ändert keine Spalte der Setliste selbst,
+ * sondern ihre Lieder. Für die Band ist sie trotzdem eine andere.
+ */
+function item_touched(string $kind, int $id, ?int $wer): void {
+  if ($kind === 'file' || !isset(ITEM_KINDS[$kind])) return;
+  [$tabelle] = ITEM_KINDS[$kind];
+  q("UPDATE `$tabelle` SET updated_at = NOW(), updated_by = ? WHERE id = ?", [$wer, $id]);
+}
+
+/**
+ * Was dieses Konto in dieser Sorte noch nicht gesehen hat: Nummer => [neu, wer,
+ * wann]. Eigene Änderungen zählen nie — man hat sie ja gerade gemacht.
+ *
+ * Zwei Grenzen wie beim Chat: Wer noch nie hingesehen hat, bekommt alles ab
+ * seinem Beitrittstag; wer hingesehen hat, nur was danach kam. Und was vor den
+ * Marken entstand, trägt keinen Zeitstempel und bleibt außen vor.
+ */
+function items_unseen(?array $user, string $kind): array {
+  $uid = (int) ($user['id'] ?? 0);
+  if (!$uid || !isset(ITEM_KINDS[$kind])) return [];
+  [$tabelle, $wannSpalte, $werSpalte] = item_cols($kind);
+  $zeilen = rows("SELECT i.id, i.created_at, i.`$wannSpalte` AS wann, w.name AS wer
+                    FROM `$tabelle` i
+                    LEFT JOIN seen_marks s ON s.kind = ? AND s.item_id = i.id AND s.user_id = ?
+                    LEFT JOIN users w ON w.id = i.`$werSpalte`
+                    JOIN users me ON me.id = ?
+                   WHERE i.`$wannSpalte` IS NOT NULL
+                     AND (i.`$werSpalte` IS NULL OR i.`$werSpalte` <> ?)
+                     AND ((s.seen_at IS NULL     AND i.`$wannSpalte` >= me.created_at)
+                       OR (s.seen_at IS NOT NULL AND i.`$wannSpalte` >  s.seen_at))",
+                 [$kind, $uid, $uid, $uid]);
+  $offen = [];
+  foreach ($zeilen as $z) {
+    $offen[(int) $z['id']] = [
+      'neu'  => $kind === 'file' || (string) $z['wann'] === (string) $z['created_at'],
+      'wer'  => $z['wer'],
+      'wann' => $z['wann'],
+    ];
+  }
+  return $offen;
+}
+
+/** Dieser Eintrag ist gesehen. */
+function item_mark_seen(?array $user, string $kind, int $id): void {
+  $uid = (int) ($user['id'] ?? 0);
+  if (!$uid || !isset(ITEM_KINDS[$kind])) return;
+  q('INSERT INTO seen_marks (user_id, kind, item_id, seen_at) VALUES (?,?,?,NOW())
+     ON DUPLICATE KEY UPDATE seen_at = NOW()', [$uid, $kind, $id]);
+}
+
+/**
+ * Die Marke als fertiges Stück Seite — einmal hier, damit sie überall gleich
+ * aussieht und überall gleich maskiert ist.
+ */
+function item_mark_html(array $unseen, int $id): string {
+  $m = $unseen[$id] ?? null;
+  if (!$m) return '';
+  $text = $m['neu'] ? t('mark_new') : t('mark_changed');
+  if (!$m['neu'] && $m['wer']) $text .= ' · ' . $m['wer'];
+  if ($m['wann']) $text .= ' · ' . fmt_date(substr((string) $m['wann'], 0, 10));
+  return '<span class="badge neu">' . e($text) . '</span>';
 }
 
 /** Wer von außen zu diesem Thema geholt wurde, mit Namen. */
@@ -7741,6 +7909,11 @@ function event_view_data(array $events, array $me): array {
     'contractByEvent' => perm_allows($me, 'vertraege') ? $ohne(contract_status_by_event($ids)) : [],
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
+    // Was dieses Mitglied an Terminen noch nicht gesehen hat (#321). Auch das
+    // geht durch $ohne: Ein verdeckter Termin darf nicht als „neu" auftauchen
+    // und damit verraten, dass es ihn gibt.
+    'unseenEvents' => $ohne(items_unseen($me, 'event')),
+    'unseenFiles' => items_unseen($me, 'file'),
   ];
 }
 

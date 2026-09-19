@@ -12,6 +12,7 @@
   <div class="card setlist-row">
     <div>
       <a class="setlist-name" href="/intern/setlists/<?= $sl['id'] ?>"><?= $sl['locked'] ? '🔒 ' : '' ?><?= e($sl['name']) ?></a>
+      <?= item_mark_html($unseen ?? [], (int) $sl['id']) ?>
       <span class="muted"><?= $sl['song_count'] ?> <?= e(t('sl_songs')) ?> · <?= fmt_duration($sl['total_sec']) ?> min<?= $sl['locked'] ? ' · ' . e(t('sl_played_locked')) : '' ?></span>
       <?php if ($sl['notes']): ?><div class="muted small"><?= e($sl['notes']) ?></div><?php endif; ?>
     </div>

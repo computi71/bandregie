@@ -53,6 +53,7 @@
   <section class="card">
     <div class="event-head">
       <strong><a href="/intern/vertraege/<?= (int) $c['id'] ?>"><?= e($c['event_title'] ?: t('contract_sheet_title')) ?></a></strong>
+      <?= item_mark_html($unseen ?? [], (int) $c['id']) ?>
       <?php if ($c['promoter_name']): ?><span class="muted"><?= e($c['promoter_name']) ?></span><?php endif; ?>
       <span class="badge <?= $c['status'] === 'unterschrieben' ? 'public' : ($c['status'] === 'entwurf' ? '' : 'ev-abgesagt') ?>">
         <?= e(contract_status_label((string) $c['status'])) ?></span>

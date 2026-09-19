@@ -37,6 +37,7 @@
   <section class="card">
     <div class="event-head">
       <strong><a href="/intern/angebote/<?= (int) $q['id'] ?>"><?= e($q['title']) ?></a></strong>
+      <?= item_mark_html($unseen ?? [], (int) $q['id']) ?>
       <?php if ($q['customer'] !== ''): ?><span class="muted"><?= e($q['customer']) ?></span><?php endif; ?>
       <span class="badge"><?= e(fmt_money($s['total'])) ?></span>
       <?php if ($s['discount'] > 0): ?>
