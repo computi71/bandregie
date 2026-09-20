@@ -1020,15 +1020,15 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine?alle=1');
     }
     if ($action === 'update') {
-      // Die Zeile von vorher, um danach zu wissen, ob sich etwas geändert hat,
-      // das die anderen angeht (#321).
-      $evVorher = row('SELECT * FROM events WHERE id = ?', [$id]);
-      q('UPDATE events SET type=?, title=?, date=?, time=?, location=?, notes=?, is_public=?, setlist_id=?,
-                           time_meet=?, time_end=?, status=?, responsible_id=?, fee=?, invoice_no=?,
-                           public_title=?, public_link=?, public_info=?, venue_id=?,
-                           pa_source=?, light_source=?, support_act=? WHERE id=?',
-        [...event_values(), $id]);
-      item_touch('event', (int) $id, $evVorher ?? [], (int) $me['id']);
+      // Lesen, schreiben, vergleichen an einer Stelle (#321): Die Zeile von
+      // vorher muss vor dem Schreiben geholt werden, und genau das vergisst man.
+      item_update('event', (int) $id, function () use ($id): void {
+        q('UPDATE events SET type=?, title=?, date=?, time=?, location=?, notes=?, is_public=?, setlist_id=?,
+                             time_meet=?, time_end=?, status=?, responsible_id=?, fee=?, invoice_no=?,
+                             public_title=?, public_link=?, public_info=?, venue_id=?,
+                             pa_source=?, light_source=?, support_act=? WHERE id=?',
+          [...event_values(), $id]);
+      }, (int) $me['id']);
       save_event_gear((int) $id);
       redirect('/intern/termine');
     }
@@ -1225,9 +1225,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      $songVorher = row('SELECT * FROM songs WHERE id = ?', [$m[1]]);
-      q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
-      item_touch('song', (int) $m[1], $songVorher ?? [], (int) $me['id']);
+      item_update('song', (int) $m[1], function () use ($m): void {
+        q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
+      }, (int) $me['id']);
       song_chords_set((int) $m[1], $me['id'], $_POST['chords'] ?? '');
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
@@ -1312,7 +1312,7 @@ if (str_starts_with($path, '/intern')) {
     // stempelte auch ein Verschieben ab, das gar nichts verschoben hat.
     $slGeaendert = false;
     $slMarke = function () use ($id, $me, &$slGeaendert): void {
-      if ($slGeaendert) item_touched('setlist', (int) $id, (int) $me['id']);
+      if ($slGeaendert) item_touch('setlist', (int) $id, null, (int) $me['id']);
     };
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
@@ -2813,7 +2813,7 @@ if (str_starts_with($path, '/intern')) {
     // Der Wortlaut ist nur änderbar, solange nichts verschickt ist. Danach steht
     // er so, wie er das Haus verlassen hat.
     $vBody = $vertrag['status'] === 'entwurf' ? (string) ($_POST['body'] ?? $vertrag['body']) : $vertrag['body'];
-    $vVorher = row('SELECT * FROM contracts WHERE id = ?', [$m[1]]);
+    item_update('contract', (int) $m[1], function () use ($m, $vGage, $vZeit, $vBody): void {
     q('UPDATE contracts SET event_id = ?, promoter_id = ?, contract_no = ?, contract_date = ?, fee_cents = ?,
          play_from = ?, play_to = ?, get_in = ?, body = ?, notes = ? WHERE id = ?', [
       ((int) ($_POST['event_id'] ?? 0) ?: null),
@@ -2823,20 +2823,20 @@ if (str_starts_with($path, '/intern')) {
       max(0, $vGage ?? 0), $vZeit('play_from'), $vZeit('play_to'), $vZeit('get_in'),
       $vBody, trim((string) ($_POST['notes'] ?? '')), $m[1],
     ]);
-    item_touch('contract', (int) $m[1], $vVorher ?? [], (int) $me['id']);
+    }, (int) $me['id']);
     flash(t('fl_contract_saved'));
     redirect('/intern/vertraege/' . $m[1]);
   }
   if (preg_match('~^/intern/vertraege/(\d+)/stand$~', $path, $m) && $method === 'POST') {
     $vStand = (string) ($_POST['status'] ?? '');
     if (!in_array($vStand, CONTRACT_STATUSES, true)) back('/intern/vertraege/' . $m[1]);
-    $vVorher = row('SELECT * FROM contracts WHERE id = ?', [$m[1]]);
     // Die Stempel gehören zum Stand: „verschickt" ohne Datum ist eine Behauptung.
+    item_update('contract', (int) $m[1], function () use ($m, $vStand): void {
     q('UPDATE contracts SET status = ?,
          sent_at = CASE WHEN ? IN (\'verschickt\', \'unterschrieben\') THEN COALESCE(sent_at, NOW()) ELSE NULL END,
          signed_at = CASE WHEN ? = \'unterschrieben\' THEN COALESCE(signed_at, NOW()) ELSE NULL END
        WHERE id = ?', [$vStand, $vStand, $vStand, $m[1]]);
-    item_touch('contract', (int) $m[1], $vVorher ?? [], (int) $me['id']);
+    }, (int) $me['id']);
     flash(sprintf(t('fl_contract_status'), contract_status_label($vStand)));
     back('/intern/vertraege/' . $m[1]);
   }
@@ -3001,7 +3001,6 @@ if (str_starts_with($path, '/intern')) {
     // Erst die Posten, dann der Rabatt: Wovon abgezogen wird, muss feststehen,
     // bevor sich ein Prozentsatz oder eine Endsumme darauf beziehen kann.
     $qFrei = quote_free_lines_from_post($_POST);
-    $qVorher = row('SELECT * FROM quotes WHERE id = ?', [$m[1]]);
     quote_save_items((int) $m[1], $qNeu, $qFrei);
     $qPosten = quote_items((int) $m[1]);
     $qZwischen = array_sum(array_map(fn($p) => (int) $p['amount_cents'], $qPosten));
@@ -3015,6 +3014,7 @@ if (str_starts_with($path, '/intern')) {
     // Arbeit — und sie bleibt sichtbar, statt still zu verschwinden.
     if ($qFehler !== null) { flash(t($qFehler)); $qModus = 'none'; }
 
+    item_update('quote', (int) $m[1], function () use ($m, $qNeu, $qModus, $qRabatt): void {
     q('UPDATE quotes SET event_id = ?, title = ?, customer = ?, quote_date = ?, play_minutes = ?, km = ?,
          nights = ?, own_pa = ?, surcharge_percent = ?, surcharge_label = ?, discount_mode = ?,
          discount_percent = ?, discount_cents = ?, discount_label = ?, discount_show = ?, notes = ?
@@ -3023,7 +3023,7 @@ if (str_starts_with($path, '/intern')) {
        $qNeu['km'], $qNeu['nights'], $qNeu['own_pa'], $qNeu['surcharge_percent'], $qNeu['surcharge_label'],
        $qModus, (float) str_replace(',', '.', (string) ($_POST['discount_percent'] ?? 0)), $qRabatt,
        $qNeu['discount_label'], $qNeu['discount_show'], $qNeu['notes'], $m[1]]);
-    item_touch('quote', (int) $m[1], $qVorher ?? [], (int) $me['id']);
+    }, (int) $me['id']);
     flash(t('fl_quote_saved'));
     redirect('/intern/angebote/' . $m[1]);
   }
@@ -3914,7 +3914,7 @@ if (str_starts_with($path, '/intern')) {
     // Ziehen kann eine Klammer zerreißen — danach neu ordnen, damit Nummern und
     // Zeichnung wieder zur Reihenfolge passen (#242).
     setlist_braces_normalize($setlistId);
-    item_touched('setlist', $setlistId, (int) $me['id']);
+    item_touch('setlist', $setlistId, null, (int) $me['id']);
     header('Content-Type: application/json');
     exit(json_encode(['ok' => true, 'count' => $pos]));
   }

@@ -1110,7 +1110,7 @@ function demo_remove(): void {
   // stehen, die später ein neuer Eintrag bekommt, gälte der von Anfang an als
   // gesehen — und die Demo zeigte die Marken nicht mehr, die sie zeigen soll.
   foreach (ITEM_KINDS as $art => $wie) {
-    foreach ($byTable[$wie[0]] ?? [] as $nummer) {
+    foreach ($byTable[$wie['tabelle']] ?? [] as $nummer) {
       q('DELETE FROM seen_marks WHERE kind = ? AND item_id = ?', [$art, $nummer]);
     }
   }
