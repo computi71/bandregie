@@ -1020,6 +1020,7 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine?alle=1');
     }
     if ($action === 'update') {
+      $evStandVorher = (string) (row('SELECT status FROM events WHERE id = ?', [$id])['status'] ?? '');
       // Lesen, schreiben, vergleichen an einer Stelle (#321): Die Zeile von
       // vorher muss vor dem Schreiben geholt werden, und genau das vergisst man.
       item_update('event', (int) $id, function () use ($id): void {
@@ -1030,6 +1031,21 @@ if (str_starts_with($path, '/intern')) {
           [...event_values(), $id]);
       }, (int) $me['id']);
       save_event_gear((int) $id);
+      // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und
+      // aus einer Anfrage wird ein Auftritt, für den man sich freihalten muss.
+      // Deshalb geht der Stand hinaus, und nur er: Eine Mitteilung bei jedem
+      // Speichern läse bald niemand mehr (#324).
+      $evNachher = row('SELECT id, title, date, status FROM events WHERE id = ?', [$id]);
+      if ($evNachher && (string) $evNachher['status'] !== $evStandVorher) {
+        $pushStand = event_status_label((string) $evNachher['status']);
+        $pushWas = (string) $evNachher['title'] . ' · ' . fmt_date((string) $evNachher['date']);
+        $pushUrl = event_url($evNachher);
+        push_notify('events', (int) $me['id'], fn(string $lang): array => [
+          'title' => push_t($lang, 'push_ev_status') . ': ' . $pushStand,
+          'body' => $pushWas,
+          'url' => $pushUrl,
+        ], (int) $id);
+      }
       redirect('/intern/termine');
     }
     if ($action === 'delete') {

@@ -89,6 +89,10 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
     <?php $evMonat = fmt_month($ev['date']); ?>
     <h2 class="event-month"><?= e($evMonat) ?></h2>
   <?php endif; ?>
+  <?php // In der Liste steht jede Karte offen — und lässt sich jetzt auch
+        // zuklappen, wenn man sie gerade nicht braucht. Keine Gruppe: Hier
+        // dürfen beliebig viele offen sein (#325). ?>
+  <?php $evGruppe = ''; $evOpen = true; ?>
   <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>

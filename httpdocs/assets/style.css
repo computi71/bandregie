@@ -204,6 +204,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
    mit der die Anwendung sonst auf sich aufmerksam macht. */
 .badge.neu { background: var(--accent); color: #1c1917; font-weight: 600; }
 
+/* Die Verweise einer Terminkarte stehen unter der Zusammenfassung (#325):
+   als eigene Zeile, im selben Abstand wie der Kopf darüber. */
+.event-links { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.35rem 0 0; }
+
 summary.event-head { cursor: pointer; list-style: none; }
 summary.event-head::-webkit-details-marker { display: none; }
 summary.event-head::after { content: '▾'; color: var(--muted); margin-left: auto; }

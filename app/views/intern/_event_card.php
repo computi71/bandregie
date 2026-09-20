@@ -8,28 +8,27 @@
 // (#277).
 //
 // Vorher setzen: $ev und alles, was event_view_data() liefert.
-// Freiwillig: $evFold — dann wird die Karte zusammenklappbar und ihr Kopf zur
-// Zusammenfassung. Die Übersicht braucht das, damit sie wieder in einen Blick
-// passt; die Terminliste zeigt weiter alles offen (#320). $evOpen bestimmt,
-// welche eine offen startet.
+// Freiwillig: $evGruppe — der Name, unter dem die Karten einer Seite
+// gruppiert sind. Gesetzt lässt der Browser nur eine davon offen; das braucht
+// die Übersicht, damit sie in einen Blick passt (#320).
+// Freiwillig: $evOpen — ob diese Karte offen anfängt. Die Terminliste setzt es
+// bei jeder, die Übersicht nur bei der ersten.
 ?>
   <?php
     $venue = $ev['venue_id'] && isset($venueMap[$ev['venue_id']]) ? $venueMap[$ev['venue_id']] : null;
-    // Eine Fassung der Karte, zwei Hüllen: <section> offen, <details> gefaltet.
-    // Der Name gruppiert sie — ein Browser lässt dann nur eine offen.
-    $evFold = !empty($evFold);
-    $evTag = $evFold ? 'details' : 'section';
-    $kopfTag = $evFold ? 'summary' : 'div';
   ?>
-  <?php // „acc" schaltet die Notlösung für Browser ohne name-Gruppierung frei.
-        // data-seen meldet dem Server, dass der Termin aufgeklappt wurde — erst
-        // dann ist er wirklich angesehen (#321). ?>
-  <?php // Der Anker macht die Karte adressierbar: Eine Mitteilung führt damit
-        // zu dem Termin, um den es geht, statt an den Anfang der Liste (#322).
-        // Zugeklappt macht accordion.js sie beim Sprung auf. ?>
-  <<?= $evTag ?> id="ev<?= (int) $ev['id'] ?>"
+  <?php // Eine Gestalt für beide Seiten: immer eine Faltkarte, ihr Kopf ist die
+        // Zusammenfassung (#325). Vorher entschied ein berechneter Elementname
+        // darüber, und sein schließendes Gegenstück stand zweihundert Zeilen
+        // weiter unten.
+        //
+        // „acc" schaltet die Notlösung für Browser ohne name-Gruppierung frei.
+        // data-seen meldet dem Server das Aufklappen — erst dann ist der Termin
+        // wirklich angesehen (#321). Der Anker macht die Karte adressierbar, und
+        // accordion.js klappt sie beim Sprung dorthin auf (#322). ?>
+  <details id="ev<?= (int) $ev['id'] ?>"
      class="card event-card acc <?= $ev['status'] === 'abgesagt' ? 'muted' : '' ?>"
-     <?= $evFold ? 'name="dashev"' : '' ?><?= $evFold && !empty($evOpen) ? ' open' : '' ?>
+     <?= !empty($evGruppe) ? 'name="' . e($evGruppe) . '"' : '' ?><?= !empty($evOpen) ? ' open' : '' ?>
      data-seen="event:<?= (int) $ev['id'] ?>" data-token="<?= e(csrf_token()) ?>">
     <?php require BASE_DIR . '/app/views/intern/_event_kopf.php'; ?>
     <?php $gear = $gearByEvent[$ev['id']] ?? []; ?>
@@ -206,4 +205,4 @@
       </form>
     </details>
     <?php endif; ?>
-  </<?= $evTag ?>>
+  </details>

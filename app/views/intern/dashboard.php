@@ -90,7 +90,7 @@
   <?php // Zusammengeklappt passt die Übersicht wieder in einen Blick; der
         // nächste Termin steht offen da, weil er der ist, um den es geht. ?>
   <?php foreach ($events as $evNr => $ev): ?>
-    <?php $evFold = true; $evOpen = $evNr === 0; ?>
+    <?php $evGruppe = 'dashev'; $evOpen = $evNr === 0; ?>
     <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
   <?php endforeach; ?>
   <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>

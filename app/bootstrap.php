@@ -1255,6 +1255,7 @@ Zeile zwei
   'prof_push_failed' => 'Das Abo ließ sich nicht anlegen. Erlaubnis steht, es hakt woanders — neu laden und noch einmal versuchen.',
   'fl_push_saved' => 'Mitteilungs-Themen gespeichert.',
   'push_ev_title' => 'Neuer Termin',
+  'push_ev_status' => 'Termin geändert',
   // Postfach der Band (#219)
   'push_post_title' => 'Neue Post',
   'push_post_body' => '%1 neue Nachricht(en) im Bandpostfach',
