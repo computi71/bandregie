@@ -18,8 +18,7 @@
       </a>
       <?php // Was hier steht, steckt auch in der Zahl am App-Symbol (#317). ?>
       <?php $topicNeu = $unread[(int) $topic['id']] ?? 0; ?>
-      <?php if ($topicNeu): ?><span class="badge">
-        <?= $topicNeu ?> <?= e(t('topic_unread')) ?></span><?php endif; ?>
+      <?php if ($topicNeu): ?><span class="badge"><?= $topicNeu ?> <?= e(t('topic_unread')) ?></span><?php endif; ?>
       <span class="muted small">
         <?= (int) $topic['posts'] ?> <?= e(t('topic_posts')) ?>
         · <?= e(t('topic_by')) ?> <?= e($topic['author'] ?? t('unknown')) ?>

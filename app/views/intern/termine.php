@@ -89,9 +89,6 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
     <?php $evMonat = fmt_month($ev['date']); ?>
     <h2 class="event-month"><?= e($evMonat) ?></h2>
   <?php endif; ?>
-  <?php // In der Terminliste steht jede Karte offen da — damit ist sie
-        // angesehen, ganz ohne Skript (#321). ?>
-  <?php item_mark_seen($user, 'event', (int) $ev['id']); ?>
   <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>

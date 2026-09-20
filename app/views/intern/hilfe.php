@@ -126,11 +126,11 @@ require_once BASE_DIR . '/app/help.php';
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
     <?php if (!$druck || $druckBilder) echo help_picture($helpMod, t('inav_' . $helpMod)); ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
-    <?php // Bis zu drei Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
+    <?php // Bis zu vier Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
           // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
           // Übersetzungen stehen. Fehlt der Schlüssel, liefert t() ihn selbst
           // zurück, und dann steht hier nichts (#276, #298). ?>
-    <?php foreach (['_2', '_3', '_4'] as $helpNr): ?>
+    <?php foreach (['_2', '_3', '_4', '_5'] as $helpNr): ?>
       <?php $helpMehr = t('help_' . $helpMod . $helpNr); ?>
       <?php if ($helpMehr !== 'help_' . $helpMod . $helpNr): ?>
         <p class="muted"><?= e($helpMehr) ?></p>

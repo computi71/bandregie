@@ -1102,6 +1102,17 @@ function demo_remove(): void {
   foreach ($byTable['users'] ?? [] as $userId) {
     q('DELETE FROM topic_reads WHERE user_id = ?', [$userId]);
     q('DELETE FROM topic_access WHERE user_id = ?', [$userId]);
+    q('DELETE FROM seen_marks WHERE user_id = ?', [$userId]);
+  }
+
+  // Dasselbe für die Gesehen-Marken (#321): Sie haben keinen eigenen Schlüssel
+  // und stehen deshalb in keiner Demo-Liste. Bliebe eine auf einer Nummer
+  // stehen, die später ein neuer Eintrag bekommt, gälte der von Anfang an als
+  // gesehen — und die Demo zeigte die Marken nicht mehr, die sie zeigen soll.
+  foreach (ITEM_KINDS as $art => $wie) {
+    foreach ($byTable[$wie[0]] ?? [] as $nummer) {
+      q('DELETE FROM seen_marks WHERE kind = ? AND item_id = ?', [$art, $nummer]);
+    }
   }
 
   // Kindzeilen zuerst, dann die Haupttabellen

@@ -5017,8 +5017,17 @@ function visible_topic_ids(?array $user): ?array {
   return array_map('intval', array_unique([...$eigene, ...$geteilt]));
 }
 
-/** Darf dieses Konto dieses eine Thema sehen? */
+/**
+ * Darf dieses Konto dieses eine Thema sehen?
+ *
+ * Das Recht kommt zuerst: „kein Außenstehender" heißt nicht „darf den Chat".
+ * Eine Aushilfe ist Mitglied und hat den Bereich trotzdem nicht — ohne diese
+ * Zeile ging ihr der Anriss eines Beitrags aufs Telefon, zu einer Seite, die
+ * sie nicht öffnen kann. Die Prüfung steht hier und nicht bei den Aufrufern,
+ * damit Liste, Zahl und Mitteilung nicht wieder auseinanderlaufen.
+ */
 function may_see_topic(?array $user, int $topicId): bool {
+  if (!perm_allows($user, 'themen')) return false;
   $erlaubt = visible_topic_ids($user);
   return $erlaubt === null || in_array($topicId, $erlaubt, true);
 }
@@ -5224,7 +5233,7 @@ function items_unseen(?array $user, string $kind): array {
                      AND (i.`$werSpalte` IS NULL OR i.`$werSpalte` <> ?)
                      AND ((s.seen_at IS NULL     AND i.`$wannSpalte` >= me.created_at)
                        OR (s.seen_at IS NOT NULL AND i.`$wannSpalte` >  s.seen_at))",
-                 [$kind, $uid, $uid, setting('marks_since', '1000-01-01'), $uid]);
+                 [$kind, $uid, $uid, marks_since(), $uid]);
   $offen = [];
   foreach ($zeilen as $z) {
     $offen[(int) $z['id']] = [
@@ -5234,6 +5243,42 @@ function items_unseen(?array $user, string $kind): array {
     ];
   }
   return $offen;
+}
+
+/**
+ * Gleich mehrere Einträge einer Sorte als gesehen vermerken — eine Anweisung
+ * statt einer je Zeile. Die Terminliste zeigt auf Wunsch die ganze Geschichte
+ * der Band; eine Einfügung je Karte wären dort hunderte.
+ */
+function items_mark_seen(?array $user, string $kind, array $ids): void {
+  $uid = (int) ($user['id'] ?? 0);
+  $ids = array_values(array_unique(array_map('intval', $ids)));
+  if (!$uid || !$ids || !isset(ITEM_KINDS[$kind])) return;
+  $werte = [];
+  foreach ($ids as $id) { $werte[] = $uid; $werte[] = $kind; $werte[] = $id; }
+  q('INSERT INTO seen_marks (user_id, kind, item_id, seen_at) VALUES '
+    . implode(',', array_fill(0, count($ids), '(?,?,?,NOW())'))
+    . ' ON DUPLICATE KEY UPDATE seen_at = NOW()', $werte);
+}
+
+/**
+ * Was gelöscht wird, hinterlässt keine Marken. Sonst zeigt eine Zeile auf eine
+ * Nummer, die es nicht mehr gibt — und trifft irgendwann einen neuen Eintrag,
+ * der dieselbe Nummer bekommen hat, und gilt dort als längst gesehen.
+ */
+function item_forget(string $kind, int $id): void {
+  if (!isset(ITEM_KINDS[$kind])) return;
+  q('DELETE FROM seen_marks WHERE kind = ? AND item_id = ?', [$kind, $id]);
+}
+
+/**
+ * Der Stichtag, ab dem überhaupt markiert wird — einmal je Aufruf geholt.
+ * items_unseen() läuft mehrmals je Seite, und setting() fragt jedes Mal die
+ * Datenbank.
+ */
+function marks_since(): string {
+  static $wert = null;
+  return $wert ??= setting('marks_since', '1000-01-01');
 }
 
 /** Dieser Eintrag ist gesehen. */
@@ -5745,6 +5790,21 @@ function venue_stats(array $events, string $today): array {
     if ($feld !== null) $zahlen[$feld]++;
   }
   return array_filter($zahlen);
+}
+
+/**
+ * Der Weg zu einer Terminkarte — mit den Filtern, die sie überhaupt erst
+ * sichtbar machen (#322). Die Liste zeigt ohne Zutun weder Vergangenes noch
+ * Abgesagtes; ein Anker auf eine Karte, die gar nicht auf der Seite steht,
+ * führt stillschweigend an den Listenanfang. Und genau das sind die beiden
+ * häufigen Fälle: ein Kommentar zum Auftritt vom letzten Wochenende und eine
+ * Absage.
+ */
+function event_url(array $ev): string {
+  $filter = [];
+  if ((string) $ev['date'] < date('Y-m-d')) $filter[] = 'alle=1';
+  if ((string) ($ev['status'] ?? '') === 'abgesagt') $filter[] = 'abgesagt=1';
+  return '/intern/termine' . ($filter ? '?' . implode('&', $filter) : '') . '#ev' . (int) $ev['id'];
 }
 
 /**
@@ -7436,7 +7496,7 @@ function open_items_count(array $user): int {
 function user_purge(int $userId): void {
   foreach (['attendance', 'permissions', 'song_chords', 'song_ratings',
             'push_subscriptions', 'passkeys', 'substitute_requests',
-            'absences', 'topic_reads'] as $table) {
+            'absences', 'topic_reads', 'seen_marks'] as $table) {
     q("DELETE FROM $table WHERE user_id = ?", [$userId]);
   }
   // Private Daueraufträge sterben mit ihrem Besitzer. Sonst buchen sie weiter,
@@ -7943,6 +8003,9 @@ function event_view_data(array $events, array $me): array {
     // geht durch $ohne: Ein verdeckter Termin darf nicht als „neu" auftauchen
     // und damit verraten, dass es ihn gibt.
     'unseenEvents' => $ohne(items_unseen($me, 'event')),
+    // Die Dateien brauchen kein $ohne: Sie werden über filesByEvent angezeigt,
+    // und das ist schon geschwärzt — zu einem verdeckten Termin steht keine
+    // Datei da, die eine Marke tragen könnte.
     'unseenFiles' => items_unseen($me, 'file'),
   ];
 }

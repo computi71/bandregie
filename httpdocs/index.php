@@ -971,6 +971,10 @@ if (str_starts_with($path, '/intern')) {
       ? row("SELECT COUNT(*) n FROM events WHERE status = 'abgesagt'$evWhere", $evParams)['n']
       : row("SELECT COUNT(*) n FROM events WHERE date >= ? AND status = 'abgesagt'$evWhere",
             [$today, ...$evParams])['n']);
+    // Offen dargestellt heißt angesehen (#321). Gesammelt in einer Anweisung,
+    // und hier statt in der Ansicht: Eine Seite, die angezeigt wird, soll nicht
+    // nebenbei schreiben, und „alle Termine" sind schnell ein paar hundert.
+    items_mark_seen($me, 'event', array_column($events, 'id'));
     view('intern/termine', event_view_data($events, $me) + [
       'title' => t('nav_termine'),
       'showPast' => $showPast,
@@ -997,10 +1001,11 @@ if (str_starts_with($path, '/intern')) {
       // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
       $pushDate = (string) $_POST['date'];
+      $pushUrl = event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$newEventId]));
       push_notify('events', (int) $me['id'], fn(string $lang): array => [
         'title' => push_t($lang, 'push_ev_title'),
         'body' => $pushTitle . ' · ' . fmt_date($pushDate),
-        'url' => '/intern/termine#ev' . $newEventId,
+        'url' => $pushUrl,
       ], $newEventId);
     } else {
       flash(t('fl_title_date_required'));
@@ -1028,6 +1033,7 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine');
     }
     if ($action === 'delete') {
+      item_forget('event', (int) $id);
       q('DELETE FROM events WHERE id = ?', [$id]);
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
@@ -1050,10 +1056,11 @@ if (str_starts_with($path, '/intern')) {
       $pushWho = (string) $me['name'];
       $pushEvTitle = (string) ($pushEv['title'] ?? '');
       $pushKey = 'push_att_' . $status;
+      $pushUrl = event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$id]));
       push_notify('attendance', (int) $me['id'], fn(string $lang): array => [
         'title' => str_replace(['%1', '%2'], [$pushWho, $pushEvTitle], push_t($lang, $pushKey)),
         'body' => '',
-        'url' => '/intern/termine#ev' . (int) $id,
+        'url' => $pushUrl,
       ], (int) $id);
       // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
       // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
@@ -1069,14 +1076,15 @@ if (str_starts_with($path, '/intern')) {
       if ($text !== '') {
         q('INSERT INTO comments (event_id, user_id, text) VALUES (?,?,?)', [$id, $me['id'], $text]);
         // Mitteilung an die Kommentar-Abonnenten: wer schreibt was, wozu (#24).
-        $pushEv = row('SELECT title FROM events WHERE id = ?', [$id]);
+        $pushEv = row('SELECT id, title, date, status FROM events WHERE id = ?', [$id]);
         $pushWho = (string) $me['name'];
+        $pushUrl = event_url($pushEv);
         // Lange Kommentare kappen — die Mitteilung ist der Anriss, nicht der Text.
         $pushText = mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
         push_notify('comments', (int) $me['id'], fn(string $lang): array => [
           'title' => push_t($lang, 'push_comment_title') . ' · ' . ($pushEv['title'] ?? ''),
           'body' => $pushWho . ': ' . $pushText,
-          'url' => '/intern/termine#ev' . (int) $id,
+          'url' => $pushUrl,
         ], (int) $id);
       }
       back('/intern/termine');
@@ -1201,6 +1209,7 @@ if (str_starts_with($path, '/intern')) {
       'edit' => $edit,
       'songFiles' => files_map('song', [(int) $m[1]])[(int) $m[1]] ?? [],
       'unseen' => items_unseen($me, 'song'),
+      'unseenFiles' => items_unseen($me, 'file'),
       'myChords' => song_chords_mine((int) $m[1], $me['id']),
       'otherChords' => array_values(array_filter(song_chords_all((int) $m[1], $me['id']), fn($c) => !$c['mine'])),
     ]);
@@ -1208,8 +1217,9 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/songs' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
       q('INSERT INTO songs (title, artist, composer, gema_werknr, song_key, tempo, duration_sec, status, notes, lyrics, release_year) VALUES (?,?,?,?,?,?,?,?,?,?,?)', song_values());
-      item_new('song', (int) $db->lastInsertId(), (int) $me['id']);
-      song_chords_set((int) $db->lastInsertId(), $me['id'], $_POST['chords'] ?? '');
+      $songNeu = (int) $db->lastInsertId();
+      item_new('song', $songNeu, (int) $me['id']);
+      song_chords_set($songNeu, $me['id'], $_POST['chords'] ?? '');
     }
     redirect('/intern/songs');
   }
@@ -1227,6 +1237,7 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_song_played'));
       } else {
         q('DELETE FROM songs WHERE id = ?', [$m[1]]);
+        item_forget('song', (int) $m[1]);
         q('DELETE FROM setlist_songs WHERE song_id = ?', [$m[1]]);
         q('DELETE FROM song_chords WHERE song_id = ?', [$m[1]]);
       }
@@ -1297,11 +1308,18 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/setlists/(\d+)/(delete|copy|add|addpause|addzugabe|addblock|klammer|entklammer|remove|move)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
+    // Markiert wird, was wirklich geschrieben wurde (#321). „Am Ende immer"
+    // stempelte auch ein Verschieben ab, das gar nichts verschoben hat.
+    $slGeaendert = false;
+    $slMarke = function () use ($id, $me, &$slGeaendert): void {
+      if ($slGeaendert) item_touched('setlist', (int) $id, (int) $me['id']);
+    };
     if ($action !== 'copy' && setlist_locked((int) $id)) {
       flash(t('fl_setlist_locked'));
       redirect("/intern/setlists/$id");
     }
     if ($action === 'delete') {
+      item_forget('setlist', (int) $id);
       q('DELETE FROM setlists WHERE id = ?', [$id]);
       q('DELETE FROM setlist_songs WHERE setlist_id = ?', [$id]);
       q('UPDATE events SET setlist_id = NULL WHERE setlist_id = ?', [$id]);
@@ -1311,8 +1329,8 @@ if (str_starts_with($path, '/intern')) {
       $src = row('SELECT * FROM setlists WHERE id = ?', [$id]);
       if ($src) {
         q('INSERT INTO setlists (name, notes) VALUES (?,?)', [$src['name'] . ' (Kopie)', $src['notes']]);
-        item_new('setlist', (int) $db->lastInsertId(), (int) $me['id']);
-        $newId = (int) $GLOBALS['db']->lastInsertId();
+        $newId = (int) $db->lastInsertId();
+        item_new('setlist', $newId, (int) $me['id']);
         // Die Anweisungen gehören zur Reihenfolge, also kommen sie mit (#241).
         q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position, note, bracket, bracket_note)
            SELECT ?, song_id, is_break, position, note, bracket, bracket_note FROM setlist_songs WHERE setlist_id = ?', [$newId, $id]);
@@ -1323,12 +1341,15 @@ if (str_starts_with($path, '/intern')) {
     $nextPos = fn(): int => (int) row('SELECT COALESCE(MAX(position),0) AS p FROM setlist_songs WHERE setlist_id = ?', [$id])['p'] + 1;
     if ($action === 'add' && ($_POST['song_id'] ?? '') !== '') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,?,0,?)', [$id, $_POST['song_id'], $nextPos()]);
+      $slGeaendert = true;
     }
     if ($action === 'addpause') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,NULL,1,?)', [$id, $nextPos()]);
+      $slGeaendert = true;
     }
     if ($action === 'addzugabe') {
       q('INSERT INTO setlist_songs (setlist_id, song_id, is_break, position) VALUES (?,NULL,2,?)', [$id, $nextPos()]);
+      $slGeaendert = true;
     }
     // Sprechpause: der Strich, den die Band aufs Papier zieht, wenn nicht gespielt,
     // sondern geredet wird — Bandvorstellung, Umstimmen. Keine Pause: eine Pause
@@ -1343,6 +1364,9 @@ if (str_starts_with($path, '/intern')) {
     // letzten angehakten Zeile. Ohne Auswahl haengt sie hinten an — vorher war das
     // der einzige Weg, und danach musste man sie durch die halbe Liste schieben.
     if ($action === 'addblock') {
+      // Beide Wege dieses Zweigs schreiben: entweder bekommen angehakte
+      // Sprechpausen den Text, oder es entsteht eine neue.
+      $slGeaendert = true;
       $text = mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 200);
       $gewaehlt = array_map('intval', (array) ($_POST['rows'] ?? []));
       $zeilen = $gewaehlt
@@ -1439,6 +1463,8 @@ if (str_starts_with($path, '/intern')) {
         }
       }
       setlist_braces_normalize((int) $id);
+      $slGeaendert = true;
+      $slMarke();
       flash(str_replace('%1', (string) count($zeilen), t('fl_brace_set')));
       redirect("/intern/setlists/$id");
     }
@@ -1457,12 +1483,15 @@ if (str_starts_with($path, '/intern')) {
         [$id, ...array_map('intval', $marken)]);
       // Ohne das blieben Löcher: aus 1,2,3 wird beim Lösen von 2 sonst 1,3.
       setlist_braces_normalize((int) $id);
+      $slGeaendert = true;
+      $slMarke();
       flash(str_replace('%1', (string) count($marken), t('fl_brace_released')));
       redirect("/intern/setlists/$id");
     }
 
     if ($action === 'remove') {
       q('DELETE FROM setlist_songs WHERE setlist_id = ? AND id = ?', [$id, $_POST['item_id'] ?? 0]);
+      $slGeaendert = true;
       // Bleibt von einer Klammer eine Zeile übrig, ist sie keine mehr.
       setlist_braces_normalize((int) $id);
       $i = 1;
@@ -1480,11 +1509,12 @@ if (str_starts_with($path, '/intern')) {
         // Wer eine Zeile aus einer Klammer herausschiebt, zerlegt sie — dann ist
         // sie neu zu ordnen, sonst zeigt die Liste eine Nummer ohne Klammer.
         setlist_braces_normalize((int) $id);
+        $slGeaendert = true;
       }
     }
-    // Jede dieser Handlungen ändert die Setliste, ohne eine ihrer eigenen
-    // Spalten anzufassen — deshalb wird hier ohne Vergleich markiert (#321).
-    item_touched('setlist', (int) $id, (int) $me['id']);
+    // Diese Handlungen ändern die Setliste, ohne eine ihrer eigenen Spalten
+    // anzufassen — markiert wird deshalb ohne Vergleich (#321).
+    $slMarke();
     redirect("/intern/setlists/$id");
   }
 
@@ -1955,6 +1985,7 @@ if (str_starts_with($path, '/intern')) {
       'venues' => $venueList,
       'eventsByVenue' => $eventsByVenue,
       'filesByVenue' => files_map('venue', array_column($venueList, 'id')),
+      'unseenFiles' => items_unseen($me, 'file'),
       'today' => $today,
     ]);
   }
@@ -2169,6 +2200,7 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/datei/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     $f = row('SELECT * FROM files WHERE id = ?', [$m[1]]);
     if ($f && ((int) $f['uploaded_by'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      item_forget('file', (int) $f['id']);
       q('DELETE FROM files WHERE id = ?', [$f['id']]);
       // Dieselbe Datei kann an mehreren Geräten hängen (eine Rechnung über
       // mehrere Teile). Von der Platte kommt sie erst, wenn die letzte Zeile
@@ -2202,11 +2234,21 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/gesehen' && $method === 'POST') {
     $gArt = (string) ($_POST['art'] ?? '');
     $gNr = (int) ($_POST['nr'] ?? 0);
-    // Die Sichtbarkeit gilt auch hier: Wer einen Termin nicht sehen darf, soll
-    // ihn nicht einmal als gesehen vermerken können — die Antwort verriete
-    // sonst, dass es ihn gibt.
-    if ($gArt === 'event' && $gNr && may_see_event($me, $gNr)) item_mark_seen($me, 'event', $gNr);
+    // Je Sorte die Prüfung, die auch die Liste anwendet. Eine unbekannte Sorte
+    // wird abgelehnt statt still geschluckt: Welche Sorten es gibt, ist kein
+    // Geheimnis — geheim ist nur, welche Nummern jemand sehen darf. Ein
+    // stilles „ok" kostete den Nächsten, der data-seen benutzt, einen Tag.
+    $gPruefung = [
+      'event' => fn(int $nr): bool => may_see_event($me, $nr),
+      'song' => fn(int $nr): bool => may_see_song($me, $nr),
+      'setlist' => fn(int $nr): bool => may_see_setlist($me, $nr),
+      'quote' => fn(int $nr): bool => perm_allows($me, 'angebote'),
+      'contract' => fn(int $nr): bool => may_see_contract($me, $nr),
+      'file' => fn(int $nr): bool => ($f = row('SELECT * FROM files WHERE id = ?', [$nr])) && may_see_file($me, $f),
+    ][$gArt] ?? null;
     header('Content-Type: application/json');
+    if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
+    if ($gPruefung($gNr)) item_mark_seen($me, $gArt, $gNr);
     exit(json_encode(['ok' => true]));
   }
   // Wie viele offene Punkte hat der Anfragende? Die Seite holt sich das beim
@@ -2807,6 +2849,7 @@ if (str_starts_with($path, '/intern')) {
     back('/intern/vertraege/' . $m[1]);
   }
   if (preg_match('~^/intern/vertraege/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    item_forget('contract', (int) $m[1]);
     q('DELETE FROM contracts WHERE id = ?', [$m[1]]);
     flash(t('fl_contract_deleted'));
     redirect('/intern/vertraege');
@@ -2985,6 +3028,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/angebote/' . $m[1]);
   }
   if (preg_match('~^/intern/angebote/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    item_forget('quote', (int) $m[1]);
     q('DELETE FROM quote_items WHERE quote_id = ?', [$m[1]]);
     q('DELETE FROM quotes WHERE id = ?', [$m[1]]);
     flash(t('fl_quote_deleted'));
