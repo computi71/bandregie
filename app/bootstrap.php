@@ -3607,6 +3607,22 @@ if (setting('migr_login_backfill') === '') {
 // selbst — ohne diese Grenze stünde am Tag des Updates jede Datei der letzten
 // Jahre als „neu" da. Für alles andere ist die Grenze überflüssig und
 // trotzdem richtig.
+// Sekunden sind zu grob für einen Vergleich zwischen „angesehen" und
+// „geändert": Wer eine Karte liest, während jemand anderes sie speichert,
+// bekäme die Änderung nie zu sehen — einmal im Jahr, nicht nachstellbar, und
+// deshalb am teuersten zu suchen. Millisekunden für alle Zeitpunkte, die
+// gegeneinander verglichen werden.
+if (setting('migr_marks_ms') === '') {
+  $db->exec('ALTER TABLE seen_marks MODIFY seen_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
+  $db->exec('ALTER TABLE topic_reads MODIFY seen_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
+  $db->exec('ALTER TABLE topic_posts MODIFY created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
+  foreach (array_column(ITEM_KINDS, 'tabelle') as $markiert) {
+    if ($markiert === 'files') continue;   // trägt seinen Zeitstempel selbst
+    $db->exec("ALTER TABLE `$markiert` MODIFY updated_at DATETIME(3) NULL");
+  }
+  set_setting('migr_marks_ms', '1');
+}
+
 if (setting('marks_since') === '') set_setting('marks_since', date('Y-m-d H:i:s'));
 
 // Die Themenliste speichert ab jetzt das Abgewählte (#323). Umgerechnet wird
@@ -3627,7 +3643,7 @@ if (setting('migr_push_abwahl') === '') {
 
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
-     SELECT u.id, t.id, NOW() FROM users u CROSS JOIN topics t');
+     SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');
   set_setting('migr_topic_reads', '1');
 }
 
@@ -5125,8 +5141,8 @@ function topic_first_unread(?array $user, int $topicId): int {
 
 /** Dieses Thema ist bis jetzt gelesen. */
 function topic_mark_read(int $topicId, int $userId): void {
-  q('INSERT INTO topic_reads (user_id, topic_id, seen_at) VALUES (?,?,NOW())
-     ON DUPLICATE KEY UPDATE seen_at = NOW()', [$userId, $topicId]);
+  q('INSERT INTO topic_reads (user_id, topic_id, seen_at) VALUES (?,?,NOW(3))
+     ON DUPLICATE KEY UPDATE seen_at = NOW(3)', [$userId, $topicId]);
 }
 
 /** Wer von außen zu diesem Thema geholt wurde, mit Namen. */

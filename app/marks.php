@@ -90,7 +90,7 @@ function item_touch(string $kind, int $id, ?array $vorher, ?int $wer): bool {
     }
     if (!$anders) return false;
   }
-  q('UPDATE `' . $art['tabelle'] . '` SET updated_at = NOW(), updated_by = ? WHERE id = ?', [$wer, $id]);
+  q('UPDATE `' . $art['tabelle'] . '` SET updated_at = NOW(3), updated_by = ? WHERE id = ?', [$wer, $id]);
   return true;
 }
 
@@ -133,7 +133,7 @@ function items_unseen(?array $user, string $kind): array {
   // mit, was in derselben Sekunde oder später entstand — wer dazukommt, während
   // jemand tippt, soll es sehen. Nach dem Ansehen zählt nur, was danach kam,
   // sonst stünde das gerade Gesehene gleich wieder als neu da.
-  $zeilen = rows("SELECT i.id, i.created_at, i.`$wann` AS wann, w.name AS wer
+  $zeilen = rows("SELECT i.id, (i.`$wann` <= i.created_at) AS ist_neu, i.`$wann` AS wann, w.name AS wer
                     FROM `$tabelle` i
                     LEFT JOIN seen_marks s ON s.kind = ? AND s.item_id = i.id AND s.user_id = ?
                     LEFT JOIN users w ON w.id = i.`$wer`
@@ -147,7 +147,7 @@ function items_unseen(?array $user, string $kind): array {
   $offen = [];
   foreach ($zeilen as $z) {
     $offen[(int) $z['id']] = [
-      'neu'  => item_only_born($kind) || (string) $z['wann'] === (string) $z['created_at'],
+      'neu'  => item_only_born($kind) || (bool) $z['ist_neu'],
       'wer'  => $z['wer'],
       'wann' => $z['wann'],
     ];
@@ -172,8 +172,8 @@ function items_mark_seen(?array $user, string $kind, array $ids): void {
   $werte = [];
   foreach ($ids as $id) { $werte[] = $uid; $werte[] = $kind; $werte[] = $id; }
   q('INSERT INTO seen_marks (user_id, kind, item_id, seen_at) VALUES '
-    . implode(',', array_fill(0, count($ids), '(?,?,?,NOW())'))
-    . ' ON DUPLICATE KEY UPDATE seen_at = NOW()', $werte);
+    . implode(',', array_fill(0, count($ids), '(?,?,?,NOW(3))'))
+    . ' ON DUPLICATE KEY UPDATE seen_at = NOW(3)', $werte);
 }
 
 /**
