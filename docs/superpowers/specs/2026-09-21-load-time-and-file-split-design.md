@@ -1,7 +1,7 @@
 # Load time and the cut through bootstrap.php
 
 Status: approved design, not yet implemented
-Date: 2026-09-21
+Date: 2026-09-21 (part 3 narrowed the same day, see "What the headings hide")
 Version at time of writing: 2.11.1
 
 ## What is wrong
@@ -155,24 +155,40 @@ How the 7891 lines are distributed today:
 | Quote calculation | 1195 |
 | "Guests" — in truth a catch-all: mail, events, guests, `open_items_count`, `user_purge` … | 1483 |
 
-What it becomes:
+### What the headings hide
+
+The `// ---------- X ----------` headings in `bootstrap.php` are decoration,
+not structure. The functions sit in the order they were written over the
+months, and the areas are thoroughly mixed:
+
+| Heading | what is actually under it |
+|---|---|
+| "Quote calculation" (59 functions) | `quote_*` — and `geocode_*`, `photo_*`, `navi_*`, `band_mail_send`, `login_stamp`, `song_chords_*` |
+| "Guests" (69) | `guest_*` — and 20 × `eq_*` (inventory), `offline_*`, `view()`, `fmt_date()`, `open_items_count`, `user_purge` |
+| "Upload limits" (37) | `t()`, `current_lang()`, every `topic_*`, every `contract_*`, `events_redact` |
+| "Card and list data" (36) | `e()`, `flash()`, `redirect()`, `is_demo()`, `perm_*`, `may_see_*` |
+
+So a file named after an area is not produced by moving a range of lines. It
+is produced by **picking 30 to 50 functions out of 7900 lines**, and the
+"the moved block is byte-identical" check does not apply to it.
+
+That is a different kind of work with a different risk, and it is therefore
+**not part of this design**. What stays in scope is what genuinely is a move:
 
 | File | ≈ lines | loaded |
 |---|---:|---|
-| `app/strings/de.php` | 1650 | always |
-| `app/schema.php` | 1700 | **only when the gate is open** |
-| `app/quotes.php` | 1200 | always |
-| `app/events.php` | 700 | always |
-| `app/files.php` | 450 | always |
-| `app/guests.php` | 400 | always |
-| `app/contracts.php` | 250 | always |
-| `app/mail.php` | 200 | always |
+| `app/strings/de.php` | 1650 | always — contiguous, lines 106–1757 |
+| `app/schema.php` | 1700 | **only when the gate is open** — two near-contiguous ranges, 2119–3250 and 3274–3880 |
 | `app/marks.php` | 200 | already extracted |
-| `app/bootstrap.php` | ≈ 1200 | always |
+| `app/bootstrap.php` | ≈ 4500 | always |
 
-The core keeps what every page needs and what belongs to no area: constants,
-the connection, `q`/`row`/`rows`, `setting`, `t`/`e`, the session,
-permissions, CSRF, the throttle — and the gate.
+`bootstrap.php` therefore lands at roughly 4500 lines rather than 1200 — 3350
+out, and the two largest blocks gone. The area files (`quotes.php`,
+`events.php`, `guests.php`, `files.php`, `contracts.php`, `mail.php`) remain
+worth doing and become their own undertaking, with their own approach: picking
+by function name, one area per commit, the fingerprint comparison as the only
+real safety net. They need their own design, because the method is the part
+that needs deciding, not the file names.
 
 Every file gets the same header as `app/marks.php`: what it does, what it
 needs from outside. All of them are required in **one** place at the top of
@@ -184,9 +200,9 @@ needs from outside. All of them are required in **one** place at the top of
    Anything noticed while moving is written down and fixed separately —
    otherwise a commit with 1700 moved lines hides one altered condition that
    nobody will ever find.
-2. **One file per commit, every step deployable.** Order: `strings`, `schema`,
-   then `quotes`, `guests`, `events`, `files`, `contracts`, `mail`. The two
-   large ones first, because they are the purest case of moving.
+2. **One file per commit, every step deployable.** Order: `strings`, then
+   `schema`. Both are genuine moves of contiguous ranges, which is why they
+   are the two this design carries.
 3. **Prove mechanically that nothing is lost.** Before and after each step,
    compare the list of all defined functions and constants. Identical lists
    mean nothing vanished and nothing got defined twice — the exact failure
@@ -229,7 +245,12 @@ stranger tries to install the thing.
 1. Part 2 (settings) — smallest, and part 1 depends on it.
 2. Part 1 (gate + `schema.php`) — the measurable win. Release, then measure on
    staging and on both band instances.
-3. Part 3, file by file, in the order given above.
+3. Part 3: `strings/de.php`, then `schema.php` — the latter falls out of part
+   1 anyway, since the gate needs something to require.
 
-Parts 1 and 2 are worth a release of their own; the cut can follow at its own
-pace, because nobody notices it from outside.
+Parts 1 and 2 are worth a release of their own; the two moves can follow at
+their own pace, because nobody notices them from outside.
+
+The area files are deliberately left for a later design. Naming them here and
+pretending they are the same kind of work would have produced a plan whose
+second half does not match the code.
