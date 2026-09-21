@@ -691,13 +691,18 @@ if ($path === '/passwort-vergessen') {
         . "Zum Zurücksetzen hier klicken (1 Stunde gültig):\n$link\n\n"
         . "Wenn du das nicht warst, kannst du diese E-Mail einfach ignorieren.\n\n"
         . "Viele Grüße\n$band";
-      $from = mail_from_address();
-      $antwortAn = mail_header_value(setting('contact_email'));
-      $replyTo = $antwortAn !== '' ? "\r\nReply-To: " . $antwortAn : '';
-      // Der fünfte Parameter setzt den Umschlagabsender. Ohne ihn nimmt PHP den
-      // Systembenutzer, und die SPF-Prüfung passt dann nicht zur Absenderdomain.
-      @mail($email, 'Passwort zurücksetzen - ' . mail_header_value($band, 120), $body,
-        "From: $from$replyTo\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
+      // Denselben Weg wie jede andere Mail der Band: mit eigener Message-ID und
+      // einer Zeile in mail_log, die bin/mail-status.php später um das ergänzt,
+      // was der empfangende Server gesagt hat. Vorher ging genau diese Mail über
+      // ein nacktes mail() hinaus — und war damit die einzige, die sich bei einer
+      // Beschwerde nicht nachsehen ließ (#326).
+      band_mail_send($email, 'Passwort zurücksetzen - ' . mail_header_value($band, 120),
+        $body, 'passwort', (int) $u['id']);
+    } elseif ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+      // Kein Konto zu dieser Adresse. Nach außen bleibt alles gleich, nach innen
+      // steht es im Protokoll — sonst beteuert jemand, die Mail käme nicht an,
+      // und in Wahrheit ist nie eine entstanden (#327).
+      mail_log_unknown($email);
     }
     flash(t('pwreset_sent'));
     redirect('/login');
@@ -3109,6 +3114,7 @@ if (str_starts_with($path, '/intern')) {
                                           WHERE category = 'instrument' AND disposed_on IS NULL ORDER BY name"), 'name'),
       // Was aus der letzten Einladung wurde, je Konto (#293).
       'mailStatus' => mail_status_by_user(),
+      'mailUnknown' => mail_unknown_recent(),
       'mailChecked' => setting('mail_status_checked_at'),
     ]);
   }

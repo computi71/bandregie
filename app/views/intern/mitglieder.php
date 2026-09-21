@@ -5,6 +5,19 @@
   <p class="card muted small">🔒 <?= e(t('demo_locked_hint')) ?></p>
 <?php endif; ?>
 
+<?php // Wer hier steht, hat „Passwort zurücksetzen" mit einer Adresse gedrückt,
+      // zu der es kein Konto gibt — dann entsteht keine Mail, und der Betroffene
+      // wartet auf etwas, das nie verschickt wurde (#327). Nach außen verrät die
+      // Anmeldeseite davon nichts; hier drin muss es sichtbar sein. ?>
+<?php if (!empty($mailUnknown)): ?>
+  <p class="card warn small">⚠ <?= e(t('mem_reset_unknown')) ?>
+    <?php foreach ($mailUnknown as $mu): ?>
+      <br><strong><?= e($mu['to_email']) ?></strong>
+      <span class="muted"><?= e(date('d.m. H:i', strtotime((string) $mu['status_at']))) ?></span>
+    <?php endforeach; ?>
+  </p>
+<?php endif; ?>
+
 <?php if ($user['role'] === 'admin' && !is_demo()): ?>
 <details class="card collapsible">
   <summary>➕ <?= e(t('mem_new')) ?></summary>

@@ -674,6 +674,7 @@ const UI_STRINGS = [
   'mem_share_title' => 'Zugang ohne E-Mail',
   'mem_share_hint' => 'Dieses Mitglied hat keine E-Mail-Adresse. Schick ihm den Zugangslink von deinem eigenen Handy — er gilt eine Stunde und genau einmal.',
   'mem_share_msg' => 'Hallo %1$s, dein Zugang zum Bandbereich von %2$s: %3$s — der Link gilt eine Stunde, danach frag noch mal nach.',
+  'mem_reset_unknown' => 'Passwort-Rücksetzung für eine Adresse angefragt, zu der es kein Konto gibt. Meist ein Tippfehler — vergleiche mit der hinterlegten Adresse:',
   'mem_share_none' => 'Dafür fehlt die Mobilnummer.',
   'help_print_pics' => 'mit Bildern drucken',
   'help_print_nopics' => 'ohne Bilder drucken',
@@ -6404,6 +6405,39 @@ function band_mail_send(string $to, string $subject, string $body, string $kind,
   q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (?,?,?,?,?,?,?)',
     [$userId, mb_substr($to, 0, 190), $kind, $messageId, $ok ? 'queued' : 'failed', $ok ? null : date('Y-m-d H:i:s'), $grund]);
   return $ok;
+}
+
+/**
+ * Eine Rücksetzung für eine Adresse, zu der es kein Konto gibt (#327).
+ *
+ * Nach außen ändert das nichts: Der Anfragende bekommt dieselbe Antwort wie
+ * jeder andere, sonst verriete die Seite, welche Adressen es gibt. Nach innen
+ * steht die Zeile da, und die Band sieht, warum bei jemandem nie eine Mail
+ * ankam — meistens, weil die eingegebene Adresse nicht die hinterlegte ist.
+ *
+ * Nur syntaktisch gültige Adressen landen hier; sonst füllt sich das Protokoll
+ * mit allem, was jemand eintippt. Die Menge deckelt die Wiederholsperre der
+ * Route (fünf je Adresse und Stunde).
+ *
+ * Die Message-ID ist erfunden, weil keine Mail entstanden ist — die Spalte ist
+ * eindeutig, und ohne Wert käme keine zweite Zeile hinein.
+ */
+function mail_log_unknown(string $email): void {
+  q("INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail)
+     VALUES (NULL, ?, 'passwort', ?, 'unbekannt', NOW(), ?)",
+    [mb_substr($email, 0, 190), 'unbekannt-' . bin2hex(random_bytes(16)),
+     'Rücksetzung angefragt, kein Konto zu dieser Adresse']);
+}
+
+/**
+ * Die letzten Rücksetzungen auf unbekannte Adressen (#327) — für den Hinweis
+ * in der Mitgliederliste. Sieben Tage, weil ältere niemandem mehr helfen.
+ */
+function mail_unknown_recent(int $tage = 7): array {
+  return rows("SELECT to_email, status_at FROM mail_log
+                WHERE user_id IS NULL AND status = 'unbekannt'
+                  AND status_at > DATE_SUB(NOW(), INTERVAL ? DAY)
+                ORDER BY id DESC LIMIT 5", [$tage]);
 }
 
 // ---------- Gäste (#294) ----------
