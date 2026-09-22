@@ -995,6 +995,9 @@ const UI_STRINGS = [
   'sys_cache' => 'Zwischenspeicher für Dateien',
   'sys_cache_none' => 'keine Vorgabe', 'sys_cache_unknown' => 'nicht prüfbar',
   'sys_cache_hint' => 'Der Browser fragt bei jedem Seitenaufruf nach. Bei Apache genügt die mitgelieferte .htaccess; bei nginx die Anweisung aus der README.',
+  'set_schema_recheck' => 'Schema prüfen',
+  'set_schema_recheck_hint' => 'Prüft beim nächsten Seitenaufruf alle Tabellen und Spalten nachträglich durch. Normalerweise passiert das einmal nach einem Update von selbst; von Hand gebraucht wird es nur, wenn jemand direkt in der Datenbank gearbeitet hat.',
+  'fl_schema_recheck' => 'Das Schema wird beim nächsten Seitenaufruf geprüft.',
   // Daueraufträge
   'ord_title' => 'Daueraufträge', 'ord_new' => 'Neuer Dauerauftrag',
   'ord_intro' => 'Wiederkehrende Buchungen tragen sich selbst ein — Proberaum, GEMA, Versicherung.',

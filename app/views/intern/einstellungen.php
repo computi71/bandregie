@@ -772,6 +772,12 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <?php endforeach; ?>
     </ul>
   <?php endforeach; ?>
+  <?php // Wer von Hand an der Datenbank war, kommt hiermit an eine erzwungene
+        // Prüfung — ohne Kommandozeile (#328). ?>
+  <form method="post" action="/intern/einstellungen/schema" class="inline"><?= csrf_field() ?>
+    <button class="btn btn-small"><?= e(t('set_schema_recheck')) ?></button>
+  </form>
+  <p class="muted small"><?= e(t('set_schema_recheck_hint')) ?></p>
 </details>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>
