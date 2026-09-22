@@ -2317,6 +2317,7 @@ if (str_starts_with($path, '/intern')) {
       'venue' => fn(int $nr): bool => perm_allows($me, 'orte'),
       'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
       'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
+      'equipment' => fn(int $nr): bool => perm_allows($me, 'equipment'),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
@@ -2330,6 +2331,12 @@ if (str_starts_with($path, '/intern')) {
           array_column(rows('SELECT id FROM comments WHERE event_id = ?', [$gNr]), 'id'));
         items_mark_seen($me, 'attendance',
           array_column(rows('SELECT id FROM attendance WHERE event_id = ?', [$gNr]), 'id'));
+      }
+      // Bestandteile stehen in der Faltkarte ihres Geräts - wer sie aufklappt,
+      // sieht Rack, Empfänger und Kapsel auf einmal.
+      if ($gArt === 'equipment') {
+        items_mark_seen($me, 'equipment',
+          eq_descendants($gNr, rows('SELECT id, parent_id FROM equipment')));
       }
     }
     exit(json_encode(['ok' => true]));
@@ -3454,6 +3461,7 @@ if (str_starts_with($path, '/intern')) {
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'invoices' => $invList,
       'invoicesFiles' => $invFiles,
+      'unseenEquipment' => items_unseen($me, 'equipment'),
     ]);
   }
   // Der Bearbeiten-Block eines einzelnen Geräts. Die Liste holt ihn nach,
@@ -3511,6 +3519,7 @@ if (str_starts_with($path, '/intern')) {
           eq_invoice_input($_POST['invoice_id'] ?? null, $me),
           eq_quantity_input($_POST['quantity'] ?? null),
         ]);
+        item_new('equipment', (int) $db->lastInsertId(), (int) $me['id']);
       }
       // Auch hier den verstandenen Preis nennen (#221), sofern einer kam.
       $eqPreis = price_to_cents((string) ($_POST['price'] ?? ''));
@@ -3550,7 +3559,9 @@ if (str_starts_with($path, '/intern')) {
     // Ein Abgang beendet das Gerät im Bestand — die Zeile bleibt als
     // Geschichte stehen, taucht aber auf keiner Packliste mehr auf.
     if ($m[2] === 'abgang') {
-      q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
+      item_update('equipment', (int) $m[1], static function () use ($date, $m): void {
+        q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
+      }, (int) $me['id']);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
     }
     // Die Meldung sagt, was wirklich geschah — sonst merkt niemand, dass keine
@@ -3564,7 +3575,9 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/equipment/(\d+)/reaktivieren$~', $path, $m) && $method === 'POST') {
     $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
     if (!eq_may_edit_owner_fields($eq, $me)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
-    q('UPDATE equipment SET disposed_on = NULL WHERE id = ?', [$m[1]]);
+    item_update('equipment', (int) $m[1], static function () use ($m): void {
+      q('UPDATE equipment SET disposed_on = NULL WHERE id = ?', [$m[1]]);
+    }, (int) $me['id']);
     flash(t('fl_eq_reactivated'));
     redirect('/intern/equipment');
   }
@@ -3638,7 +3651,9 @@ if (str_starts_with($path, '/intern')) {
     // Eine schon vorhandene Nummer fällt weg, damit sie sich nicht stapelt.
     $baseName = eq_strip_number(eq_strip_quantity((string) $eq['name']));
     $baseSlot = eq_strip_number(eq_strip_quantity((string) $eq['slot']));
-    q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    item_update('equipment', (int) $m[1], static function () use ($baseName, $baseSlot, $m): void {
+      q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    }, (int) $me['id']);
     $neue = [];
     for ($i = 2; $i <= $count; $i++) {
       q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id, quantity)
@@ -3650,6 +3665,7 @@ if (str_starts_with($path, '/intern')) {
         $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'], $eq['acquired_as'],
         $eq['article_no'], $eq['invoice_id'],
       ]);
+      item_new('equipment', (int) $db->lastInsertId(), (int) $me['id']);
       $neue[] = (int) $db->lastInsertId();
     }
     // Das Foto gehört jedem Stück: gleiche Datei, eigene Zeile — wie beim
@@ -3672,6 +3688,7 @@ if (str_starts_with($path, '/intern')) {
       // zeigen, die es nicht mehr gibt, und die Datei auf der Platte dazu —
       // unsichtbar, denn nichts listet sie mehr auf (#188).
       files_purge('equipment', (int) $m[1]);
+      item_forget('equipment', (int) $m[1]);
       q('DELETE FROM equipment WHERE id = ?', [$m[1]]);
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
@@ -3728,7 +3745,11 @@ if (str_starts_with($path, '/intern')) {
       if ($eqTree) {
         $eqIn = implode(',', array_fill(0, count($eqTree), '?'));
         q("UPDATE equipment SET owner_id = ?, location = '' WHERE id IN ($eqIn)", [$ownerId, ...$eqTree]);
+        // Die Bestandteile ziehen mit, also tragen sie auch die Marke: Sonst
+        // wäre das Rack geändert und der Empfänger darin unauffällig.
+        foreach ($eqTree as $eqKind) item_touch('equipment', (int) $eqKind, null, (int) $me['id']);
       }
+      item_touch('equipment', (int) $m[1], $eqBefore, (int) $me['id']);
       flash(t('fl_eq_saved'));
     }
     redirect('/intern/equipment');

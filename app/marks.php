@@ -59,6 +59,12 @@ const ITEM_KINDS = [
                  'felder' => ['date_from', 'date_to', 'note']],
   'task'     => ['tabelle' => 'tasks', 'wann' => 'updated_at', 'wer' => 'updated_by',
                  'felder' => ['title', 'notes', 'assigned_to', 'due_date', 'status']],
+  // disposed_on gehört zu den verglichenen Feldern: Ein Abgang ist die
+  // Änderung am Gerät, die die Band am ehesten angeht.
+  'equipment' => ['tabelle' => 'equipment', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                  'felder' => ['name', 'category', 'owner_id', 'location', 'is_standard',
+                               'notes', 'parent_id', 'slot', 'purchased_on', 'price_cents',
+                               'acquired_as', 'article_no', 'quantity', 'disposed_on']],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */
