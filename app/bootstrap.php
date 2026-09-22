@@ -1205,14 +1205,20 @@ function may_see_file(?array $user, array $file): bool {
   };
 }
 
-/** Darf jemand den Beleg zu dieser Kassenbuchung sehen? */
-function may_see_finance_file(?array $user, int $financeId): bool {
+/** Darf jemand diese Kassenbuchung sehen? */
+function may_see_finance(?array $user, int $financeId): bool {
   if (!$user) return false;
   $f = row('SELECT private_for FROM finances WHERE id = ?', [$financeId]);
   if (!$f) return false;
   // Private Auslagen gehören dem Mitglied, alles andere der Bandkasse.
   if ($f['private_for'] !== null) return (int) $f['private_for'] === (int) $user['id'];
   return perm_allows($user, 'kasse');
+}
+
+/** Der Beleg ist so sichtbar wie seine Buchung — eine zweite Regel wäre die
+ *  nächste, die auseinanderläuft. */
+function may_see_finance_file(?array $user, int $financeId): bool {
+  return may_see_finance($user, $financeId);
 }
 
 /** Baut „AND id IN (...)“ für eine Sichtbarkeitsliste; null lässt alles durch. */

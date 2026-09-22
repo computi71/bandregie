@@ -65,6 +65,12 @@ const ITEM_KINDS = [
                   'felder' => ['name', 'category', 'owner_id', 'location', 'is_standard',
                                'notes', 'parent_id', 'slot', 'purchased_on', 'price_cents',
                                'acquired_as', 'article_no', 'quantity', 'disposed_on']],
+  'finance'  => ['tabelle' => 'finances', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['date', 'type', 'amount_cents', 'category', 'description',
+                              'event_id', 'member_id']],
+  'guest'    => ['tabelle' => 'guests', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['name', 'function_name', 'email', 'phone', 'mobile',
+                              'street', 'postcode', 'city', 'notes']],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */

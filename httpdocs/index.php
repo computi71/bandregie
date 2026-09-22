@@ -2318,6 +2318,10 @@ if (str_starts_with($path, '/intern')) {
       'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
       'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
       'equipment' => fn(int $nr): bool => perm_allows($me, 'equipment'),
+      // Private Auslagen gehören dem Mitglied, nicht dem Bereich - deshalb
+      // hier nicht perm_allows(), sondern dieselbe Prüfung wie die Liste.
+      'finance' => fn(int $nr): bool => may_see_finance($me, $nr),
+      'guest' => fn(int $nr): bool => perm_allows($me, 'gaeste'),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
@@ -2682,9 +2686,12 @@ if (str_starts_with($path, '/intern')) {
     $gaesteBuchungen = [];
     $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
     foreach ($gaesteAlle as $gb) $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
+    $gaesteOffen = items_unseen($me, 'guest');
     view('intern/gaeste', [
       'title' => t('guest_title'),
       'guests' => rows('SELECT * FROM guests ORDER BY name'),
+      'unseenGuests' => $gaesteOffen,
+      'seenOnList' => ['guest' => array_keys($gaesteOffen)],
       'bookingsByGuest' => $gaesteBuchungen,
       'ratings' => guest_ratings_map(array_map(fn($b) => (int) $b['id'], $gaesteAlle), (int) $me['id']),
       'events' => rows("SELECT id, title, date FROM events WHERE date >= ? AND status <> 'abgesagt' ORDER BY date", [$today]),
@@ -2707,6 +2714,7 @@ if (str_starts_with($path, '/intern')) {
       $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
       trim((string) ($_POST['notes'] ?? '')),
     ]);
+    item_new('guest', (int) $db->lastInsertId(), (int) $me['id']);
     flash(t('fl_guest_created'));
     redirect('/intern/gaeste');
   }
@@ -2717,6 +2725,7 @@ if (str_starts_with($path, '/intern')) {
       if (row('SELECT 1 FROM guest_bookings WHERE guest_id = ?', [$m[1]])) {
         flash(t('fl_guest_has_bookings'));
       } else {
+        item_forget('guest', (int) $m[1]);
         q('DELETE FROM guests WHERE id = ?', [$m[1]]);
         flash(t('fl_guest_deleted'));
       }
@@ -2729,12 +2738,14 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
     }
     $gK = $gastKontakt($_POST);
-    q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, mobile = ?,
-         street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
-      mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
-      $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
-      trim((string) ($_POST['notes'] ?? '')), $m[1],
-    ]);
+    item_update('guest', (int) $m[1], static function () use ($gName, $gK, $m): void {
+      q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, mobile = ?,
+           street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
+        mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+        $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
+        trim((string) ($_POST['notes'] ?? '')), $m[1],
+      ]);
+    }, (int) $me['id']);
     flash(t('fl_guest_updated'));
     redirect('/intern/gaeste');
   }
@@ -2758,6 +2769,7 @@ if (str_starts_with($path, '/intern')) {
         $gNeuMail, $gNeuTel, $gNeuMobil,
       ]);
       $gId = (int) $db->lastInsertId();
+      item_new('guest', $gId, (int) $me['id']);
     }
     $gast = $gId > 0 ? row('SELECT * FROM guests WHERE id = ?', [$gId]) : null;
     if (!$gast) { flash(t('fl_guest_name_required')); back('/intern/termine'); }
@@ -4093,9 +4105,15 @@ if (str_starts_with($path, '/intern')) {
               AND NOT EXISTS (SELECT 1 FROM finances fi WHERE fi.event_id = e.id AND fi.type = 'einnahme')
               ORDER BY e.date DESC")
       : [];
+    // Nur die Buchungen, die auch dastehen: items_unseen() kennt private
+    // Auslagen nicht, und eine Marke daran verriete, dass es sie gibt (#331).
+    $kasseOffen = array_intersect_key(items_unseen($me, 'finance'),
+      array_fill_keys(array_map(static fn(array $e): int => (int) $e['id'], $entries), true));
     view('intern/kasse', [
       'title' => t('fin_title'),
       'entries' => $entries,
+      'unseenFinances' => $kasseOffen,
+      'seenOnList' => ['finance' => array_keys($kasseOffen)],
       'filesByFinance' => $filesByFinance,
       'years' => $years,
       'year' => $year,
@@ -4131,6 +4149,7 @@ if (str_starts_with($path, '/intern')) {
       // je nach Land das Gegenteil, und „1,500" kann 1,50 oder 1500 heißen.
       // Die Auslegung zu ändern hinge an der Sprache; sie sichtbar zu machen
       // hilft in jeder — ein Tausendfaches fällt in der Meldung sofort auf.
+      item_new('finance', (int) $db->lastInsertId(), (int) $me['id']);
       flash(str_replace('%1', fmt_money($amount), t('fl_fin_saved_amount')));
     } else {
       flash(t('fl_fin_invalid'));
@@ -4152,6 +4171,7 @@ if (str_starts_with($path, '/intern')) {
       if ($amount > 0) {
         q('INSERT INTO finances (date, type, amount_cents, category, description, event_id, created_by) VALUES (?,?,?,?,?,?,?)',
           [$ev['date'], 'einnahme', $amount, 'gage', $ev['title'], $ev['id'], $me['id']]);
+        item_new('finance', (int) $db->lastInsertId(), (int) $me['id']);
         flash(t('fl_fin_saved'));
       } else {
         flash(t('fl_fee_unclear'));
@@ -4164,6 +4184,7 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_finance_required'));
       redirect('/intern/kasse');
     }
+    item_forget('finance', (int) $m[1]);
     q('DELETE FROM finances WHERE id = ?', [$m[1]]);
     flash(t('fl_fin_deleted'));
     redirect('/intern/kasse');
