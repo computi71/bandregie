@@ -34,6 +34,7 @@
         <ul class="task-list stage-list">
           <?php foreach ($stageItems as $si): ?>
             <li data-stagerow="<?= (int) $si['id'] ?>">
+              <?= item_mark_html($unseenStage ?? [], (int) $si['id']) ?>
               <select name="item[<?= $si['id'] ?>][kind]" aria-label="<?= e(t('stage_kind')) ?>">
                 <?php foreach (array_keys(STAGE_KINDS) as $k): ?>
                   <option value="<?= $k ?>" <?= $si['kind'] === $k ? 'selected' : '' ?>><?= e(t('stagekind_' . $k)) ?></option>

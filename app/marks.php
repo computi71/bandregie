@@ -71,6 +71,21 @@ const ITEM_KINDS = [
   'guest'    => ['tabelle' => 'guests', 'wann' => 'updated_at', 'wer' => 'updated_by',
                  'felder' => ['name', 'function_name', 'email', 'phone', 'mobile',
                               'street', 'postcode', 'city', 'notes']],
+  'photo'    => ['tabelle' => 'photos', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['caption', 'is_public', 'event_id']],
+  'media'    => ['tabelle' => 'media_links', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['kind', 'title', 'url']],
+  // x und y bewusst nicht dabei: Einen Kasten im Plan zwei Prozent zu
+  // verschieben ist Gefummel, kein Ereignis. Ein neuer Name schon.
+  'stageitem' => ['tabelle' => 'stage_items', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                  'felder' => ['kind', 'label', 'note']],
+  'channel'  => ['tabelle' => 'channels', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['number', 'name', 'source', 'notes']],
+  // Eine Mail kommt von außen: Sie wird angelegt und nie geändert, und es
+  // gibt niemanden, dessen "eigene Änderung" sie wäre. updated_by bleibt
+  // deshalb leer und ist trotzdem da, weil items_unseen() die Spalte liest.
+  'post'     => ['tabelle' => 'post_messages', 'wann' => 'created_at', 'wer' => 'updated_by',
+                 'felder' => []],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */
@@ -203,6 +218,21 @@ function items_mark_seen(?array $user, string $kind, array $ids): void {
   q('INSERT INTO seen_marks (user_id, kind, item_id, seen_at) VALUES '
     . implode(',', array_fill(0, count($ids), '(?,?,?,NOW(3))'))
     . ' ON DUPLICATE KEY UPDATE seen_at = NOW(3)', $werte);
+}
+
+/**
+ * Eine ganze Sammlung wurde ersetzt. Stagerider und Kanalbelegung werden am
+ * Stück gespeichert, nicht Zeile für Zeile — erst fliegen alle Zeilen raus,
+ * dann kommen die neuen. Die alten Marken müssen mit, sonst zeigen sie auf
+ * Nummern, die neu vergeben werden.
+ *
+ * updated_at = created_at, weil jede Zeile wirklich neu ist: Genau daran
+ * unterscheidet die Anzeige „neu" von „geändert".
+ */
+function items_replaced(string $kind, ?int $wer): void {
+  if (!isset(ITEM_KINDS[$kind])) return;
+  q('DELETE FROM seen_marks WHERE kind = ?', [$kind]);
+  q('UPDATE `' . ITEM_KINDS[$kind]['tabelle'] . '` SET updated_at = created_at, updated_by = ?', [$wer]);
 }
 
 /**

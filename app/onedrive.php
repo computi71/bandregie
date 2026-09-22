@@ -786,6 +786,8 @@ function od_import(int $folderId, int $hoechstens = OD_IMPORT_BATCH): array {
       [$w['filename'], $w['caption'], $w['taken_at'], $w['lat'], $w['lng'], $w['source'],
        $w['camera'], $w['img_w'], $w['img_h'], $w['od_item_id'], $w['od_web_url'],
        (string) ($item['sha256'] ?? ''), $ordner['event_id'] ?? null]);
+    // Ein Bild, das von selbst hereinkommt, ist erst recht neu (#331).
+    item_new('photo', (int) $GLOBALS['db']->lastInsertId(), null);
     q('UPDATE od_items SET imported_at = NOW() WHERE id = ?', [(int) $item['id']]);
     $getan++;
     $bytes += $n;

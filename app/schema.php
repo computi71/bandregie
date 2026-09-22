@@ -721,7 +721,8 @@ if (!column_exists('songs', 'created_at')) {
 }
 foreach (['events', 'songs', 'setlists', 'quotes', 'contracts',
           // #331: Orte, Abwesenheiten und Aufgaben markieren mit
-          'venues', 'absences', 'tasks', 'equipment', 'finances', 'guests'] as $markiert) {
+          'venues', 'absences', 'tasks', 'equipment', 'finances', 'guests',
+          'photos', 'media_links', 'stage_items', 'channels'] as $markiert) {
   if (!column_exists($markiert, 'updated_at')) {
     $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
                                        ADD COLUMN updated_by INT NULL");
@@ -731,6 +732,22 @@ foreach (['events', 'songs', 'setlists', 'quotes', 'contracts',
 // Zusagen bekommen Marken (#331). Die Tabelle hatte als einzige keinen
 // eigenen Schlüssel und keinen Zeitstempel, deshalb steht sie hier statt in
 // der Schleife darüber.
+// Vier Tabellen hatten nie einen Anlagezeitpunkt (#331). items_unseen()
+// vergleicht ihn mit updated_at - das ist der ganze Unterschied zwischen "neu"
+// und "geändert", also braucht ihn jede markierte Tabelle.
+foreach (['media_links', 'stage_items', 'channels', 'post_messages'] as $ohneDatum) {
+  if (!column_exists($ohneDatum, 'created_at')) {
+    $db->exec("ALTER TABLE `$ohneDatum` ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+  }
+}
+
+// Das Postfach markiert nur das Ankommen, nie eine Änderung: Eine Mail kommt
+// von außen, deshalb bleibt updated_by immer leer - und items_unseen() schließt
+// dann niemanden als "hat es selbst getan" aus, was hier genau richtig ist.
+if (!column_exists('post_messages', 'updated_by')) {
+  $db->exec('ALTER TABLE post_messages ADD COLUMN updated_by INT NULL');
+}
+
 if (!column_exists('attendance', 'id')) {
   $db->exec('ALTER TABLE attendance ADD COLUMN id INT AUTO_INCREMENT UNIQUE FIRST');
 }

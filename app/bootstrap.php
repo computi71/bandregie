@@ -1070,6 +1070,7 @@ function orphan_clean(): array {
     $zeilen++;
   }
   foreach ($fund['photo_missing'] as $p) {
+    item_forget('photo', (int) $p['id']);
     q('DELETE FROM photos WHERE id = ?', [(int) $p['id']]);
     $fotos++;
   }
@@ -2810,6 +2811,7 @@ function photo_add_copy(string $quelle, string $caption, array $tags, ?int $wer,
      VALUES (?,?,0,?,?,?,?,?)',
     [$name, mb_substr($caption, 0, 500), $wer, mb_substr($herkunft, 0, 400), $summe, (int) $info[0], (int) $info[1]]);
   $id = (int) $db->lastInsertId();
+  item_new('photo', $id, $wer);
   foreach ($tags as $tag) {
     $tag = tag_norm($tag);
     if ($tag !== '') q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$id, $tag]);
@@ -3480,6 +3482,7 @@ function photo_archive(int $id, bool $hinein): bool {
 function photo_remove(int $id): bool {
   $p = row('SELECT id, filename FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
+  item_forget('photo', $id);
   q('DELETE FROM photos WHERE id = ?', [$id]);
   q('DELETE FROM photo_tags WHERE photo_id = ?', [$id]);
   q('DELETE FROM photo_people WHERE photo_id = ?', [$id]);
