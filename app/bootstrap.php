@@ -464,6 +464,52 @@ const SONG_STATUS = [
   'abgewiesen' => 'Abgewiesen', 'archiv' => 'Aussortiert',
 ];
 
+// Werte, die zur Laufzeit gebraucht werden und bisher zwischen den Migrationen
+// standen (#328). Dort waren sie nur historisch: Sobald das Schema hinter ein
+// Tor wandert, wären sie bei geschlossenem Tor nicht definiert — und push.php,
+// das Profil und „angemeldet bleiben" liefen ins Leere.
+/**
+ * Was offline vorgehalten werden kann. Je Mitglied wählbar — das Telefon ist
+ * persönlich, und wer nur singt, braucht die Patchliste nicht.
+ *
+ * 'noten' meint die Anhänge: Noten, Verträge, Aufnahmen. Sie sind das
+ * Schwergewicht und deshalb eine eigene Entscheidung.
+ */
+const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
+
+// Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post', 'topics'];
+const PUSH_NICHTS = '-';
+
+/**
+ * Die Themen eines Mitglieds — Abwahl statt Anwahl, wie beim Offline-Vorrat.
+ *
+ * Gespeichert wird, was jemand ABGEWÄHLT hat, nicht was er behalten will
+ * (#323). Das ist der Unterschied zwischen „ich will den Chat nicht" und „den
+ * Chat gab es noch nicht, als ich gespeichert habe": Stünde hier die Liste des
+ * Behaltenen, fiele jedes später hinzugekommene Thema bei allen heraus, die
+ * überhaupt je gespeichert haben — und niemand käme darauf, warum.
+ *
+ * Leer heißt „nichts abgewählt": dann sind alle Themen dabei. Das schickt
+ * niemandem etwas gegen seinen Willen — eine Mitteilung entsteht erst, wenn
+ * jemand sein Gerät anmeldet, und dabei fragt der Browser selbst um Erlaubnis.
+ * Wer alles abwählt, speichert '-' und bekommt nichts; ohne diesen eigenen
+ * Wert schliche sich ein neues Thema bei genau dem wieder ein, der alles
+ * abbestellt hat.
+ */
+function push_topics(?array $user): array {
+  $roh = trim((string) ($user['push_topics'] ?? ''));
+  if ($roh === '') return PUSH_TOPICS;
+  if ($roh === PUSH_NICHTS) return [];
+  return array_values(array_diff(PUSH_TOPICS, array_map('trim', explode(',', $roh))));
+}
+
+// Die Konstanten stehen hier und nicht bei den Funktionen darunter: PHP zieht
+// Funktionen vor, `const` aber nicht — und die Zeilen gleich darunter benutzen
+// sie bereits.
+const REMEMBER_COOKIE = 'bandregie_bleiben';
+const REMEMBER_DAYS = 90;
+
 // ---------- Schema ----------
 $tables = [
   "CREATE TABLE IF NOT EXISTS users (
@@ -1339,41 +1385,6 @@ if (!column_exists('songs', 'composer')) {
   $db->exec("ALTER TABLE songs ADD COLUMN composer VARCHAR(255) NOT NULL DEFAULT '' AFTER artist,
              ADD COLUMN gema_werknr VARCHAR(50) NOT NULL DEFAULT '' AFTER composer");
 }
-/**
- * Was offline vorgehalten werden kann. Je Mitglied wählbar — das Telefon ist
- * persönlich, und wer nur singt, braucht die Patchliste nicht.
- *
- * 'noten' meint die Anhänge: Noten, Verträge, Aufnahmen. Sie sind das
- * Schwergewicht und deshalb eine eigene Entscheidung.
- */
-const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
-
-// Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post', 'topics'];
-const PUSH_NICHTS = '-';
-
-/**
- * Die Themen eines Mitglieds — Abwahl statt Anwahl, wie beim Offline-Vorrat.
- *
- * Gespeichert wird, was jemand ABGEWÄHLT hat, nicht was er behalten will
- * (#323). Das ist der Unterschied zwischen „ich will den Chat nicht" und „den
- * Chat gab es noch nicht, als ich gespeichert habe": Stünde hier die Liste des
- * Behaltenen, fiele jedes später hinzugekommene Thema bei allen heraus, die
- * überhaupt je gespeichert haben — und niemand käme darauf, warum.
- *
- * Leer heißt „nichts abgewählt": dann sind alle Themen dabei. Das schickt
- * niemandem etwas gegen seinen Willen — eine Mitteilung entsteht erst, wenn
- * jemand sein Gerät anmeldet, und dabei fragt der Browser selbst um Erlaubnis.
- * Wer alles abwählt, speichert '-' und bekommt nichts; ohne diesen eigenen
- * Wert schliche sich ein neues Thema bei genau dem wieder ein, der alles
- * abbestellt hat.
- */
-function push_topics(?array $user): array {
-  $roh = trim((string) ($user['push_topics'] ?? ''));
-  if ($roh === '') return PUSH_TOPICS;
-  if ($roh === PUSH_NICHTS) return [];
-  return array_values(array_diff(PUSH_TOPICS, array_map('trim', explode(',', $roh))));
-}
 
 // Liedtext: gehört nicht in die Notizen. Notizen sind für die Band („Schluss
 // offen"), der Text ist, was jemand beim Singen liest — und der wird lang.
@@ -1826,12 +1837,6 @@ if (setting('perm_musik_migrated') !== '1' && setting('permissions_migrated') ==
      ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)");
   set_setting('perm_musik_migrated', '1');
 }
-
-// Die Konstanten stehen hier und nicht bei den Funktionen darunter: PHP zieht
-// Funktionen vor, `const` aber nicht — und die Zeilen gleich darunter benutzen
-// sie bereits.
-const REMEMBER_COOKIE = 'bandregie_bleiben';
-const REMEMBER_DAYS = 90;
 
 // Angemeldet bleiben: Ohne Sitzung, aber mit gültigem Merkmal wird die Sitzung
 // hier wiederhergestellt — bevor irgendeine Route nach dem Mitglied fragt (#262).
