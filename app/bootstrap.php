@@ -505,8 +505,8 @@ function push_topics(?array $user): array {
 }
 
 // Die Konstanten stehen hier und nicht bei den Funktionen darunter: PHP zieht
-// Funktionen vor, `const` aber nicht — und die Zeilen gleich darunter benutzen
-// sie bereits.
+// Funktionen vor, `const` aber nicht — gebraucht werden sie erst weiter unten,
+// im Block „Angemeldet bleiben" (Sitzungswiederherstellung aus dem Cookie).
 const REMEMBER_COOKIE = 'bandregie_bleiben';
 const REMEMBER_DAYS = 90;
 
@@ -523,6 +523,10 @@ const REMEMBER_DAYS = 90;
 // Staging und Produktion gleichermaßen vorhanden ist.
 if ((settings_all()['schema_version'] ?? '') !== BANDREGIE_VERSION
     || !empty($config['schema_immer_pruefen'])) {
+  // Vertrag mit schema.php sichtbar machen: Ohne diese Zeile funktioniert
+  // empty() auf der undefinierten Variable zwar genauso, aber niemand sieht
+  // am Tor, dass schema.php dieses Signal überhaupt setzen darf.
+  $schemaLueckenhaft = false;
   require_once __DIR__ . '/schema.php';
   // Die Marke gilt nur, weil eine Ausnahme in schema.php die ganze Anfrage vor
   // set_setting() beendet — wer require_once künftig in ein try/catch packt,

@@ -810,6 +810,9 @@ if (!column_exists('finances', 'standing_order_id')) {
 if (!index_exists('finances', 'uniq_order_date')) {
   try {
     $db->exec('ALTER TABLE finances ADD UNIQUE KEY uniq_order_date (standing_order_id, date)');
+    // Vorherige Lücke behoben (falls vermerkt) — sonst zeigt der Systemcheck
+    // weiter eine Störung an, die längst nicht mehr besteht.
+    set_setting('schema_luecke', '');
   } catch (PDOException $e) {
     // Schon vorhandene Doppelbuchungen verhindern den Schlüssel. Das ist kein
     // Grund, die Seite anzuhalten — aber es gehört ins Log, damit es auffällt.
@@ -819,6 +822,9 @@ if (!index_exists('finances', 'uniq_order_date')) {
     // Dauerauftrag die Miete weiterhin doppelt. Beim nächsten Aufruf soll das
     // Tor erneut versuchen statt das erst mit dem nächsten Release zu tun.
     $schemaLueckenhaft = true;
+    // Vermerken, welche Lücke es ist — sonst kann der Systemcheck nur "irgendwas
+    // ist offen" melden, nicht was ein Admin davon lesen soll.
+    set_setting('schema_luecke', 'uniq_order_date');
   }
 }
 // Wem eine Buchung privat gehört. NULL heißt „der Band" — nur diese Zeilen
@@ -1669,6 +1675,12 @@ if (setting('tax_help_limits') !== '1') {
   set_setting('tax_help_limits', '1');
 }
 if (setting('translations_seed') !== $seedStamp) {
+  // Kein $schemaLueckenhaft hier: Das hielte das Tor bei jedem Aufruf offen,
+  // sobald irgendeine Sprache je einen fehlerhaften Seed hatte — schlimmer
+  // als die verlorene Übersetzung selbst. Stattdessen die Marke lokal
+  // zurückhalten, damit derselbe Fehlschlag beim nächsten Release erneut
+  // versucht wird statt für immer als „erledigt" zu gelten.
+  $seedFehlgeschlagen = false;
   foreach ($seedFiles as $seedFile) {
     try {
       $db->exec((string) file_get_contents($seedFile));
@@ -1677,9 +1689,18 @@ if (setting('translations_seed') !== $seedStamp) {
       // lautlos. Ein Tippfehler in einer Zeichenkette lässt sonst den halben
       // Rest der Datei aus, und niemand merkt es, bis eine Sprache Lücken hat.
       error_log('Bandregie: Seed ' . basename($seedFile) . ' abgebrochen: ' . $seedError->getMessage());
+      $seedFehlgeschlagen = true;
+      set_setting('seed_fehler', basename($seedFile));
     }
   }
-  set_setting('translations_seed', $seedStamp);
+  if ($seedFehlgeschlagen) {
+    // Marke bewusst nicht setzen: Bei geschlossenem Tor läuft diese Datei
+    // sonst nie wieder, und der fehlgeschlagene Seed bliebe für immer draußen.
+  } else {
+    set_setting('translations_seed', $seedStamp);
+    // Ein früherer Fehlschlag ist mit diesem Durchlauf erledigt.
+    set_setting('seed_fehler', '');
+  }
 }
 
 // Einmalig: Uploads aus der Zeit vor der Zugriffsprüfung tragen sprechende,

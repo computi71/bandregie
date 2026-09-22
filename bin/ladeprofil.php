@@ -9,6 +9,12 @@
 // Bleibt er beim Verschieben gleich, ist nichts verschwunden und nichts
 // doppelt definiert — genau der Fehler, der beim Auslagern zweimal laufender
 // Skripte entsteht.
+//
+// Seit #328 hängt die Summe zusätzlich vom Tor vor schema.php ab: Bei
+// geschlossenem Tor fehlen column_exists() und index_exists() aus der Liste,
+// ohne dass etwas kaputt wäre. Ein Fingerabdruck ist deshalb nur zwischen
+// zwei Läufen mit demselben Tor-Zustand vergleichbar — die Zeile „Tor"
+// in der Standardausgabe zeigt, welcher das war.
 declare(strict_types=1);
 
 $basis = $argv[1] ?? '';
@@ -43,4 +49,6 @@ printf("Speicher           %8.1f MB%s", memory_get_peak_usage(true) / 1048576, P
 printf("Funktionen         %8d%s", count(get_defined_functions()['user']), PHP_EOL);
 printf("Konstanten         %8d%s", count(get_defined_constants(true)['user'] ?? []), PHP_EOL);
 printf("Dateien            %8d%s", count(get_included_files()), PHP_EOL);
+$torOffen = (bool) array_filter(get_included_files(), fn($f) => str_ends_with($f, '/app/schema.php'));
+printf("Tor                %8s%s", $torOffen ? 'offen' : 'zu', PHP_EOL);
 printf("Fingerabdruck      %s%s", substr(sha1(implode("\n", $namen)), 0, 12), PHP_EOL);

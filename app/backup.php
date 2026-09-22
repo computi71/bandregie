@@ -741,6 +741,14 @@ function backup_restore(string $archive): array {
       q('INSERT IGNORE INTO backup_runs (filename, size_bytes, status, message, trigger_kind) VALUES (?,?,?,?,?)',
         [basename($archive), (int) filesize($archive), 'ok', 'Zurückgespielt', 'restored']);
     }
+    // Die settings-Tabelle kam eben mit aus dem Archiv, gleich mit einer
+    // eigenen schema_version — bei gleicher oder von Hand geänderter
+    // Datenbank bliebe das Tor vor schema.php (#328) sonst zu, ohne dass
+    // seither irgendwer den Abgleich erneut geprüft hätte. Leeren erzwingt den
+    // nächsten Seitenaufruf dazu; settings_forget() wirft den Zwischenspeicher
+    // dieser Anfrage weg, der sonst bis zum Ende noch den alten Stand zeigte.
+    set_setting('schema_version', '');
+    settings_forget();
     $count = count($files);
     $hinweis = $beiseite ? ' Der bisherige Dateibestand liegt als ' . implode(', ', $beiseite) . ' daneben.' : '';
     return ['ok' => true, 'safety' => $safetyName,

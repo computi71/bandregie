@@ -47,9 +47,12 @@ $pfade = array_values(array_diff($pfade, $keine_eigene_seite));
 
 $fehler = 0;
 foreach ($pfade as $pfad) {
+    // $host steckt zweimal im selben Befehl — einmal in --resolve, einmal in
+    // der URL. Beide Stellen gleich behandeln, sonst wird ausgerechnet die
+    // unauffällige Stelle irgendwann kopiert, ohne den Schutz mitzunehmen.
     $befehl = sprintf(
         'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -o /dev/null -w "%%{http_code}" https://%s%s',
-        escapeshellarg($host), escapeshellarg($sid), $host, $pfad);
+        escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host), $pfad);
     $code = (int) shell_exec($befehl);
     $gut = $code === 200;
     if (!$gut) $fehler++;

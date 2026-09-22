@@ -72,6 +72,23 @@ function system_checks(): array {
     $site !== '' ? $site : t('sys_site_url_empty'), $site !== '' ? '' : t('sys_site_url_hint')
   );
 
+  // Das Tor vor schema.php (#328) hält den Abgleich für erledigt, solange die
+  // Marke passt — genau diese Behauptung war vorher nirgends zu sehen. Ohne
+  // diese Zeile gäbe es keine Stelle mehr, an der eine Lücke im Schema
+  // überhaupt auffällt.
+  $schemaLuecke = setting('schema_luecke');
+  $seedFehler = setting('seed_fehler');
+  $schemaProbleme = [];
+  if ($schemaLuecke === 'uniq_order_date') $schemaProbleme[] = t('sys_schema_broken_orders');
+  if ($seedFehler !== '') $schemaProbleme[] = sprintf(t('sys_schema_broken_seed'), $seedFehler);
+  $schemaAktuell = setting('schema_version') === BANDREGIE_VERSION;
+  $groups[t('sys_operation')][] = check_row(
+    t('sys_schema'),
+    $schemaProbleme !== [] ? 'fail' : ($schemaAktuell ? 'ok' : 'warn'),
+    $schemaProbleme !== [] ? implode('; ', $schemaProbleme) : ($schemaAktuell ? t('sys_ok') : t('sys_schema_stale')),
+    $schemaProbleme !== [] ? t('sys_schema_broken_hint') : ($schemaAktuell ? '' : t('sys_schema_stale_hint'))
+  );
+
   // Steuerliche Grenzen altern still: der Gesetzgeber ändert sie, die
   // Installation merkt davon nichts. Nur hier fällt es auf.
   require_once BASE_DIR . '/app/steuer.php';

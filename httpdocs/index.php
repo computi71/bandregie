@@ -4174,16 +4174,6 @@ if (str_starts_with($path, '/intern')) {
   // ein leeres Feld heißt "behalten", nie "löschen". Versiegelt abgelegt,
   // wenn ein Schlüssel liegt (wie das FTP-Passwort der Sicherung).
   // Was die Anwendung nach außen tun darf — beides an einer Stelle.
-  // Das Schema erneut prüfen lassen (#328): Die Marke wird gelöscht, der nächste
-  // Seitenaufruf läuft durch schema.php. Für den Fall, dass jemand von Hand in
-  // der Datenbank war — dann stimmt die Marke und das Tor bleibt trotzdem zu.
-  if ($path === '/intern/einstellungen/schema' && $method === 'POST') {
-    require_admin();
-    deny_in_demo('/intern/einstellungen');
-    set_setting('schema_version', '');
-    flash(t('fl_schema_recheck'));
-    back('/intern/einstellungen');
-  }
   if ($path === '/intern/einstellungen/extern' && $method === 'POST') {
     require_admin();
     // In der Demo unverändert: dort löste sonst ein Besucher echten Verkehr
@@ -4195,6 +4185,16 @@ if (str_starts_with($path, '/intern')) {
     set_setting('od_auto_refresh', isset($_POST['od_auto_refresh']) ? '1' : '0');
     flash(t('fl_extern_saved'));
     redirect('/intern/einstellungen');
+  }
+  // Das Schema erneut prüfen lassen (#328): Die Marke wird gelöscht, der nächste
+  // Seitenaufruf läuft durch schema.php. Für den Fall, dass jemand von Hand in
+  // der Datenbank war — dann stimmt die Marke und das Tor bleibt trotzdem zu.
+  if ($path === '/intern/einstellungen/schema' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    set_setting('schema_version', '');
+    flash(t('fl_schema_recheck'));
+    back('/intern/einstellungen');
   }
   /**
    * OneDrive: Anwendungsdaten eintragen (#20).
