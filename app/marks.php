@@ -52,6 +52,13 @@ const ITEM_KINDS = [
   // nirgends sonst eine Ausnahme (#331).
   'attendance' => ['tabelle' => 'attendance', 'wann' => 'updated_at', 'wer' => 'updated_by',
                    'felder' => ['status']],
+  'venue'    => ['tabelle' => 'venues', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['name', 'city', 'postcode', 'address', 'notes', 'contact_name',
+                              'contact_email', 'contact_phone', 'contact_mobile']],
+  'absence'  => ['tabelle' => 'absences', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['date_from', 'date_to', 'note']],
+  'task'     => ['tabelle' => 'tasks', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['title', 'notes', 'assigned_to', 'due_date', 'status']],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */

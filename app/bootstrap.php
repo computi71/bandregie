@@ -4676,10 +4676,22 @@ function fmt_duration(int|string|null $sec): string {
 function view(string $template, array $vars = []): never {
   $settings = all_settings();
   $user = current_user();
+  // Bereiche, deren Einträge in der Liste vollständig dastehen, haben nichts
+  // zum Aufklappen - dort IST die Liste der Eintrag (#331). Sie geben ihre
+  // offenen Nummern als 'seenOnList' mit; abgeräumt wird NACH dem Rendern,
+  // sonst löscht die Seite weg, was sie gerade zeigen wollte.
+  //
+  // Beides vor extract() festhalten: Eine Ansicht darf 'user' überschreiben,
+  // und die Marken sollen trotzdem beim richtigen Konto landen.
+  $markenKonto = $user;
+  $markenListen = $vars['seenOnList'] ?? [];
   $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
   $flashMsg = $_SESSION['flash'] ?? null;
   unset($_SESSION['flash']);
   extract($vars);
   require BASE_DIR . '/app/views/' . $template . '.php';
+  foreach ($markenListen as $markenSorte => $markenNummern) {
+    items_mark_seen($markenKonto, $markenSorte, $markenNummern);
+  }
   exit;
 }

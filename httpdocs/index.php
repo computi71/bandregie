@@ -1562,25 +1562,32 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Aufgaben ----------
   if ($path === '/intern/aufgaben' && $method === 'GET') {
+    $taskOffen = items_unseen($me, 'task');
     view('intern/aufgaben', [
       'title' => t('task_title'),
       'tasks' => rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
                        ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date"),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
+      'unseenTasks' => $taskOffen,
+      'seenOnList' => ['task' => array_keys($taskOffen)],
     ]);
   }
   if ($path === '/intern/aufgaben' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
       q('INSERT INTO tasks (title, notes, assigned_to, due_date, created_by) VALUES (?,?,?,?,?)',
         [$_POST['title'], $_POST['notes'] ?? '', ($_POST['assigned_to'] ?? '') !== '' ? $_POST['assigned_to'] : null, $_POST['due_date'] ?? '', $me['id']]);
+      item_new('task', (int) $db->lastInsertId(), (int) $me['id']);
     }
     redirect('/intern/aufgaben');
   }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'toggle') {
-      q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      item_update('task', (int) $m[1], static function () use ($m): void {
+        q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      }, (int) $me['id']);
       back('/intern/aufgaben');
     }
+    item_forget('task', (int) $m[1]);
     q('DELETE FROM tasks WHERE id = ?', [$m[1]]);
     redirect('/intern/aufgaben');
   }
@@ -2022,9 +2029,12 @@ if (str_starts_with($path, '/intern')) {
       $eventsByVenue[$ev['venue_id']][] = $ev;
     }
     $venueList = rows('SELECT * FROM venues ORDER BY name');
+    $venueOffen = items_unseen($me, 'venue');
     view('intern/orte', [
       'title' => t('venues_title'),
       'venues' => $venueList,
+      'unseenVenues' => $venueOffen,
+      'seenOnList' => ['venue' => array_keys($venueOffen)],
       'eventsByVenue' => $eventsByVenue,
       'filesByVenue' => files_map('venue', array_column($venueList, 'id')),
       'unseenFiles' => items_unseen($me, 'file'),
@@ -2036,15 +2046,19 @@ if (str_starts_with($path, '/intern')) {
       q('INSERT INTO venues (name, city, postcode, address, notes, contact_name, contact_email,
                              contact_phone, contact_mobile, lat, lng)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)', venue_values());
+      item_new('venue', (int) $db->lastInsertId(), (int) $me['id']);
     }
     redirect('/intern/orte');
   }
   if (preg_match('~^/intern/orte/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?,
-                          contact_phone=?, contact_mobile=?, lat=?, lng=? WHERE id=?',
-        [...venue_values(), $m[1]]);
+      item_update('venue', (int) $m[1], static function () use ($m): void {
+        q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?,
+                            contact_phone=?, contact_mobile=?, lat=?, lng=? WHERE id=?',
+          [...venue_values(), $m[1]]);
+      }, (int) $me['id']);
     } else {
+      item_forget('venue', (int) $m[1]);
       q('DELETE FROM venues WHERE id = ?', [$m[1]]);
       q('UPDATE events SET venue_id = NULL WHERE venue_id = ?', [$m[1]]);
     }
@@ -2089,9 +2103,12 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Abwesenheiten ----------
   if ($path === '/intern/abwesenheiten' && $method === 'GET') {
+    $absOffen = items_unseen($me, 'absence');
     view('intern/abwesenheiten', [
       'title' => t('abs_title'),
       'absences' => rows('SELECT a.*, u.name FROM absences a JOIN users u ON u.id = a.user_id WHERE a.date_to >= ? ORDER BY a.date_from', [$today]),
+      'unseenAbsences' => $absOffen,
+      'seenOnList' => ['absence' => array_keys($absOffen)],
       'past' => rows('SELECT a.*, u.name FROM absences a JOIN users u ON u.id = a.user_id WHERE a.date_to < ? ORDER BY a.date_from DESC LIMIT 10', [$today]),
     ]);
   }
@@ -2100,6 +2117,7 @@ if (str_starts_with($path, '/intern')) {
     $to = ($_POST['date_to'] ?? '') !== '' ? $_POST['date_to'] : $from;
     if ($from !== '' && $to >= $from) {
       q('INSERT INTO absences (user_id, date_from, date_to, note) VALUES (?,?,?,?)', [$me['id'], $from, $to, $_POST['note'] ?? '']);
+      item_new('absence', (int) $db->lastInsertId(), (int) $me['id']);
     } else {
       flash(t('fl_period_invalid'));
     }
@@ -2108,6 +2126,7 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/abwesenheiten/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     $a = row('SELECT * FROM absences WHERE id = ?', [$m[1]]);
     if ($a && ((int) $a['user_id'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      item_forget('absence', (int) $m[1]);
       q('DELETE FROM absences WHERE id = ?', [$m[1]]);
     }
     redirect('/intern/abwesenheiten');
@@ -2293,6 +2312,11 @@ if (str_starts_with($path, '/intern')) {
                                         && may_see_event($me, (int) $k['event_id']),
       'attendance' => fn(int $nr): bool => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$nr]))
                                            && may_see_event($me, (int) $z['event_id']),
+      // Diese drei sind ganze Bereiche: Wer den Bereich sehen darf, sieht jeden
+      // Eintrag darin - genau wie die Liste selbst es hält.
+      'venue' => fn(int $nr): bool => perm_allows($me, 'orte'),
+      'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
+      'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }

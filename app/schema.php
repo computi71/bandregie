@@ -719,7 +719,9 @@ if (!column_exists('push_subscriptions', 'last_seen_at')) {
 if (!column_exists('songs', 'created_at')) {
   $db->exec('ALTER TABLE songs ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
 }
-foreach (['events', 'songs', 'setlists', 'quotes', 'contracts'] as $markiert) {
+foreach (['events', 'songs', 'setlists', 'quotes', 'contracts',
+          // #331: Orte, Abwesenheiten und Aufgaben markieren mit
+          'venues', 'absences', 'tasks'] as $markiert) {
   if (!column_exists($markiert, 'updated_at')) {
     $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
                                        ADD COLUMN updated_by INT NULL");

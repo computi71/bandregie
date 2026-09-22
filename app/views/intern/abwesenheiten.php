@@ -17,6 +17,7 @@
     <?php foreach ($absences as $a): ?>
       <li>
         <strong><?= e($a['name']) ?></strong>
+        <?= item_mark_html($unseenAbsences ?? [], (int) $a['id']) ?>
         <span><?= fmt_date($a['date_from']) ?><?= $a['date_to'] !== $a['date_from'] ? ' – ' . fmt_date($a['date_to']) : '' ?></span>
         <?php if ($a['note']): ?><span class="muted"><?= e($a['note']) ?></span><?php endif; ?>
         <?php if ((int) $a['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
