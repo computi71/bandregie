@@ -6,8 +6,15 @@ declare(strict_types=1);
  *
  * Diese Datei läuft, sie definiert nicht nur: Sie legt fehlende Tabellen an,
  * zieht Spalten nach und spielt mitgelieferte Übersetzungen ein. Deshalb wird
- * sie künftig nur eingebunden, wenn am Schema etwas zu tun ist — das
- * entscheidet das Tor in bootstrap.php, das im nächsten Schritt entsteht.
+ * sie nur eingebunden, wenn am Schema etwas zu tun ist — das entscheidet das
+ * Tor in bootstrap.php.
+ *
+ * Genau deshalb gehören hier nur DDL und einmalige Datenmigrationen hin,
+ * nichts, was eine laufende Anfrage liest oder beantwortet: Bei
+ * geschlossenem Tor läuft diese Datei die meiste Zeit gar nicht mit, und jede
+ * Zeile hier, die $_SESSION, $_COOKIE, $_GET, $_POST oder $_SERVER anfasst,
+ * würde dann schweigend nicht mehr ausgeführt (#328 — genau das ist einer
+ * frühen Fassung des Tors mit der Sitzungswiederherstellung passiert).
  *
  * Erwartet: $db, q(), row(), rows(), setting(), set_setting().
  */
@@ -808,6 +815,10 @@ if (!index_exists('finances', 'uniq_order_date')) {
     // Grund, die Seite anzuhalten — aber es gehört ins Log, damit es auffällt.
     error_log('Bandregie: uniq_order_date nicht angelegt, vermutlich wegen vorhandener '
       . 'Doppelbuchungen — bitte prüfen: ' . $e->getMessage());
+    // Marke nicht setzen: Ohne den Schlüssel bucht ein gleichzeitig geöffneter
+    // Dauerauftrag die Miete weiterhin doppelt. Beim nächsten Aufruf soll das
+    // Tor erneut versuchen statt das erst mit dem nächsten Release zu tun.
+    $schemaLueckenhaft = true;
   }
 }
 // Wem eine Buchung privat gehört. NULL heißt „der Band" — nur diese Zeilen
@@ -1272,16 +1283,6 @@ if (setting('perm_musik_migrated') !== '1' && setting('permissions_migrated') ==
      SELECT user_id, 'musik', can_read, can_write FROM permissions WHERE module = 'fotos'
      ON DUPLICATE KEY UPDATE can_read = VALUES(can_read), can_write = VALUES(can_write)");
   set_setting('perm_musik_migrated', '1');
-}
-
-// Angemeldet bleiben: Ohne Sitzung, aber mit gültigem Merkmal wird die Sitzung
-// hier wiederhergestellt — bevor irgendeine Route nach dem Mitglied fragt (#262).
-if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
-  $wieder = remember_check();
-  if ($wieder !== null) {
-    session_regenerate_id(true);
-    $_SESSION['uid'] = $wieder;
-  }
 }
 
 // Das Postfach muss seit #270 auch einem Admin ausdrücklich gegeben werden.

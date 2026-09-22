@@ -510,9 +510,43 @@ function push_topics(?array $user): array {
 const REMEMBER_COOKIE = 'bandregie_bleiben';
 const REMEMBER_DAYS = 90;
 
-// Tabellen, Migrationen und Seeds (#328). Noch bedingungslos — das Tor kommt
-// im nächsten Schritt, damit ein Commit nicht Verschieben und Verhalten mischt.
-require_once __DIR__ . '/schema.php';
+// Eine Abfrage statt 271: Steht in der Datenbank dieselbe Fassung wie auf der
+// Platte, ist am Schema nichts zu tun — dann wird schema.php nicht einmal
+// eingebunden (#328). Bei leerer Datenbank scheitert das Lesen der
+// Einstellungen, und genau das gilt als „Schema unbekannt": Die Anwendung
+// bleibt selbstinstallierend, Dateien hochladen genügt.
+//
+// Der Schalter schema_immer_pruefen in config.php öffnet zusätzlich, für die
+// Entwicklung: VERSION ändert sich nicht bei jedem Commit, also liefe eine
+// nachgetragene Migration ohne ihn erst mit dem nächsten Versionssprung. In
+// der Produktion bleibt er aus — anders als ein Blick auf .git, das auf
+// Staging und Produktion gleichermaßen vorhanden ist.
+if ((settings_all()['schema_version'] ?? '') !== BANDREGIE_VERSION
+    || !empty($config['schema_immer_pruefen'])) {
+  require_once __DIR__ . '/schema.php';
+  // Die Marke gilt nur, weil eine Ausnahme in schema.php die ganze Anfrage vor
+  // set_setting() beendet — wer require_once künftig in ein try/catch packt,
+  // um eine freundlichere Fehlerseite zu zeigen, muss das hier mitziehen,
+  // sonst schließt sich das Tor über einem halb durchlaufenen Schema.
+  if (empty($schemaLueckenhaft)) set_setting('schema_version', BANDREGIE_VERSION);
+  // Zwei Migrationen löschen Einstellungen direkt statt über set_setting().
+  // Einmal verwerfen ist billiger als eine Ausnahme an 400 Aufrufstellen.
+  settings_forget();
+}
+
+// Angemeldet bleiben: Ohne Sitzung, aber mit gültigem Merkmal wird die Sitzung
+// hier wiederhergestellt — bevor irgendeine Route nach dem Mitglied fragt
+// (#262). Gehört nicht ins Tor darüber: Das lief vor #328 bei jeder Anfrage
+// und muss es auch jetzt wieder, unabhängig davon, ob am Schema etwas zu tun
+// war — sonst bleibt „angemeldet bleiben" bei jeder Anfrage außer der ersten
+// nach einem Release wirkungslos.
+if (empty($_SESSION['uid']) && isset($_COOKIE[REMEMBER_COOKIE])) {
+  $wieder = remember_check();
+  if ($wieder !== null) {
+    session_regenerate_id(true);
+    $_SESSION['uid'] = $wieder;
+  }
+}
 
 // ---------- Query-Helfer ----------
 function q(string $sql, array $params = []): PDOStatement {

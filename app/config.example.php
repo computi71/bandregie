@@ -25,6 +25,15 @@ return [
   // Leave it empty and everything still works, unencrypted.
   'data_key' => '',
 
+  // Re-check the database schema on every request instead of once per
+  // release. For development only: VERSION does not change with every
+  // commit, so without this a migration added between releases would not
+  // run until the next version bump. Leave this out (or false) everywhere
+  // else — a real deployment relies on the schema check running once, not
+  // on every page load.
+  //
+  // 'schema_immer_pruefen' => true,
+
   // Set this only on a public demo whose credentials are published.
   //
   // The installation then refuses everything a later visitor cannot undo:
