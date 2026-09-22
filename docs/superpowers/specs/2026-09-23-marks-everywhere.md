@@ -170,3 +170,57 @@ exists. Then the eight that need two columns, then the four that need three.
 
 The version is bumped when the branch merges to `main`, not on the branch —
 new behaviour, so the second digit: **2.13.0**.
+
+## What changed while building it
+
+Four things this spec did not foresee. They are written down because each one
+is a decision somebody will otherwise have to make again.
+
+**1. Not every area can be "opened".** The spec assumed a foldable row
+everywhere. In fact only events and equipment have one; venues, absences,
+tasks, till entries, guests, media links, stage items, channels, photos and
+mail all stand complete in their list. For those the list *is* the entry, so
+the marks are shown once and cleared after the page has rendered. That belongs
+in `view()` — it is declared `never` and exits, so there is no
+after-the-call place in the route — and it has to run after the `require`,
+never before, or the page wipes what it was about to show. Only ids that were
+actually unseen are cleared.
+
+**2. The gallery already had this feature.** Photos have carried "new since
+your last visit" since #195, in `users.photos_seen_at` — the same idea, in a
+second place, under a different name. Keeping both would have been two
+mechanisms drifting apart, so the gallery now reads the marks. Its two
+hard-won details survive: the very first visit marks nothing, and only the
+unfiltered gallery counts as seen, because a search result does not show
+everything (#204). The column is left in place and simply unread.
+
+**3. An update would have flooded two areas.** For most new kinds the fresh
+`updated_at` is NULL on every existing row and `items_unseen()` skips those, so
+the history stays quiet by itself. Comments and mail use `created_at`, so
+there is no empty column for the past to hide behind — every comment written
+since the marks first shipped would have appeared as new, to everybody, for
+things they had already read. `marks_since()` is therefore per kind now, and
+the migration stamps each new one with the moment of the update.
+
+**4. x and y are not compared fields.** Nudging a box across the stage plan is
+fiddling, not news. A renamed or added item is.
+
+## What was verified
+
+On staging, against the real application:
+
+- `bin/marken-pruefen.php`, extended from one kind to all nineteen: **119
+  checks, no failures.** Per kind it asserts the table, the `id`, the
+  timestamp and author columns, the compared fields, and an entry in the
+  `/intern/gesehen` map. Comments and attendance are additionally driven
+  through their whole life: new, seen, changed, unchanged, deleted.
+- `bin/routen-pruefen.php`: **24 pages, all 200**, after every step.
+- Through the web, with two accounts: a task created by one member shows the
+  mark to the other on the first request and is gone on the second.
+- The gallery in all three states — normal, archive, filtered — still 200, and
+  existing comments and mail report **0 unseen** after the migration.
+
+`bin/routen-pruefen.php` must run as the web user. It creates the session its
+own curl calls use; run by anybody else, php-fpm cannot read that file and
+every page answers 302 — which looks exactly like half the application being
+broken. That cost an hour and is now in the script's header.
