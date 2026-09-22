@@ -79,4 +79,6 @@ function eq_book(array $eq, array $user, string $payer, string $kind, int $cents
     $eq['id'],
     $private,
   ]);
+  // Auch eine Buchung, die nebenbei entsteht, ist für die Kasse neu (#331).
+  item_new('finance', (int) $GLOBALS['db']->lastInsertId(), (int) $user['id']);
 }

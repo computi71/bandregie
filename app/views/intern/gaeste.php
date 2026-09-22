@@ -31,6 +31,7 @@
   <section class="card">
     <div class="event-head">
       <strong><?= e($g['name']) ?></strong>
+      <?= item_mark_html($unseenGuests ?? [], (int) $g['id']) ?>
       <?php if ($g['function_name'] !== ''): ?><span class="muted"><?= e($g['function_name']) ?></span><?php endif; ?>
       <span class="badge"><?= count($gezaehlt) ?> <?= e(t('guest_bookings')) ?></span>
       <?php if ($gN): ?><span class="badge" title="<?= e(t('guest_rating')) ?>"><?= e(guest_stars($gSum / $gN)) ?> <?= e((string) round($gSum / $gN, 1)) ?> (<?= $gN ?>)</span><?php endif; ?>

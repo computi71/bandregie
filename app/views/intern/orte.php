@@ -26,6 +26,7 @@
   <section class="card">
     <div class="event-head">
       <strong><?= e($v['name']) ?></strong>
+      <?= item_mark_html($unseenVenues ?? [], (int) $v['id']) ?>
       <?php $ortZeile = trim($v['postcode'] . ' ' . $v['city']); ?>
       <?php if ($ortZeile !== ''): ?><span class="muted">📍 <?= e($ortZeile) ?></span><?php endif; ?>
       <?php if ($v['contact_name']): ?><span class="muted">👤 <?= e($v['contact_name']) ?></span><?php endif; ?>

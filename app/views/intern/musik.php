@@ -17,6 +17,7 @@
   <?php foreach ($links as $link): ?>
     <li>
       <strong><?= e($link['title'] ?: $link['url']) ?></strong>
+      <?= item_mark_html($unseenMedia ?? [], (int) $link['id']) ?>
       <a class="muted small" href="<?= e($link['url']) ?>" target="_blank" rel="noopener"><?= e($link['url']) ?></a>
       <?php if (perm_allows($user, 'musik', 'write')): ?>
         <form class="inline" method="post" action="/intern/musik/<?= $link['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>

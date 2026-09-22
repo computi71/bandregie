@@ -52,10 +52,19 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // id, created_at und updated_at tragen die Marken (#331): Die Marken sprechen
+  // jede Zeile über i.id an, und items_unseen() vergleicht updated_at mit
+  // created_at, um "neu" von "geändert" zu unterscheiden. AUTO_INCREMENT ist
+  // erlaubt, weil die Spalte an erster Stelle eines Schlüssels steht - der
+  // bisherige Primärschlüssel bleibt, er hält weiter eine Zusage je Person.
   "CREATE TABLE IF NOT EXISTS attendance (
+    id INT AUTO_INCREMENT UNIQUE,
     event_id INT NOT NULL,
     user_id INT NOT NULL,
     status VARCHAR(10) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(3) NULL,
+    updated_by INT NULL,
     PRIMARY KEY (event_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -710,11 +719,63 @@ if (!column_exists('push_subscriptions', 'last_seen_at')) {
 if (!column_exists('songs', 'created_at')) {
   $db->exec('ALTER TABLE songs ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
 }
-foreach (['events', 'songs', 'setlists', 'quotes', 'contracts'] as $markiert) {
+foreach (['events', 'songs', 'setlists', 'quotes', 'contracts',
+          // #331: Orte, Abwesenheiten und Aufgaben markieren mit
+          'venues', 'absences', 'tasks', 'equipment', 'finances', 'guests',
+          'photos', 'media_links', 'stage_items', 'channels'] as $markiert) {
   if (!column_exists($markiert, 'updated_at')) {
     $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
                                        ADD COLUMN updated_by INT NULL");
   }
+}
+
+// Zusagen bekommen Marken (#331). Die Tabelle hatte als einzige keinen
+// eigenen Schlüssel und keinen Zeitstempel, deshalb steht sie hier statt in
+// der Schleife darüber.
+// Vier Tabellen hatten nie einen Anlagezeitpunkt (#331). items_unseen()
+// vergleicht ihn mit updated_at - das ist der ganze Unterschied zwischen "neu"
+// und "geändert", also braucht ihn jede markierte Tabelle.
+foreach (['media_links', 'stage_items', 'channels', 'post_messages'] as $ohneDatum) {
+  if (!column_exists($ohneDatum, 'created_at')) {
+    $db->exec("ALTER TABLE `$ohneDatum` ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+  }
+}
+
+// Der Anlagezeitpunkt der Mails soll die Wahrheit sagen: Die Spalte kam mit
+// DEFAULT CURRENT_TIMESTAMP dazu, alle Bestandszeilen trügen also den Zeitpunkt
+// des Updates. fetched_at weiß, wann die Mail wirklich hereinkam.
+if (column_exists('post_messages', 'created_at') && column_exists('post_messages', 'fetched_at')) {
+  $db->exec('UPDATE post_messages SET created_at = fetched_at WHERE created_at > fetched_at');
+}
+
+// Das Postfach markiert nur das Ankommen, nie eine Änderung: Eine Mail kommt
+// von außen, deshalb bleibt updated_by immer leer - und items_unseen() schließt
+// dann niemanden als "hat es selbst getan" aus, was hier genau richtig ist.
+if (!column_exists('post_messages', 'updated_by')) {
+  $db->exec('ALTER TABLE post_messages ADD COLUMN updated_by INT NULL');
+}
+
+// Jede mit #331 hinzugekommene Sorte bekommt ihren eigenen Stichtag: ab jetzt,
+// nicht rückwirkend. Bei den meisten genügte die frische, leere updated_at —
+// was nie angefasst wurde, trägt keine Marke. Kommentare und Postfach tragen
+// aber created_at als Zeitstempel, und dort stünde sonst der halbe Bestand
+// beim ersten Aufruf als „neu" da. Einmal gesetzt, bleibt der Wert stehen.
+foreach (['comment', 'attendance', 'venue', 'absence', 'task', 'equipment',
+          'finance', 'guest', 'photo', 'media', 'stageitem', 'channel', 'post'] as $neueSorte) {
+  if (setting('marks_since_' . $neueSorte) === '') {
+    set_setting('marks_since_' . $neueSorte, date('Y-m-d H:i:s'));
+  }
+}
+
+if (!column_exists('attendance', 'id')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN id INT AUTO_INCREMENT UNIQUE FIRST');
+}
+if (!column_exists('attendance', 'created_at')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+}
+if (!column_exists('attendance', 'updated_at')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN updated_at DATETIME(3) NULL,
+                                    ADD COLUMN updated_by INT NULL');
 }
 
 if (!column_exists('users', 'push_topics')) {

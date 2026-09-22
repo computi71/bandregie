@@ -117,7 +117,8 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
   <?php if ($eq['category'] !== $lastCat): $lastCat = $eq['category']; ?>
     <h2 style="margin:1rem 0 0.4rem"><?= e(eq_category_label($lastCat)) ?></h2>
   <?php endif; ?>
-  <details class="card acc" name="eqacc" <?= $eqFirst ? 'open' : '' ?>>
+  <details class="card acc" name="eqacc" <?= $eqFirst ? 'open' : '' ?>
+     data-seen="equipment:<?= (int) $eq['id'] ?>" data-token="<?= e(csrf_token()) ?>">
     <?php $eqFirst = false; ?>
     <summary class="eq-summary">
       <?php // Ein Bild sagt in einer Liste aus hundert Typenbezeichnungen mehr
@@ -127,6 +128,7 @@ $eqCtx = ['childrenOf' => $childrenOf, 'items' => $items, 'members' => $members,
         <img class="eq-thumb" src="/intern/datei/<?= (int) $eqThumb['id'] ?>" alt="" loading="lazy">
       <?php endif; ?>
       <strong><?= e($eq['name']) ?></strong>
+      <?= item_mark_html($unseenEquipment ?? [], (int) $eq['id']) ?>
       <?php // Nur ab zwei Stück, und knapp: „1 Stück" an hundert Zeilen wäre
             // Lärm, und „10 Stück" braucht in einer Liste kein Wort (#185). ?>
       <?php if ((int) ($eq['quantity'] ?? 1) > 1): ?><span class="badge">×<?= (int) $eq['quantity'] ?></span><?php endif; ?>

@@ -42,6 +42,50 @@ const ITEM_KINDS = [
                               'fee_cents', 'play_from', 'play_to', 'get_in', 'status', 'notes']],
   'file'     => ['tabelle' => 'files', 'wann' => 'created_at', 'wer' => 'uploaded_by',
                  'felder' => []],
+  // Ein Kommentar wird geschrieben und nie geändert - wie eine Datei. Daher
+  // created_at als Zeitstempel: item_only_born() lässt ihn immer als "neu"
+  // gelten, und keine Schreibstelle muss eine Marke setzen (#331).
+  'comment'  => ['tabelle' => 'comments', 'wann' => 'created_at', 'wer' => 'user_id',
+                 'felder' => []],
+  // 'wer' ist updated_by, nicht die eigene user_id der Zeile: In der Sache
+  // dieselbe Person, aber über die übliche Spalte braucht die Zusage
+  // nirgends sonst eine Ausnahme (#331).
+  'attendance' => ['tabelle' => 'attendance', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                   'felder' => ['status']],
+  'venue'    => ['tabelle' => 'venues', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['name', 'city', 'postcode', 'address', 'notes', 'contact_name',
+                              'contact_email', 'contact_phone', 'contact_mobile']],
+  'absence'  => ['tabelle' => 'absences', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['date_from', 'date_to', 'note']],
+  'task'     => ['tabelle' => 'tasks', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['title', 'notes', 'assigned_to', 'due_date', 'status']],
+  // disposed_on gehört zu den verglichenen Feldern: Ein Abgang ist die
+  // Änderung am Gerät, die die Band am ehesten angeht.
+  'equipment' => ['tabelle' => 'equipment', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                  'felder' => ['name', 'category', 'owner_id', 'location', 'is_standard',
+                               'notes', 'parent_id', 'slot', 'purchased_on', 'price_cents',
+                               'acquired_as', 'article_no', 'quantity', 'disposed_on']],
+  'finance'  => ['tabelle' => 'finances', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['date', 'type', 'amount_cents', 'category', 'description',
+                              'event_id', 'member_id']],
+  'guest'    => ['tabelle' => 'guests', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['name', 'function_name', 'email', 'phone', 'mobile',
+                              'street', 'postcode', 'city', 'notes']],
+  'photo'    => ['tabelle' => 'photos', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['caption', 'is_public', 'event_id']],
+  'media'    => ['tabelle' => 'media_links', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['kind', 'title', 'url']],
+  // x und y bewusst nicht dabei: Einen Kasten im Plan zwei Prozent zu
+  // verschieben ist Gefummel, kein Ereignis. Ein neuer Name schon.
+  'stageitem' => ['tabelle' => 'stage_items', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                  'felder' => ['kind', 'label', 'note']],
+  'channel'  => ['tabelle' => 'channels', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['number', 'name', 'source', 'notes']],
+  // Eine Mail kommt von außen: Sie wird angelegt und nie geändert, und es
+  // gibt niemanden, dessen "eigene Änderung" sie wäre. updated_by bleibt
+  // deshalb leer und ist trotzdem da, weil items_unseen() die Spalte liest.
+  'post'     => ['tabelle' => 'post_messages', 'wann' => 'created_at', 'wer' => 'updated_by',
+                 'felder' => []],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */
@@ -107,13 +151,21 @@ function item_update(string $kind, int $id, callable $schreiben, ?int $wer): boo
 }
 
 /**
- * Der Stichtag, ab dem überhaupt markiert wird — einmal je Aufruf geholt.
- * items_unseen() läuft mehrmals je Seite, und setting() fragt jedes Mal die
- * Datenbank.
+ * Der Stichtag, ab dem markiert wird — je Sorte einer.
+ *
+ * Warum je Sorte: Kommt eine Sorte später dazu (#331), hätte sie sonst den
+ * alten, gemeinsamen Stichtag geerbt — und beim ersten Aufruf nach dem Update
+ * stünde alles als „neu" da, was seitdem entstanden ist. Für Kommentare und
+ * das Postfach wäre das der halbe Bestand gewesen: Beide tragen created_at als
+ * Zeitstempel, es gibt also keine leere Spalte, hinter der sich Altes
+ * versteckt.
+ *
+ * Fehlt der eigene Stichtag, gilt der gemeinsame. Das hält jede Sorte am
+ * Laufen, die es schon vor #331 gab.
  */
-function marks_since(): string {
-  static $wert = null;
-  return $wert ??= setting('marks_since', '1000-01-01');
+function marks_since(string $kind = ''): string {
+  static $werte = [];
+  return $werte[$kind] ??= setting('marks_since_' . $kind) ?: setting('marks_since', '1000-01-01');
 }
 
 /**
@@ -143,7 +195,7 @@ function items_unseen(?array $user, string $kind): array {
                      AND (i.`$wer` IS NULL OR i.`$wer` <> ?)
                      AND ((s.seen_at IS NULL     AND i.`$wann` >= me.created_at)
                        OR (s.seen_at IS NOT NULL AND i.`$wann` >  s.seen_at))",
-                 [$kind, $uid, $uid, marks_since(), $uid]);
+                 [$kind, $uid, $uid, marks_since($kind), $uid]);
   $offen = [];
   foreach ($zeilen as $z) {
     $offen[(int) $z['id']] = [
@@ -174,6 +226,21 @@ function items_mark_seen(?array $user, string $kind, array $ids): void {
   q('INSERT INTO seen_marks (user_id, kind, item_id, seen_at) VALUES '
     . implode(',', array_fill(0, count($ids), '(?,?,?,NOW(3))'))
     . ' ON DUPLICATE KEY UPDATE seen_at = NOW(3)', $werte);
+}
+
+/**
+ * Eine ganze Sammlung wurde ersetzt. Stagerider und Kanalbelegung werden am
+ * Stück gespeichert, nicht Zeile für Zeile — erst fliegen alle Zeilen raus,
+ * dann kommen die neuen. Die alten Marken müssen mit, sonst zeigen sie auf
+ * Nummern, die neu vergeben werden.
+ *
+ * updated_at = created_at, weil jede Zeile wirklich neu ist: Genau daran
+ * unterscheidet die Anzeige „neu" von „geändert".
+ */
+function items_replaced(string $kind, ?int $wer): void {
+  if (!isset(ITEM_KINDS[$kind])) return;
+  q('DELETE FROM seen_marks WHERE kind = ?', [$kind]);
+  q('UPDATE `' . ITEM_KINDS[$kind]['tabelle'] . '` SET updated_at = created_at, updated_by = ?', [$wer]);
 }
 
 /**

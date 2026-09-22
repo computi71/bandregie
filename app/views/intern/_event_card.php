@@ -52,7 +52,10 @@
     <?php if ($att): ?>
       <p class="attendance-summary">
         <?php $label = ['yes' => '✔', 'maybe' => '?', 'no' => '✘']; ?>
-        <?php foreach ($att as $a): ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?></span><?php endforeach; ?>
+        <?php // Eine neue oder geänderte Zusage steht direkt am Namen - wer
+              // plant, will nicht die Liste vergleichen, sondern sehen, wer sich
+              // bewegt hat (#331). ?>
+        <?php foreach ($att as $a): $aM = $unseenAttendance[(int) ($a['id'] ?? 0)] ?? null; ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?><?php if ($aM): ?> <span class="badge neu"><?= e($aM['neu'] ? t('mark_new') : t('mark_changed')) ?></span><?php endif; ?></span><?php endforeach; ?>
       </p>
       <?php
         // Wer abgesagt hat, für den lassen sich seine Ersatzleute anfragen —
@@ -120,7 +123,13 @@
     </p>
 
     <details class="subsection">
-      <summary>💬 <?= e(t('ev_comments')) ?> (<?= count($comments[$ev['id']] ?? []) ?>)</summary>
+      <?php // Wie viele der Kommentare hat dieses Mitglied noch nicht gelesen?
+            // Die Zahl steht am zugeklappten Abschnitt, sonst müsste man ihn
+            // erst öffnen, um zu sehen, dass sich das Öffnen lohnt (#331). ?>
+      <?php $kNeu = count(array_intersect_key($unseenComments ?? [],
+                          array_flip(array_map('intval', array_column($comments[$ev['id']] ?? [], 'id'))))); ?>
+      <summary>💬 <?= e(t('ev_comments')) ?> (<?= count($comments[$ev['id']] ?? []) ?>)<?php
+        if ($kNeu): ?> <span class="badge neu"><?= e(str_replace('%1', (string) $kNeu, t('mark_n_new'))) ?></span><?php endif; ?></summary>
       <ul class="comment-list">
         <?php foreach ($comments[$ev['id']] ?? [] as $c): ?>
           <li>

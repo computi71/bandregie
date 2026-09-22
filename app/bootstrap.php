@@ -812,7 +812,9 @@ function attendance_map(array $eventIds): array {
   if (!$eventIds) return [];
   $in = implode(',', array_map('intval', $eventIds));
   $map = [];
-  foreach (rows("SELECT a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
+  // a.id ist seit #331 dabei: Die Ansicht braucht sie, um die Marke an der
+  // richtigen Zusage anzuzeigen.
+  foreach (rows("SELECT a.id, a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
     $map[$r['event_id']][] = $r;
   }
   return $map;
@@ -1068,6 +1070,7 @@ function orphan_clean(): array {
     $zeilen++;
   }
   foreach ($fund['photo_missing'] as $p) {
+    item_forget('photo', (int) $p['id']);
     q('DELETE FROM photos WHERE id = ?', [(int) $p['id']]);
     $fotos++;
   }
@@ -1203,14 +1206,20 @@ function may_see_file(?array $user, array $file): bool {
   };
 }
 
-/** Darf jemand den Beleg zu dieser Kassenbuchung sehen? */
-function may_see_finance_file(?array $user, int $financeId): bool {
+/** Darf jemand diese Kassenbuchung sehen? */
+function may_see_finance(?array $user, int $financeId): bool {
   if (!$user) return false;
   $f = row('SELECT private_for FROM finances WHERE id = ?', [$financeId]);
   if (!$f) return false;
   // Private Auslagen gehören dem Mitglied, alles andere der Bandkasse.
   if ($f['private_for'] !== null) return (int) $f['private_for'] === (int) $user['id'];
   return perm_allows($user, 'kasse');
+}
+
+/** Der Beleg ist so sichtbar wie seine Buchung — eine zweite Regel wäre die
+ *  nächste, die auseinanderläuft. */
+function may_see_finance_file(?array $user, int $financeId): bool {
+  return may_see_finance($user, $financeId);
 }
 
 /** Baut „AND id IN (...)“ für eine Sichtbarkeitsliste; null lässt alles durch. */
@@ -2802,6 +2811,7 @@ function photo_add_copy(string $quelle, string $caption, array $tags, ?int $wer,
      VALUES (?,?,0,?,?,?,?,?)',
     [$name, mb_substr($caption, 0, 500), $wer, mb_substr($herkunft, 0, 400), $summe, (int) $info[0], (int) $info[1]]);
   $id = (int) $db->lastInsertId();
+  item_new('photo', $id, $wer);
   foreach ($tags as $tag) {
     $tag = tag_norm($tag);
     if ($tag !== '') q('INSERT IGNORE INTO photo_tags (photo_id, tag) VALUES (?,?)', [$id, $tag]);
@@ -3472,6 +3482,7 @@ function photo_archive(int $id, bool $hinein): bool {
 function photo_remove(int $id): bool {
   $p = row('SELECT id, filename FROM photos WHERE id = ?', [$id]);
   if (!$p) return false;
+  item_forget('photo', $id);
   q('DELETE FROM photos WHERE id = ?', [$id]);
   q('DELETE FROM photo_tags WHERE photo_id = ?', [$id]);
   q('DELETE FROM photo_people WHERE photo_id = ?', [$id]);
@@ -4624,6 +4635,25 @@ function event_view_data(array $events, array $me): array {
     // und das ist schon geschwärzt — zu einem verdeckten Termin steht keine
     // Datei da, die eine Marke tragen könnte.
     'unseenFiles' => items_unseen($me, 'file'),
+    // Kommentare tragen eigene Marken (#331). items_unseen() kennt die
+    // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
+    // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu
+    // einem verdeckten Termin etwas zu lesen gibt.
+    // Zusagen tragen eigene Marken (#331) - geschwärzt wie die Zusagen selbst.
+    'unseenAttendance' => array_intersect_key(
+      items_unseen($me, 'attendance'),
+      array_fill_keys(array_map(
+        static fn(array $z): int => (int) $z['id'],
+        array_merge([], ...array_values($ohne(attendance_map($ids))))
+      ), true)
+    ),
+    'unseenComments' => array_intersect_key(
+      items_unseen($me, 'comment'),
+      array_fill_keys(array_map(
+        static fn(array $k): int => (int) $k['id'],
+        array_merge([], ...array_values($ohne($comments)))
+      ), true)
+    ),
   ];
 }
 
@@ -4655,10 +4685,22 @@ function fmt_duration(int|string|null $sec): string {
 function view(string $template, array $vars = []): never {
   $settings = all_settings();
   $user = current_user();
+  // Bereiche, deren Einträge in der Liste vollständig dastehen, haben nichts
+  // zum Aufklappen - dort IST die Liste der Eintrag (#331). Sie geben ihre
+  // offenen Nummern als 'seenOnList' mit; abgeräumt wird NACH dem Rendern,
+  // sonst löscht die Seite weg, was sie gerade zeigen wollte.
+  //
+  // Beides vor extract() festhalten: Eine Ansicht darf 'user' überschreiben,
+  // und die Marken sollen trotzdem beim richtigen Konto landen.
+  $markenKonto = $user;
+  $markenListen = $vars['seenOnList'] ?? [];
   $path = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/', '/') ?: '/';
   $flashMsg = $_SESSION['flash'] ?? null;
   unset($_SESSION['flash']);
   extract($vars);
   require BASE_DIR . '/app/views/' . $template . '.php';
+  foreach ($markenListen as $markenSorte => $markenNummern) {
+    items_mark_seen($markenKonto, $markenSorte, $markenNummern);
+  }
   exit;
 }

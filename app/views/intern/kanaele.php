@@ -29,7 +29,7 @@
       <?php foreach ($channels as $c): ?>
         <tr>
           <form method="post" action="/intern/kanaele/<?= $c['id'] ?>/update"><?= csrf_field() ?>
-            <td><strong><?= (int) $c['number'] ?></strong></td>
+            <td><strong><?= (int) $c['number'] ?></strong><?= item_mark_html($unseenChannels ?? [], (int) $c['id']) ?></td>
             <td><input name="patch" value="<?= e($c['patch']) ?>" style="width:100%" placeholder="<?= e(t('ch_patch_ph')) ?>"></td>
             <td><input name="name" value="<?= e($c['name']) ?>" style="width:100%"></td>
             <td><input name="source" value="<?= e($c['source']) ?>" style="width:100%" placeholder="<?= e(t('ch_source_ph')) ?>"></td>

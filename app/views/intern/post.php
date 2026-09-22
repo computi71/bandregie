@@ -35,6 +35,7 @@
     <?php // Betreff und Absender führen zur Nachricht; was schon erledigt ist,
           // steht als Marke daneben — beantwortet, oder mit Termin verbunden. ?>
     <strong><a href="/intern/post/<?= (int) $msg['id'] ?>"><?= e($msg['subject'] !== '' ? $msg['subject'] : '(' . t('post_title') . ')') ?></a></strong>
+    <?= item_mark_html($unseenPost ?? [], (int) $msg['id']) ?>
     <?php if ($msg['replied_at'] !== null): ?><span class="badge">↩ <?= e(t('post_reply')) ?></span><?php endif; ?>
     <?php if ($msg['event_id'] !== null): ?>
       <a class="badge public" href="/intern/termine">📅 <?= e($msg['event_title'] ?? '') ?></a>

@@ -283,6 +283,7 @@ foreach ($entries as $en) {
           <td class="muted"><?= fmt_date($en['date']) ?></td>
           <td>
             <strong><?= e($en['description']) ?></strong>
+            <?= item_mark_html($unseenFinances ?? [], (int) $en['id']) ?>
             <?php if ($en['event_title']): ?><div class="muted small">📅 <?= e($en['event_title']) ?></div><?php endif; ?>
             <?php // Bei einer privaten Buchung ist der Name der eigene — das
                   // sagt das Schloss darunter schon. ?>

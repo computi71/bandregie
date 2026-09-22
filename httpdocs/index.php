@@ -1056,7 +1056,16 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'delete') {
       item_forget('event', (int) $id);
       q('DELETE FROM events WHERE id = ?', [$id]);
+      foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
+        item_forget('attendance', (int) $zAlt['id']);
+      }
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
+      // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
+      // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
+      // gesehen - und der taucht dann bei niemandem als neu auf.
+      foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
+        item_forget('comment', (int) $kAlt['id']);
+      }
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
       q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
       q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
@@ -1070,8 +1079,19 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'zusage') {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
+      // Die Zeile VOR dem Schreiben holen: Daran haengt, ob die Band gleich
+      // "neu" oder "geaendert" sieht - und ob ein zweiter Klick auf denselben
+      // Knopf ueberhaupt eine Marke wert ist (#331).
+      $zVorher = row('SELECT * FROM attendance WHERE event_id = ? AND user_id = ?', [$id, $me['id']]);
       q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)
          ON DUPLICATE KEY UPDATE status = VALUES(status)', [$id, $me['id'], $status]);
+      $zNr = (int) (row('SELECT id FROM attendance WHERE event_id = ? AND user_id = ?',
+                        [$id, $me['id']])['id'] ?? 0);
+      if ($zNr) {
+        $zVorher
+          ? item_touch('attendance', $zNr, $zVorher, (int) $me['id'])
+          : item_new('attendance', $zNr, (int) $me['id']);
+      }
       // Mitteilung an die Zusagen-Abonnenten — wer plant, will das sofort wissen (#24).
       $pushEv = row('SELECT title FROM events WHERE id = ?', [$id]);
       $pushWho = (string) $me['name'];
@@ -1133,6 +1153,7 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/kommentare/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     $c = row('SELECT * FROM comments WHERE id = ?', [$m[1]]);
     if ($c && ((int) $c['user_id'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      item_forget('comment', (int) $m[1]);
       q('DELETE FROM comments WHERE id = ?', [$m[1]]);
     }
     back('/intern/termine');
@@ -1541,25 +1562,32 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Aufgaben ----------
   if ($path === '/intern/aufgaben' && $method === 'GET') {
+    $taskOffen = items_unseen($me, 'task');
     view('intern/aufgaben', [
       'title' => t('task_title'),
       'tasks' => rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
                        ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date"),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
+      'unseenTasks' => $taskOffen,
+      'seenOnList' => ['task' => array_keys($taskOffen)],
     ]);
   }
   if ($path === '/intern/aufgaben' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
       q('INSERT INTO tasks (title, notes, assigned_to, due_date, created_by) VALUES (?,?,?,?,?)',
         [$_POST['title'], $_POST['notes'] ?? '', ($_POST['assigned_to'] ?? '') !== '' ? $_POST['assigned_to'] : null, $_POST['due_date'] ?? '', $me['id']]);
+      item_new('task', (int) $db->lastInsertId(), (int) $me['id']);
     }
     redirect('/intern/aufgaben');
   }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'toggle') {
-      q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      item_update('task', (int) $m[1], static function () use ($m): void {
+        q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      }, (int) $me['id']);
       back('/intern/aufgaben');
     }
+    item_forget('task', (int) $m[1]);
     q('DELETE FROM tasks WHERE id = ?', [$m[1]]);
     redirect('/intern/aufgaben');
   }
@@ -1567,8 +1595,11 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Postfach der Band (#219) ----------
   if ($path === '/intern/post' && $method === 'GET') {
     $postArchiv = ($_GET['archiv'] ?? '') === '1';
+    $postOffen = items_unseen($me, 'post');
     view('intern/post', [
       'title' => t('post_title'),
+      'unseenPost' => $postOffen,
+      'seenOnList' => ['post' => array_keys($postOffen)],
       'messages' => rows('SELECT m.*, e.title AS event_title, e.date AS event_date
                           FROM post_messages m LEFT JOIN events e ON e.id = m.event_id
                           WHERE m.archived_at IS ' . ($postArchiv ? 'NOT NULL' : 'NULL') . '
@@ -1752,23 +1783,28 @@ if (str_starts_with($path, '/intern')) {
       $ph['suggested'] = (!$ph['event_id'] && $ph['taken_at']) ? photo_suggest_event($ph, $photoEvents) : null;
     }
     unset($ph);
-    // Neu-Markierung (#195): neu ist, was seit dem letzten Besuch dieses
-    // Mitglieds dazugekommen ist. Beim allerersten Besuch wird nichts markiert —
-    // sonst wäre die ganze Galerie neu, und das sagt nichts.
-    $photoSeen = $me['photos_seen_at'] ?? row('SELECT photos_seen_at FROM users WHERE id = ?', [$me['id']])['photos_seen_at'] ?? null;
+    // Neu-Markierung (#195), seit #331 über dieselben Marken wie alles andere:
+    // Die Galerie hatte dafür mit users.photos_seen_at eine zweite, eigene
+    // Mechanik — dasselbe unter anderem Namen, und eine davon wäre irgendwann
+    // stehen geblieben. Die Spalte bleibt unangetastet, nur gelesen wird sie
+    // nicht mehr.
+    //
+    // Zwei Feinheiten der alten Fassung bleiben und stehen deshalb hier:
+    // Der allererste Besuch markiert nichts (das hält marks_since() für alle
+    // Sorten), und abgehakt wird nur in der ungefilterten Galerie — ein
+    // Suchtreffer zeigt nicht alles, und was nie zu sehen war, darf nicht als
+    // gesehen gelten (#204).
+    $fotoOffen = items_unseen($me, 'photo');
     foreach ($photos as &$phN) {
-      $phN['is_new'] = $photoSeen !== null && $phN['created_at'] > $photoSeen;
+      $phN['is_new'] = isset($fotoOffen[(int) $phN['id']]);
     }
     unset($phN);
-    // Erst nach dem Berechnen setzen, sonst wäre schon der eigene Aufruf zu spät.
-    // Und nur in der ungefilterten Galerie: Ein Suchtreffer zeigt nicht alles,
-    // und was nie zu sehen war, darf nicht als gesehen gelten (#204).
-    if (!$gefiltert && !$imArchiv) q('UPDATE users SET photos_seen_at = NOW() WHERE id = ?', [$me['id']]);
     // Als Baum ordnen (#216): Jahr → Termin → Fotograf, wie im verknüpften
     // OneDrive-Ordner. Die Einteilung selbst steckt in photo_tree(), damit sie
     // ohne Datenbank prüfbar ist.
     $photoBaum = photo_tree($photos);
     view('intern/fotos', ['title' => $imArchiv ? t('photo_archive_title') : t('inav_fotos'),
+                          'seenOnList' => (!$gefiltert && !$imArchiv) ? ['photo' => array_keys($fotoOffen)] : [],
                           'photos' => $photos, 'events' => $photoEvents,
                           'limits' => upload_limits(), 'baum' => $photoBaum,
                           'herkunft' => photo_folder_agg($photos), 'im_archiv' => $imArchiv,
@@ -1867,7 +1903,9 @@ if (str_starts_with($path, '/intern')) {
     // Nur echte Termine zuordnen — was im Formular steht, entscheidet nicht.
     // Eine unbekannte ID gilt als "kein Termin".
     if ($eid && !row('SELECT 1 FROM events WHERE id = ?', [$eid])) $eid = 0;
-    q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
+    item_update('photo', (int) $m[1], static function () use ($eid, $m): void {
+      q('UPDATE photos SET event_id = ? WHERE id = ?', [$eid ?: null, $m[1]]);
+    }, (int) $me['id']);
     back('/intern/fotos');
   }
   // Viele Fotos auf einen Termin. Von einem Auftritt kommen dreißig Bilder, und
@@ -1962,6 +2000,7 @@ if (str_starts_with($path, '/intern')) {
         q('INSERT INTO photos (filename, caption, is_public, uploaded_by, taken_at, lat, lng, source, checksum) VALUES (?,?,?,?,?,?,?,?,?)',
           [$safe, $_POST['caption'] ?? '', isset($_POST['is_public']) ? 1 : 0, $me['id'],
            $exif['taken_at'], $exif['lat'], $exif['lng'], mb_substr($herkunft, 0, 400), $fotoSumme]);
+        item_new('photo', (int) $db->lastInsertId(), (int) $me['id']);
         $fotoOk++;
       } else {
         $fotoFehler++;
@@ -1983,7 +2022,9 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/fotos/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'toggle') {
-      q('UPDATE photos SET is_public = 1 - is_public WHERE id = ?', [$m[1]]);
+      item_update('photo', (int) $m[1], static function () use ($m): void {
+        q('UPDATE photos SET is_public = 1 - is_public WHERE id = ?', [$m[1]]);
+      }, (int) $me['id']);
     } else {
       // photo_remove löscht die Datei nur, wenn keine zweite Zeile sie nennt (#199).
       photo_remove((int) $m[1]);
@@ -2001,9 +2042,12 @@ if (str_starts_with($path, '/intern')) {
       $eventsByVenue[$ev['venue_id']][] = $ev;
     }
     $venueList = rows('SELECT * FROM venues ORDER BY name');
+    $venueOffen = items_unseen($me, 'venue');
     view('intern/orte', [
       'title' => t('venues_title'),
       'venues' => $venueList,
+      'unseenVenues' => $venueOffen,
+      'seenOnList' => ['venue' => array_keys($venueOffen)],
       'eventsByVenue' => $eventsByVenue,
       'filesByVenue' => files_map('venue', array_column($venueList, 'id')),
       'unseenFiles' => items_unseen($me, 'file'),
@@ -2015,15 +2059,19 @@ if (str_starts_with($path, '/intern')) {
       q('INSERT INTO venues (name, city, postcode, address, notes, contact_name, contact_email,
                              contact_phone, contact_mobile, lat, lng)
          VALUES (?,?,?,?,?,?,?,?,?,?,?)', venue_values());
+      item_new('venue', (int) $db->lastInsertId(), (int) $me['id']);
     }
     redirect('/intern/orte');
   }
   if (preg_match('~^/intern/orte/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?,
-                          contact_phone=?, contact_mobile=?, lat=?, lng=? WHERE id=?',
-        [...venue_values(), $m[1]]);
+      item_update('venue', (int) $m[1], static function () use ($m): void {
+        q('UPDATE venues SET name=?, city=?, postcode=?, address=?, notes=?, contact_name=?, contact_email=?,
+                            contact_phone=?, contact_mobile=?, lat=?, lng=? WHERE id=?',
+          [...venue_values(), $m[1]]);
+      }, (int) $me['id']);
     } else {
+      item_forget('venue', (int) $m[1]);
       q('DELETE FROM venues WHERE id = ?', [$m[1]]);
       q('UPDATE events SET venue_id = NULL WHERE venue_id = ?', [$m[1]]);
     }
@@ -2068,9 +2116,12 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Abwesenheiten ----------
   if ($path === '/intern/abwesenheiten' && $method === 'GET') {
+    $absOffen = items_unseen($me, 'absence');
     view('intern/abwesenheiten', [
       'title' => t('abs_title'),
       'absences' => rows('SELECT a.*, u.name FROM absences a JOIN users u ON u.id = a.user_id WHERE a.date_to >= ? ORDER BY a.date_from', [$today]),
+      'unseenAbsences' => $absOffen,
+      'seenOnList' => ['absence' => array_keys($absOffen)],
       'past' => rows('SELECT a.*, u.name FROM absences a JOIN users u ON u.id = a.user_id WHERE a.date_to < ? ORDER BY a.date_from DESC LIMIT 10', [$today]),
     ]);
   }
@@ -2079,6 +2130,7 @@ if (str_starts_with($path, '/intern')) {
     $to = ($_POST['date_to'] ?? '') !== '' ? $_POST['date_to'] : $from;
     if ($from !== '' && $to >= $from) {
       q('INSERT INTO absences (user_id, date_from, date_to, note) VALUES (?,?,?,?)', [$me['id'], $from, $to, $_POST['note'] ?? '']);
+      item_new('absence', (int) $db->lastInsertId(), (int) $me['id']);
     } else {
       flash(t('fl_period_invalid'));
     }
@@ -2087,6 +2139,7 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/abwesenheiten/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     $a = row('SELECT * FROM absences WHERE id = ?', [$m[1]]);
     if ($a && ((int) $a['user_id'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      item_forget('absence', (int) $m[1]);
       q('DELETE FROM absences WHERE id = ?', [$m[1]]);
     }
     redirect('/intern/abwesenheiten');
@@ -2266,10 +2319,48 @@ if (str_starts_with($path, '/intern')) {
       'quote' => fn(int $nr): bool => perm_allows($me, 'angebote'),
       'contract' => fn(int $nr): bool => may_see_contract($me, $nr),
       'file' => fn(int $nr): bool => ($f = row('SELECT * FROM files WHERE id = ?', [$nr])) && may_see_file($me, $f),
+      // Ein Kommentar ist so sichtbar wie sein Termin - eine eigene Regel gibt
+      // es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
+      'comment' => fn(int $nr): bool => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$nr]))
+                                        && may_see_event($me, (int) $k['event_id']),
+      'attendance' => fn(int $nr): bool => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$nr]))
+                                           && may_see_event($me, (int) $z['event_id']),
+      // Diese drei sind ganze Bereiche: Wer den Bereich sehen darf, sieht jeden
+      // Eintrag darin - genau wie die Liste selbst es hält.
+      'venue' => fn(int $nr): bool => perm_allows($me, 'orte'),
+      'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
+      'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
+      'equipment' => fn(int $nr): bool => perm_allows($me, 'equipment'),
+      // Private Auslagen gehören dem Mitglied, nicht dem Bereich - deshalb
+      // hier nicht perm_allows(), sondern dieselbe Prüfung wie die Liste.
+      'finance' => fn(int $nr): bool => may_see_finance($me, $nr),
+      'guest' => fn(int $nr): bool => perm_allows($me, 'gaeste'),
+      'photo' => fn(int $nr): bool => perm_allows($me, 'fotos'),
+      'media' => fn(int $nr): bool => perm_allows($me, 'musik'),
+      'stageitem' => fn(int $nr): bool => perm_allows($me, 'rider'),
+      'channel' => fn(int $nr): bool => perm_allows($me, 'rider'),
+      'post' => fn(int $nr): bool => perm_allows($me, 'post'),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
-    if ($gPruefung($gNr)) item_mark_seen($me, $gArt, $gNr);
+    if ($gPruefung($gNr)) {
+      item_mark_seen($me, $gArt, $gNr);
+      // Kommentare gehören zum Termin: Wer die Karte aufklappt, liest sie mit.
+      // Sie einzeln bestätigen zu lassen hieße, jemanden nach etwas zu fragen,
+      // das er gerade vor sich hat (#331).
+      if ($gArt === 'event') {
+        items_mark_seen($me, 'comment',
+          array_column(rows('SELECT id FROM comments WHERE event_id = ?', [$gNr]), 'id'));
+        items_mark_seen($me, 'attendance',
+          array_column(rows('SELECT id FROM attendance WHERE event_id = ?', [$gNr]), 'id'));
+      }
+      // Bestandteile stehen in der Faltkarte ihres Geräts - wer sie aufklappt,
+      // sieht Rack, Empfänger und Kapsel auf einmal.
+      if ($gArt === 'equipment') {
+        items_mark_seen($me, 'equipment',
+          eq_descendants($gNr, rows('SELECT id, parent_id FROM equipment')));
+      }
+    }
     exit(json_encode(['ok' => true]));
   }
   // Wie viele offene Punkte hat der Anfragende? Die Seite holt sich das beim
@@ -2475,11 +2566,14 @@ if (str_starts_with($path, '/intern')) {
     if ($m[1] === 'vorlage') {
       q('DELETE FROM stage_items');
       $pos = 0;
+      // Marken erst nach dem Neuaufbau, siehe items_replaced().
+      $stageErsetzt = true;
       foreach (stage_default_items(rows('SELECT id, name, stage_name, instrument, on_stage FROM users ORDER BY name')) as $it) {
         q('INSERT INTO stage_items (kind, label, x, y, note, position, width_cm, depth_cm, user_id) VALUES (?,?,?,?,?,?,?,?,?)',
           [$it['kind'], $it['label'], $it['x'], $it['y'], $it['note'], $pos++,
            $it['width_cm'] ?? null, $it['depth_cm'] ?? null, $it['user_id'] ?? null]);
       }
+      if (!empty($stageErsetzt)) items_replaced('stageitem', (int) $me['id']);
     } elseif ($m[1] === 'add') {
       $neuArt = array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges';
       $neuWer = ((int) ($_POST['user_id'] ?? 0)) ?: null;
@@ -2492,8 +2586,10 @@ if (str_starts_with($path, '/intern')) {
         $stageMass($_POST['width_cm'] ?? ''), $stageMass($_POST['depth_cm'] ?? ''),
         $neuWer,
       ]);
+      item_new('stageitem', (int) $db->lastInsertId(), (int) $me['id']);
     } elseif ($m[1] === 'update' && ($_POST['remove'] ?? '') !== '') {
       // Der Löschknopf steckt im selben Formular; ein eigenes wäre verschachtelt
+      item_forget('stageitem', (int) $_POST['remove']);
       q('DELETE FROM stage_items WHERE id = ?', [(int) $_POST['remove']]);
       flash(t('fl_stage_deleted'));
       redirect('/intern/stagerider');
@@ -2507,6 +2603,7 @@ if (str_starts_with($path, '/intern')) {
         // nur einer zählt, liest sich wie ein Fehler — und ist einer, sobald sich
         // der Name des Mitglieds ändert (#187).
         $stageText = ($stageArt === 'musiker' && $stageWer) ? '' : trim($vals['label'] ?? '');
+        $stageVorher = row('SELECT * FROM stage_items WHERE id = ?', [(int) $id]);
         q('UPDATE stage_items SET kind = ?, label = ?, x = ?, y = ?, note = ?, width_cm = ?, depth_cm = ?, user_id = ? WHERE id = ?', [
           $stageArt,
           $stageText,
@@ -2516,6 +2613,7 @@ if (str_starts_with($path, '/intern')) {
           $stageWer,
           (int) $id,
         ]);
+        item_touch('stageitem', (int) $id, $stageVorher, (int) $me['id']);
       }
     }
     flash(t('fl_stage_saved'));
@@ -2533,6 +2631,7 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/stagerider/plan/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     if (!perm_allows($me, 'rider', 'write')) { flash(t('fl_no_permission')); redirect('/intern/stagerider'); }
+    item_forget('stageitem', (int) $m[1]);
     q('DELETE FROM stage_items WHERE id = ?', [$m[1]]);
     flash(t('fl_stage_deleted'));
     redirect('/intern/stagerider');
@@ -2540,16 +2639,20 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Musik & Videos für die öffentliche Seite ----------
   if ($path === '/intern/musik' && $method === 'GET') {
-    view('intern/musik', ['title' => t('inav_musik'), 'links' => rows('SELECT * FROM media_links ORDER BY id DESC')]);
+    $musikOffen = items_unseen($me, 'media');
+    view('intern/musik', ['title' => t('inav_musik'), 'links' => rows('SELECT * FROM media_links ORDER BY id DESC'),
+      'unseenMedia' => $musikOffen, 'seenOnList' => ['media' => array_keys($musikOffen)]]);
   }
   if ($path === '/intern/musik' && $method === 'POST') {
     if (($_POST['url'] ?? '') !== '') {
       q('INSERT INTO media_links (title, url) VALUES (?,?)', [$_POST['title'] ?? '', trim($_POST['url'])]);
+      item_new('media', (int) $db->lastInsertId(), (int) $me['id']);
       flash(t('fl_media_saved'));
     }
     redirect('/intern/musik');
   }
   if (preg_match('~^/intern/musik/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    item_forget('media', (int) $m[1]);
     q('DELETE FROM media_links WHERE id = ?', [$m[1]]);
     flash(t('fl_media_deleted'));
     redirect('/intern/musik');
@@ -2613,9 +2716,12 @@ if (str_starts_with($path, '/intern')) {
     $gaesteBuchungen = [];
     $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
     foreach ($gaesteAlle as $gb) $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
+    $gaesteOffen = items_unseen($me, 'guest');
     view('intern/gaeste', [
       'title' => t('guest_title'),
       'guests' => rows('SELECT * FROM guests ORDER BY name'),
+      'unseenGuests' => $gaesteOffen,
+      'seenOnList' => ['guest' => array_keys($gaesteOffen)],
       'bookingsByGuest' => $gaesteBuchungen,
       'ratings' => guest_ratings_map(array_map(fn($b) => (int) $b['id'], $gaesteAlle), (int) $me['id']),
       'events' => rows("SELECT id, title, date FROM events WHERE date >= ? AND status <> 'abgesagt' ORDER BY date", [$today]),
@@ -2638,6 +2744,7 @@ if (str_starts_with($path, '/intern')) {
       $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
       trim((string) ($_POST['notes'] ?? '')),
     ]);
+    item_new('guest', (int) $db->lastInsertId(), (int) $me['id']);
     flash(t('fl_guest_created'));
     redirect('/intern/gaeste');
   }
@@ -2648,6 +2755,7 @@ if (str_starts_with($path, '/intern')) {
       if (row('SELECT 1 FROM guest_bookings WHERE guest_id = ?', [$m[1]])) {
         flash(t('fl_guest_has_bookings'));
       } else {
+        item_forget('guest', (int) $m[1]);
         q('DELETE FROM guests WHERE id = ?', [$m[1]]);
         flash(t('fl_guest_deleted'));
       }
@@ -2660,12 +2768,14 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_guest_contact_required')); redirect('/intern/gaeste');
     }
     $gK = $gastKontakt($_POST);
-    q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, mobile = ?,
-         street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
-      mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
-      $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
-      trim((string) ($_POST['notes'] ?? '')), $m[1],
-    ]);
+    item_update('guest', (int) $m[1], static function () use ($gName, $gK, $m): void {
+      q('UPDATE guests SET name = ?, function_name = ?, email = ?, phone = ?, mobile = ?,
+           street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
+        mb_substr($gName, 0, 190), mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120),
+        $gK['email'], $gK['phone'], $gK['mobile'], $gK['street'], $gK['postcode'], $gK['city'],
+        trim((string) ($_POST['notes'] ?? '')), $m[1],
+      ]);
+    }, (int) $me['id']);
     flash(t('fl_guest_updated'));
     redirect('/intern/gaeste');
   }
@@ -2689,6 +2799,7 @@ if (str_starts_with($path, '/intern')) {
         $gNeuMail, $gNeuTel, $gNeuMobil,
       ]);
       $gId = (int) $db->lastInsertId();
+      item_new('guest', $gId, (int) $me['id']);
     }
     $gast = $gId > 0 ? row('SELECT * FROM guests WHERE id = ?', [$gId]) : null;
     if (!$gast) { flash(t('fl_guest_name_required')); back('/intern/termine'); }
@@ -3392,6 +3503,7 @@ if (str_starts_with($path, '/intern')) {
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'invoices' => $invList,
       'invoicesFiles' => $invFiles,
+      'unseenEquipment' => items_unseen($me, 'equipment'),
     ]);
   }
   // Der Bearbeiten-Block eines einzelnen Geräts. Die Liste holt ihn nach,
@@ -3449,6 +3561,7 @@ if (str_starts_with($path, '/intern')) {
           eq_invoice_input($_POST['invoice_id'] ?? null, $me),
           eq_quantity_input($_POST['quantity'] ?? null),
         ]);
+        item_new('equipment', (int) $db->lastInsertId(), (int) $me['id']);
       }
       // Auch hier den verstandenen Preis nennen (#221), sofern einer kam.
       $eqPreis = price_to_cents((string) ($_POST['price'] ?? ''));
@@ -3488,7 +3601,9 @@ if (str_starts_with($path, '/intern')) {
     // Ein Abgang beendet das Gerät im Bestand — die Zeile bleibt als
     // Geschichte stehen, taucht aber auf keiner Packliste mehr auf.
     if ($m[2] === 'abgang') {
-      q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
+      item_update('equipment', (int) $m[1], static function () use ($date, $m): void {
+        q('UPDATE equipment SET disposed_on = ? WHERE id = ?', [$date, $m[1]]);
+      }, (int) $me['id']);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
     }
     // Die Meldung sagt, was wirklich geschah — sonst merkt niemand, dass keine
@@ -3502,7 +3617,9 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/equipment/(\d+)/reaktivieren$~', $path, $m) && $method === 'POST') {
     $eq = row('SELECT * FROM equipment WHERE id = ?', [$m[1]]);
     if (!eq_may_edit_owner_fields($eq, $me)) { flash(t('fl_no_permission')); redirect('/intern/equipment'); }
-    q('UPDATE equipment SET disposed_on = NULL WHERE id = ?', [$m[1]]);
+    item_update('equipment', (int) $m[1], static function () use ($m): void {
+      q('UPDATE equipment SET disposed_on = NULL WHERE id = ?', [$m[1]]);
+    }, (int) $me['id']);
     flash(t('fl_eq_reactivated'));
     redirect('/intern/equipment');
   }
@@ -3576,7 +3693,9 @@ if (str_starts_with($path, '/intern')) {
     // Eine schon vorhandene Nummer fällt weg, damit sie sich nicht stapelt.
     $baseName = eq_strip_number(eq_strip_quantity((string) $eq['name']));
     $baseSlot = eq_strip_number(eq_strip_quantity((string) $eq['slot']));
-    q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    item_update('equipment', (int) $m[1], static function () use ($baseName, $baseSlot, $m): void {
+      q('UPDATE equipment SET name = ?, slot = ?, quantity = 1 WHERE id = ?', [$baseName . ' #1', $baseSlot, $m[1]]);
+    }, (int) $me['id']);
     $neue = [];
     for ($i = 2; $i <= $count; $i++) {
       q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id, quantity)
@@ -3588,6 +3707,7 @@ if (str_starts_with($path, '/intern')) {
         $eq['purchased_on'], $eq['price_cents'], $eq['afa_years'], $eq['acquired_as'],
         $eq['article_no'], $eq['invoice_id'],
       ]);
+      item_new('equipment', (int) $db->lastInsertId(), (int) $me['id']);
       $neue[] = (int) $db->lastInsertId();
     }
     // Das Foto gehört jedem Stück: gleiche Datei, eigene Zeile — wie beim
@@ -3610,6 +3730,7 @@ if (str_starts_with($path, '/intern')) {
       // zeigen, die es nicht mehr gibt, und die Datei auf der Platte dazu —
       // unsichtbar, denn nichts listet sie mehr auf (#188).
       files_purge('equipment', (int) $m[1]);
+      item_forget('equipment', (int) $m[1]);
       q('DELETE FROM equipment WHERE id = ?', [$m[1]]);
       q('DELETE FROM equipment_deadlines WHERE equipment_id = ?', [$m[1]]);
       q('DELETE FROM event_equipment WHERE equipment_id = ?', [$m[1]]);
@@ -3666,7 +3787,11 @@ if (str_starts_with($path, '/intern')) {
       if ($eqTree) {
         $eqIn = implode(',', array_fill(0, count($eqTree), '?'));
         q("UPDATE equipment SET owner_id = ?, location = '' WHERE id IN ($eqIn)", [$ownerId, ...$eqTree]);
+        // Die Bestandteile ziehen mit, also tragen sie auch die Marke: Sonst
+        // wäre das Rack geändert und der Empfänger darin unauffällig.
+        foreach ($eqTree as $eqKind) item_touch('equipment', (int) $eqKind, null, (int) $me['id']);
       }
+      item_touch('equipment', (int) $m[1], $eqBefore, (int) $me['id']);
       flash(t('fl_eq_saved'));
     }
     redirect('/intern/equipment');
@@ -3704,10 +3829,15 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Stagerider ----------
   if ($path === '/intern/stagerider' && $method === 'GET') {
+    $riderOffen = items_unseen($me, 'stageitem');
+    $riderKanal = items_unseen($me, 'channel');
     view('intern/stagerider', [
       'title' => t('rider_title'),
       'channels' => rows('SELECT * FROM channels ORDER BY number'),
       'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
+      'unseenStage' => $riderOffen,
+      'unseenChannels' => $riderKanal,
+      'seenOnList' => ['stageitem' => array_keys($riderOffen), 'channel' => array_keys($riderKanal)],
       // Für die Zuordnung eines Eintrags zu einem Menschen — daran hängen
       // Figur und Foto im Plan. Das Instrument muss mit: An ihm errät
       // rider_tech_guess(), wer die Technik ist. Ohne die Spalte fand es nie
@@ -3742,9 +3872,12 @@ if (str_starts_with($path, '/intern')) {
 
   // ---------- Kanalbelegung ----------
   if ($path === '/intern/kanaele' && $method === 'GET') {
+    $kanalOffen = items_unseen($me, 'channel');
     view('intern/kanaele', [
       'title' => t('ch_title'),
       'channels' => rows('SELECT * FROM channels ORDER BY number'),
+      'unseenChannels' => $kanalOffen,
+      'seenOnList' => ['channel' => array_keys($kanalOffen)],
     ]);
   }
   if ($path === '/intern/kanaele/import' && $method === 'POST') {
@@ -3757,7 +3890,10 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_ch_none_found'));
       redirect('/intern/kanaele');
     }
-    if (isset($_POST['replace'])) q('DELETE FROM channels');
+    if (isset($_POST['replace'])) {
+      q('DELETE FROM seen_marks WHERE kind = ?', ['channel']);
+      q('DELETE FROM channels');
+    }
     foreach ($found as $number => $channel) {
       // Den Eingang nur setzen, wenn die Datei ihn nennt — eine X32-Szene tut
       // das nicht, und dann soll der bisherige stehen bleiben. Das Mikrofon
@@ -3771,6 +3907,14 @@ if (str_starts_with($path, '/intern')) {
            ON DUPLICATE KEY UPDATE name = VALUES(name)', [$number, $channel['name']]);
       }
     }
+    // Eine Anweisung für den ganzen Import: Was noch nie eine Marke trug, ist
+    // neu (updated_at = created_at), alles andere geändert. Zeile für Zeile
+    // wären das bei einer Pultszene zweiunddreißig Abfragen.
+    if ($found) {
+      $chIn = implode(',', array_fill(0, count($found), '?'));
+      q("UPDATE channels SET updated_at = IF(updated_at IS NULL, created_at, NOW(3)), updated_by = ?
+         WHERE number IN ($chIn)", [(int) $me['id'], ...array_keys($found)]);
+    }
     flash(t('fl_ch_imported') . ' ' . count($found));
     redirect('/intern/kanaele');
   }
@@ -3782,18 +3926,23 @@ if (str_starts_with($path, '/intern')) {
                                  source = VALUES(source), notes = VALUES(notes)',
         [$number, trim($_POST['patch'] ?? ''), trim($_POST['name'] ?? ''),
          trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? '')]);
+      item_new('channel', (int) (row('SELECT id FROM channels WHERE number = ?', [$number])['id'] ?? 0),
+               (int) $me['id']);
       flash(t('fl_ch_saved'));
     }
     redirect('/intern/kanaele');
   }
   if (preg_match('~^/intern/kanaele/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'delete') {
+      item_forget('channel', (int) $m[1]);
       q('DELETE FROM channels WHERE id = ?', [$m[1]]);
       flash(t('fl_ch_deleted'));
     } else {
-      q('UPDATE channels SET patch = ?, name = ?, source = ?, notes = ? WHERE id = ?',
-        [trim($_POST['patch'] ?? ''), trim($_POST['name'] ?? ''),
-         trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? ''), $m[1]]);
+      item_update('channel', (int) $m[1], static function () use ($m): void {
+        q('UPDATE channels SET patch = ?, name = ?, source = ?, notes = ? WHERE id = ?',
+          [trim($_POST['patch'] ?? ''), trim($_POST['name'] ?? ''),
+           trim($_POST['source'] ?? ''), trim($_POST['notes'] ?? ''), $m[1]]);
+      }, (int) $me['id']);
       flash(t('fl_ch_saved'));
     }
     redirect('/intern/kanaele');
@@ -4010,9 +4159,15 @@ if (str_starts_with($path, '/intern')) {
               AND NOT EXISTS (SELECT 1 FROM finances fi WHERE fi.event_id = e.id AND fi.type = 'einnahme')
               ORDER BY e.date DESC")
       : [];
+    // Nur die Buchungen, die auch dastehen: items_unseen() kennt private
+    // Auslagen nicht, und eine Marke daran verriete, dass es sie gibt (#331).
+    $kasseOffen = array_intersect_key(items_unseen($me, 'finance'),
+      array_fill_keys(array_map(static fn(array $e): int => (int) $e['id'], $entries), true));
     view('intern/kasse', [
       'title' => t('fin_title'),
       'entries' => $entries,
+      'unseenFinances' => $kasseOffen,
+      'seenOnList' => ['finance' => array_keys($kasseOffen)],
       'filesByFinance' => $filesByFinance,
       'years' => $years,
       'year' => $year,
@@ -4048,6 +4203,7 @@ if (str_starts_with($path, '/intern')) {
       // je nach Land das Gegenteil, und „1,500" kann 1,50 oder 1500 heißen.
       // Die Auslegung zu ändern hinge an der Sprache; sie sichtbar zu machen
       // hilft in jeder — ein Tausendfaches fällt in der Meldung sofort auf.
+      item_new('finance', (int) $db->lastInsertId(), (int) $me['id']);
       flash(str_replace('%1', fmt_money($amount), t('fl_fin_saved_amount')));
     } else {
       flash(t('fl_fin_invalid'));
@@ -4069,6 +4225,7 @@ if (str_starts_with($path, '/intern')) {
       if ($amount > 0) {
         q('INSERT INTO finances (date, type, amount_cents, category, description, event_id, created_by) VALUES (?,?,?,?,?,?,?)',
           [$ev['date'], 'einnahme', $amount, 'gage', $ev['title'], $ev['id'], $me['id']]);
+        item_new('finance', (int) $db->lastInsertId(), (int) $me['id']);
         flash(t('fl_fin_saved'));
       } else {
         flash(t('fl_fee_unclear'));
@@ -4081,6 +4238,7 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_finance_required'));
       redirect('/intern/kasse');
     }
+    item_forget('finance', (int) $m[1]);
     q('DELETE FROM finances WHERE id = ?', [$m[1]]);
     flash(t('fl_fin_deleted'));
     redirect('/intern/kasse');

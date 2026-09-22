@@ -21,6 +21,7 @@
           <button class="check" title="<?= e(t('task_toggle')) ?>"><?= $task['status'] === 'erledigt' ? '☑' : '☐' ?></button>
         </form>
         <strong><?= e($task['title']) ?></strong>
+        <?= item_mark_html($unseenTasks ?? [], (int) $task['id']) ?>
         <?php if ($task['assignee']): ?><span class="muted">→ <?= e($task['assignee']) ?></span><?php endif; ?>
         <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
         <?php if ($task['notes']): ?><div class="muted small prewrap"><?= e($task['notes']) ?></div><?php endif; ?>
