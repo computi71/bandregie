@@ -65,7 +65,7 @@ the rest.
 | Stagerider | `stage_items` | `created_at` as well |
 | Kanäle | `channels` | `created_at` as well |
 | Kommentare | `comments` | nothing — only the `ITEM_KINDS` row |
-| Zu-/Absagen | `attendance` | `id`, `updated_at` — see below |
+| Zu-/Absagen | `attendance` | `id`, `created_at`, `updated_at`, `updated_by` — see below |
 
 Six existing plus thirteen new: **nineteen kinds**.
 
@@ -77,9 +77,19 @@ marks address a row by `i.id` throughout — `items_unseen()`, `seen_marks`,
 existing key, which InnoDB permits as long as the column is first in some
 index.
 
-It also carries no timestamp at all, so `updated_at DATETIME(3)` comes with
-it. The `wer` is the existing `user_id`: the person whose attendance it is is
-also the person who changed it.
+It carries no timestamp at all either, and it needs **both**:
+`items_unseen()` reads `i.created_at` unconditionally — that comparison is how
+"new" is told apart from "changed" — and `item_touch()` writes `updated_at`
+and `updated_by` by name. So the full set is `id`, `created_at`,
+`updated_at DATETIME(3)`, `updated_by`.
+
+`wer` is `updated_by`, not the row's own `user_id`. They hold the same person
+in practice, but routing it through the standard column means attendance needs
+no special case anywhere else.
+
+**This is the general rule, and it was not obvious from the six existing
+kinds:** every marked table needs `id`, `created_at`, and — unless the kind is
+born-only — `updated_at` and `updated_by`.
 
 This was written down as "only the ITEM_KINDS row" in the first draft of this
 spec and is corrected here — the table was never read before claiming it.

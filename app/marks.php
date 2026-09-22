@@ -47,6 +47,11 @@ const ITEM_KINDS = [
   // gelten, und keine Schreibstelle muss eine Marke setzen (#331).
   'comment'  => ['tabelle' => 'comments', 'wann' => 'created_at', 'wer' => 'user_id',
                  'felder' => []],
+  // 'wer' ist updated_by, nicht die eigene user_id der Zeile: In der Sache
+  // dieselbe Person, aber über die übliche Spalte braucht die Zusage
+  // nirgends sonst eine Ausnahme (#331).
+  'attendance' => ['tabelle' => 'attendance', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                   'felder' => ['status']],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */

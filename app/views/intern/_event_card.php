@@ -52,7 +52,10 @@
     <?php if ($att): ?>
       <p class="attendance-summary">
         <?php $label = ['yes' => '✔', 'maybe' => '?', 'no' => '✘']; ?>
-        <?php foreach ($att as $a): ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?></span><?php endforeach; ?>
+        <?php // Eine neue oder geänderte Zusage steht direkt am Namen - wer
+              // plant, will nicht die Liste vergleichen, sondern sehen, wer sich
+              // bewegt hat (#331). ?>
+        <?php foreach ($att as $a): $aM = $unseenAttendance[(int) ($a['id'] ?? 0)] ?? null; ?><span class="att att-<?= e($a['status']) ?>"><?= $label[$a['status']] ?> <?= e($a['name']) ?><?php if ($aM): ?> <span class="badge neu"><?= e($aM['neu'] ? t('mark_new') : t('mark_changed')) ?></span><?php endif; ?></span><?php endforeach; ?>
       </p>
       <?php
         // Wer abgesagt hat, für den lassen sich seine Ersatzleute anfragen —

@@ -1,7 +1,12 @@
 <?php
 // Jede Seite des Bandbereichs einmal aufrufen und den Statuscode nennen.
 //
-//   php bin/routen-pruefen.php /var/www/bandroadie-oss staging.beatcuisine.de 1
+//   sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.beatcuisine.de 1
+//
+// ALS WEBNUTZER starten, nicht als deploy: Das Skript legt die Sitzungsdatei
+// an, die es danach per curl benutzt. Läuft es unter einem anderen Konto,
+// gehört ihm die Datei, php-fpm darf sie nicht lesen — und dann meldet jede
+// einzelne Seite 302 statt 200, als wäre die halbe Anwendung kaputt.
 //
 // Warum ein Skript und keine Stichprobe: Ein Verschieben zerlegt selten alles,
 // meistens genau eine Seite in genau einem Bereich. Die findet nur, wer alle

@@ -812,7 +812,9 @@ function attendance_map(array $eventIds): array {
   if (!$eventIds) return [];
   $in = implode(',', array_map('intval', $eventIds));
   $map = [];
-  foreach (rows("SELECT a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
+  // a.id ist seit #331 dabei: Die Ansicht braucht sie, um die Marke an der
+  // richtigen Zusage anzuzeigen.
+  foreach (rows("SELECT a.id, a.event_id, a.status, a.user_id, u.name FROM attendance a JOIN users u ON u.id = a.user_id WHERE a.event_id IN ($in)") as $r) {
     $map[$r['event_id']][] = $r;
   }
   return $map;
@@ -4628,6 +4630,14 @@ function event_view_data(array $events, array $me): array {
     // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
     // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu
     // einem verdeckten Termin etwas zu lesen gibt.
+    // Zusagen tragen eigene Marken (#331) - geschwärzt wie die Zusagen selbst.
+    'unseenAttendance' => array_intersect_key(
+      items_unseen($me, 'attendance'),
+      array_fill_keys(array_map(
+        static fn(array $z): int => (int) $z['id'],
+        array_merge([], ...array_values($ohne(attendance_map($ids))))
+      ), true)
+    ),
     'unseenComments' => array_intersect_key(
       items_unseen($me, 'comment'),
       array_fill_keys(array_map(

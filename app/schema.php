@@ -52,10 +52,19 @@ $tables = [
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // id, created_at und updated_at tragen die Marken (#331): Die Marken sprechen
+  // jede Zeile über i.id an, und items_unseen() vergleicht updated_at mit
+  // created_at, um "neu" von "geändert" zu unterscheiden. AUTO_INCREMENT ist
+  // erlaubt, weil die Spalte an erster Stelle eines Schlüssels steht - der
+  // bisherige Primärschlüssel bleibt, er hält weiter eine Zusage je Person.
   "CREATE TABLE IF NOT EXISTS attendance (
+    id INT AUTO_INCREMENT UNIQUE,
     event_id INT NOT NULL,
     user_id INT NOT NULL,
     status VARCHAR(10) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(3) NULL,
+    updated_by INT NULL,
     PRIMARY KEY (event_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
@@ -715,6 +724,20 @@ foreach (['events', 'songs', 'setlists', 'quotes', 'contracts'] as $markiert) {
     $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
                                        ADD COLUMN updated_by INT NULL");
   }
+}
+
+// Zusagen bekommen Marken (#331). Die Tabelle hatte als einzige keinen
+// eigenen Schlüssel und keinen Zeitstempel, deshalb steht sie hier statt in
+// der Schleife darüber.
+if (!column_exists('attendance', 'id')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN id INT AUTO_INCREMENT UNIQUE FIRST');
+}
+if (!column_exists('attendance', 'created_at')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+}
+if (!column_exists('attendance', 'updated_at')) {
+  $db->exec('ALTER TABLE attendance ADD COLUMN updated_at DATETIME(3) NULL,
+                                    ADD COLUMN updated_by INT NULL');
 }
 
 if (!column_exists('users', 'push_topics')) {

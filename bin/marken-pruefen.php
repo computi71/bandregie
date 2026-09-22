@@ -129,5 +129,37 @@ q('DELETE FROM events WHERE id = ?', [$evK]);
 $pruefe('Kommentar: gelöscht, keine Marke bleibt zurück',
     (int) row('SELECT COUNT(*) n FROM seen_marks WHERE kind = ? AND item_id = ?', ['comment', $kom])['n'] === 0);
 
+// ------------- 11. Zusagen: erste Zusage "neu", geänderte "geändert"
+q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Zusage','2027-03-05','bestaetigt')");
+$evZ = (int) $GLOBALS['db']->lastInsertId();
+q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)', [$evZ, (int) $ANDERER['id'], 'yes']);
+$zNr = (int) $GLOBALS['db']->lastInsertId();
+item_new('attendance', $zNr, (int) $ANDERER['id']);
+$pruefe('Zusage: steht als „neu"', (items_unseen($ICH, 'attendance')[$zNr]['neu'] ?? null) === true);
+$pruefe('Zusage: wer selbst zusagt, sieht nichts', !isset(items_unseen($ANDERER, 'attendance')[$zNr]));
+
+items_mark_seen($ICH, 'attendance', [$zNr]);
+// Zurückdatieren, sonst fällt updated_at mit created_at zusammen und die
+// geänderte Zusage gälte weiter als „neu".
+q('UPDATE attendance SET created_at = created_at - INTERVAL 10 MINUTE WHERE id = ?', [$zNr]);
+$zAnders = item_update('attendance', $zNr,
+    static fn() => q("UPDATE attendance SET status = 'no' WHERE id = ?", [$zNr]), (int) $ANDERER['id']);
+$pruefe('Zusage geändert: markiert', $zAnders);
+$pruefe('Zusage geändert: steht als „geändert"',
+    (items_unseen($ICH, 'attendance')[$zNr]['neu'] ?? null) === false);
+
+// Zweimal dasselbe geklickt ist keine Nachricht wert.
+items_mark_seen($ICH, 'attendance', [$zNr]);
+$zGleich = item_update('attendance', $zNr,
+    static fn() => q("UPDATE attendance SET status = 'no' WHERE id = ?", [$zNr]), (int) $ANDERER['id']);
+$pruefe('Zusage unverändert: keine Marke',
+    !$zGleich && !isset(items_unseen($ICH, 'attendance')[$zNr]));
+
+item_forget('attendance', $zNr);
+q('DELETE FROM attendance WHERE id = ?', [$zNr]);
+q('DELETE FROM events WHERE id = ?', [$evZ]);
+$pruefe('Zusage: gelöscht, keine Marke bleibt zurück',
+    (int) row('SELECT COUNT(*) n FROM seen_marks WHERE kind = ? AND item_id = ?', ['attendance', $zNr])['n'] === 0);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

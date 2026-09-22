@@ -1056,6 +1056,9 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'delete') {
       item_forget('event', (int) $id);
       q('DELETE FROM events WHERE id = ?', [$id]);
+      foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
+        item_forget('attendance', (int) $zAlt['id']);
+      }
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
       // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
       // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
@@ -1076,8 +1079,19 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'zusage') {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
+      // Die Zeile VOR dem Schreiben holen: Daran haengt, ob die Band gleich
+      // "neu" oder "geaendert" sieht - und ob ein zweiter Klick auf denselben
+      // Knopf ueberhaupt eine Marke wert ist (#331).
+      $zVorher = row('SELECT * FROM attendance WHERE event_id = ? AND user_id = ?', [$id, $me['id']]);
       q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)
          ON DUPLICATE KEY UPDATE status = VALUES(status)', [$id, $me['id'], $status]);
+      $zNr = (int) (row('SELECT id FROM attendance WHERE event_id = ? AND user_id = ?',
+                        [$id, $me['id']])['id'] ?? 0);
+      if ($zNr) {
+        $zVorher
+          ? item_touch('attendance', $zNr, $zVorher, (int) $me['id'])
+          : item_new('attendance', $zNr, (int) $me['id']);
+      }
       // Mitteilung an die Zusagen-Abonnenten — wer plant, will das sofort wissen (#24).
       $pushEv = row('SELECT title FROM events WHERE id = ?', [$id]);
       $pushWho = (string) $me['name'];
@@ -2277,6 +2291,8 @@ if (str_starts_with($path, '/intern')) {
       // es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
       'comment' => fn(int $nr): bool => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$nr]))
                                         && may_see_event($me, (int) $k['event_id']),
+      'attendance' => fn(int $nr): bool => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$nr]))
+                                           && may_see_event($me, (int) $z['event_id']),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
@@ -2288,6 +2304,8 @@ if (str_starts_with($path, '/intern')) {
       if ($gArt === 'event') {
         items_mark_seen($me, 'comment',
           array_column(rows('SELECT id FROM comments WHERE event_id = ?', [$gNr]), 'id'));
+        items_mark_seen($me, 'attendance',
+          array_column(rows('SELECT id FROM attendance WHERE event_id = ?', [$gNr]), 'id'));
       }
     }
     exit(json_encode(['ok' => true]));
