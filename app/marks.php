@@ -151,13 +151,21 @@ function item_update(string $kind, int $id, callable $schreiben, ?int $wer): boo
 }
 
 /**
- * Der Stichtag, ab dem überhaupt markiert wird — einmal je Aufruf geholt.
- * items_unseen() läuft mehrmals je Seite, und setting() fragt jedes Mal die
- * Datenbank.
+ * Der Stichtag, ab dem markiert wird — je Sorte einer.
+ *
+ * Warum je Sorte: Kommt eine Sorte später dazu (#331), hätte sie sonst den
+ * alten, gemeinsamen Stichtag geerbt — und beim ersten Aufruf nach dem Update
+ * stünde alles als „neu" da, was seitdem entstanden ist. Für Kommentare und
+ * das Postfach wäre das der halbe Bestand gewesen: Beide tragen created_at als
+ * Zeitstempel, es gibt also keine leere Spalte, hinter der sich Altes
+ * versteckt.
+ *
+ * Fehlt der eigene Stichtag, gilt der gemeinsame. Das hält jede Sorte am
+ * Laufen, die es schon vor #331 gab.
  */
-function marks_since(): string {
-  static $wert = null;
-  return $wert ??= setting('marks_since', '1000-01-01');
+function marks_since(string $kind = ''): string {
+  static $werte = [];
+  return $werte[$kind] ??= setting('marks_since_' . $kind) ?: setting('marks_since', '1000-01-01');
 }
 
 /**
@@ -187,7 +195,7 @@ function items_unseen(?array $user, string $kind): array {
                      AND (i.`$wer` IS NULL OR i.`$wer` <> ?)
                      AND ((s.seen_at IS NULL     AND i.`$wann` >= me.created_at)
                        OR (s.seen_at IS NOT NULL AND i.`$wann` >  s.seen_at))",
-                 [$kind, $uid, $uid, marks_since(), $uid]);
+                 [$kind, $uid, $uid, marks_since($kind), $uid]);
   $offen = [];
   foreach ($zeilen as $z) {
     $offen[(int) $z['id']] = [

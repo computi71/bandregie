@@ -741,11 +741,30 @@ foreach (['media_links', 'stage_items', 'channels', 'post_messages'] as $ohneDat
   }
 }
 
+// Der Anlagezeitpunkt der Mails soll die Wahrheit sagen: Die Spalte kam mit
+// DEFAULT CURRENT_TIMESTAMP dazu, alle Bestandszeilen trügen also den Zeitpunkt
+// des Updates. fetched_at weiß, wann die Mail wirklich hereinkam.
+if (column_exists('post_messages', 'created_at') && column_exists('post_messages', 'fetched_at')) {
+  $db->exec('UPDATE post_messages SET created_at = fetched_at WHERE created_at > fetched_at');
+}
+
 // Das Postfach markiert nur das Ankommen, nie eine Änderung: Eine Mail kommt
 // von außen, deshalb bleibt updated_by immer leer - und items_unseen() schließt
 // dann niemanden als "hat es selbst getan" aus, was hier genau richtig ist.
 if (!column_exists('post_messages', 'updated_by')) {
   $db->exec('ALTER TABLE post_messages ADD COLUMN updated_by INT NULL');
+}
+
+// Jede mit #331 hinzugekommene Sorte bekommt ihren eigenen Stichtag: ab jetzt,
+// nicht rückwirkend. Bei den meisten genügte die frische, leere updated_at —
+// was nie angefasst wurde, trägt keine Marke. Kommentare und Postfach tragen
+// aber created_at als Zeitstempel, und dort stünde sonst der halbe Bestand
+// beim ersten Aufruf als „neu" da. Einmal gesetzt, bleibt der Wert stehen.
+foreach (['comment', 'attendance', 'venue', 'absence', 'task', 'equipment',
+          'finance', 'guest', 'photo', 'media', 'stageitem', 'channel', 'post'] as $neueSorte) {
+  if (setting('marks_since_' . $neueSorte) === '') {
+    set_setting('marks_since_' . $neueSorte, date('Y-m-d H:i:s'));
+  }
 }
 
 if (!column_exists('attendance', 'id')) {
