@@ -42,6 +42,11 @@ const ITEM_KINDS = [
                               'fee_cents', 'play_from', 'play_to', 'get_in', 'status', 'notes']],
   'file'     => ['tabelle' => 'files', 'wann' => 'created_at', 'wer' => 'uploaded_by',
                  'felder' => []],
+  // Ein Kommentar wird geschrieben und nie geändert - wie eine Datei. Daher
+  // created_at als Zeitstempel: item_only_born() lässt ihn immer als "neu"
+  // gelten, und keine Schreibstelle muss eine Marke setzen (#331).
+  'comment'  => ['tabelle' => 'comments', 'wann' => 'created_at', 'wer' => 'user_id',
+                 'felder' => []],
 ];
 
 /** Wird diese Sorte nur angelegt und nie geändert? */

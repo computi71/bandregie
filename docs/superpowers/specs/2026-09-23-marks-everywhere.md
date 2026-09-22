@@ -65,9 +65,28 @@ the rest.
 | Stagerider | `stage_items` | `created_at` as well |
 | Kanäle | `channels` | `created_at` as well |
 | Kommentare | `comments` | nothing — only the `ITEM_KINDS` row |
-| Zu-/Absagen | `attendance` | nothing — only the `ITEM_KINDS` row |
+| Zu-/Absagen | `attendance` | `id`, `updated_at` — see below |
 
 Six existing plus thirteen new: **nineteen kinds**.
+
+### Attendance is the one that does not fit
+
+`attendance` has no `id`. Its primary key is `(event_id, user_id)`, and the
+marks address a row by `i.id` throughout — `items_unseen()`, `seen_marks`,
+`/intern/gesehen`. So it needs an `id INT AUTO_INCREMENT UNIQUE` alongside the
+existing key, which InnoDB permits as long as the column is first in some
+index.
+
+It also carries no timestamp at all, so `updated_at DATETIME(3)` comes with
+it. The `wer` is the existing `user_id`: the person whose attendance it is is
+also the person who changed it.
+
+This was written down as "only the ITEM_KINDS row" in the first draft of this
+spec and is corrected here — the table was never read before claiming it.
+
+`comments` genuinely needs nothing: `created_at` and `user_id` are there, and
+a comment is only ever born, never changed, which `item_only_born()` already
+covers — the same shape `file` uses today.
 
 The `updated_at` column is `DATETIME(3)`, matching the five that already carry
 it (`app/schema.php:1461`). Millisecond precision is not decoration here: a

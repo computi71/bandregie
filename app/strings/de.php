@@ -1158,6 +1158,7 @@ Zeile zwei
   'push_topic_topics' => 'Neue Beiträge im Chat',
   'topic_unread' => 'neu', 'topic_new_from_here' => 'Ab hier neu',
   'mark_new' => 'Neu', 'mark_changed' => 'Geändert',
+  'mark_n_new' => '%1 neu',
   'dash_unread_chat' => 'Neu im Chat', 'dash_all_chat' => 'Zum Chat',
   'prof_push_enable' => 'Auf diesem Gerät aktivieren',
   'prof_push_disable' => 'Auf diesem Gerät abschalten',

@@ -4624,6 +4624,17 @@ function event_view_data(array $events, array $me): array {
     // und das ist schon geschwärzt — zu einem verdeckten Termin steht keine
     // Datei da, die eine Marke tragen könnte.
     'unseenFiles' => items_unseen($me, 'file'),
+    // Kommentare tragen eigene Marken (#331). items_unseen() kennt die
+    // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
+    // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu
+    // einem verdeckten Termin etwas zu lesen gibt.
+    'unseenComments' => array_intersect_key(
+      items_unseen($me, 'comment'),
+      array_fill_keys(array_map(
+        static fn(array $k): int => (int) $k['id'],
+        array_merge([], ...array_values($ohne($comments)))
+      ), true)
+    ),
   ];
 }
 

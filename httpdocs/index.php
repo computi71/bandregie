@@ -1057,6 +1057,12 @@ if (str_starts_with($path, '/intern')) {
       item_forget('event', (int) $id);
       q('DELETE FROM events WHERE id = ?', [$id]);
       q('DELETE FROM attendance WHERE event_id = ?', [$id]);
+      // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
+      // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
+      // gesehen - und der taucht dann bei niemandem als neu auf.
+      foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
+        item_forget('comment', (int) $kAlt['id']);
+      }
       q('DELETE FROM comments WHERE event_id = ?', [$id]);
       q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
       q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
@@ -1133,6 +1139,7 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/kommentare/(\d+)/delete$~', $path, $m) && $method === 'POST') {
     $c = row('SELECT * FROM comments WHERE id = ?', [$m[1]]);
     if ($c && ((int) $c['user_id'] === (int) $me['id'] || $me['role'] === 'admin')) {
+      item_forget('comment', (int) $m[1]);
       q('DELETE FROM comments WHERE id = ?', [$m[1]]);
     }
     back('/intern/termine');
@@ -2266,10 +2273,23 @@ if (str_starts_with($path, '/intern')) {
       'quote' => fn(int $nr): bool => perm_allows($me, 'angebote'),
       'contract' => fn(int $nr): bool => may_see_contract($me, $nr),
       'file' => fn(int $nr): bool => ($f = row('SELECT * FROM files WHERE id = ?', [$nr])) && may_see_file($me, $f),
+      // Ein Kommentar ist so sichtbar wie sein Termin - eine eigene Regel gibt
+      // es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
+      'comment' => fn(int $nr): bool => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$nr]))
+                                        && may_see_event($me, (int) $k['event_id']),
     ][$gArt] ?? null;
     header('Content-Type: application/json');
     if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
-    if ($gPruefung($gNr)) item_mark_seen($me, $gArt, $gNr);
+    if ($gPruefung($gNr)) {
+      item_mark_seen($me, $gArt, $gNr);
+      // Kommentare gehören zum Termin: Wer die Karte aufklappt, liest sie mit.
+      // Sie einzeln bestätigen zu lassen hieße, jemanden nach etwas zu fragen,
+      // das er gerade vor sich hat (#331).
+      if ($gArt === 'event') {
+        items_mark_seen($me, 'comment',
+          array_column(rows('SELECT id FROM comments WHERE event_id = ?', [$gNr]), 'id'));
+      }
+    }
     exit(json_encode(['ok' => true]));
   }
   // Wie viele offene Punkte hat der Anfragende? Die Seite holt sich das beim

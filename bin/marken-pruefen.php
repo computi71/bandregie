@@ -91,5 +91,43 @@ if ($aushilfe) {
     echo 'keine Aushilfe vorhanden — Prüfung 8 übersprungen', PHP_EOL;
 }
 
+// ------------------------- 9. Jede Sorte ist vollständig verdrahtet
+// Der Fehler, den man sonst erst Wochen später bemerkt (#331): Eine Sorte
+// steht in ITEM_KINDS, aber ihre Tabelle hat die Spalten nicht, oder
+// /intern/gesehen kennt sie nicht. Dann erscheint entweder nie eine Marke
+// oder sie lässt sich nie wegklicken — und beides sieht von außen aus wie
+// „in diesem Bereich passiert eben nichts".
+//
+// attendance ist der Grund, warum die id eigens geprüft wird: Die Tabelle
+// hatte nur einen zusammengesetzten Schlüssel, und die Marken sprechen jede
+// Zeile über i.id an.
+$quelle = (string) file_get_contents($basis . '/httpdocs/index.php');
+foreach (ITEM_KINDS as $sorte => $art) {
+    $spalten = array_column(rows('SHOW COLUMNS FROM `' . $art['tabelle'] . '`'), 'Field');
+    $pruefe("$sorte: Tabelle hat id", in_array('id', $spalten, true));
+    $pruefe("$sorte: Spalte " . $art['wann'] . " vorhanden", in_array($art['wann'], $spalten, true));
+    $pruefe("$sorte: Spalte " . $art['wer'] . " vorhanden", in_array($art['wer'], $spalten, true));
+    $pruefe("$sorte: verglichene Felder vorhanden", array_diff($art['felder'], $spalten) === []);
+    $pruefe("$sorte: /intern/gesehen kennt sie", str_contains($quelle, "'$sorte' => fn(int \$nr)"));
+}
+
+// ----------------- 10. Kommentare: neu, gesehen, und mit dem Termin weg
+q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Kommentar','2027-03-04','bestaetigt')");
+$evK = (int) $GLOBALS['db']->lastInsertId();
+q('INSERT INTO comments (event_id, user_id, text) VALUES (?,?,?)',
+  [$evK, (int) $ANDERER['id'], 'ZZ Pruefkommentar']);
+$kom = (int) $GLOBALS['db']->lastInsertId();
+$pruefe('Kommentar: der andere sieht ihn als „neu"',
+    (items_unseen($ICH, 'comment')[$kom]['neu'] ?? null) === true);
+$pruefe('Kommentar: der Verfasser selbst sieht nichts',
+    !isset(items_unseen($ANDERER, 'comment')[$kom]));
+items_mark_seen($ICH, 'comment', [$kom]);
+$pruefe('Kommentar: angesehen, Marke weg', !isset(items_unseen($ICH, 'comment')[$kom]));
+item_forget('comment', $kom);
+q('DELETE FROM comments WHERE id = ?', [$kom]);
+q('DELETE FROM events WHERE id = ?', [$evK]);
+$pruefe('Kommentar: gelöscht, keine Marke bleibt zurück',
+    (int) row('SELECT COUNT(*) n FROM seen_marks WHERE kind = ? AND item_id = ?', ['comment', $kom])['n'] === 0);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

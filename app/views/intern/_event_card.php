@@ -120,7 +120,13 @@
     </p>
 
     <details class="subsection">
-      <summary>💬 <?= e(t('ev_comments')) ?> (<?= count($comments[$ev['id']] ?? []) ?>)</summary>
+      <?php // Wie viele der Kommentare hat dieses Mitglied noch nicht gelesen?
+            // Die Zahl steht am zugeklappten Abschnitt, sonst müsste man ihn
+            // erst öffnen, um zu sehen, dass sich das Öffnen lohnt (#331). ?>
+      <?php $kNeu = count(array_intersect_key($unseenComments ?? [],
+                          array_flip(array_map('intval', array_column($comments[$ev['id']] ?? [], 'id'))))); ?>
+      <summary>💬 <?= e(t('ev_comments')) ?> (<?= count($comments[$ev['id']] ?? []) ?>)<?php
+        if ($kNeu): ?> <span class="badge neu"><?= e(str_replace('%1', (string) $kNeu, t('mark_n_new'))) ?></span><?php endif; ?></summary>
       <ul class="comment-list">
         <?php foreach ($comments[$ev['id']] ?? [] as $c): ?>
           <li>
