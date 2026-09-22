@@ -3258,17 +3258,59 @@ function q(string $sql, array $params = []): PDOStatement {
 function rows(string $sql, array $params = []): array { return q($sql, $params)->fetchAll(); }
 function row(string $sql, array $params = []): ?array { $r = q($sql, $params)->fetch(); return $r === false ? null : $r; }
 
-function setting(string $key, string $fallback = ''): string {
-  $r = row('SELECT value FROM settings WHERE `key` = ?', [$key]);
-  return $r ? $r['value'] : $fallback;
+/**
+ * Alle Einstellungen, einmal je Anfrage geholt.
+ *
+ * Vorher stellte jeder setting()-Aufruf eine eigene Abfrage, bei 400
+ * Aufrufstellen im Code. Fehlt die Tabelle, ist das kein Fehler, sondern die
+ * Auskunft „Schema unbekannt" — genau die braucht das Tor, das entscheidet,
+ * ob die Migrationen überhaupt laufen müssen.
+ *
+ * $neuLaden erzwingt eine echte Abfrage statt des Zwischenspeichers, für
+ * settings_forget(). $setzen überschreibt den Zwischenspeicher direkt ohne
+ * Abfrage, für set_setting() — ein Formular wie der Bühnenplan setzt in
+ * einem POST ein Dutzend Werte, und keiner davon soll die ganze Tabelle
+ * neu laden müssen, wenn er schon im Speicher steht.
+ */
+function settings_all(bool $neuLaden = false, ?array $setzen = null): array {
+  static $alle = null;
+  if ($setzen !== null) {
+    $alle = $setzen;
+  } elseif ($alle === null || $neuLaden) {
+    try {
+      $alle = array_column(rows('SELECT `key`, value FROM settings'), 'value', 'key');
+    } catch (PDOException $e) {
+      $alle = [];
+    }
+  }
+  return $alle;
 }
+
+/**
+ * Den Zwischenspeicher wirklich neu laden — für das Tor, nachdem es am
+ * Schema geschrieben hat, und für die zwei Migrationen, die Zeilen per
+ * DELETE aus settings entfernen statt über set_setting() zu gehen.
+ */
+function settings_forget(): void {
+  settings_all(true);
+}
+
+function setting(string $key, string $fallback = ''): string {
+  return settings_all()[$key] ?? $fallback;
+}
+
 function set_setting(string $key, string $value): void {
   q('INSERT INTO settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)', [$key, $value]);
+  // Durchschreibend, aber ohne zweite Abfrage: der Speicher kennt den alten
+  // Stand schon, also im Speicher nachführen statt neu zu laden. Ein Formular
+  // mit einem Dutzend Feldern zahlt sonst ein Dutzend volle Tabellenabfragen.
+  $alle = settings_all();
+  $alle[$key] = $value;
+  settings_all(false, $alle);
 }
+
 function all_settings(): array {
-  $out = [];
-  foreach (rows('SELECT `key`, value FROM settings') as $r) $out[$r['key']] = $r['value'];
-  return $out;
+  return settings_all();
 }
 
 // ---------- Grunddaten beim ersten Start ----------
