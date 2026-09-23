@@ -225,3 +225,57 @@ task list template. It runs as the web user — see its own header for why.
 
 Parts 1 and 2 are new behaviour, so the second version digit each time, bumped
 at the merge to `main` and not on the branch.
+
+## What changed while building it
+
+Four things, each one a decision somebody would otherwise have to make again.
+
+**1. Ticking needed the read right, not the write right.** The module gate
+treats any POST as a write, so a member with read-only rights on tasks could be
+an assignee and be unable to report having done their part. With one assignee
+that was rare; with several it is the normal case. `SELF_SERVICE_PATHS` exists
+for exactly this — writing paths that stand open with read rights because the
+caller only decides about themselves — and the toggle route touches nothing but
+the acting member's own row. Editing and deleting stay with the write right.
+
+**2. The first check blamed the code for its own wrong premise.** The
+"recomputation may not reopen" check removed an assignee and expected the task
+to stay done. It removed the *unticked* one — which leaves one of one ticked, so
+the task was legitimately still done, and nothing was being tested. The check
+now removes the ticked assignee, which is the only way the count actually
+falls.
+
+**3. An admin may not see another member's private expense.** A visibility
+check assumed "an admin sees everything" and failed on `finance`.
+`item_visible()` was right: a private expense belongs to the member who laid it
+out, and the band's leadership is not an exception. The check now picks a
+band-owned row, and asserts the private case explicitly in both directions.
+
+That is also how **#337** was found: the one private row on staging points at
+an account that no longer exists, which makes it invisible to everybody *and*
+absent from the balance, since the balance only sums rows with
+`private_for IS NULL`.
+
+**4. One kind's visibility is untested.** `quote` has no row on staging, so the
+check reports it as skipped rather than passing it silently. It will be covered
+the first time a quote exists there.
+
+## What was verified
+
+On staging, against the real application:
+
+- `bin/aufgaben-pruefen.php`, new: **37 checks, no failures** — the quorum
+  reached and not reached, `required_done = 0` meaning all, a count larger than
+  the assignee list being capped, recomputation closing but never reopening, an
+  explicit un-tick reopening, the badge count, a purged account not leaving a
+  task stuck, links found, labelled and addressed, a dangling link skipped, a
+  link to an entry a stand-in may not see not rendered, an event knowing its
+  open tasks, and the permission classification of all three routes.
+- `bin/marken-pruefen.php`: **121 checks, no failures** after the visibility
+  closures moved into `item_visible()` — the path that clears a mark was
+  rewired, so this had to stay green.
+- `bin/routen-pruefen.php`: **24 pages, all 200**, after every step.
+- Through real HTTP with a session and a CSRF token: create with assignees and
+  a required count, tick, un-tick, edit with the assignee list swapped, and
+  delete with both the assignee and link rows cleaned up.
+- The help page live on staging, naming the quorum and the links.
