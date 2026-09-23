@@ -454,6 +454,12 @@ const UI_STRINGS = [
   'task_who' => 'Wer?', 'task_due' => 'Bis wann', 'task_details' => 'Details',
   'task_add' => 'Aufgabe anlegen', 'task_toggle' => 'Status wechseln',
   'task_none' => 'Keine Aufgaben — entweder sehr gut organisiert oder sehr entspannt. 🍹',
+  'task_needed' => 'Wie viele müssen es tun?',
+  'task_needed_all' => 'Alle Zuständigen',
+  'task_progress' => '%1 von %2 erledigt',
+  'task_done_by' => 'Erledigt von',
+  'task_nobody' => 'Niemand zugewiesen — wer abhakt, ist zuständig',
+  'task_edit' => 'Aufgabe ändern',
   // Fotos
   'photos_caption' => 'Beschreibung',
   'photos_public_now' => 'Direkt öffentlich auf der Website zeigen',

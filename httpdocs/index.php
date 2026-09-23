@@ -1561,12 +1561,29 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Aufgaben ----------
+  // Zuständige und die verlangte Zahl aus dem Formular - einmal hier, weil
+  // Anlegen und Ändern beide dasselbe brauchen (#334).
+  $taskWer = static function (): array {
+    $ids = array_values(array_unique(array_map('intval', (array) ($_POST['assignees'] ?? []))));
+    $ids = array_values(array_filter($ids, static fn(int $i): bool => $i > 0));
+    if (!$ids) return [];
+    // Nur echte Konten: Eine erfundene Nummer wäre ein Zuständiger, den es
+    // nicht gibt - und die Aufgabe damit nie erledigbar.
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    return array_map('intval', array_column(rows("SELECT id FROM users WHERE id IN ($in)", $ids), 'id'));
+  };
+  // Gedeckelt auf die Zahl der Zuständigen, aus demselben Grund.
+  $taskVerlangt = static fn(int $wieviele): int
+    => max(0, min($wieviele, (int) ($_POST['required_done'] ?? 0)));
+
   if ($path === '/intern/aufgaben' && $method === 'GET') {
     $taskOffen = items_unseen($me, 'task');
+    $taskListe = rows("SELECT t.* FROM tasks t
+                       ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date");
     view('intern/aufgaben', [
       'title' => t('task_title'),
-      'tasks' => rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
-                       ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date"),
+      'tasks' => $taskListe,
+      'assigneesByTask' => task_assignees_map(array_column($taskListe, 'id')),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'unseenTasks' => $taskOffen,
       'seenOnList' => ['task' => array_keys($taskOffen)],
@@ -1574,10 +1591,38 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/aufgaben' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
-      q('INSERT INTO tasks (title, notes, assigned_to, due_date, created_by) VALUES (?,?,?,?,?)',
-        [$_POST['title'], $_POST['notes'] ?? '', ($_POST['assigned_to'] ?? '') !== '' ? $_POST['assigned_to'] : null, $_POST['due_date'] ?? '', $me['id']]);
-      item_new('task', (int) $db->lastInsertId(), (int) $me['id']);
+      $wer = $taskWer();
+      q('INSERT INTO tasks (title, notes, due_date, created_by, required_done) VALUES (?,?,?,?,?)',
+        [$_POST['title'], $_POST['notes'] ?? '', $_POST['due_date'] ?? '', $me['id'],
+         $taskVerlangt(count($wer))]);
+      $taskNeu = (int) $db->lastInsertId();
+      foreach ($wer as $uid) {
+        q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNeu, $uid]);
+      }
+      item_new('task', $taskNeu, (int) $me['id']);
     }
+    redirect('/intern/aufgaben');
+  }
+  // Ändern gab es bisher gar nicht (#334): Ohne das ließen sich Zuständige
+  // und die verlangte Zahl nach dem Anlegen nie mehr korrigieren.
+  if (preg_match('~^/intern/aufgaben/(\d+)/update$~', $path, $m) && $method === 'POST') {
+    if (!perm_allows($me, 'aufgaben', 'write')) { flash(t('fl_no_permission')); redirect('/intern/aufgaben'); }
+    $taskNr = (int) $m[1];
+    $wer = $taskWer();
+    item_update('task', $taskNr, static function () use ($taskNr, $wer, $taskVerlangt): void {
+      q('UPDATE tasks SET title = ?, notes = ?, due_date = ?, required_done = ? WHERE id = ?',
+        [trim((string) ($_POST['title'] ?? '')), $_POST['notes'] ?? '', $_POST['due_date'] ?? '',
+         $taskVerlangt(count($wer)), $taskNr]);
+      // Häkchen der Bleibenden überleben; nur wer herausfällt, verliert seines.
+      $in = $wer ? implode(',', array_fill(0, count($wer), '?')) : 'NULL';
+      q("DELETE FROM task_assignees WHERE task_id = ? AND user_id NOT IN ($in)", [$taskNr, ...$wer]);
+      foreach ($wer as $uid) {
+        q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNr, $uid]);
+      }
+    }, (int) $me['id']);
+    // Ohne Erlaubnis zum Öffnen: Eine erledigte Aufgabe geht nicht wieder auf,
+    // nur weil jemand die Zuständigenliste angefasst hat.
+    task_status_apply($taskNr);
     redirect('/intern/aufgaben');
   }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
