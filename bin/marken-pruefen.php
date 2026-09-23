@@ -144,8 +144,12 @@ $pruefe('item_visible() lehnt Nummer 0 ab',
 // Die private Auslage eines anderen bleibt auch vor der Bandleitung zu. Das
 // ist der Fall, an dem diese Prüfung beim ersten Lauf gescheitert ist - sie
 // hatte angenommen, ein Admin dürfe alles sehen.
-$privat = row('SELECT id, private_for FROM finances WHERE private_for IS NOT NULL
-               AND private_for <> ? ORDER BY id LIMIT 1', [(int) $adminKonto['id']]);
+// Der Eigner muss es noch geben: Eine Buchung, deren private_for auf ein
+// gelöschtes Konto zeigt, sieht niemand mehr - richtig beantwortet, aber als
+// Prüfung unbrauchbar. Gefunden am 23.09.2026 auf Staging, siehe #337.
+$privat = row('SELECT f.id, f.private_for FROM finances f
+               JOIN users u ON u.id = f.private_for
+               WHERE f.private_for <> ? ORDER BY f.id LIMIT 1', [(int) $adminKonto['id']]);
 if ($privat) {
     $pruefe('private Auslage bleibt auch für den Admin zu',
         item_visible($adminKonto, 'finance', (int) $privat['id']) === false);
