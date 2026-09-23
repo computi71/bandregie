@@ -1258,6 +1258,12 @@ function perm_module_for(string $path): ?string {
  */
 const SELF_SERVICE_PATHS = [
   '~^/intern/termine/\d+/zusage$~',
+  // Das Häkchen an einer Aufgabe ist seit #334 persönlich: Die Route fasst
+  // nur die eigene Zeile an. Ohne diese Ausnahme könnte jemand zuständig
+  // sein und sein eigenes Häkchen nicht setzen, weil er Aufgaben nur lesen
+  // darf - und wer nichts ändern darf, soll trotzdem sagen können, dass er
+  // seinen Teil getan hat.
+  '~^/intern/aufgaben/\d+/toggle$~',
   '~^/intern/kasse/dauerauftrag$~',
   '~^/intern/kasse/dauerauftrag/\d+/(pause|delete)$~',
   '~^/intern/kasse/\d+/delete$~',

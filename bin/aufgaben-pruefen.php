@@ -230,5 +230,15 @@ q('DELETE FROM task_links WHERE task_id = ?', [$t12]);
 $weg($t12);
 q('DELETE FROM events WHERE id = ?', [$evG]);
 
+// -------- 12. Rechte: abhaken darf man mit Leserecht, ändern nicht
+// Wer zuständig ist, muss sein eigenes Häkchen setzen können - auch wenn er
+// Aufgaben nur lesen darf. Ändern bleibt dem Schreibrecht.
+$pruefe('abhaken ist Selbstbedienung', is_self_service('/intern/aufgaben/7/toggle'));
+$pruefe('ändern ist es nicht', !is_self_service('/intern/aufgaben/7/update'));
+$pruefe('löschen ist es nicht', !is_self_service('/intern/aufgaben/7/delete'));
+$pruefe('beide Pfade gehören zum Bereich Aufgaben',
+    perm_module_for('/intern/aufgaben/7/toggle') === 'aufgaben'
+    && perm_module_for('/intern/aufgaben/7/update') === 'aufgaben');
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
