@@ -119,10 +119,17 @@ foreach (ITEM_KINDS as $sorte => $art) {
 // Zeile und ein Admin-Konto, das jedes Recht hat. Sorten ohne Zeile in dieser
 // Datenbank lassen sich so nicht prüfen und werden als übersprungen gemeldet,
 // statt still durchzugehen.
+//
+// Eine Ausnahme, und sie ist keine Nachlässigkeit: Eine private Auslage in der
+// Kasse gehört dem Mitglied, nicht der Bandleitung - auch ein Admin sieht sie
+// nicht. Deshalb wird dort eine Buchung der Band genommen, und die private
+// bekommt gleich ihre eigene Prüfung weiter unten.
 $adminKonto = row("SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
 foreach (array_merge(array_keys(ITEM_KINDS), ['topic']) as $sorte) {
     $tab = $sorte === 'topic' ? 'topics' : ITEM_KINDS[$sorte]['tabelle'];
-    $eine = row("SELECT id FROM `$tab` ORDER BY id LIMIT 1");
+    $eine = $sorte === 'finance'
+        ? row('SELECT id FROM finances WHERE private_for IS NULL ORDER BY id LIMIT 1')
+        : row("SELECT id FROM `$tab` ORDER BY id LIMIT 1");
     if (!$eine) {
         printf("%-52s %s%s", "$sorte: item_visible() (keine Zeile vorhanden)", 'uebersprungen', PHP_EOL);
         continue;
@@ -134,6 +141,20 @@ $pruefe('item_visible() lehnt eine unbekannte Sorte ab',
     item_visible($adminKonto, 'gibtsnicht', 1) === false);
 $pruefe('item_visible() lehnt Nummer 0 ab',
     item_visible($adminKonto, 'event', 0) === false);
+// Die private Auslage eines anderen bleibt auch vor der Bandleitung zu. Das
+// ist der Fall, an dem diese Prüfung beim ersten Lauf gescheitert ist - sie
+// hatte angenommen, ein Admin dürfe alles sehen.
+$privat = row('SELECT id, private_for FROM finances WHERE private_for IS NOT NULL
+               AND private_for <> ? ORDER BY id LIMIT 1', [(int) $adminKonto['id']]);
+if ($privat) {
+    $pruefe('private Auslage bleibt auch für den Admin zu',
+        item_visible($adminKonto, 'finance', (int) $privat['id']) === false);
+    $eigner = row('SELECT * FROM users WHERE id = ?', [(int) $privat['private_for']]);
+    $pruefe('ihr Eigner sieht sie',
+        $eigner && item_visible($eigner, 'finance', (int) $privat['id']) === true);
+} else {
+    echo 'keine fremde Privatbuchung vorhanden - Prüfung übersprungen', PHP_EOL;
+}
 
 // ----------------- 10. Kommentare: neu, gesehen, und mit dem Termin weg
 q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Kommentar','2027-03-04','bestaetigt')");
