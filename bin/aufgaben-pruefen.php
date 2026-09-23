@@ -95,17 +95,33 @@ $hake($t5, $A);
 $pruefe('verlangt 3, nur einer zustaendig: erledigt', task_status_apply($t5) === 'erledigt');
 $weg($t5);
 
-// ------------ 6. Neuberechnung darf schliessen, aber nicht wieder oeffnen
+// ---------- 6a. Entfernen darf eine erledigte Aufgabe nicht aufmachen
+// Damit die Zahl wirklich fällt, muss der ABGEHAKTE entfernt werden: Nimmt man
+// den anderen heraus, bleibt einer von einem übrig und die Aufgabe ist zu
+// Recht weiter erledigt. Genau daran ist diese Prüfung beim ersten Schreiben
+// gescheitert - sie hatte den Falschen entfernt und dem Code die Schuld gegeben.
 $t6 = $aufgabe([$A, $B], 2);
 $hake($t6, $A);
 $hake($t6, $B);
 task_status_apply($t6);
-q('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$t6, (int) $B['id']]);
-$pruefe('erledigt, Zustaendiger entfernt: bleibt erledigt',
+$pruefe('zwei von zwei: erledigt', $stand($t6) === 'erledigt');
+q('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$t6, (int) $A['id']]);
+$pruefe('erledigt, abgehakter Zustaendiger entfernt: bleibt erledigt',
     task_status_apply($t6) === 'erledigt' && $stand($t6) === 'erledigt');
-$pruefe('erledigt, ausdruecklich zurueckgenommen: wieder offen',
-    task_status_apply($t6, true) === 'offen' && $stand($t6) === 'offen');
 $weg($t6);
+
+// -------- 6b. Ein zurückgenommenes Häkchen darf sie wieder aufmachen
+$t6b = $aufgabe([$A], 0);
+$hake($t6b, $A);
+task_status_apply($t6b);
+$pruefe('einer, abgehakt: erledigt', $stand($t6b) === 'erledigt');
+q('UPDATE task_assignees SET done_at = NULL WHERE task_id = ? AND user_id = ?',
+  [$t6b, (int) $A['id']]);
+$pruefe('zurueckgenommen ohne Erlaubnis: bleibt erledigt',
+    task_status_apply($t6b) === 'erledigt' && $stand($t6b) === 'erledigt');
+$pruefe('zurueckgenommen mit Erlaubnis: wieder offen',
+    task_status_apply($t6b, true) === 'offen' && $stand($t6b) === 'offen');
+$weg($t6b);
 
 // ------------------- 7. Entfernen kann eine haengende Aufgabe schliessen
 $t7 = $aufgabe([$A, $B, $C], 0);
