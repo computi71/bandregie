@@ -1581,14 +1581,35 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/aufgaben');
   }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
+    $taskNr = (int) $m[1];
     if ($m[2] === 'toggle') {
-      item_update('task', (int) $m[1], static function () use ($m): void {
-        q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      // Ohne diese Zeile legte ein Haken auf eine gelöschte Aufgabe eine
+      // Zuordnung an, die auf nichts zeigt - task_assignees hat keinen
+      // Fremdschlüssel, der das abfinge.
+      if (!row('SELECT id FROM tasks WHERE id = ?', [$taskNr])) redirect('/intern/aufgaben');
+      // Das Häkchen ist persönlich (#334). Wer eine Aufgabe abhakt, für die
+      // niemand zuständig war, wird dadurch zuständig: ein Zuständiger, ein
+      // Häkchen, erledigt. Damit braucht dieser Fall keinen eigenen Weg - und
+      // die Liste sagt hinterher, wer es war, was sie vorher nie konnte.
+      $meins = row('SELECT done_at FROM task_assignees WHERE task_id = ? AND user_id = ?',
+                   [$taskNr, (int) $me['id']]);
+      $zurueck = $meins && $meins['done_at'] !== null;
+      if ($zurueck) {
+        q('UPDATE task_assignees SET done_at = NULL WHERE task_id = ? AND user_id = ?',
+          [$taskNr, (int) $me['id']]);
+      } else {
+        q('INSERT INTO task_assignees (task_id, user_id, done_at) VALUES (?,?,NOW(3))
+           ON DUPLICATE KEY UPDATE done_at = NOW(3)', [$taskNr, (int) $me['id']]);
+      }
+      // Nur das Zurücknehmen darf eine erledigte Aufgabe wieder öffnen.
+      item_update('task', $taskNr, static function () use ($taskNr, $zurueck): void {
+        task_status_apply($taskNr, $zurueck);
       }, (int) $me['id']);
       back('/intern/aufgaben');
     }
-    item_forget('task', (int) $m[1]);
-    q('DELETE FROM tasks WHERE id = ?', [$m[1]]);
+    item_forget('task', $taskNr);
+    q('DELETE FROM task_assignees WHERE task_id = ?', [$taskNr]);
+    q('DELETE FROM tasks WHERE id = ?', [$taskNr]);
     redirect('/intern/aufgaben');
   }
 

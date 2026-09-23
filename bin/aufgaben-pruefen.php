@@ -133,5 +133,22 @@ q('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$t7, (int) $C
 $pruefe('Dritter entfernt: jetzt erledigt', task_status_apply($t7) === 'erledigt');
 $weg($t7);
 
+// -------------- 8. Abhaken macht zuständig, Zurücknehmen löst es wieder
+// Geprüft werden die Anweisungen, die auch die Route ausführt. Über HTTP zu
+// gehen hieße, hier das CSRF-Token nachzubauen - also eine zweite Kopie einer
+// Sicherheitsmechanik zu pflegen. Die HTTP-Schicht deckt routen-pruefen.php ab.
+q("INSERT INTO tasks (title, notes, due_date, status, created_by, required_done)
+   VALUES ('ZZ Routenaufgabe', '', '', 'offen', ?, 0)", [(int) $A['id']]);
+$t8 = (int) $GLOBALS['db']->lastInsertId();
+q('INSERT INTO task_assignees (task_id, user_id, done_at) VALUES (?,?,NOW(3))
+   ON DUPLICATE KEY UPDATE done_at = NOW(3)', [$t8, (int) $B['id']]);
+$pruefe('unzugewiesen abgehakt: erledigt', task_status_apply($t8) === 'erledigt');
+$pruefe('unzugewiesen abgehakt: der Haken trägt einen Namen',
+    (int) row('SELECT COUNT(*) n FROM task_assignees WHERE task_id = ? AND done_at IS NOT NULL',
+              [$t8])['n'] === 1);
+q('UPDATE task_assignees SET done_at = NULL WHERE task_id = ? AND user_id = ?', [$t8, (int) $B['id']]);
+$pruefe('zurueckgenommen: wieder offen', task_status_apply($t8, true) === 'offen');
+$weg($t8);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
