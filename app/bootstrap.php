@@ -4099,6 +4099,62 @@ function open_votes(array $user): array {
  * Überblick gebaut werden — so können Zahl und Liste nicht auseinanderlaufen.
  * Wer einen Bereich nicht sehen darf, zählt ihn auch nicht mit.
  */
+/**
+ * Den Stand einer Aufgabe aus den Häkchen ableiten und schreiben (#334).
+ *
+ * tasks.status bleibt eine Spalte, weil vier Stellen sie lesen — die
+ * Sortierung der Liste, der Überblick, die Zahl am Symbol und die Marke. Aber
+ * geschrieben wird sie nur hier, sonst rechnen vier Stellen dasselbe aus und
+ * laufen auseinander.
+ *
+ * required_done = 0 heißt „alle": Stünde dort eine feste 3 und jemand nimmt
+ * einen Zuständigen heraus, wäre die Aufgabe nie mehr erledigbar. Eine Zahl
+ * größer als die Zahl der Zuständigen wird gedeckelt, aus demselben Grund.
+ *
+ * Niemand zuständig: Ein Häkchen genügt. Wer es setzt, wird dadurch zuständig
+ * — das macht die Route, womit dieser Fall kein eigener Weg ist.
+ *
+ * $darfOeffnen ist der eine asymmetrische Fall. Wird ein Zuständiger entfernt,
+ * geht sein Häkchen mit, und eine längst erledigte Aufgabe würde wieder
+ * aufgehen — weil ein Konto gelöscht wurde, nicht weil jemand etwas vorhat.
+ * Schließen darf diese Rechnung immer, öffnen nur, wenn jemand ausdrücklich
+ * ein Häkchen zurückgenommen hat.
+ */
+function task_status_apply(int $taskId, bool $darfOeffnen = false): string {
+  $t = row('SELECT status, required_done FROM tasks WHERE id = ?', [$taskId]);
+  if (!$t) return '';
+  $z = row('SELECT COUNT(*) AS zustaendige, COUNT(done_at) AS fertig
+            FROM task_assignees WHERE task_id = ?', [$taskId]);
+  $zustaendige = (int) $z['zustaendige'];
+  $fertig = (int) $z['fertig'];
+  $verlangt = (int) $t['required_done'];
+  $noetig = $zustaendige === 0
+    ? 1
+    : ($verlangt > 0 ? min($verlangt, $zustaendige) : $zustaendige);
+  $neu = $fertig >= $noetig ? 'erledigt' : 'offen';
+  if ($neu === 'offen' && $t['status'] === 'erledigt' && !$darfOeffnen) return 'erledigt';
+  if ($neu !== $t['status']) q('UPDATE tasks SET status = ? WHERE id = ?', [$neu, $taskId]);
+  return $neu;
+}
+
+/**
+ * Die Zuständigen mehrerer Aufgaben samt Häkchen — für Liste und Überblick,
+ * damit beide dieselbe Antwort geben.
+ *
+ * Rückgabe je Aufgabennummer: Liste aus [task_id, user_id, done_at, name].
+ */
+function task_assignees_map(array $taskIds): array {
+  if (!$taskIds) return [];
+  $in = implode(',', array_map('intval', $taskIds));
+  $karte = [];
+  foreach (rows("SELECT ta.task_id, ta.user_id, ta.done_at, u.name
+                 FROM task_assignees ta JOIN users u ON u.id = ta.user_id
+                 WHERE ta.task_id IN ($in) ORDER BY u.name") as $r) {
+    $karte[(int) $r['task_id']][] = $r;
+  }
+  return $karte;
+}
+
 function open_items_count(array $user): int {
   $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
                      [(int) $user['id']])['c'];
