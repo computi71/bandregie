@@ -84,6 +84,19 @@ things nobody needs to do any more.
 one tick finishes it. The present toggle is open to everyone who may see the
 area, and nothing about that is worth changing.
 
+It needs no second code path either, which only became clear while planning.
+Ticking an unassigned task **makes the ticker an assignee who has done it**:
+one assignee, `required_done = 0` meaning all of them, one tick, done. The
+behaviour is what it is today and the list gains something it never had — who
+actually did it. Un-ticking removes the row again, leaving no assignees and an
+open task.
+
+### Tasks need an edit route, which they do not have
+
+There is no `/intern/aufgaben/{id}/update` today — only create, toggle and
+delete. Assignees and the required number have to be changeable, or the feature
+dies at the first typo. The edit route is part of Part 1, not an extra.
+
 ### The two places that have to move with it
 
 `open_items_count()` currently asks for tasks where `assigned_to` is the member
