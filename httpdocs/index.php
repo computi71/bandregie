@@ -2381,42 +2381,13 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/gesehen' && $method === 'POST') {
     $gArt = (string) ($_POST['art'] ?? '');
     $gNr = (int) ($_POST['nr'] ?? 0);
-    // Je Sorte die Prüfung, die auch die Liste anwendet. Eine unbekannte Sorte
-    // wird abgelehnt statt still geschluckt: Welche Sorten es gibt, ist kein
-    // Geheimnis — geheim ist nur, welche Nummern jemand sehen darf. Ein
-    // stilles „ok" kostete den Nächsten, der data-seen benutzt, einen Tag.
-    $gPruefung = [
-      'event' => fn(int $nr): bool => may_see_event($me, $nr),
-      'song' => fn(int $nr): bool => may_see_song($me, $nr),
-      'setlist' => fn(int $nr): bool => may_see_setlist($me, $nr),
-      'quote' => fn(int $nr): bool => perm_allows($me, 'angebote'),
-      'contract' => fn(int $nr): bool => may_see_contract($me, $nr),
-      'file' => fn(int $nr): bool => ($f = row('SELECT * FROM files WHERE id = ?', [$nr])) && may_see_file($me, $f),
-      // Ein Kommentar ist so sichtbar wie sein Termin - eine eigene Regel gibt
-      // es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
-      'comment' => fn(int $nr): bool => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$nr]))
-                                        && may_see_event($me, (int) $k['event_id']),
-      'attendance' => fn(int $nr): bool => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$nr]))
-                                           && may_see_event($me, (int) $z['event_id']),
-      // Diese drei sind ganze Bereiche: Wer den Bereich sehen darf, sieht jeden
-      // Eintrag darin - genau wie die Liste selbst es hält.
-      'venue' => fn(int $nr): bool => perm_allows($me, 'orte'),
-      'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
-      'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
-      'equipment' => fn(int $nr): bool => perm_allows($me, 'equipment'),
-      // Private Auslagen gehören dem Mitglied, nicht dem Bereich - deshalb
-      // hier nicht perm_allows(), sondern dieselbe Prüfung wie die Liste.
-      'finance' => fn(int $nr): bool => may_see_finance($me, $nr),
-      'guest' => fn(int $nr): bool => perm_allows($me, 'gaeste'),
-      'photo' => fn(int $nr): bool => perm_allows($me, 'fotos'),
-      'media' => fn(int $nr): bool => perm_allows($me, 'musik'),
-      'stageitem' => fn(int $nr): bool => perm_allows($me, 'rider'),
-      'channel' => fn(int $nr): bool => perm_allows($me, 'rider'),
-      'post' => fn(int $nr): bool => perm_allows($me, 'post'),
-    ][$gArt] ?? null;
     header('Content-Type: application/json');
-    if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
-    if ($gPruefung($gNr)) {
+    // Eine unbekannte Sorte wird abgelehnt statt still geschluckt: Welche
+    // Sorten es gibt, ist kein Geheimnis — geheim ist nur, welche Nummern
+    // jemand sehen darf. Ein stilles „ok" kostete den Nächsten, der data-seen
+    // benutzt, einen Tag.
+    if (!isset(ITEM_KINDS[$gArt]) || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
+    if (item_visible($me, $gArt, $gNr)) {
       item_mark_seen($me, $gArt, $gNr);
       // Kommentare gehören zum Termin: Wer die Karte aufklappt, liest sie mit.
       // Sie einzeln bestätigen zu lassen hieße, jemanden nach etwas zu fragen,

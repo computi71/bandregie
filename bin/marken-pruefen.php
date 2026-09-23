@@ -101,15 +101,39 @@ if ($aushilfe) {
 // attendance ist der Grund, warum die id eigens geprüft wird: Die Tabelle
 // hatte nur einen zusammengesetzten Schlüssel, und die Marken sprechen jede
 // Zeile über i.id an.
-$quelle = (string) file_get_contents($basis . '/httpdocs/index.php');
 foreach (ITEM_KINDS as $sorte => $art) {
     $spalten = array_column(rows('SHOW COLUMNS FROM `' . $art['tabelle'] . '`'), 'Field');
     $pruefe("$sorte: Tabelle hat id", in_array('id', $spalten, true));
     $pruefe("$sorte: Spalte " . $art['wann'] . " vorhanden", in_array($art['wann'], $spalten, true));
     $pruefe("$sorte: Spalte " . $art['wer'] . " vorhanden", in_array($art['wer'], $spalten, true));
     $pruefe("$sorte: verglichene Felder vorhanden", array_diff($art['felder'], $spalten) === []);
-    $pruefe("$sorte: /intern/gesehen kennt sie", str_contains($quelle, "'$sorte' => fn(int \$nr)"));
 }
+
+// Jede Sorte muss in item_visible() einen Arm haben (#335). Vorher stand hier
+// eine Suche im Quelltext nach der alten Prüfkarte in /intern/gesehen; die gibt
+// es nicht mehr, und Text zu durchsuchen war ohnehin schwächer als zu fragen.
+//
+// Die Falle: Ein fehlender match-Arm landet im default und heißt „nein" - und
+// eine erfundene Nummer ergibt bei einer verdrahteten Sorte genauso „nein".
+// Eine ausgedachte Nummer beweist also gar nichts. Was beweist: eine ECHTE
+// Zeile und ein Admin-Konto, das jedes Recht hat. Sorten ohne Zeile in dieser
+// Datenbank lassen sich so nicht prüfen und werden als übersprungen gemeldet,
+// statt still durchzugehen.
+$adminKonto = row("SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+foreach (array_merge(array_keys(ITEM_KINDS), ['topic']) as $sorte) {
+    $tab = $sorte === 'topic' ? 'topics' : ITEM_KINDS[$sorte]['tabelle'];
+    $eine = row("SELECT id FROM `$tab` ORDER BY id LIMIT 1");
+    if (!$eine) {
+        printf("%-52s %s%s", "$sorte: item_visible() (keine Zeile vorhanden)", 'uebersprungen', PHP_EOL);
+        continue;
+    }
+    $pruefe("$sorte: item_visible() sagt dem Admin ja",
+        item_visible($adminKonto, $sorte, (int) $eine['id']) === true);
+}
+$pruefe('item_visible() lehnt eine unbekannte Sorte ab',
+    item_visible($adminKonto, 'gibtsnicht', 1) === false);
+$pruefe('item_visible() lehnt Nummer 0 ab',
+    item_visible($adminKonto, 'event', 0) === false);
 
 // ----------------- 10. Kommentare: neu, gesehen, und mit dem Termin weg
 q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Kommentar','2027-03-04','bestaetigt')");
