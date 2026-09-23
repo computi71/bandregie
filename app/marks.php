@@ -254,6 +254,56 @@ function item_forget(string $kind, int $id): void {
 }
 
 /**
+ * Darf dieses Konto diesen Eintrag sehen? Eine Frage, eine Antwort, je Sorte
+ * (#335).
+ *
+ * Die Prüfungen standen als anonyme Funktionen mitten in der Route
+ * /intern/gesehen. Die Verknüpfungen einer Aufgabe brauchen genau dieselben —
+ * eine verknüpfte Aufgabe darf nicht verraten, dass es einen Termin gibt, den
+ * man nicht sehen darf. Zwei Kopien einer Zugriffsregel ist eine zu viel; die
+ * zweite ist immer die, die nicht mitgepflegt wird.
+ *
+ * 'topic' steht bewusst nicht in ITEM_KINDS (der Chat zählt je Beitrag, nicht
+ * je Eintrag), ist aber verknüpfbar und braucht deshalb seine Zeile.
+ *
+ * Standardmäßig zu: Eine unbekannte Sorte heißt nein. Was hier fehlt, wird
+ * nicht angezeigt, statt stillschweigend durchzugehen.
+ */
+function item_visible(?array $user, string $kind, int $id): bool {
+  if (!$user || $id <= 0) return false;
+  return match ($kind) {
+    'event'      => may_see_event($user, $id),
+    'song'       => may_see_song($user, $id),
+    'setlist'    => may_see_setlist($user, $id),
+    'quote'      => perm_allows($user, 'angebote'),
+    'contract'   => may_see_contract($user, $id),
+    'file'       => ($f = row('SELECT * FROM files WHERE id = ?', [$id])) && may_see_file($user, $f),
+    // Kommentar und Zusage sind so sichtbar wie ihr Termin — eine eigene Regel
+    // gibt es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
+    'comment'    => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$id]))
+                    && may_see_event($user, (int) $k['event_id']),
+    'attendance' => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$id]))
+                    && may_see_event($user, (int) $z['event_id']),
+    // Private Auslagen gehören dem Mitglied, nicht dem Bereich.
+    'finance'    => may_see_finance($user, $id),
+    'topic'      => may_see_topic($user, $id),
+    // Der Rest sind ganze Bereiche: Wer den Bereich sehen darf, sieht jeden
+    // Eintrag darin — genau wie die Liste selbst es hält.
+    'venue'      => perm_allows($user, 'orte'),
+    'absence'    => perm_allows($user, 'abwesenheiten'),
+    'task'       => perm_allows($user, 'aufgaben'),
+    'equipment'  => perm_allows($user, 'equipment'),
+    'guest'      => perm_allows($user, 'gaeste'),
+    'photo'      => perm_allows($user, 'fotos'),
+    'media'      => perm_allows($user, 'musik'),
+    'stageitem'  => perm_allows($user, 'rider'),
+    'channel'    => perm_allows($user, 'rider'),
+    'post'       => perm_allows($user, 'post'),
+    default      => false,
+  };
+}
+
+/**
  * Die Marke als fertiges Stück Seite — einmal hier, damit sie überall gleich
  * aussieht und überall gleich maskiert ist.
  */

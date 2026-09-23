@@ -131,8 +131,29 @@ $tables = [
     assigned_to INT NULL,
     due_date VARCHAR(10) NOT NULL DEFAULT '',
     status VARCHAR(20) NOT NULL DEFAULT 'offen',
+    required_done TINYINT UNSIGNED NOT NULL DEFAULT 0,
     created_by INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Wer für eine Aufgabe zuständig ist, und ob er sie getan hat (#334). Das
+  // Häkchen sitzt hier und nicht an der Aufgabe: Sonst hakt einer für alle
+  // ab, und niemand sieht, wer wirklich etwas getan hat.
+  "CREATE TABLE IF NOT EXISTS task_assignees (
+    task_id INT NOT NULL,
+    user_id INT NOT NULL,
+    done_at DATETIME(3) NULL,
+    PRIMARY KEY (task_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Woran eine Aufgabe hängt (#335). kind wird gegen ITEM_KINDS geprüft,
+  // plus 'topic' - damit ist "und was sonst noch sinnvoll ist" keine Liste,
+  // die jemand raten muss, sondern eine Tabelle.
+  "CREATE TABLE IF NOT EXISTS task_links (
+    task_id INT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
+    item_id INT NOT NULL,
+    PRIMARY KEY (task_id, kind, item_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   "CREATE TABLE IF NOT EXISTS photos (
@@ -765,6 +786,24 @@ foreach (['comment', 'attendance', 'venue', 'absence', 'task', 'equipment',
   if (setting('marks_since_' . $neueSorte) === '') {
     set_setting('marks_since_' . $neueSorte, date('Y-m-d H:i:s'));
   }
+}
+
+// Aufgaben bekommen mehrere Zuständige und ein Quorum (#334).
+if (!column_exists('tasks', 'required_done')) {
+  $db->exec('ALTER TABLE tasks ADD COLUMN required_done TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER status');
+}
+// Das bisherige assigned_to wird eine Zeile in task_assignees. Die Spalte
+// bleibt stehen und wird nicht mehr gelesen: Eine Spalte zu löschen ist die
+// eine Migration, die man nicht zurücknehmen kann.
+//
+// done_at aus dem bisherigen Stand: Eine erledigte Aufgabe war von ihrem einen
+// Zuständigen erledigt, und ohne das stünde nach dem Update jede abgehakte
+// Aufgabe wieder offen.
+if (!setting('migr_task_assignees')) {
+  $db->exec("INSERT IGNORE INTO task_assignees (task_id, user_id, done_at)
+             SELECT id, assigned_to, IF(status = 'erledigt', created_at, NULL)
+               FROM tasks WHERE assigned_to IS NOT NULL");
+  set_setting('migr_task_assignees', '1');
 }
 
 if (!column_exists('attendance', 'id')) {

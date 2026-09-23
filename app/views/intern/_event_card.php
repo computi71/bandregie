@@ -48,6 +48,18 @@
       <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
       <button name="status" value="no" class="chip <?= ($mine[$ev['id']] ?? '') === 'no' ? 'chip-no' : '' ?>"><?= e(t('att_no')) ?></button>
     </form>
+    <?php // Was an diesem Termin noch offen ist (#336) - die Aufgabe steht in
+          // der Liste, aber wer den Termin aufmacht, soll nicht erst dorthin
+          // wechseln müssen, um zu sehen, dass noch etwas fehlt. ?>
+    <?php $evAufgaben = $tasksByEvent[$ev['id']] ?? []; ?>
+    <?php if ($evAufgaben): ?>
+      <p class="muted small">✅ <?= e(t('item_open_tasks')) ?>:
+        <?php foreach ($evAufgaben as $ta): ?>
+          <a class="badge" href="/intern/aufgaben"><?= e($ta['title']) ?><?php
+            if ($ta['assignees']): ?> · <?= e(implode(', ', array_column($ta['assignees'], 'name'))) ?><?php endif; ?></a>
+        <?php endforeach; ?>
+      </p>
+    <?php endif; ?>
     <?php $att = $attendance[$ev['id']] ?? []; ?>
     <?php if ($att): ?>
       <p class="attendance-summary">

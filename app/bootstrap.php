@@ -1258,6 +1258,12 @@ function perm_module_for(string $path): ?string {
  */
 const SELF_SERVICE_PATHS = [
   '~^/intern/termine/\d+/zusage$~',
+  // Das Häkchen an einer Aufgabe ist seit #334 persönlich: Die Route fasst
+  // nur die eigene Zeile an. Ohne diese Ausnahme könnte jemand zuständig
+  // sein und sein eigenes Häkchen nicht setzen, weil er Aufgaben nur lesen
+  // darf - und wer nichts ändern darf, soll trotzdem sagen können, dass er
+  // seinen Teil getan hat.
+  '~^/intern/aufgaben/\d+/toggle$~',
   '~^/intern/kasse/dauerauftrag$~',
   '~^/intern/kasse/dauerauftrag/\d+/(pause|delete)$~',
   '~^/intern/kasse/\d+/delete$~',
@@ -4099,8 +4105,251 @@ function open_votes(array $user): array {
  * Überblick gebaut werden — so können Zahl und Liste nicht auseinanderlaufen.
  * Wer einen Bereich nicht sehen darf, zählt ihn auch nicht mit.
  */
+/**
+ * Den Stand einer Aufgabe aus den Häkchen ableiten und schreiben (#334).
+ *
+ * tasks.status bleibt eine Spalte, weil vier Stellen sie lesen — die
+ * Sortierung der Liste, der Überblick, die Zahl am Symbol und die Marke. Aber
+ * geschrieben wird sie nur hier, sonst rechnen vier Stellen dasselbe aus und
+ * laufen auseinander.
+ *
+ * required_done = 0 heißt „alle": Stünde dort eine feste 3 und jemand nimmt
+ * einen Zuständigen heraus, wäre die Aufgabe nie mehr erledigbar. Eine Zahl
+ * größer als die Zahl der Zuständigen wird gedeckelt, aus demselben Grund.
+ *
+ * Niemand zuständig: Ein Häkchen genügt. Wer es setzt, wird dadurch zuständig
+ * — das macht die Route, womit dieser Fall kein eigener Weg ist.
+ *
+ * $darfOeffnen ist der eine asymmetrische Fall. Wird ein Zuständiger entfernt,
+ * geht sein Häkchen mit, und eine längst erledigte Aufgabe würde wieder
+ * aufgehen — weil ein Konto gelöscht wurde, nicht weil jemand etwas vorhat.
+ * Schließen darf diese Rechnung immer, öffnen nur, wenn jemand ausdrücklich
+ * ein Häkchen zurückgenommen hat.
+ */
+function task_status_apply(int $taskId, bool $darfOeffnen = false): string {
+  $t = row('SELECT status, required_done FROM tasks WHERE id = ?', [$taskId]);
+  if (!$t) return '';
+  $z = row('SELECT COUNT(*) AS zustaendige, COUNT(done_at) AS fertig
+            FROM task_assignees WHERE task_id = ?', [$taskId]);
+  $zustaendige = (int) $z['zustaendige'];
+  $fertig = (int) $z['fertig'];
+  $verlangt = (int) $t['required_done'];
+  $noetig = $zustaendige === 0
+    ? 1
+    : ($verlangt > 0 ? min($verlangt, $zustaendige) : $zustaendige);
+  $neu = $fertig >= $noetig ? 'erledigt' : 'offen';
+  if ($neu === 'offen' && $t['status'] === 'erledigt' && !$darfOeffnen) return 'erledigt';
+  if ($neu !== $t['status']) q('UPDATE tasks SET status = ? WHERE id = ?', [$neu, $taskId]);
+  return $neu;
+}
+
+/**
+ * Die Zuständigen mehrerer Aufgaben samt Häkchen — für Liste und Überblick,
+ * damit beide dieselbe Antwort geben.
+ *
+ * Rückgabe je Aufgabennummer: Liste aus [task_id, user_id, done_at, name].
+ */
+function task_assignees_map(array $taskIds): array {
+  if (!$taskIds) return [];
+  $in = implode(',', array_map('intval', $taskIds));
+  $karte = [];
+  foreach (rows("SELECT ta.task_id, ta.user_id, ta.done_at, u.name
+                 FROM task_assignees ta JOIN users u ON u.id = ta.user_id
+                 WHERE ta.task_id IN ($in) ORDER BY u.name") as $r) {
+    $karte[(int) $r['task_id']][] = $r;
+  }
+  return $karte;
+}
+
+/**
+ * Wie ein Eintrag heißt, wenn man ihn in einer Liste nennen will (#335).
+ *
+ * Leerer Rückgabewert heißt "gibt es nicht mehr". Verknüpfungen werden
+ * bewusst beim Lesen übersprungen statt beim Löschen aufgeräumt: Der andere
+ * Weg wären neunzehn Löschstellen, von denen man eine vergisst - und eine
+ * vergessene zeigt irgendwann auf eine neu vergebene Nummer, also auf das
+ * Falsche statt auf nichts.
+ */
+function item_label(string $kind, int $id): string {
+  $eine = static fn(string $sql): ?array => row($sql, [$id]);
+  return match ($kind) {
+    'event'      => ($r = $eine('SELECT title, date FROM events WHERE id = ?'))
+                    ? $r['title'] . ' - ' . fmt_date($r['date']) : '',
+    'song'       => ($r = $eine('SELECT title FROM songs WHERE id = ?')) ? $r['title'] : '',
+    'setlist'    => ($r = $eine('SELECT name FROM setlists WHERE id = ?')) ? $r['name'] : '',
+    'quote'      => ($r = $eine('SELECT title, customer FROM quotes WHERE id = ?'))
+                    ? ($r['title'] ?: $r['customer']) : '',
+    'contract'   => ($r = $eine('SELECT contract_no FROM contracts WHERE id = ?'))
+                    ? ($r['contract_no'] ?: '#' . $id) : '',
+    'file'       => ($r = $eine('SELECT original_name FROM files WHERE id = ?')) ? $r['original_name'] : '',
+    'venue'      => ($r = $eine('SELECT name FROM venues WHERE id = ?')) ? $r['name'] : '',
+    'task'       => ($r = $eine('SELECT title FROM tasks WHERE id = ?')) ? $r['title'] : '',
+    'equipment'  => ($r = $eine('SELECT name FROM equipment WHERE id = ?')) ? $r['name'] : '',
+    'guest'      => ($r = $eine('SELECT name FROM guests WHERE id = ?')) ? $r['name'] : '',
+    'topic'      => ($r = $eine('SELECT title FROM topics WHERE id = ?')) ? $r['title'] : '',
+    'media'      => ($r = $eine('SELECT title, url FROM media_links WHERE id = ?'))
+                    ? ($r['title'] ?: $r['url']) : '',
+    'post'       => ($r = $eine('SELECT subject FROM post_messages WHERE id = ?'))
+                    ? ($r['subject'] ?: t('post_title')) : '',
+    'finance'    => ($r = $eine('SELECT description, amount_cents FROM finances WHERE id = ?'))
+                    ? $r['description'] . ' - ' . fmt_money((int) $r['amount_cents']) : '',
+    'photo'      => ($r = $eine('SELECT caption, filename FROM photos WHERE id = ?'))
+                    ? ($r['caption'] ?: $r['filename']) : '',
+    'channel'    => ($r = $eine('SELECT number, name FROM channels WHERE id = ?'))
+                    ? $r['number'] . ' - ' . $r['name'] : '',
+    'stageitem'  => ($r = $eine('SELECT label, kind FROM stage_items WHERE id = ?'))
+                    ? ($r['label'] ?: $r['kind']) : '',
+    'absence'    => ($r = $eine('SELECT date_from, date_to FROM absences WHERE id = ?'))
+                    ? fmt_date($r['date_from']) . ' - ' . fmt_date($r['date_to']) : '',
+    'comment'    => ($r = $eine('SELECT text FROM comments WHERE id = ?'))
+                    ? mb_substr($r['text'], 0, 60) : '',
+    'attendance' => ($r = row('SELECT u.name FROM attendance a JOIN users u ON u.id = a.user_id
+                               WHERE a.id = ?', [$id])) ? $r['name'] : '',
+    default      => '',
+  };
+}
+
+/**
+ * Wohin ein Eintrag führt. Bereiche ohne Einzelseite führen auf ihre Liste -
+ * dort steht der Eintrag vollständig, mehr gibt es nicht zu zeigen.
+ */
+function item_url(string $kind, int $id): string {
+  // Kommentar und Zusage führen auf ihren Termin, nicht auf sich selbst: Sie
+  // haben keine eigene Seite, sie stehen in der Terminkarte.
+  if ($kind === 'comment' || $kind === 'attendance') {
+    $tab = $kind === 'comment' ? 'comments' : 'attendance';
+    $r = row("SELECT event_id FROM `$tab` WHERE id = ?", [$id]);
+    return $r ? item_url('event', (int) $r['event_id']) : '/intern/termine';
+  }
+  // event_url() bringt die Filter mit, ohne die die Karte gar nicht auf der
+  // Seite steht - bei Vergangenem und Abgesagtem genau der Normalfall (#322).
+  if ($kind === 'event') {
+    $ev = row('SELECT id, date, status FROM events WHERE id = ?', [$id]);
+    return $ev ? event_url($ev) : '/intern/termine';
+  }
+  return match ($kind) {
+    'song'      => '/intern/songs/' . $id,
+    'setlist'   => '/intern/setlists',
+    'quote'     => '/intern/angebote',
+    'contract'  => '/intern/vertraege',
+    'file'      => '/intern/dateien',
+    'venue'     => '/intern/orte',
+    'absence'   => '/intern/abwesenheiten',
+    'task'      => '/intern/aufgaben',
+    'finance'   => '/intern/kasse',
+    'equipment' => '/intern/equipment',
+    'guest'     => '/intern/gaeste',
+    'photo'     => '/intern/fotos',
+    'media'     => '/intern/musik',
+    'stageitem' => '/intern/stagerider',
+    'channel'   => '/intern/kanaele',
+    'post'      => '/intern/post/' . $id,
+    'topic'     => '/intern/themen/' . $id,
+    default     => '/intern',
+  };
+}
+
+/**
+ * Die Verknüpfungen mehrerer Aufgaben, fertig zum Anzeigen (#335).
+ *
+ * Gefiltert wird hier und nicht in der Ansicht: item_visible() ist dieselbe
+ * Prüfung, die auch die Marken benutzen - eine Aufgabe darf nicht verraten,
+ * dass es einen Termin gibt, den man nicht sehen darf.
+ */
+function task_links_map(array $taskIds, ?array $user): array {
+  if (!$taskIds) return [];
+  $in = implode(',', array_map('intval', $taskIds));
+  $karte = [];
+  foreach (rows("SELECT task_id, kind, item_id FROM task_links WHERE task_id IN ($in)") as $r) {
+    $kind = (string) $r['kind'];
+    $nr = (int) $r['item_id'];
+    if (!item_visible($user, $kind, $nr)) continue;
+    $text = item_label($kind, $nr);
+    if ($text === '') continue; // gelöscht - überspringen, nicht scheitern
+    $karte[(int) $r['task_id']][] = [
+      'kind' => $kind, 'item_id' => $nr, 'label' => $text, 'url' => item_url($kind, $nr),
+    ];
+  }
+  return $karte;
+}
+
+/**
+ * Was sich verknüpfen lässt, nach Sorte gruppiert (#335) - für die Auswahl
+ * im Formular.
+ *
+ * Nur Termine, Lieder, Setlisten und Themen stehen zur Auswahl: Daran hängen
+ * Aufgaben wirklich, und eine Auswahlliste mit neunzehn Gruppen und tausend
+ * Zeilen benutzt niemand. Verknüpfungen auf andere Sorten bleiben gültig und
+ * werden angezeigt - sie entstehen nur nicht hier.
+ *
+ * Die hundert Termine sind Absicht: Eine Band mit zehn Jahren Geschichte
+ * schöbe sonst tausend Zeilen in ein Auswahlfeld, und an einen Auftritt von
+ * 2019 hängt niemand mehr eine Aufgabe.
+ */
+function task_linkable(?array $user): array {
+  $gruppen = [];
+  if (perm_allows($user, 'termine')) {
+    foreach (rows('SELECT id, title, date FROM events ORDER BY date DESC LIMIT 100') as $e) {
+      if (!may_see_event($user, (int) $e['id'])) continue;
+      $gruppen['event'][] = ['id' => (int) $e['id'], 'label' => $e['title'] . ' - ' . fmt_date($e['date'])];
+    }
+  }
+  if (perm_allows($user, 'songs')) {
+    foreach (rows('SELECT id, title FROM songs ORDER BY title') as $so) {
+      if (!may_see_song($user, (int) $so['id'])) continue;
+      $gruppen['song'][] = ['id' => (int) $so['id'], 'label' => $so['title']];
+    }
+  }
+  if (perm_allows($user, 'setlists')) {
+    foreach (rows('SELECT id, name FROM setlists ORDER BY name') as $sl) {
+      if (!may_see_setlist($user, (int) $sl['id'])) continue;
+      $gruppen['setlist'][] = ['id' => (int) $sl['id'], 'label' => $sl['name']];
+    }
+  }
+  if (perm_allows($user, 'themen')) {
+    foreach (rows('SELECT id, title FROM topics ORDER BY title') as $th) {
+      if (!may_see_topic($user, (int) $th['id'])) continue;
+      $gruppen['topic'][] = ['id' => (int) $th['id'], 'label' => $th['title']];
+    }
+  }
+  return $gruppen;
+}
+
+/**
+ * Die offenen Aufgaben, die an diesen Einträgen hängen (#336).
+ *
+ * Nur offene: Eine erledigte Aufgabe an einem Termin ist Geschichte und
+ * gehört nicht in die Karte, die man vor dem Auftritt liest.
+ *
+ * Die Aufgabe selbst wird nicht auf Sichtbarkeit geprüft - wer den Termin
+ * sieht, sieht auch, was daran noch zu tun ist. Wer den Aufgabenbereich gar
+ * nicht darf, bekommt die Abfrage nicht: Das entscheidet der Aufrufer mit
+ * perm_allows(), wie überall sonst.
+ */
+function tasks_for_item(string $kind, array $itemIds): array {
+  if (!$itemIds) return [];
+  $in = implode(',', array_map('intval', $itemIds));
+  $zeilen = rows("SELECT tl.item_id, t.id, t.title, t.due_date, t.required_done
+                  FROM task_links tl JOIN tasks t ON t.id = tl.task_id
+                  WHERE tl.kind = ? AND tl.item_id IN ($in) AND t.status = 'offen'
+                  ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date", [$kind]);
+  if (!$zeilen) return [];
+  $wer = task_assignees_map(array_column($zeilen, 'id'));
+  $karte = [];
+  foreach ($zeilen as $z) {
+    $z['assignees'] = $wer[(int) $z['id']] ?? [];
+    $karte[(int) $z['item_id']][] = $z;
+  }
+  return $karte;
+}
+
 function open_items_count(array $user): int {
-  $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
+  // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
+  // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
+  // es gibt keinen persönlichen Reststand, der davon abweichen könnte.
+  $offen = (int) row("SELECT COUNT(*) c FROM tasks t
+                      JOIN task_assignees ta ON ta.task_id = t.id
+                      WHERE ta.user_id = ? AND t.status = 'offen'",
                      [(int) $user['id']])['c'];
   $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
   return $offen + count(open_votes($user)) + $chat;
@@ -4135,6 +4384,19 @@ function user_purge(int $userId): void {
   q('UPDATE standing_orders SET owner_id = NULL WHERE owner_id = ?', [$userId]);
   q('UPDATE standing_orders SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
+  // Die Zuständigkeiten gehen mit - und danach wird gerechnet (#334). Ohne
+  // den zweiten Teil sitzt eine Aufgabe für immer bei "2 von 3", sobald das
+  // dritte Konto weg ist, und niemand kann sie mehr abschließen.
+  //
+  // Die Aufgabennummern VOR dem Löschen holen; danach ist nicht mehr zu
+  // sehen, welche betroffen waren.
+  $taskBetroffen = array_column(rows('SELECT task_id FROM task_assignees WHERE user_id = ?', [$userId]), 'task_id');
+  q('DELETE FROM task_assignees WHERE user_id = ?', [$userId]);
+  // Ohne Erlaubnis zum Öffnen: Ein gelöschtes Konto macht nichts wieder auf.
+  foreach ($taskBetroffen as $taskNr) task_status_apply((int) $taskNr);
+  // assigned_to liest niemand mehr, wird aber trotzdem geleert: Die Nummer
+  // eines gelöschten Kontos in einer Spalte stehen zu lassen ist genau der
+  // Rest, der den Nächsten überrascht, der sie doch einmal liest.
   q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
   q('UPDATE tasks SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);
@@ -4635,6 +4897,9 @@ function event_view_data(array $events, array $me): array {
     // und das ist schon geschwärzt — zu einem verdeckten Termin steht keine
     // Datei da, die eine Marke tragen könnte.
     'unseenFiles' => items_unseen($me, 'file'),
+    // Was an diesem Termin noch zu tun ist (#336). Nur wer Aufgaben sehen darf,
+    // bekommt die Abfrage überhaupt.
+    'tasksByEvent' => perm_allows($me, 'aufgaben') ? $ohne(tasks_for_item('event', $ids)) : [],
     // Kommentare tragen eigene Marken (#331). items_unseen() kennt die
     // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
     // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu

@@ -941,6 +941,13 @@ if (str_starts_with($path, '/intern')) {
         $unreadTopics[$i]['ab'] = topic_first_unread($me, (int) $ut['id']);
       }
     }
+    // Die offenen Aufgaben einmal holen, damit die Zuständigen dazu passen
+    // (#334). Der Überblick zeigt sie ungefiltert - er ist die Liste der
+    // Band, nicht die persönliche; die Zahl am Symbol zählt nur die eigenen.
+    $dashTasks = perm_allows($me, 'aufgaben')
+      ? rows("SELECT t.* FROM tasks t WHERE t.status='offen'
+              ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8")
+      : [];
     view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),
@@ -951,8 +958,8 @@ if (str_starts_with($path, '/intern')) {
       // Fehlende Rückmeldungen gehören zu den offenen Aufgaben: Die Zahl am
       // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
       'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
-      'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
-                       WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
+      'tasks' => $dashTasks,
+      'taskAssignees' => task_assignees_map(array_column($dashTasks, 'id')),
       'unreadTopics' => $unreadTopics,
     ]);
   }
@@ -1195,6 +1202,8 @@ if (str_starts_with($path, '/intern')) {
       'songFiles' => files_map('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? [],
       'myChords' => song_chords_mine((int) $songOne['id'], $me['id']),
       'otherChordsCount' => count(array_filter(song_chords_all((int) $songOne['id'], $me['id']), fn($c) => !$c['mine'])),
+      'songTasks' => perm_allows($me, 'aufgaben')
+        ? (tasks_for_item('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? []) : [],
     ]);
   }
   // Bühne: der Liedtext im Vollbild, groß und selbstlaufend — das Handy als
@@ -1561,12 +1570,47 @@ if (str_starts_with($path, '/intern')) {
   }
 
   // ---------- Aufgaben ----------
+  // Zuständige und die verlangte Zahl aus dem Formular - einmal hier, weil
+  // Anlegen und Ändern beide dasselbe brauchen (#334).
+  $taskWer = static function (): array {
+    $ids = array_values(array_unique(array_map('intval', (array) ($_POST['assignees'] ?? []))));
+    $ids = array_values(array_filter($ids, static fn(int $i): bool => $i > 0));
+    if (!$ids) return [];
+    // Nur echte Konten: Eine erfundene Nummer wäre ein Zuständiger, den es
+    // nicht gibt - und die Aufgabe damit nie erledigbar.
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    return array_map('intval', array_column(rows("SELECT id FROM users WHERE id IN ($in)", $ids), 'id'));
+  };
+  // Gedeckelt auf die Zahl der Zuständigen, aus demselben Grund.
+  $taskVerlangt = static fn(int $wieviele): int
+    => max(0, min($wieviele, (int) ($_POST['required_done'] ?? 0)));
+
+  // Verknüpfungen aus dem Formular: Paare "sorte:nummer" (#335). Eine Sorte,
+  // die es nicht gibt, und ein Eintrag, den der Absender nicht sehen darf,
+  // werden verworfen - sonst ließe sich über das Formular erfragen, was es
+  // anderswo gibt.
+  $taskLinks = static function (int $taskNr) use ($me): void {
+    q('DELETE FROM task_links WHERE task_id = ?', [$taskNr]);
+    foreach ((array) ($_POST['links'] ?? []) as $paar) {
+      [$kind, $nr] = array_pad(explode(':', (string) $paar, 2), 2, '');
+      $nr = (int) $nr;
+      $erlaubt = isset(ITEM_KINDS[$kind]) || $kind === 'topic';
+      if (!$erlaubt || $nr <= 0 || !item_visible($me, $kind, $nr)) continue;
+      q('INSERT IGNORE INTO task_links (task_id, kind, item_id) VALUES (?,?,?)',
+        [$taskNr, $kind, $nr]);
+    }
+  };
+
   if ($path === '/intern/aufgaben' && $method === 'GET') {
     $taskOffen = items_unseen($me, 'task');
+    $taskListe = rows("SELECT t.* FROM tasks t
+                       ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date");
     view('intern/aufgaben', [
       'title' => t('task_title'),
-      'tasks' => rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
-                       ORDER BY t.status = 'erledigt', CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date"),
+      'tasks' => $taskListe,
+      'assigneesByTask' => task_assignees_map(array_column($taskListe, 'id')),
+      'linksByTask' => task_links_map(array_column($taskListe, 'id'), $me),
+      'linkable' => task_linkable($me),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'unseenTasks' => $taskOffen,
       'seenOnList' => ['task' => array_keys($taskOffen)],
@@ -1574,21 +1618,73 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/aufgaben' && $method === 'POST') {
     if (($_POST['title'] ?? '') !== '') {
-      q('INSERT INTO tasks (title, notes, assigned_to, due_date, created_by) VALUES (?,?,?,?,?)',
-        [$_POST['title'], $_POST['notes'] ?? '', ($_POST['assigned_to'] ?? '') !== '' ? $_POST['assigned_to'] : null, $_POST['due_date'] ?? '', $me['id']]);
-      item_new('task', (int) $db->lastInsertId(), (int) $me['id']);
+      $wer = $taskWer();
+      q('INSERT INTO tasks (title, notes, due_date, created_by, required_done) VALUES (?,?,?,?,?)',
+        [$_POST['title'], $_POST['notes'] ?? '', $_POST['due_date'] ?? '', $me['id'],
+         $taskVerlangt(count($wer))]);
+      $taskNeu = (int) $db->lastInsertId();
+      foreach ($wer as $uid) {
+        q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNeu, $uid]);
+      }
+      $taskLinks($taskNeu);
+      item_new('task', $taskNeu, (int) $me['id']);
     }
     redirect('/intern/aufgaben');
   }
+  // Ändern gab es bisher gar nicht (#334): Ohne das ließen sich Zuständige
+  // und die verlangte Zahl nach dem Anlegen nie mehr korrigieren.
+  if (preg_match('~^/intern/aufgaben/(\d+)/update$~', $path, $m) && $method === 'POST') {
+    if (!perm_allows($me, 'aufgaben', 'write')) { flash(t('fl_no_permission')); redirect('/intern/aufgaben'); }
+    $taskNr = (int) $m[1];
+    $wer = $taskWer();
+    item_update('task', $taskNr, static function () use ($taskNr, $wer, $taskVerlangt): void {
+      q('UPDATE tasks SET title = ?, notes = ?, due_date = ?, required_done = ? WHERE id = ?',
+        [trim((string) ($_POST['title'] ?? '')), $_POST['notes'] ?? '', $_POST['due_date'] ?? '',
+         $taskVerlangt(count($wer)), $taskNr]);
+      // Häkchen der Bleibenden überleben; nur wer herausfällt, verliert seines.
+      $in = $wer ? implode(',', array_fill(0, count($wer), '?')) : 'NULL';
+      q("DELETE FROM task_assignees WHERE task_id = ? AND user_id NOT IN ($in)", [$taskNr, ...$wer]);
+      foreach ($wer as $uid) {
+        q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNr, $uid]);
+      }
+    }, (int) $me['id']);
+    $taskLinks($taskNr);
+    // Ohne Erlaubnis zum Öffnen: Eine erledigte Aufgabe geht nicht wieder auf,
+    // nur weil jemand die Zuständigenliste angefasst hat.
+    task_status_apply($taskNr);
+    redirect('/intern/aufgaben');
+  }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
+    $taskNr = (int) $m[1];
     if ($m[2] === 'toggle') {
-      item_update('task', (int) $m[1], static function () use ($m): void {
-        q("UPDATE tasks SET status = CASE status WHEN 'offen' THEN 'erledigt' ELSE 'offen' END WHERE id = ?", [$m[1]]);
+      // Ohne diese Zeile legte ein Haken auf eine gelöschte Aufgabe eine
+      // Zuordnung an, die auf nichts zeigt - task_assignees hat keinen
+      // Fremdschlüssel, der das abfinge.
+      if (!row('SELECT id FROM tasks WHERE id = ?', [$taskNr])) redirect('/intern/aufgaben');
+      // Das Häkchen ist persönlich (#334). Wer eine Aufgabe abhakt, für die
+      // niemand zuständig war, wird dadurch zuständig: ein Zuständiger, ein
+      // Häkchen, erledigt. Damit braucht dieser Fall keinen eigenen Weg - und
+      // die Liste sagt hinterher, wer es war, was sie vorher nie konnte.
+      $meins = row('SELECT done_at FROM task_assignees WHERE task_id = ? AND user_id = ?',
+                   [$taskNr, (int) $me['id']]);
+      $zurueck = $meins && $meins['done_at'] !== null;
+      if ($zurueck) {
+        q('UPDATE task_assignees SET done_at = NULL WHERE task_id = ? AND user_id = ?',
+          [$taskNr, (int) $me['id']]);
+      } else {
+        q('INSERT INTO task_assignees (task_id, user_id, done_at) VALUES (?,?,NOW(3))
+           ON DUPLICATE KEY UPDATE done_at = NOW(3)', [$taskNr, (int) $me['id']]);
+      }
+      // Nur das Zurücknehmen darf eine erledigte Aufgabe wieder öffnen.
+      item_update('task', $taskNr, static function () use ($taskNr, $zurueck): void {
+        task_status_apply($taskNr, $zurueck);
       }, (int) $me['id']);
       back('/intern/aufgaben');
     }
-    item_forget('task', (int) $m[1]);
-    q('DELETE FROM tasks WHERE id = ?', [$m[1]]);
+    item_forget('task', $taskNr);
+    q('DELETE FROM task_assignees WHERE task_id = ?', [$taskNr]);
+    q('DELETE FROM task_links WHERE task_id = ?', [$taskNr]);
+    q('DELETE FROM tasks WHERE id = ?', [$taskNr]);
     redirect('/intern/aufgaben');
   }
 
@@ -2308,42 +2404,13 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/gesehen' && $method === 'POST') {
     $gArt = (string) ($_POST['art'] ?? '');
     $gNr = (int) ($_POST['nr'] ?? 0);
-    // Je Sorte die Prüfung, die auch die Liste anwendet. Eine unbekannte Sorte
-    // wird abgelehnt statt still geschluckt: Welche Sorten es gibt, ist kein
-    // Geheimnis — geheim ist nur, welche Nummern jemand sehen darf. Ein
-    // stilles „ok" kostete den Nächsten, der data-seen benutzt, einen Tag.
-    $gPruefung = [
-      'event' => fn(int $nr): bool => may_see_event($me, $nr),
-      'song' => fn(int $nr): bool => may_see_song($me, $nr),
-      'setlist' => fn(int $nr): bool => may_see_setlist($me, $nr),
-      'quote' => fn(int $nr): bool => perm_allows($me, 'angebote'),
-      'contract' => fn(int $nr): bool => may_see_contract($me, $nr),
-      'file' => fn(int $nr): bool => ($f = row('SELECT * FROM files WHERE id = ?', [$nr])) && may_see_file($me, $f),
-      // Ein Kommentar ist so sichtbar wie sein Termin - eine eigene Regel gibt
-      // es nicht, und eine zweite wäre die nächste, die auseinanderläuft.
-      'comment' => fn(int $nr): bool => ($k = row('SELECT event_id FROM comments WHERE id = ?', [$nr]))
-                                        && may_see_event($me, (int) $k['event_id']),
-      'attendance' => fn(int $nr): bool => ($z = row('SELECT event_id FROM attendance WHERE id = ?', [$nr]))
-                                           && may_see_event($me, (int) $z['event_id']),
-      // Diese drei sind ganze Bereiche: Wer den Bereich sehen darf, sieht jeden
-      // Eintrag darin - genau wie die Liste selbst es hält.
-      'venue' => fn(int $nr): bool => perm_allows($me, 'orte'),
-      'absence' => fn(int $nr): bool => perm_allows($me, 'abwesenheiten'),
-      'task' => fn(int $nr): bool => perm_allows($me, 'aufgaben'),
-      'equipment' => fn(int $nr): bool => perm_allows($me, 'equipment'),
-      // Private Auslagen gehören dem Mitglied, nicht dem Bereich - deshalb
-      // hier nicht perm_allows(), sondern dieselbe Prüfung wie die Liste.
-      'finance' => fn(int $nr): bool => may_see_finance($me, $nr),
-      'guest' => fn(int $nr): bool => perm_allows($me, 'gaeste'),
-      'photo' => fn(int $nr): bool => perm_allows($me, 'fotos'),
-      'media' => fn(int $nr): bool => perm_allows($me, 'musik'),
-      'stageitem' => fn(int $nr): bool => perm_allows($me, 'rider'),
-      'channel' => fn(int $nr): bool => perm_allows($me, 'rider'),
-      'post' => fn(int $nr): bool => perm_allows($me, 'post'),
-    ][$gArt] ?? null;
     header('Content-Type: application/json');
-    if (!$gPruefung || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
-    if ($gPruefung($gNr)) {
+    // Eine unbekannte Sorte wird abgelehnt statt still geschluckt: Welche
+    // Sorten es gibt, ist kein Geheimnis — geheim ist nur, welche Nummern
+    // jemand sehen darf. Ein stilles „ok" kostete den Nächsten, der data-seen
+    // benutzt, einen Tag.
+    if (!isset(ITEM_KINDS[$gArt]) || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
+    if (item_visible($me, $gArt, $gNr)) {
       item_mark_seen($me, $gArt, $gNr);
       // Kommentare gehören zum Termin: Wer die Karte aufklappt, liest sie mit.
       // Sie einzeln bestätigen zu lassen hieße, jemanden nach etwas zu fragen,

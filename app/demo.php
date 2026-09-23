@@ -1120,7 +1120,10 @@ function demo_remove(): void {
   // mail_log vor den Konten, auf die es zeigt (#297). Die Bewertungen sind
   // oben schon weg — sie haben keinen eigenen Schlüssel und gehören hier
   // deshalb nicht in die Liste.
-  $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances', 'tasks',
+  // task_assignees vor tasks (#334): Die Zeilen zeigen auf die Aufgabe und
+  // auf ein Konto, also müssen sie vor beiden weg.
+  $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances',
+            'task_assignees', 'task_links', 'tasks',
             'guest_bookings', 'guests', 'contracts', 'promoters', 'quotes',
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',

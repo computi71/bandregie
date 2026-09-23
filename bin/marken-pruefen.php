@@ -101,14 +101,63 @@ if ($aushilfe) {
 // attendance ist der Grund, warum die id eigens geprüft wird: Die Tabelle
 // hatte nur einen zusammengesetzten Schlüssel, und die Marken sprechen jede
 // Zeile über i.id an.
-$quelle = (string) file_get_contents($basis . '/httpdocs/index.php');
 foreach (ITEM_KINDS as $sorte => $art) {
     $spalten = array_column(rows('SHOW COLUMNS FROM `' . $art['tabelle'] . '`'), 'Field');
     $pruefe("$sorte: Tabelle hat id", in_array('id', $spalten, true));
     $pruefe("$sorte: Spalte " . $art['wann'] . " vorhanden", in_array($art['wann'], $spalten, true));
     $pruefe("$sorte: Spalte " . $art['wer'] . " vorhanden", in_array($art['wer'], $spalten, true));
     $pruefe("$sorte: verglichene Felder vorhanden", array_diff($art['felder'], $spalten) === []);
-    $pruefe("$sorte: /intern/gesehen kennt sie", str_contains($quelle, "'$sorte' => fn(int \$nr)"));
+}
+
+// Jede Sorte muss in item_visible() einen Arm haben (#335). Vorher stand hier
+// eine Suche im Quelltext nach der alten Prüfkarte in /intern/gesehen; die gibt
+// es nicht mehr, und Text zu durchsuchen war ohnehin schwächer als zu fragen.
+//
+// Die Falle: Ein fehlender match-Arm landet im default und heißt „nein" - und
+// eine erfundene Nummer ergibt bei einer verdrahteten Sorte genauso „nein".
+// Eine ausgedachte Nummer beweist also gar nichts. Was beweist: eine ECHTE
+// Zeile und ein Admin-Konto, das jedes Recht hat. Sorten ohne Zeile in dieser
+// Datenbank lassen sich so nicht prüfen und werden als übersprungen gemeldet,
+// statt still durchzugehen.
+//
+// Eine Ausnahme, und sie ist keine Nachlässigkeit: Eine private Auslage in der
+// Kasse gehört dem Mitglied, nicht der Bandleitung - auch ein Admin sieht sie
+// nicht. Deshalb wird dort eine Buchung der Band genommen, und die private
+// bekommt gleich ihre eigene Prüfung weiter unten.
+$adminKonto = row("SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+foreach (array_merge(array_keys(ITEM_KINDS), ['topic']) as $sorte) {
+    $tab = $sorte === 'topic' ? 'topics' : ITEM_KINDS[$sorte]['tabelle'];
+    $eine = $sorte === 'finance'
+        ? row('SELECT id FROM finances WHERE private_for IS NULL ORDER BY id LIMIT 1')
+        : row("SELECT id FROM `$tab` ORDER BY id LIMIT 1");
+    if (!$eine) {
+        printf("%-52s %s%s", "$sorte: item_visible() (keine Zeile vorhanden)", 'uebersprungen', PHP_EOL);
+        continue;
+    }
+    $pruefe("$sorte: item_visible() sagt dem Admin ja",
+        item_visible($adminKonto, $sorte, (int) $eine['id']) === true);
+}
+$pruefe('item_visible() lehnt eine unbekannte Sorte ab',
+    item_visible($adminKonto, 'gibtsnicht', 1) === false);
+$pruefe('item_visible() lehnt Nummer 0 ab',
+    item_visible($adminKonto, 'event', 0) === false);
+// Die private Auslage eines anderen bleibt auch vor der Bandleitung zu. Das
+// ist der Fall, an dem diese Prüfung beim ersten Lauf gescheitert ist - sie
+// hatte angenommen, ein Admin dürfe alles sehen.
+// Der Eigner muss es noch geben: Eine Buchung, deren private_for auf ein
+// gelöschtes Konto zeigt, sieht niemand mehr - richtig beantwortet, aber als
+// Prüfung unbrauchbar. Gefunden am 23.09.2026 auf Staging, siehe #337.
+$privat = row('SELECT f.id, f.private_for FROM finances f
+               JOIN users u ON u.id = f.private_for
+               WHERE f.private_for <> ? ORDER BY f.id LIMIT 1', [(int) $adminKonto['id']]);
+if ($privat) {
+    $pruefe('private Auslage bleibt auch für den Admin zu',
+        item_visible($adminKonto, 'finance', (int) $privat['id']) === false);
+    $eigner = row('SELECT * FROM users WHERE id = ?', [(int) $privat['private_for']]);
+    $pruefe('ihr Eigner sieht sie',
+        $eigner && item_visible($eigner, 'finance', (int) $privat['id']) === true);
+} else {
+    echo 'keine fremde Privatbuchung vorhanden - Prüfung übersprungen', PHP_EOL;
 }
 
 // ----------------- 10. Kommentare: neu, gesehen, und mit dem Termin weg
