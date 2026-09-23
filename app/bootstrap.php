@@ -4156,7 +4156,12 @@ function task_assignees_map(array $taskIds): array {
 }
 
 function open_items_count(array $user): int {
-  $offen = (int) row("SELECT COUNT(*) c FROM tasks WHERE assigned_to = ? AND status = 'offen'",
+  // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
+  // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
+  // es gibt keinen persönlichen Reststand, der davon abweichen könnte.
+  $offen = (int) row("SELECT COUNT(*) c FROM tasks t
+                      JOIN task_assignees ta ON ta.task_id = t.id
+                      WHERE ta.user_id = ? AND t.status = 'offen'",
                      [(int) $user['id']])['c'];
   $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
   return $offen + count(open_votes($user)) + $chat;
@@ -4191,6 +4196,19 @@ function user_purge(int $userId): void {
   q('UPDATE standing_orders SET owner_id = NULL WHERE owner_id = ?', [$userId]);
   q('UPDATE standing_orders SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE comments SET user_id = NULL WHERE user_id = ?', [$userId]);
+  // Die Zuständigkeiten gehen mit - und danach wird gerechnet (#334). Ohne
+  // den zweiten Teil sitzt eine Aufgabe für immer bei "2 von 3", sobald das
+  // dritte Konto weg ist, und niemand kann sie mehr abschließen.
+  //
+  // Die Aufgabennummern VOR dem Löschen holen; danach ist nicht mehr zu
+  // sehen, welche betroffen waren.
+  $taskBetroffen = array_column(rows('SELECT task_id FROM task_assignees WHERE user_id = ?', [$userId]), 'task_id');
+  q('DELETE FROM task_assignees WHERE user_id = ?', [$userId]);
+  // Ohne Erlaubnis zum Öffnen: Ein gelöschtes Konto macht nichts wieder auf.
+  foreach ($taskBetroffen as $taskNr) task_status_apply((int) $taskNr);
+  // assigned_to liest niemand mehr, wird aber trotzdem geleert: Die Nummer
+  // eines gelöschten Kontos in einer Spalte stehen zu lassen ist genau der
+  // Rest, der den Nächsten überrascht, der sie doch einmal liest.
   q('UPDATE tasks SET assigned_to = NULL WHERE assigned_to = ?', [$userId]);
   q('UPDATE tasks SET created_by = NULL WHERE created_by = ?', [$userId]);
   q('UPDATE equipment SET owner_id = NULL WHERE owner_id = ?', [$userId]);

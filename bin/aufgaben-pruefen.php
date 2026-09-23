@@ -150,5 +150,29 @@ q('UPDATE task_assignees SET done_at = NULL WHERE task_id = ? AND user_id = ?', 
 $pruefe('zurueckgenommen: wieder offen', task_status_apply($t8, true) === 'offen');
 $weg($t8);
 
+// ---------------- 9. Zahl am Symbol und das Loeschen eines Kontos
+$t9 = $aufgabe([$A, $B], 2);
+$hake($t9, $A);
+task_status_apply($t9);
+$vorher = open_items_count($B);
+$pruefe('offene Aufgabe zaehlt beim Zustaendigen', $vorher >= 1);
+$hake($t9, $B);
+task_status_apply($t9);
+$pruefe('erledigte Aufgabe zaehlt nicht mehr', open_items_count($B) === $vorher - 1);
+$weg($t9);
+
+// Ein Konto faellt weg, waehrend eine Aufgabe daran haengt.
+$t10 = $aufgabe([$A, $B, $C], 0);
+$hake($t10, $A);
+$hake($t10, $B);
+task_status_apply($t10);
+$pruefe('drei zustaendig, zwei fertig: haengt', $stand($t10) === 'offen');
+// Das, was user_purge() tut: Zeilen weg UND neu rechnen.
+$weggefallen = array_column(rows('SELECT task_id FROM task_assignees WHERE user_id = ?', [(int) $C['id']]), 'task_id');
+q('DELETE FROM task_assignees WHERE user_id = ?', [(int) $C['id']]);
+foreach ($weggefallen as $nr) task_status_apply((int) $nr);
+$pruefe('Konto weg: Aufgabe nicht mehr haengend', $stand($t10) === 'erledigt');
+$weg($t10);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

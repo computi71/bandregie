@@ -941,6 +941,13 @@ if (str_starts_with($path, '/intern')) {
         $unreadTopics[$i]['ab'] = topic_first_unread($me, (int) $ut['id']);
       }
     }
+    // Die offenen Aufgaben einmal holen, damit die Zuständigen dazu passen
+    // (#334). Der Überblick zeigt sie ungefiltert - er ist die Liste der
+    // Band, nicht die persönliche; die Zahl am Symbol zählt nur die eigenen.
+    $dashTasks = perm_allows($me, 'aufgaben')
+      ? rows("SELECT t.* FROM tasks t WHERE t.status='offen'
+              ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8")
+      : [];
     view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),
@@ -951,8 +958,8 @@ if (str_starts_with($path, '/intern')) {
       // Fehlende Rückmeldungen gehören zu den offenen Aufgaben: Die Zahl am
       // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
       'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
-      'tasks' => perm_allows($me, 'aufgaben') ? rows("SELECT t.*, u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id = t.assigned_to
-                       WHERE t.status='offen' ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8") : [],
+      'tasks' => $dashTasks,
+      'taskAssignees' => task_assignees_map(array_column($dashTasks, 'id')),
       'unreadTopics' => $unreadTopics,
     ]);
   }

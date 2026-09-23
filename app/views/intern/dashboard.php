@@ -128,7 +128,8 @@
         <li>
           <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
           <strong><?= e($task['title']) ?></strong>
-          <?php if ($task['assignee']): ?><span class="muted">→ <?= e($task['assignee']) ?></span><?php endif; ?>
+          <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
+          <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
           <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
         </li>
       <?php endforeach; ?>
