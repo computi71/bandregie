@@ -4,7 +4,8 @@
 <?php
 // Anlegen und Ändern benutzen dasselbe Formular — einmal hier, damit ein neues
 // Feld nicht an zwei Stellen nachgezogen werden muss (#334).
-$taskFormular = static function (array $members, ?array $task, array $wer): void {
+$taskFormular = static function (array $members, ?array $task, array $wer,
+                                 array $linkable, array $verknuepft): void {
   $gewaehlt = array_map(static fn(array $a): int => (int) $a['user_id'], $wer);
   ?>
   <label class="span2"><?= e(t('task_lbl')) ?>
@@ -33,6 +34,26 @@ $taskFormular = static function (array $members, ?array $task, array $wer): void
   </label>
   <label><?= e(t('task_due')) ?><input type="date" name="due_date" value="<?= e($task['due_date'] ?? '') ?>"></label>
   <label class="span2"><?= e(t('task_details')) ?><textarea name="notes" rows="2"><?= e($task['notes'] ?? '') ?></textarea></label>
+  <?php // Woran die Aufgabe hängt (#335). Zur Auswahl stehen nur Termine,
+        // Lieder, Setlisten und Themen - daran hängen Aufgaben wirklich.
+        // Verknüpfungen auf andere Sorten bleiben erhalten und werden in der
+        // Liste angezeigt, sie entstehen hier nur nicht. ?>
+  <?php if ($linkable): ?>
+    <label class="span2"><?= e(t('task_links')) ?>
+      <?php $schon = array_map(static fn(array $l): string => $l['kind'] . ':' . $l['item_id'], $verknuepft); ?>
+      <select name="links[]" multiple size="6">
+        <?php foreach ($linkable as $sorte => $eintraege): ?>
+          <optgroup label="<?= e(t('itemkind_' . $sorte)) ?>">
+            <?php foreach ($eintraege as $eintrag): ?>
+              <?php $wert = $sorte . ':' . $eintrag['id']; ?>
+              <option value="<?= e($wert) ?>" <?= in_array($wert, $schon, true) ? 'selected' : '' ?>><?= e($eintrag['label']) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('task_link_hint')) ?></span>
+    </label>
+  <?php endif; ?>
   <?php
 };
 ?>
@@ -40,7 +61,7 @@ $taskFormular = static function (array $members, ?array $task, array $wer): void
 <details class="card collapsible" <?= $tasks ? '' : 'open' ?>>
   <summary>➕ <?= e(t('task_add')) ?></summary>
   <form method="post" action="/intern/aufgaben" class="form-grid"><?= csrf_field() ?>
-    <?php $taskFormular($members, null, []); ?>
+    <?php $taskFormular($members, null, [], $linkable ?? [], []); ?>
     <button class="btn btn-primary span2"><?= e(t('task_add')) ?></button>
   </form>
 </details>
@@ -81,12 +102,20 @@ $taskFormular = static function (array $members, ?array $task, array $wer): void
             <span class="muted small">✔ <?= e(t('task_done_by')) ?> <?= e(implode(', ', array_column($fertig, 'name'))) ?></span>
           <?php endif; ?>
         <?php endif; ?>
+        <?php $verk = $linksByTask[(int) $task['id']] ?? []; ?>
+        <?php if ($verk): ?>
+          <div class="muted small"><?= e(t('task_links')) ?>:
+            <?php foreach ($verk as $l): ?>
+              <a class="badge" href="<?= e($l['url']) ?>"><?= e(t('itemkind_' . $l['kind'])) ?>: <?= e($l['label']) ?></a>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
         <?php if ($task['notes']): ?><div class="muted small prewrap"><?= e($task['notes']) ?></div><?php endif; ?>
         <?php if (perm_allows($user, 'aufgaben', 'write')): ?>
           <details class="subsection">
             <summary>✏️ <?= e(t('task_edit')) ?></summary>
             <form method="post" action="/intern/aufgaben/<?= (int) $task['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
-              <?php $taskFormular($members, $task, $wer); ?>
+              <?php $taskFormular($members, $task, $wer, $linkable ?? [], $linksByTask[(int) $task['id']] ?? []); ?>
               <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
             </form>
           </details>

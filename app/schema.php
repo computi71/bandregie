@@ -146,6 +146,16 @@ $tables = [
     PRIMARY KEY (task_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Woran eine Aufgabe hängt (#335). kind wird gegen ITEM_KINDS geprüft,
+  // plus 'topic' - damit ist "und was sonst noch sinnvoll ist" keine Liste,
+  // die jemand raten muss, sondern eine Tabelle.
+  "CREATE TABLE IF NOT EXISTS task_links (
+    task_id INT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
+    item_id INT NOT NULL,
+    PRIMARY KEY (task_id, kind, item_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS photos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,

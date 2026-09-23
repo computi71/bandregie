@@ -1583,6 +1583,22 @@ if (str_starts_with($path, '/intern')) {
   $taskVerlangt = static fn(int $wieviele): int
     => max(0, min($wieviele, (int) ($_POST['required_done'] ?? 0)));
 
+  // Verknüpfungen aus dem Formular: Paare "sorte:nummer" (#335). Eine Sorte,
+  // die es nicht gibt, und ein Eintrag, den der Absender nicht sehen darf,
+  // werden verworfen - sonst ließe sich über das Formular erfragen, was es
+  // anderswo gibt.
+  $taskLinks = static function (int $taskNr) use ($me): void {
+    q('DELETE FROM task_links WHERE task_id = ?', [$taskNr]);
+    foreach ((array) ($_POST['links'] ?? []) as $paar) {
+      [$kind, $nr] = array_pad(explode(':', (string) $paar, 2), 2, '');
+      $nr = (int) $nr;
+      $erlaubt = isset(ITEM_KINDS[$kind]) || $kind === 'topic';
+      if (!$erlaubt || $nr <= 0 || !item_visible($me, $kind, $nr)) continue;
+      q('INSERT IGNORE INTO task_links (task_id, kind, item_id) VALUES (?,?,?)',
+        [$taskNr, $kind, $nr]);
+    }
+  };
+
   if ($path === '/intern/aufgaben' && $method === 'GET') {
     $taskOffen = items_unseen($me, 'task');
     $taskListe = rows("SELECT t.* FROM tasks t
@@ -1591,6 +1607,8 @@ if (str_starts_with($path, '/intern')) {
       'title' => t('task_title'),
       'tasks' => $taskListe,
       'assigneesByTask' => task_assignees_map(array_column($taskListe, 'id')),
+      'linksByTask' => task_links_map(array_column($taskListe, 'id'), $me),
+      'linkable' => task_linkable($me),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'unseenTasks' => $taskOffen,
       'seenOnList' => ['task' => array_keys($taskOffen)],
@@ -1606,6 +1624,7 @@ if (str_starts_with($path, '/intern')) {
       foreach ($wer as $uid) {
         q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNeu, $uid]);
       }
+      $taskLinks($taskNeu);
       item_new('task', $taskNeu, (int) $me['id']);
     }
     redirect('/intern/aufgaben');
@@ -1627,6 +1646,7 @@ if (str_starts_with($path, '/intern')) {
         q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$taskNr, $uid]);
       }
     }, (int) $me['id']);
+    $taskLinks($taskNr);
     // Ohne Erlaubnis zum Öffnen: Eine erledigte Aufgabe geht nicht wieder auf,
     // nur weil jemand die Zuständigenliste angefasst hat.
     task_status_apply($taskNr);
@@ -1661,6 +1681,7 @@ if (str_starts_with($path, '/intern')) {
     }
     item_forget('task', $taskNr);
     q('DELETE FROM task_assignees WHERE task_id = ?', [$taskNr]);
+    q('DELETE FROM task_links WHERE task_id = ?', [$taskNr]);
     q('DELETE FROM tasks WHERE id = ?', [$taskNr]);
     redirect('/intern/aufgaben');
   }

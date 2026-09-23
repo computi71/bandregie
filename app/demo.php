@@ -1123,7 +1123,7 @@ function demo_remove(): void {
   // task_assignees vor tasks (#334): Die Zeilen zeigen auf die Aufgabe und
   // auf ein Konto, also müssen sie vor beiden weg.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances',
-            'task_assignees', 'tasks',
+            'task_assignees', 'task_links', 'tasks',
             'guest_bookings', 'guests', 'contracts', 'promoters', 'quotes',
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',

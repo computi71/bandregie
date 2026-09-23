@@ -4155,6 +4155,160 @@ function task_assignees_map(array $taskIds): array {
   return $karte;
 }
 
+/**
+ * Wie ein Eintrag heißt, wenn man ihn in einer Liste nennen will (#335).
+ *
+ * Leerer Rückgabewert heißt "gibt es nicht mehr". Verknüpfungen werden
+ * bewusst beim Lesen übersprungen statt beim Löschen aufgeräumt: Der andere
+ * Weg wären neunzehn Löschstellen, von denen man eine vergisst - und eine
+ * vergessene zeigt irgendwann auf eine neu vergebene Nummer, also auf das
+ * Falsche statt auf nichts.
+ */
+function item_label(string $kind, int $id): string {
+  $eine = static fn(string $sql): ?array => row($sql, [$id]);
+  return match ($kind) {
+    'event'      => ($r = $eine('SELECT title, date FROM events WHERE id = ?'))
+                    ? $r['title'] . ' - ' . fmt_date($r['date']) : '',
+    'song'       => ($r = $eine('SELECT title FROM songs WHERE id = ?')) ? $r['title'] : '',
+    'setlist'    => ($r = $eine('SELECT name FROM setlists WHERE id = ?')) ? $r['name'] : '',
+    'quote'      => ($r = $eine('SELECT title, customer FROM quotes WHERE id = ?'))
+                    ? ($r['title'] ?: $r['customer']) : '',
+    'contract'   => ($r = $eine('SELECT contract_no FROM contracts WHERE id = ?'))
+                    ? ($r['contract_no'] ?: '#' . $id) : '',
+    'file'       => ($r = $eine('SELECT original_name FROM files WHERE id = ?')) ? $r['original_name'] : '',
+    'venue'      => ($r = $eine('SELECT name FROM venues WHERE id = ?')) ? $r['name'] : '',
+    'task'       => ($r = $eine('SELECT title FROM tasks WHERE id = ?')) ? $r['title'] : '',
+    'equipment'  => ($r = $eine('SELECT name FROM equipment WHERE id = ?')) ? $r['name'] : '',
+    'guest'      => ($r = $eine('SELECT name FROM guests WHERE id = ?')) ? $r['name'] : '',
+    'topic'      => ($r = $eine('SELECT title FROM topics WHERE id = ?')) ? $r['title'] : '',
+    'media'      => ($r = $eine('SELECT title, url FROM media_links WHERE id = ?'))
+                    ? ($r['title'] ?: $r['url']) : '',
+    'post'       => ($r = $eine('SELECT subject FROM post_messages WHERE id = ?'))
+                    ? ($r['subject'] ?: t('post_title')) : '',
+    'finance'    => ($r = $eine('SELECT description, amount_cents FROM finances WHERE id = ?'))
+                    ? $r['description'] . ' - ' . fmt_money((int) $r['amount_cents']) : '',
+    'photo'      => ($r = $eine('SELECT caption, filename FROM photos WHERE id = ?'))
+                    ? ($r['caption'] ?: $r['filename']) : '',
+    'channel'    => ($r = $eine('SELECT number, name FROM channels WHERE id = ?'))
+                    ? $r['number'] . ' - ' . $r['name'] : '',
+    'stageitem'  => ($r = $eine('SELECT label, kind FROM stage_items WHERE id = ?'))
+                    ? ($r['label'] ?: $r['kind']) : '',
+    'absence'    => ($r = $eine('SELECT date_from, date_to FROM absences WHERE id = ?'))
+                    ? fmt_date($r['date_from']) . ' - ' . fmt_date($r['date_to']) : '',
+    'comment'    => ($r = $eine('SELECT text FROM comments WHERE id = ?'))
+                    ? mb_substr($r['text'], 0, 60) : '',
+    'attendance' => ($r = row('SELECT u.name FROM attendance a JOIN users u ON u.id = a.user_id
+                               WHERE a.id = ?', [$id])) ? $r['name'] : '',
+    default      => '',
+  };
+}
+
+/**
+ * Wohin ein Eintrag führt. Bereiche ohne Einzelseite führen auf ihre Liste -
+ * dort steht der Eintrag vollständig, mehr gibt es nicht zu zeigen.
+ */
+function item_url(string $kind, int $id): string {
+  // Kommentar und Zusage führen auf ihren Termin, nicht auf sich selbst: Sie
+  // haben keine eigene Seite, sie stehen in der Terminkarte.
+  if ($kind === 'comment' || $kind === 'attendance') {
+    $tab = $kind === 'comment' ? 'comments' : 'attendance';
+    $r = row("SELECT event_id FROM `$tab` WHERE id = ?", [$id]);
+    return $r ? item_url('event', (int) $r['event_id']) : '/intern/termine';
+  }
+  // event_url() bringt die Filter mit, ohne die die Karte gar nicht auf der
+  // Seite steht - bei Vergangenem und Abgesagtem genau der Normalfall (#322).
+  if ($kind === 'event') {
+    $ev = row('SELECT id, date, status FROM events WHERE id = ?', [$id]);
+    return $ev ? event_url($ev) : '/intern/termine';
+  }
+  return match ($kind) {
+    'song'      => '/intern/songs/' . $id,
+    'setlist'   => '/intern/setlists',
+    'quote'     => '/intern/angebote',
+    'contract'  => '/intern/vertraege',
+    'file'      => '/intern/dateien',
+    'venue'     => '/intern/orte',
+    'absence'   => '/intern/abwesenheiten',
+    'task'      => '/intern/aufgaben',
+    'finance'   => '/intern/kasse',
+    'equipment' => '/intern/equipment',
+    'guest'     => '/intern/gaeste',
+    'photo'     => '/intern/fotos',
+    'media'     => '/intern/musik',
+    'stageitem' => '/intern/stagerider',
+    'channel'   => '/intern/kanaele',
+    'post'      => '/intern/post/' . $id,
+    'topic'     => '/intern/themen/' . $id,
+    default     => '/intern',
+  };
+}
+
+/**
+ * Die Verknüpfungen mehrerer Aufgaben, fertig zum Anzeigen (#335).
+ *
+ * Gefiltert wird hier und nicht in der Ansicht: item_visible() ist dieselbe
+ * Prüfung, die auch die Marken benutzen - eine Aufgabe darf nicht verraten,
+ * dass es einen Termin gibt, den man nicht sehen darf.
+ */
+function task_links_map(array $taskIds, ?array $user): array {
+  if (!$taskIds) return [];
+  $in = implode(',', array_map('intval', $taskIds));
+  $karte = [];
+  foreach (rows("SELECT task_id, kind, item_id FROM task_links WHERE task_id IN ($in)") as $r) {
+    $kind = (string) $r['kind'];
+    $nr = (int) $r['item_id'];
+    if (!item_visible($user, $kind, $nr)) continue;
+    $text = item_label($kind, $nr);
+    if ($text === '') continue; // gelöscht - überspringen, nicht scheitern
+    $karte[(int) $r['task_id']][] = [
+      'kind' => $kind, 'item_id' => $nr, 'label' => $text, 'url' => item_url($kind, $nr),
+    ];
+  }
+  return $karte;
+}
+
+/**
+ * Was sich verknüpfen lässt, nach Sorte gruppiert (#335) - für die Auswahl
+ * im Formular.
+ *
+ * Nur Termine, Lieder, Setlisten und Themen stehen zur Auswahl: Daran hängen
+ * Aufgaben wirklich, und eine Auswahlliste mit neunzehn Gruppen und tausend
+ * Zeilen benutzt niemand. Verknüpfungen auf andere Sorten bleiben gültig und
+ * werden angezeigt - sie entstehen nur nicht hier.
+ *
+ * Die hundert Termine sind Absicht: Eine Band mit zehn Jahren Geschichte
+ * schöbe sonst tausend Zeilen in ein Auswahlfeld, und an einen Auftritt von
+ * 2019 hängt niemand mehr eine Aufgabe.
+ */
+function task_linkable(?array $user): array {
+  $gruppen = [];
+  if (perm_allows($user, 'termine')) {
+    foreach (rows('SELECT id, title, date FROM events ORDER BY date DESC LIMIT 100') as $e) {
+      if (!may_see_event($user, (int) $e['id'])) continue;
+      $gruppen['event'][] = ['id' => (int) $e['id'], 'label' => $e['title'] . ' - ' . fmt_date($e['date'])];
+    }
+  }
+  if (perm_allows($user, 'songs')) {
+    foreach (rows('SELECT id, title FROM songs ORDER BY title') as $so) {
+      if (!may_see_song($user, (int) $so['id'])) continue;
+      $gruppen['song'][] = ['id' => (int) $so['id'], 'label' => $so['title']];
+    }
+  }
+  if (perm_allows($user, 'setlists')) {
+    foreach (rows('SELECT id, name FROM setlists ORDER BY name') as $sl) {
+      if (!may_see_setlist($user, (int) $sl['id'])) continue;
+      $gruppen['setlist'][] = ['id' => (int) $sl['id'], 'label' => $sl['name']];
+    }
+  }
+  if (perm_allows($user, 'themen')) {
+    foreach (rows('SELECT id, title FROM topics ORDER BY title') as $th) {
+      if (!may_see_topic($user, (int) $th['id'])) continue;
+      $gruppen['topic'][] = ['id' => (int) $th['id'], 'label' => $th['title']];
+    }
+  }
+  return $gruppen;
+}
+
 function open_items_count(array $user): int {
   // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
   // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -

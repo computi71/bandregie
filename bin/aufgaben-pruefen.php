@@ -174,5 +174,44 @@ foreach ($weggefallen as $nr) task_status_apply((int) $nr);
 $pruefe('Konto weg: Aufgabe nicht mehr haengend', $stand($t10) === 'erledigt');
 $weg($t10);
 
+// ------------------------------------------ 10. Verknuepfungen (#335)
+q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Verknuepfung','2027-04-04','bestaetigt')");
+$evV = (int) $GLOBALS['db']->lastInsertId();
+$t11 = $aufgabe([$A], 0);
+q('INSERT INTO task_links (task_id, kind, item_id) VALUES (?,?,?)', [$t11, 'event', $evV]);
+$karte = task_links_map([$t11], $A);
+$pruefe('Verknuepfung wird gefunden', count($karte[$t11] ?? []) === 1);
+$pruefe('Verknuepfung nennt den Titel',
+    str_contains((string) ($karte[$t11][0]['label'] ?? ''), 'ZZ Verknuepfung'));
+$pruefe('Verknuepfung hat eine Adresse',
+    str_starts_with((string) ($karte[$t11][0]['url'] ?? ''), '/intern/'));
+
+// Zeigt sie auf etwas Geloeschtes, wird sie uebersprungen statt zu scheitern.
+q('DELETE FROM events WHERE id = ?', [$evV]);
+$pruefe('verwaiste Verknuepfung wird uebersprungen',
+    (task_links_map([$t11], $A)[$t11] ?? []) === []);
+q('DELETE FROM task_links WHERE task_id = ?', [$t11]);
+$weg($t11);
+
+// Eine Verknuepfung auf etwas, das der Lesende nicht sehen darf, erscheint
+// nicht. Geprueft mit einer Aushilfe: Sie sieht nur Termine auf ihren eigenen
+// Setlisten.
+$aushilfe = row("SELECT * FROM users WHERE role = 'ersatz' LIMIT 1");
+if ($aushilfe) {
+    q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Unsichtbar','2027-04-05','bestaetigt')");
+    $evU = (int) $GLOBALS['db']->lastInsertId();
+    $t11b = $aufgabe([$A], 0);
+    q('INSERT INTO task_links (task_id, kind, item_id) VALUES (?,?,?)', [$t11b, 'event', $evU]);
+    $pruefe('Aushilfe darf den Termin nicht sehen', !may_see_event($aushilfe, $evU));
+    $pruefe('unsichtbare Verknuepfung erscheint nicht',
+        (task_links_map([$t11b], $aushilfe)[$t11b] ?? []) === []);
+    $pruefe('sichtbar fuer wen sie darf', count(task_links_map([$t11b], $A)[$t11b] ?? []) === 1);
+    q('DELETE FROM task_links WHERE task_id = ?', [$t11b]);
+    $weg($t11b);
+    q('DELETE FROM events WHERE id = ?', [$evU]);
+} else {
+    echo 'keine Aushilfe vorhanden - Sichtbarkeitspruefung uebersprungen', PHP_EOL;
+}
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
