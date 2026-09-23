@@ -1202,6 +1202,8 @@ if (str_starts_with($path, '/intern')) {
       'songFiles' => files_map('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? [],
       'myChords' => song_chords_mine((int) $songOne['id'], $me['id']),
       'otherChordsCount' => count(array_filter(song_chords_all((int) $songOne['id'], $me['id']), fn($c) => !$c['mine'])),
+      'songTasks' => perm_allows($me, 'aufgaben')
+        ? (tasks_for_item('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? []) : [],
     ]);
   }
   // Bühne: der Liedtext im Vollbild, groß und selbstlaufend — das Handy als

@@ -33,6 +33,17 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
   <?php if ($song['duration_sec']): ?> · <?= (int) floor($song['duration_sec'] / 60) ?>:<?= sprintf('%02d', $song['duration_sec'] % 60) ?><?php endif; ?>
 </p>
 
+<?php // Was an diesem Lied noch offen ist (#336) — auf dem Notenständer die
+      // Nächste Frage nach Tonart und Tempo. ?>
+<?php if (!empty($songTasks)): ?>
+  <p class="muted small">✅ <?= e(t('item_open_tasks')) ?>:
+    <?php foreach ($songTasks as $ta): ?>
+      <a class="badge" href="/intern/aufgaben"><?= e($ta['title']) ?><?php
+        if ($ta['assignees']): ?> · <?= e(implode(', ', array_column($ta['assignees'], 'name'))) ?><?php endif; ?></a>
+    <?php endforeach; ?>
+  </p>
+<?php endif; ?>
+
 <?php if (trim((string) $song['notes']) !== ''): ?>
   <p class="card prewrap muted"><?= e($song['notes']) ?></p>
 <?php endif; ?>

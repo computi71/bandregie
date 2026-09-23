@@ -213,5 +213,22 @@ if ($aushilfe) {
     echo 'keine Aushilfe vorhanden - Sichtbarkeitspruefung uebersprungen', PHP_EOL;
 }
 
+// ---------------- 11. Die Gegenrichtung: Aufgaben am Termin (#336)
+q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Gegenrichtung','2027-05-05','bestaetigt')");
+$evG = (int) $GLOBALS['db']->lastInsertId();
+$t12 = $aufgabe([$A], 0);
+q('INSERT INTO task_links (task_id, kind, item_id) VALUES (?,?,?)', [$t12, 'event', $evG]);
+$amTermin = tasks_for_item('event', [$evG]);
+$pruefe('Termin kennt seine offene Aufgabe', count($amTermin[$evG] ?? []) === 1);
+$pruefe('mit Namen des Zustaendigen',
+    ($amTermin[$evG][0]['assignees'][0]['name'] ?? '') === $A['name']);
+$hake($t12, $A);
+task_status_apply($t12);
+$pruefe('erledigte Aufgabe steht nicht mehr am Termin',
+    (tasks_for_item('event', [$evG])[$evG] ?? []) === []);
+q('DELETE FROM task_links WHERE task_id = ?', [$t12]);
+$weg($t12);
+q('DELETE FROM events WHERE id = ?', [$evG]);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

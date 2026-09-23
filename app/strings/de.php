@@ -461,6 +461,7 @@ const UI_STRINGS = [
   'task_nobody' => 'Niemand zugewiesen — wer abhakt, ist zuständig',
   'task_edit' => 'Aufgabe ändern',
   'task_links' => 'Gehört zu',
+  'item_open_tasks' => 'Noch zu tun',
   'task_link_hint' => 'Mehrfachauswahl mit Strg bzw. ⌘',
   'itemkind_event' => 'Termin', 'itemkind_song' => 'Lied', 'itemkind_setlist' => 'Setliste',
   'itemkind_quote' => 'Angebot', 'itemkind_contract' => 'Vertrag', 'itemkind_file' => 'Datei',

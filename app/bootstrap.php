@@ -4309,6 +4309,34 @@ function task_linkable(?array $user): array {
   return $gruppen;
 }
 
+/**
+ * Die offenen Aufgaben, die an diesen Einträgen hängen (#336).
+ *
+ * Nur offene: Eine erledigte Aufgabe an einem Termin ist Geschichte und
+ * gehört nicht in die Karte, die man vor dem Auftritt liest.
+ *
+ * Die Aufgabe selbst wird nicht auf Sichtbarkeit geprüft - wer den Termin
+ * sieht, sieht auch, was daran noch zu tun ist. Wer den Aufgabenbereich gar
+ * nicht darf, bekommt die Abfrage nicht: Das entscheidet der Aufrufer mit
+ * perm_allows(), wie überall sonst.
+ */
+function tasks_for_item(string $kind, array $itemIds): array {
+  if (!$itemIds) return [];
+  $in = implode(',', array_map('intval', $itemIds));
+  $zeilen = rows("SELECT tl.item_id, t.id, t.title, t.due_date, t.required_done
+                  FROM task_links tl JOIN tasks t ON t.id = tl.task_id
+                  WHERE tl.kind = ? AND tl.item_id IN ($in) AND t.status = 'offen'
+                  ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date", [$kind]);
+  if (!$zeilen) return [];
+  $wer = task_assignees_map(array_column($zeilen, 'id'));
+  $karte = [];
+  foreach ($zeilen as $z) {
+    $z['assignees'] = $wer[(int) $z['id']] ?? [];
+    $karte[(int) $z['item_id']][] = $z;
+  }
+  return $karte;
+}
+
 function open_items_count(array $user): int {
   // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
   // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
@@ -4863,6 +4891,9 @@ function event_view_data(array $events, array $me): array {
     // und das ist schon geschwärzt — zu einem verdeckten Termin steht keine
     // Datei da, die eine Marke tragen könnte.
     'unseenFiles' => items_unseen($me, 'file'),
+    // Was an diesem Termin noch zu tun ist (#336). Nur wer Aufgaben sehen darf,
+    // bekommt die Abfrage überhaupt.
+    'tasksByEvent' => perm_allows($me, 'aufgaben') ? $ohne(tasks_for_item('event', $ids)) : [],
     // Kommentare tragen eigene Marken (#331). items_unseen() kennt die
     // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
     // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu
