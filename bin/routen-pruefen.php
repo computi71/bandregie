@@ -12,6 +12,12 @@
 // meistens genau eine Seite in genau einem Bereich. Die findet nur, wer alle
 // aufruft.
 //
+// Geprüft wird der Statuscode UND das Ende der Seite (#342). Der Code allein
+// genügt nicht: Der Kopf ist längst ausgeliefert, wenn eine Ansicht mittendrin
+// scheitert, also steht die 200 schon in der Leitung und nur der Rumpf bricht
+// ab. Eine Seite ohne abschließendes </html> hat es nicht bis zum Fuß
+// geschafft — egal, was der Code behauptet.
+//
 // NUR auf dem Entwicklungsserver. Es legt eine Sitzung für ein beliebiges
 // Konto an, und das gehört nicht auf eine Bandinstanz.
 declare(strict_types=1);
@@ -56,12 +62,19 @@ foreach ($pfade as $pfad) {
     // der URL. Beide Stellen gleich behandeln, sonst wird ausgerechnet die
     // unauffällige Stelle irgendwann kopiert, ohne den Schutz mitzunehmen.
     $befehl = sprintf(
-        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -o /dev/null -w "%%{http_code}" https://%s%s',
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -w "
+%%{http_code}" https://%s%s',
         escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host), $pfad);
-    $code = (int) shell_exec($befehl);
-    $gut = $code === 200;
+    $antwort = (string) shell_exec($befehl);
+    $trenner = strrpos($antwort, "
+");
+    $code = (int) substr($antwort, $trenner === false ? 0 : $trenner + 1);
+    $rumpf = $trenner === false ? '' : substr($antwort, 0, $trenner);
+    $ganz = str_ends_with(rtrim($rumpf), '</html>');
+    $gut = $code === 200 && $ganz;
     if (!$gut) $fehler++;
-    printf("%-34s %d %s%s", $pfad, $code, $gut ? 'ok' : 'FEHLER', PHP_EOL);
+    printf("%-34s %d %s%s", $pfad, $code,
+        $gut ? 'ok' : ($code === 200 ? 'FEHLER (Seite bricht ab)' : 'FEHLER'), PHP_EOL);
 }
 printf('%s%d Seiten, %d Fehler%s', PHP_EOL, count($pfade), $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
