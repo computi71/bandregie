@@ -539,6 +539,13 @@ $privacyDefault = "Datenschutzerklärung\n\n"
         <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
         <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
       </label>
+      <?php // Das Ablaufdatum (#339) steht in Azure neben dem Geheimnis, im
+            // selben Augenblick, in dem es kopiert wird. Später ist es nur noch
+            // mit einem Recht zu erfahren, das diese Anwendung nicht hat. ?>
+      <label class="span2"><?= e(t('od_secret_expires')) ?>
+        <input type="date" name="onedrive_secret_expires" value="<?= e(od_secret_expires()) ?>">
+        <span class="muted small"><?= e(t('od_secret_expires_hint')) ?></span>
+      </label>
       <label class="span2"><?= e(t('od_tenant')) ?><input name="onedrive_tenant" value="<?= e(setting('onedrive_tenant', 'common')) ?>">
         <span class="muted small"><?= e(t('od_tenant_hint')) ?></span>
       </label>

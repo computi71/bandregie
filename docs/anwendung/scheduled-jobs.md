@@ -1,10 +1,15 @@
 # Scheduled jobs
 
-Four things run without anybody asking: the **automatic backup**, the **daily
-look into linked OneDrive folders**, the **mailbox fetch**, and the **daily
-digest mail**. Each has one
-due-check and two possible triggers — a page view, or the matching script from
-`bin/` as a cron.
+Five things run without anybody asking: the **automatic backup**, the **daily
+look into linked OneDrive folders**, the **mailbox fetch**, the **daily
+digest mail**, and the **reminder before the OneDrive client secret expires**.
+Each has one due-check and two possible triggers — a page view, or the matching
+script from `bin/` as a cron.
+
+The secret reminder is the exception that needs no script of its own. It has a
+thirty-day window and warns again at seven days and on the day itself; any page
+view in that month carries it, and an instance nobody opens for a month has
+bigger problems than an expiring secret.
 
 ## Why a page view is usually enough
 

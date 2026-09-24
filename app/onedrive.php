@@ -77,6 +77,145 @@ function od_enabled(): bool {
 }
 
 /**
+ * Die Stufen, auf denen an den Ablauf erinnert wird — absteigend (#339).
+ *
+ * Drei statt einer: Eine einzelne Mail dreißig Tage vorher ist genau die Mail,
+ * die unterwegs gelesen, beiseitegelegt und vergessen wird. Die bei sieben
+ * Tagen ist die, nach der jemand handelt, und die am Ablauftag erklärt einen
+ * Ausfall, der sonst als Störung durchginge.
+ */
+const OD_SECRET_WARN = [30, 7, 0];
+
+/**
+ * Wann läuft das Geheimnis ab? (#339)
+ *
+ * Ein Azure-Geheimnis gilt höchstens 24 Monate, und wenn es abläuft, hört
+ * OneDrive wortlos auf: Die Auffrischung scheitert, es kommen keine Bilder
+ * mehr, und niemand sucht die Ursache zwei Jahre in der Vergangenheit.
+ *
+ * Das Datum steht von Hand hier, weil die Anwendung es nicht erfragen kann:
+ * Microsoft nennt es nur mit Application.Read.All samt Zustimmung eines
+ * Verzeichnis-Administrators — ein weit größeres Recht als das, was die
+ * Anmeldung im Namen des Benutzers braucht. In Azure steht es ohnehin genau in
+ * dem Augenblick auf dem Schirm, in dem das Geheimnis kopiert wird.
+ */
+function od_secret_expires(): string {
+  $d = trim(setting('onedrive_secret_expires'));
+  return preg_match('~^\d{4}-\d{2}-\d{2}$~', $d) ? $d : '';
+}
+
+/** Tage bis zum Ablauf, negativ danach. null heißt: kein Datum hinterlegt. */
+function od_secret_days_left(): ?int {
+  $bis = od_secret_expires();
+  if ($bis === '') return null;
+  $ziel = DateTimeImmutable::createFromFormat('!Y-m-d', $bis);
+  if ($ziel === false) return null;
+  // Auf Tagesgrenzen gerechnet, nicht auf Sekunden: Sonst hinge „noch 30 Tage"
+  // an der Uhrzeit, zu der zufällig jemand die Seite aufruft.
+  return (int) (new DateTimeImmutable('today'))->diff($ziel)->format('%r%a');
+}
+
+/** Welche Stufe ist erreicht? null, solange noch nichts ansteht. */
+function od_secret_stufe(?int $tage): ?int {
+  if ($tage === null) return null;
+  $erreicht = null;
+  foreach (OD_SECRET_WARN as $stufe) if ($tage <= $stufe) $erreicht = $stufe;
+  return $erreicht;
+}
+
+/** Die Marke: bis zu welchem Datum und auf welcher Stufe zuletzt gemahnt wurde. */
+function od_secret_warned(): array {
+  $teile = explode('/', setting('od_secret_warned'), 2);
+  return [(string) ($teile[0] ?? ''), isset($teile[1]) ? (int) $teile[1] : PHP_INT_MAX];
+}
+
+/**
+ * Steht eine Erinnerung an?
+ *
+ * Ein neu eingetragenes Datum spannt sie wieder: Wer das Geheimnis erneuert,
+ * soll in zwei Jahren dieselben drei Mails bekommen und nicht schweigend
+ * übergangen werden, weil vor langer Zeit schon einmal gemahnt wurde.
+ */
+function od_secret_warn_due(): bool {
+  if (is_demo() || !od_configured()) return false;
+  $bis = od_secret_expires();
+  if ($bis === '') return false;   // ohne Datum keine Mahnung — dafür der Prüfpunkt
+  $stufe = od_secret_stufe(od_secret_days_left());
+  if ($stufe === null) return false;
+  [$gewarntBis, $gewarntStufe] = od_secret_warned();
+  return $gewarntBis !== $bis || $stufe < $gewarntStufe;
+}
+
+/**
+ * Wer die Mahnung bekommt: die Bandleitung.
+ *
+ * Nur sie: Das Geheimnis erneuern kann niemand sonst, und eine Mail an alle
+ * über etwas, wogegen sie nichts tun können, ist keine Warnung, sondern Lärm.
+ *
+ * Als eigene Funktion, damit sie sich prüfen lässt, ohne dass Post entsteht.
+ */
+function od_secret_empfaenger(): array {
+  return rows("SELECT * FROM users WHERE role = 'admin' AND email <> ''");
+}
+
+/**
+ * Den Platz für diese Mahnung beanspruchen — dasselbe Muster wie bei der
+ * Tagesmail: Zwei Aufrufe im selben Augenblick kämen sonst beide durch die
+ * Fälligkeitsfrage und mahnten doppelt.
+ *
+ * Der Zweite bekommt false und sendet nicht.
+ */
+function od_secret_claim(string $marke): bool {
+  $alt = setting('od_secret_warned');
+  if ($alt === $marke) return false;
+  // INSERT IGNORE legt die Zeile an, falls es sie nie gab; erst dann kann das
+  // bedingte UPDATE überhaupt etwas entscheiden. set_setting() taugt hier
+  // nicht: Es schreibt bedingungslos und wüsste nicht, ob es der Erste war.
+  q("INSERT IGNORE INTO settings (`key`, value) VALUES ('od_secret_warned', '')");
+  $belegt = q("UPDATE settings SET value = ? WHERE `key` = 'od_secret_warned' AND value <=> ?",
+              [$marke, $alt])->rowCount();
+  settings_forget();
+  return $belegt === 1;
+}
+
+/**
+ * Die Erinnerung an die Bandleitung.
+ *
+ * @return int wie viele Mails hinausgingen
+ */
+function od_secret_warn_run(): int {
+  if (!od_secret_warn_due()) return 0;
+  $bis = od_secret_expires();
+  $tage = od_secret_days_left();
+  if (!od_secret_claim($bis . '/' . od_secret_stufe($tage))) return 0;
+
+  $gesendet = 0;
+  foreach (od_secret_empfaenger() as $u) {
+    $lang = array_key_exists($u['pref_lang'] ?? '', LANGS) ? $u['pref_lang'] : 'de';
+    $zeilen = [
+      str_replace('%1', (string) $u['name'], push_t($lang, 'digest_hello')),
+      '',
+      $tage < 0
+        ? str_replace('%1', fmt_date($bis), push_t($lang, 'od_secret_body_over'))
+        : str_replace(['%1', '%2'], [(string) $tage, fmt_date($bis)], push_t($lang, 'od_secret_body')),
+      '',
+      push_t($lang, 'od_secret_howto'),
+      '',
+      '  ' . absolute_url('/login?weiter=' . rawurlencode('/intern/einstellungen')),
+      '',
+      '-- ',
+      setting('band_name'),
+    ];
+    $betreff = $tage < 0
+      ? push_t($lang, 'od_secret_subject_over')
+      : str_replace('%1', (string) $tage, push_t($lang, 'od_secret_subject'));
+    if (band_mail_send((string) $u['email'], mail_header_value($betreff, 160),
+                       implode("\n", $zeilen), 'od_secret', (int) $u['id'])) $gesendet++;
+  }
+  return $gesendet;
+}
+
+/**
  * Die Adresse, die bei Microsoft als Rückleitung eingetragen sein muss.
  *
  * Sie kommt aus site_url und nicht aus dem Host der Anfrage: Microsoft

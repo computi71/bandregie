@@ -115,6 +115,26 @@ function system_checks(): array {
     );
   }
 
+  // Das Azure-Geheimnis altert still (#339). Läuft es ab, hört OneDrive
+  // wortlos auf, und gesucht wird dann alles außer einem Datum, das zwei Jahre
+  // zurückliegt. Ohne eingetragenes Datum steht hier eine Warnung und keine
+  // Entwarnung: „nichts bekannt" ist nicht „alles in Ordnung".
+  if (od_configured()) {
+    $odBis = od_secret_expires();
+    $odTage = od_secret_days_left();
+    $odBald = $odTage !== null && $odTage <= OD_SECRET_WARN[0];
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_od_secret'),
+      $odTage === null ? 'warn' : ($odTage < 0 ? 'fail' : ($odBald ? 'warn' : 'ok')),
+      $odTage === null
+        ? t('sys_od_secret_none')
+        : ($odTage < 0
+            ? sprintf(t('sys_od_secret_over'), fmt_date($odBis))
+            : sprintf(t('sys_od_secret_left'), $odTage, fmt_date($odBis))),
+      $odTage === null ? t('sys_od_secret_none_hint') : ($odBald ? t('sys_od_secret_hint') : '')
+    );
+  }
+
   $backup = row("SELECT created_at, status FROM backup_runs WHERE status = 'ok' ORDER BY id DESC LIMIT 1");
   $age = $backup ? (time() - strtotime($backup['created_at'])) : null;
   $groups[t('sys_operation')][] = check_row(
