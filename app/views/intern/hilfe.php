@@ -117,6 +117,16 @@ require_once BASE_DIR . '/app/help.php';
   <?php endforeach; ?>
 </details>
 
+<?php // Die Tagesmail (#332) haengt an keinem Rechtebereich - sie gilt fuer
+      // jeden, der ein Konto hat. Deshalb ein eigener Abschnitt und nicht einer
+      // in der Modulschleife darunter. ?>
+<details id="hilfe-tagesmail" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
+  <summary>✉ <?= e(t('digest_title')) ?></summary>
+  <p class="help-lead"><?= e(t('help_tagesmail')) ?></p>
+  <p class="muted"><?= e(t('help_tagesmail_2')) ?></p>
+  <p class="muted"><?= e(t('help_tagesmail_3')) ?></p>
+</details>
+
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
