@@ -44,6 +44,8 @@ require_once __DIR__ . '/marks.php';
 // Die Tagesmail (#332) braucht die Marken, item_visible() und item_url() -
 // deshalb danach.
 require_once __DIR__ . '/tagesmail.php';
+// „Wichtig" (#333) braucht dieselben Bausteine wie die Tagesmail.
+require_once __DIR__ . '/wichtig.php';
 // Steuerliche Werte: seit die Nutzungsdauer am einzelnen Gerät steht, fragen
 // auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
 // Steuerseite, die das Modul früher allein geladen hat.
@@ -4964,6 +4966,8 @@ function event_view_data(array $events, array $me): array {
     // Was an diesem Termin noch zu tun ist (#336). Nur wer Aufgaben sehen darf,
     // bekommt die Abfrage überhaupt.
     'tasksByEvent' => perm_allows($me, 'aufgaben') ? $ohne(tasks_for_item('event', $ids)) : [],
+    // Als wichtig gekennzeichnete Termine (#333) - geschwaerzt wie alles andere.
+    'wichtigByEvent' => $ohne(wichtig_map('event', $ids)),
     // Kommentare tragen eigene Marken (#331). items_unseen() kennt die
     // Sichtbarkeit nicht, deshalb bleibt hier nur stehen, was auch in
     // $comments übrig geblieben ist - sonst verriete eine Marke, dass es zu
