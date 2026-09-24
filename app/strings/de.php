@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 const UI_STRINGS = [
   'weekdays' => 'So,Mo,Di,Mi,Do,Fr,Sa',
+  'date_pick' => 'Kalender öffnen',
   'months' => 'Januar,Februar,März,April,Mai,Juni,Juli,August,September,Oktober,November,Dezember',
   'nav_start' => 'Start', 'nav_termine' => 'Termine', 'nav_musik' => 'Musik', 'nav_fotos' => 'Fotos',
   'nav_kontakt' => 'Kontakt', 'nav_downloads' => 'Downloads', 'nav_bandbereich' => 'Bandbereich',

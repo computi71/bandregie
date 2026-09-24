@@ -155,6 +155,12 @@ input, select, textarea {
   font-size: 0.95rem;
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark); border-color: var(--accent); }
+/* Datumsfeld und Kalenderknopf nebeneinander (#343). Das Feld nimmt den Platz,
+   der Knopf nur so viel, wie er braucht; min-width:0 verhindert, dass das
+   Eingabefeld die Zeile in schmalen Spalten aufspreizt. */
+.date-row { display: flex; gap: 0.35rem; align-items: stretch; }
+.date-row input { flex: 1 1 auto; min-width: 0; }
+.date-row .date-btn { flex: 0 0 auto; padding: 0.5rem 0.6rem; line-height: 1; }
 .stack { display: flex; flex-direction: column; gap: 0.8rem; }
 .row-buttons { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 

@@ -461,7 +461,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label><?= e(t('set_imap_user')) ?><input name="imap_user" value="<?= e(setting('imap_user')) ?>" autocomplete="off"></label>
     <label><?= e(t('set_imap_pass')) ?>
       <input type="password" name="imap_pass" autocomplete="new-password"
-             placeholder="<?= setting('imap_pass') !== '' ? e(t('set_imap_pass_set')) : '' ?>"></label>
+             placeholder="<?= e(secret_placeholder(setting('imap_pass') !== '', 'set_imap_pass_set')) ?>"></label>
     <label><?= e(t('set_imap_folder')) ?><input name="imap_folder" value="<?= e(setting('imap_folder') ?: 'INBOX') ?>"></label>
     <label><?= e(t('set_imap_interval')) ?><input type="number" name="imap_interval_min" min="5" max="1440" value="<?= (int) (setting('imap_interval_min') ?: 30) ?>"></label>
     <label class="checkbox span2"><input type="checkbox" name="imap_tls" value="1" <?= setting('imap_tls', '1') === '1' ? 'checked' : '' ?>> 🔒 <?= e(t('set_imap_tls')) ?></label>
@@ -536,8 +536,8 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       <label class="span2"><?= e(t('od_client_id')) ?><input name="onedrive_client_id" value="<?= e(setting('onedrive_client_id')) ?>" autocomplete="off"></label>
       <?php // Nie zurückschreiben, nur anzeigen, dass eines liegt. ?>
       <label class="span2"><?= e(t('od_client_secret')) ?>
-        <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
-        <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
+        <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password"
+               placeholder="<?= e(secret_placeholder(setting('onedrive_client_secret') !== '', 'od_secret_kept')) ?>">
       </label>
       <?php // Das Ablaufdatum (#339) steht in Azure neben dem Geheimnis, im
             // selben Augenblick, in dem es kopiert wird. Später ist es nur noch
@@ -650,7 +650,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <label><?= e(t('bk_ftp_user')) ?><input name="backup_ftp_user" value="<?= e($ftp['user']) ?>" autocomplete="off"></label>
     <label><?= e(t('bk_ftp_pass')) ?>
       <input type="password" name="backup_ftp_pass" autocomplete="new-password"
-             placeholder="<?= $ftp['pass'] !== '' ? e(t('bk_ftp_pass_set')) : '' ?>">
+             placeholder="<?= e(secret_placeholder($ftp['pass'] !== '', 'bk_ftp_pass_set')) ?>">
     </label>
     <label><?= e(t('bk_ftp_dir')) ?><input name="backup_ftp_dir" value="<?= e($ftp['dir']) ?>" placeholder="/backups/bandregie"></label>
     <label><?= e(t('bk_ftp_keep')) ?><input type="number" name="backup_ftp_keep" min="1" max="365" value="<?= (int) $ftp['keep'] ?>"></label>
