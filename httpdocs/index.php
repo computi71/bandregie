@@ -1191,7 +1191,7 @@ if (str_starts_with($path, '/intern')) {
          (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
           WHERE ss2.song_id = s.id AND e.date < ?) AS played_count
        FROM songs s WHERE 1 = 1$songWhere
-       ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
+       ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'demo', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
       [$today, ...$songParams]
     );
     return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id'))];

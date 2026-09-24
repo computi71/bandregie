@@ -463,8 +463,8 @@ const EQ_ACQUIRED = ['neu' => 'Neu', 'bware' => 'B-Ware', 'gebraucht' => 'Gebrau
 
 // Song-Lebenszyklus
 const SONG_STATUS = [
-  'vorschlag' => 'Vorschlag', 'in_arbeit' => 'In Vorbereitung', 'aktiv' => 'Aktives Repertoire',
-  'abgewiesen' => 'Abgewiesen', 'archiv' => 'Aussortiert',
+  'vorschlag' => 'Vorschlag', 'demo' => 'Demo', 'in_arbeit' => 'In Vorbereitung',
+  'aktiv' => 'Aktives Repertoire', 'abgewiesen' => 'Abgewiesen', 'archiv' => 'Aussortiert',
 ];
 
 // Werte, die zur Laufzeit gebraucht werden und bisher zwischen den Migrationen
