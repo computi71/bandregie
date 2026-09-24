@@ -302,6 +302,7 @@ const UI_STRINGS = [
   'help_more' => 'Mehr zur Anwendung, zur Lizenz und zu den Mitwirkenden steht unter „Über".',
   // Kurzbeschreibung je Bereich — die Schlüssel heißen wie die Bereiche
   'help_termine' => 'Alle Auftritte, Proben und Besprechungen. Jeder sagt zu oder ab, Dateien und Kommentare hängen am Termin, und die Packliste sagt, welche Geräte mitkommen.',
+  'help_songs_2' => 'Der Status sagt, wo ein Lied im Ablauf steht: „Vorschlag“ hat jemand eingebracht, „Demo“ heißt, es gibt eine Aufnahme zum Anhören — entschieden ist aber noch nichts. „In Vorbereitung“ wird geprobt, „Aktives Repertoire“ kann gespielt werden. Dazu „Abgewiesen“ und „Aussortiert“ für alles, was nicht (mehr) infrage kommt. Auf eine Setliste wählbar sind nur Lieder, die aktiv oder in Vorbereitung sind — ein Demo ist noch keine Bühne.',
   'help_songs' => 'Das Repertoire mit Tonart, Tempo, Dauer und Status. Noten, Texte und Aufnahmen hängen am Song. Für die Bühne gibt es eine Vollbildansicht: der Text groß, Abschnitte farbig abgesetzt, und er läuft von selbst mit — das Tempo stellst du über das Tempo-Symbol ein, als Zahl oder indem du den Takt mittippst. Der Bildschirm bleibt dabei wach. Wer lieber seinen Notizzettel mit Akkorden liest, schaltet oben darauf um. Das Mikrofon-Symbol steht an den Liedern, für die ein Text hinterlegt ist, die Gitarre an denen, für die jemand einen Notizzettel geschrieben hat.',
   'help_setlists' => 'Die Reihenfolge für einen Auftritt, mit Pausen, Sprechpausen und Zugaben. Die Spielzeit rechnet sich aus den Songdauern. Drei Trenner gibt es, und sie bedeuten Verschiedenes: Eine **Pause** teilt den Abend — die Band geht von der Bühne, und im Druck beginnt ein neues Blatt. Eine **Sprechpause** trennt nur innerhalb des Blattes: gespielt wird nicht, geredet schon — Ansage, Bandvorstellung, Umstimmen. Sie steht als gestrichelte Linie, so wie der Strich auf einer Papier-Setliste, und die Ansage steht in der Linie. Der **Zugabe-Strich** trennt, was nur gespielt wird, wenn das Publikum es will. Dazu die **Klammer**: sie fasst Titel zusammen, die ohne Absetzen zusammen gespielt werden, mit einer Anweisung für alle darin — „Drop D" über den ersten drei Liedern heißt, diese drei in Drop D zu spielen. Anweisung und Ansage hängen an der Setliste, nicht am Lied: dasselbe Lied steht in vielen Setlisten, und beides gilt für einen Abend. Gezählt werden nur Lieder; Trenner tragen keine Nummer. Für die Bühne startet der Knopf „Teleprompter" den ganzen Satz: er beginnt beim ersten Lied mit Text, und am Liedende kommt das nächste von selbst nach oben — ein Tipp auf den Text startet es. Im Ausdruck wählst du oben unter „Mitdrucken", was neben dem Titel stehen soll: Interpret, Erscheinungsjahr, Tempo, Spielzeit und die Notiz zum Lied (erste Zeile oder komplett). Die Auswahl merkt sich dein Gerät.',
   'help_post_2' => 'Das Postfach muss ausdrücklich vergeben werden, auch einem Admin: Dort liegen Anfragen, Rechnungen und private Antworten, und die Anwendung zu verwalten ist kein Grund, sie mitzulesen. Antworten setzt zusätzlich das Recht „E-Mail-Versand" voraus.',
@@ -374,7 +375,8 @@ const UI_STRINGS = [
   'evstatus_reserviert' => 'Reserviert', 'evstatus_blockiert' => 'Blockiert – offen f. Anfragen',
   'evstatus_abgesagt' => 'Abgesagt',
   // Song-Status
-  'songstatus_vorschlag' => 'Vorschlag', 'songstatus_in_arbeit' => 'In Vorbereitung',
+  'songstatus_vorschlag' => 'Vorschlag', 'songstatus_demo' => 'Demo',
+  'songstatus_in_arbeit' => 'In Vorbereitung',
   'songstatus_aktiv' => 'Aktives Repertoire', 'songstatus_abgewiesen' => 'Abgewiesen',
   'songstatus_archiv' => 'Aussortiert',
   // Termine
@@ -407,6 +409,11 @@ const UI_STRINGS = [
   'song_year' => 'Erschienen', 'song_year_ph' => 'z. B. 1997',
   'song_keylbl' => 'Tonart', 'song_tempo' => 'Tempo', 'song_len' => 'Länge (m:ss)',
   'song_add' => 'Song hinzufügen', 'song_notes_ph' => 'Ablauf, Besonderheiten, Technik ...',
+  'songs_filter_q' => 'Suchen', 'songs_filter_q_ph' => 'Titel oder Interpret …',
+  'songs_filter_status' => 'Status', 'songs_filter_all' => 'Alle',
+  'songs_filter_go' => 'Filtern', 'songs_filter_reset' => 'Filter zurücksetzen',
+  'songs_filter_count' => '%1 von %2 Liedern',
+  'songs_filter_empty' => 'Kein Lied passt zu dieser Suche.',
   'songs_usable_hint' => 'In Setlists nutzbar sind Songs mit Status „Aktives Repertoire" und „In Vorbereitung".',
   'songs_col_len' => 'Länge', 'songs_col_uses' => 'Einsätze', 'songs_col_original' => 'Interpret',
   'songs_none' => 'Noch keine Songs angelegt.', 'songs_uses_title' => 'In Setlists / davon live gespielt',
@@ -1046,6 +1053,13 @@ const UI_STRINGS = [
   'sys_schema_broken_seed' => 'Eine mitgelieferte Übersetzungsdatei (%s) konnte nicht eingespielt werden — ein Text bleibt dadurch veraltet oder fehlt.',
   'sys_schema_broken_hint' => 'Behebt sich nicht von selbst. Serverprotokoll prüfen und die Datenbank von Hand nachziehen lassen.',
   'set_schema_recheck' => 'Schema prüfen',
+  'sys_fin_orphan' => 'Verwaiste Privatbuchungen',
+  'sys_fin_orphan_n' => '%1 Buchung(en) über %2 gehören einem Konto, das es nicht mehr gibt',
+  'sys_fin_orphan_hint' => 'Sie sind für niemanden sichtbar und fehlen im Kontostand — weder privat noch Bandgeld. Unter diesem Abschnitt gibt es einen Knopf, der sie der Bandkasse zuschlägt.',
+  'set_fin_orphan_btn' => 'Verwaiste Privatbuchungen der Bandkasse zuschlagen',
+  'set_fin_orphan_hint' => 'Danach zählen sie wieder im Kontostand mit und sind für alle sichtbar, die die Kasse sehen dürfen.',
+  'set_fin_orphan_confirm' => '%1 Buchung(en) werden zu Bandgeld. Fortfahren?',
+  'fl_fin_orphan_freed' => '%1 Buchung(en) der Bandkasse zugeschlagen.',
   'set_schema_recheck_hint' => 'Prüft beim nächsten Seitenaufruf alle Tabellen und Spalten nachträglich durch. Normalerweise passiert das einmal nach einem Update von selbst; von Hand gebraucht wird es nur, wenn jemand direkt in der Datenbank gearbeitet hat.',
   'fl_schema_recheck' => 'Das Schema wird beim nächsten Seitenaufruf geprüft.',
   // Daueraufträge

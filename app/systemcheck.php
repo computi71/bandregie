@@ -89,6 +89,19 @@ function system_checks(): array {
     $schemaProbleme !== [] ? t('sys_schema_broken_hint') : ($schemaAktuell ? '' : t('sys_schema_stale_hint'))
   );
 
+  // Verwaiste Privatbuchungen (#337). Eine stille Unstimmigkeit, die die
+  // Buchhaltung betrifft, soll niemanden voraussetzen, der danach sucht.
+  $verwaist = perm_allows(current_user(), 'kasse') ? finances_orphaned() : [];
+  if ($verwaist !== []) {
+    $summe = 0;
+    foreach ($verwaist as $v) $summe += (int) $v['amount_cents'];
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_fin_orphan'), 'warn',
+      sprintf(t('sys_fin_orphan_n'), count($verwaist), fmt_money($summe)),
+      t('sys_fin_orphan_hint')
+    );
+  }
+
   // Steuerliche Grenzen altern still: der Gesetzgeber ändert sie, die
   // Installation merkt davon nichts. Nur hier fällt es auf.
   require_once BASE_DIR . '/app/steuer.php';

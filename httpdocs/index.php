@@ -1185,16 +1185,41 @@ if (str_starts_with($path, '/intern')) {
   // direkt in die Ansicht.
   $songList = function () use ($today, $me): array {
     [$songWhere, $songParams] = visible_clause(visible_song_ids($me), 's.id');
+    // Der Filter (#329) verengt nur, was ohnehin sichtbar ist: Er haengt HINTER
+    // visible_clause() und kann deshalb nichts aufmachen, was zugehoert hat.
+    //
+    // Die Auswahl steht in der Adresse und nicht in der Sitzung: So laesst sich
+    // eine gefilterte Liste weitergeben, der Zurueck-Knopf tut das Erwartete,
+    // und ein Neuladen zeigt dasselbe.
+    $suche = trim((string) ($_GET['q'] ?? ''));
+    $stand = array_key_exists($_GET['status'] ?? '', SONG_STATUS) ? (string) $_GET['status'] : '';
+    $filter = '';
+    $filterWerte = [];
+    if ($suche !== '') {
+      // Titel und Interpret zusammen: Wer "Beatles" tippt, sucht selten den
+      // Titel, und wer "Yesterday" tippt, selten die Band.
+      $filter .= ' AND (s.title LIKE ? OR s.artist LIKE ?)';
+      $filterWerte[] = '%' . $suche . '%';
+      $filterWerte[] = '%' . $suche . '%';
+    }
+    if ($stand !== '') {
+      $filter .= ' AND s.status = ?';
+      $filterWerte[] = $stand;
+    }
     $songs = rows(
       "SELECT s.*,
          (SELECT COUNT(*) FROM setlist_songs ss WHERE ss.song_id = s.id) AS setlist_count,
          (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
           WHERE ss2.song_id = s.id AND e.date < ?) AS played_count
-       FROM songs s WHERE 1 = 1$songWhere
-       ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
-      [$today, ...$songParams]
+       FROM songs s WHERE 1 = 1$songWhere$filter
+       ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'demo', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
+      [$today, ...$songParams, ...$filterWerte]
     );
-    return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id'))];
+    // Wie viele es ohne Filter waeren - sonst sieht eine leere Liste aus wie
+    // ein leeres Repertoire.
+    $gesamt = (int) row("SELECT COUNT(*) n FROM songs s WHERE 1 = 1$songWhere", $songParams)['n'];
+    return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id')),
+            'songQ' => $suche, 'songStatus' => $stand, 'songGesamt' => $gesamt];
   };
   if ($path === '/intern/songs' && $method === 'GET') {
     view('intern/songs', $songList() + ['title' => t('inav_songs'), 'edit' => null,
@@ -4436,6 +4461,21 @@ if (str_starts_with($path, '/intern')) {
   // Das Schema erneut prüfen lassen (#328): Die Marke wird gelöscht, der nächste
   // Seitenaufruf läuft durch schema.php. Für den Fall, dass jemand von Hand in
   // der Datenbank war — dann stimmt die Marke und das Tor bleibt trotzdem zu.
+  // Verwaiste Privatbuchungen der Bandkasse zuschlagen (#337). Bewusst ein
+  // Knopf und keine Migration: Geld wechselt den Eigentuemer, und das ist eine
+  // Entscheidung, keine Nebenwirkung eines Updates.
+  if ($path === '/intern/einstellungen/kasse-freigeben' && $method === 'POST') {
+    require_admin();
+    if (!perm_allows($me, 'kasse', 'write')) { flash(t('fl_finance_required')); redirect('/intern/einstellungen'); }
+    deny_in_demo('/intern/einstellungen');
+    $frei = finances_orphaned();
+    foreach ($frei as $f) {
+      q('UPDATE finances SET private_for = NULL WHERE id = ?', [(int) $f['id']]);
+      item_touch('finance', (int) $f['id'], null, (int) $me['id']);
+    }
+    flash(sprintf(t('fl_fin_orphan_freed'), count($frei)));
+    back('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/schema' && $method === 'POST') {
     require_admin();
     deny_in_demo('/intern/einstellungen');

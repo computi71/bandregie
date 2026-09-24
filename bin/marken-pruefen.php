@@ -219,5 +219,34 @@ q('DELETE FROM events WHERE id = ?', [$evZ]);
 $pruefe('Zusage: gelöscht, keine Marke bleibt zurück',
     (int) row('SELECT COUNT(*) n FROM seen_marks WHERE kind = ? AND item_id = ?', ['attendance', $zNr])['n'] === 0);
 
+// ---------------- 12. Verwaiste Privatbuchungen finden (#337)
+// Eine private Auslage, deren Konto verschwunden ist, sieht niemand mehr und
+// sie fehlt im Kontostand. finances_orphaned() ist die Abfrage, die das sagt.
+$vorher = count(finances_orphaned());
+$fremd = (int) row('SELECT COALESCE(MAX(id), 0) + 99 n FROM users')['n'];   // sicher kein Konto
+q("INSERT INTO finances (date, type, amount_cents, category, description, created_by, private_for)
+   VALUES (CURDATE(), 'ausgabe', 1234, 'sonstiges', 'ZZ verwaiste Auslage', ?, ?)",
+  [(int) $ICH['id'], $fremd]);
+$zz = (int) $GLOBALS['db']->lastInsertId();
+$gefunden = finances_orphaned();
+$pruefe('verwaiste Buchung wird gefunden', count($gefunden) === $vorher + 1);
+$pruefe('und zwar genau diese',
+    in_array($zz, array_map(static fn(array $f): int => (int) $f['id'], $gefunden), true));
+
+// Eine private Auslage MIT vorhandenem Eigner ist keine Waise.
+q("INSERT INTO finances (date, type, amount_cents, category, description, created_by, private_for)
+   VALUES (CURDATE(), 'ausgabe', 500, 'sonstiges', 'ZZ echte Auslage', ?, ?)",
+  [(int) $ICH['id'], (int) $ICH['id']]);
+$echt = (int) $GLOBALS['db']->lastInsertId();
+$pruefe('Auslage mit lebendem Eigner ist keine Waise',
+    !in_array($echt, array_map(static fn(array $f): int => (int) $f['id'], finances_orphaned()), true));
+
+// Freigeben macht daraus Bandgeld.
+q('UPDATE finances SET private_for = NULL WHERE id = ?', [$zz]);
+$pruefe('freigegeben: nicht mehr verwaist', count(finances_orphaned()) === $vorher);
+q('DELETE FROM finances WHERE id IN (?, ?)', [$zz, $echt]);
+item_forget('finance', $zz);
+item_forget('finance', $echt);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
