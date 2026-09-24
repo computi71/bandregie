@@ -139,24 +139,48 @@ function od_secret_stufe(?int $tage): ?int {
 /** Die Marke: bis zu welchem Datum und auf welcher Stufe zuletzt gemahnt wurde. */
 function od_secret_warned(): array {
   $teile = explode('/', setting('od_secret_warned'), 2);
-  return [(string) ($teile[0] ?? ''), isset($teile[1]) ? (int) $teile[1] : PHP_INT_MAX];
+  return [$teile[0], isset($teile[1]) ? (int) $teile[1] : null];
 }
 
+/** Wie lange nach einem gescheiterten Versuch Ruhe ist (#346). */
+const OD_SECRET_RETRY = 3600;
+
 /**
- * Steht eine Erinnerung an?
+ * Welche Marke steht an — oder null, wenn nichts ansteht?
  *
- * Ein neu eingetragenes Datum spannt sie wieder: Wer das Geheimnis erneuert,
- * soll in zwei Jahren dieselben drei Mails bekommen und nicht schweigend
- * übergangen werden, weil vor langer Zeit schon einmal gemahnt wurde.
+ * Eine Stelle rechnet, eine Marke kommt heraus. Vorher fragte warn_due(), und
+ * warn_run() rechnete alles noch einmal: zwei Mal `new DateTimeImmutable`, und
+ * fällt Mitternacht dazwischen, prüft der eine Lauf Stufe 30 auf Fälligkeit
+ * und beansprucht dann Stufe 7 — eine Stufe, die niemand geprüft hat.
+ *
+ * Ein neu eingetragenes Datum spannt die Erinnerung wieder: Wer das Geheimnis
+ * erneuert, soll in zwei Jahren dieselben drei Mails bekommen und nicht
+ * schweigend übergangen werden, weil vor langer Zeit schon einmal gemahnt
+ * wurde.
  */
-function od_secret_warn_due(): bool {
-  if (is_demo() || !od_configured()) return false;
+function od_secret_faellige_marke(): ?string {
+  if (is_demo()) return null;
+  // Das billige zuerst: Ohne Datum ist nichts zu tun, und od_configured()
+  // entschlüsselt das Geheimnis — das kostet auf jedem Seitenaufruf, auch dem
+  // anonymen auf der öffentlichen Bandseite.
   $bis = od_secret_expires();
-  if ($bis === '') return false;   // ohne Datum keine Mahnung — dafür der Prüfpunkt
+  if ($bis === '') return null;   // ohne Datum keine Mahnung — dafür der Prüfpunkt
   $stufe = od_secret_stufe(od_secret_days_left());
-  if ($stufe === null) return false;
+  if ($stufe === null) return null;
+  if (!od_configured()) return null;
+  // Nach einem Fehlschlag eine Stunde Ruhe. Ohne das wiederholt ein dauerhaft
+  // toter Mailserver den Lauf bei JEDEM Seitenaufruf — samt einer Zeile in
+  // mail_log je Versuch und je Empfänger.
+  if (time() - (int) setting('od_secret_attempt', '0') < OD_SECRET_RETRY) return null;
   [$gewarntBis, $gewarntStufe] = od_secret_warned();
-  return $gewarntBis !== $bis || $stufe < $gewarntStufe;
+  if ($gewarntBis !== $bis) return "$bis/$stufe";          // neues Datum, neu gespannt
+  if ($gewarntStufe === null || $stufe < $gewarntStufe) return "$bis/$stufe";
+  return null;
+}
+
+/** Steht eine Erinnerung an? */
+function od_secret_warn_due(): bool {
+  return od_secret_faellige_marke() !== null;
 }
 
 /**
@@ -189,6 +213,22 @@ function od_secret_claim(string $marke): bool {
               [$marke, $alt])->rowCount();
   settings_forget();
   return $belegt === 1;
+}
+
+/**
+ * Den Platz wieder freigeben, wenn nichts hinausging.
+ *
+ * Bedingt, nicht bedingungslos — dieselbe Überlegung wie beim Beanspruchen.
+ * Ein set_setting() hier schrieb blind zurück, und wenn inzwischen ein anderer
+ * Lauf eine spätere Stufe beansprucht und erfolgreich verschickt hatte, machte
+ * die Rücknahme dessen Marke platt: Die Bandleitung bekam die Mahnung ein
+ * zweites Mal. Ist die Marke nicht mehr unsere, bleibt sie, wie sie ist.
+ */
+function od_secret_release(string $marke, string $alt): bool {
+  $frei = q("UPDATE settings SET value = ? WHERE `key` = 'od_secret_warned' AND value <=> ?",
+             [$alt, $marke])->rowCount();
+  settings_forget();
+  return $frei === 1;
 }
 
 /**
@@ -228,7 +268,8 @@ function od_secret_mail_text(array $user, int $tage, string $bis): array {
  * @return int wie viele Mails hinausgingen
  */
 function od_secret_warn_run(): int {
-  if (!od_secret_warn_due()) return 0;
+  $marke = od_secret_faellige_marke();
+  if ($marke === null) return 0;
   $bis = od_secret_expires();
   $tage = od_secret_days_left();
 
@@ -238,8 +279,11 @@ function od_secret_warn_run(): int {
   $empfaenger = od_secret_empfaenger();
   if (!$empfaenger) return 0;
 
+  // Der Versuch wird vermerkt, bevor gesendet wird: Bricht PHP mitten im
+  // Mailserver-Zeitlimit ab, ist trotzdem eine Stunde Ruhe.
   $alt = setting('od_secret_warned');
-  if (!od_secret_claim($bis . '/' . od_secret_stufe($tage))) return 0;
+  if (!od_secret_claim($marke)) return 0;
+  set_setting('od_secret_attempt', (string) time());
 
   $gesendet = 0;
   foreach ($empfaenger as $u) {
@@ -251,10 +295,7 @@ function od_secret_warn_run(): int {
   // Mailserver, der eine Minute lang tot ist, darf nicht für immer als
   // „schon gemahnt" stehenbleiben. Bei einem Teilerfolg bleibt die Marke —
   // sonst bekämen die Erreichten beim nächsten Aufruf eine zweite Mail.
-  if ($gesendet === 0) {
-    set_setting('od_secret_warned', $alt);
-    settings_forget();
-  }
+  if ($gesendet === 0) od_secret_release($marke, $alt);
   return $gesendet;
 }
 

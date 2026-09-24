@@ -1032,9 +1032,12 @@ if (str_starts_with($path, '/intern')) {
       $pushTitle = (string) $_POST['title'];
       $pushDate = (string) $_POST['date'];
       $pushUrl = event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$newEventId]));
+      // Das Datum in der Sprache des Empfaengers, nicht des Absenders (#349):
+      // $lang kommt je Abo herein, fmt_date() haette die Browsersprache dessen
+      // genommen, der den Termin gerade angelegt hat.
       push_notify('events', (int) $me['id'], fn(string $lang): array => [
         'title' => push_t($lang, 'push_ev_title'),
-        'body' => $pushTitle . ' · ' . fmt_date($pushDate),
+        'body' => $pushTitle . ' · ' . fmt_date_lang($pushDate, $lang),
         'url' => $pushUrl,
       ], $newEventId);
     } else {
@@ -1067,12 +1070,16 @@ if (str_starts_with($path, '/intern')) {
       // Speichern läse bald niemand mehr (#324).
       $evNachher = row('SELECT id, title, date, status FROM events WHERE id = ?', [$id]);
       if ($evNachher && (string) $evNachher['status'] !== $evStandVorher) {
-        $pushStand = event_status_label((string) $evNachher['status']);
-        $pushWas = (string) $evNachher['title'] . ' · ' . fmt_date((string) $evNachher['date']);
+        // Stand und Datum entstehen je Empfaenger (#349). Vorher waren beide
+        // vor der Schleife eingefroren - in der Sprache dessen, der umgestellt
+        // hat -, obwohl die Schleife $lang genau dafuer hereinreicht.
+        $pushStatus = (string) $evNachher['status'];
+        $pushTitel = (string) $evNachher['title'];
+        $pushDatum = (string) $evNachher['date'];
         $pushUrl = event_url($evNachher);
         push_notify('events', (int) $me['id'], fn(string $lang): array => [
-          'title' => push_t($lang, 'push_ev_status') . ': ' . $pushStand,
-          'body' => $pushWas,
+          'title' => push_t($lang, 'push_ev_status') . ': ' . push_t($lang, 'evstatus_' . $pushStatus),
+          'body' => $pushTitel . ' · ' . fmt_date_lang($pushDatum, $lang),
           'url' => $pushUrl,
         ], (int) $id);
       }
@@ -4543,12 +4550,14 @@ if (str_starts_with($path, '/intern')) {
     // Datumsfeld „01.03.2027" tippt, findet das Feld hinterher leer und
     // erfährt nie, warum — dieselbe Überlegung wie bei der Kontaktadresse.
     $odBis = trim((string) ($_POST['onedrive_secret_expires'] ?? ''));
-    if ($odBis === '' || od_datum_gueltig($odBis)) {
-      set_setting('onedrive_secret_expires', $odBis);
-    } else {
-      flash(t('fl_od_expires_invalid'));
-    }
-    flash(t('fl_settings_saved'));
+    $odBisSchlecht = $odBis !== '' && !od_datum_gueltig($odBis);
+    if (!$odBisSchlecht) set_setting('onedrive_secret_expires', $odBis);
+    // Die Meldung erst am Ende, und nur eine: flash() hat einen einzigen Platz
+    // (app/bootstrap.php), kein Postfach. Ein flash() im else-Zweig wurde von
+    // dem hier eine Zeile später überschrieben — die Seite meldete Erfolg,
+    // während das Datum verworfen war. Genau der wortlose Fehlschlag, gegen
+    // den #347 angetreten ist, nur mit einem beruhigenden Text davor.
+    flash($odBisSchlecht ? t('fl_od_expires_invalid') : t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }
   // Hin zu Microsoft. Nur als POST, damit kein fremder Link die Anmeldung

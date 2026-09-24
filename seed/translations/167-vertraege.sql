@@ -1,30 +1,11 @@
 -- Gig contracts (#292) shipped without translations (#350).
+--
+-- English is deliberately absent: 151-vertraege.sql already ships it, and the
+-- earliest seed wins (CONTRIBUTING.md). Repeating it here would have been 22
+-- lines of wording that never reaches a database.
 SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
-('en','contract_intro','The gig contract for a performance. Date, place, playing time and fee are already on the event — here the wording is added, and you see at a glance where no signed sheet has come back yet.'),
-('en','contract_promoter_hint','The contracting party, not the hall. A hall is called "town festival"; it is often booked through an agency — and the agency signs.'),
-('en','contract_body_hint','Built from your template when the contract is created, and frozen afterwards: what was sent out must not change because somebody edits the template later. You can still change it here while it is a draft.'),
-('en','contract_fee_hint','Can be taken from a quote, otherwise by hand.'),
-('en','contract_from_quote','Fee from the quote'),
-('en','contract_rebuild','Rebuild from the template'),
-('en','contract_rebuild_confirm','Rebuild the wording from the template? Changes of your own will be lost.'),
-('en','contract_signed_file','The signed sheet goes to the event as a scan — that is where the files for the performance live.'),
-('en','fl_contract_saved','Contract saved.'),
-('en','fl_contract_deleted','Contract deleted.'),
-('en','fl_contract_status','Status changed: %s.'),
-('en','fl_contract_event_required','A contract belongs to an event — pick one.'),
-('en','fl_contract_promoter_required','No promoter, no contracting party. A name is enough.'),
-('en','set_contract_intro','The wording every new contract is built from. It is yours: change it as your band needs it. As long as nothing stands here, the supplied version applies.'),
-('en','set_contract_fields','Placeholders: what stands in curly braces is replaced by the event''s details when the contract is created.'),
-('en','set_contract_legal','This is a writing aid, not legal advice. What you sign is your responsibility — when in doubt, have the text looked at by somebody who can judge it.'),
-('en','set_contract_reset','Reset to the supplied template'),
-('en','set_contract_reset_confirm','Discard your version and take the supplied template?'),
-('en','help_vertraege','A performance is agreed by contract, and the program already knows almost everything in it: date, place, playing time and fee are on the event. Here the wording is added, and the list shows for which performance no signed sheet has come back yet.'),
-('en','help_vertraege_2','The contracting party is the promoter, not the hall. A hall is called "town festival" and is often booked through an agency — the agency is who signs. That is why there is a list of its own for them.'),
-('en','help_vertraege_3','The wording is built from your template when the contract is created, and then stays put. That is deliberate: what was sent and signed must not change because somebody edits the template half a year later. While a contract is a draft you can still change its text.'),
-('en','help_vertraege_4','It prints like your other sheets, with logo and watermark. Signed, it comes back as a scan and belongs to the event''s files. Electronic signatures are deliberately absent: they are a subject of their own with requirements of their own, and for a band they bring nothing a scanned sheet does not.'),
-
 ('nl','contract_intro','Het optredencontract bij een optreden. Datum, plaats, speeltijd en gage staan al bij de afspraak — hier komt de tekst erbij, en je ziet in één oogopslag waar nog geen ondertekend blad terug is.'),
 ('nl','contract_promoter_hint','De contractpartij, niet de zaal. Een zaal heet "stadsfeest"; geboekt wordt hij vaak via een bureau — en dat tekent.'),
 ('nl','contract_body_hint','Bij het aanmaken uit jullie sjabloon opgebouwd en daarna bevroren: wat verstuurd is mag niet veranderen doordat iemand later het sjabloon aanpast. Zolang het een concept is kun je het hier toch wijzigen.'),
