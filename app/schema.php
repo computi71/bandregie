@@ -745,7 +745,10 @@ foreach (['events', 'songs', 'setlists', 'quotes', 'contracts',
           'venues', 'absences', 'tasks', 'equipment', 'finances', 'guests',
           'photos', 'media_links', 'stage_items', 'channels'] as $markiert) {
   if (!column_exists($markiert, 'updated_at')) {
-    $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME NULL,
+    // DATETIME(3): Sekunden sind zu grob für den Vergleich zwischen
+    // „angesehen" und „geändert" (#338). Die ersten fünf Tabellen bekamen das
+    // mit migr_marks_ms, die später hinzugekommenen brauchen es genauso.
+    $db->exec("ALTER TABLE `$markiert` ADD COLUMN updated_at DATETIME(3) NULL,
                                        ADD COLUMN updated_by INT NULL");
   }
 }
@@ -1556,11 +1559,31 @@ if (setting('migr_marks_ms') === '') {
   $db->exec('ALTER TABLE seen_marks MODIFY seen_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
   $db->exec('ALTER TABLE topic_reads MODIFY seen_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
   $db->exec('ALTER TABLE topic_posts MODIFY created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)');
-  foreach (array_column(ITEM_KINDS, 'tabelle') as $markiert) {
-    if ($markiert === 'files') continue;   // trägt seinen Zeitstempel selbst
+  // FESTE Liste, nicht ITEM_KINDS (#338). Hier stand einmal die lebende
+  // Konstante, und als sie mit #331 von sechs auf neunzehn Sorten wuchs,
+  // änderte diese Migration rückwirkend ihre Bedeutung: Sie griff plötzlich
+  // nach `comments` und `post_messages`, die gar kein updated_at haben, und
+  // riss jede Neuinstallation mit. Eine Migration beschreibt einen Stand von
+  // damals — sie darf nichts lesen, was sich seither bewegt hat.
+  foreach (['events', 'songs', 'setlists', 'quotes', 'contracts'] as $markiert) {
     $db->exec("ALTER TABLE `$markiert` MODIFY updated_at DATETIME(3) NULL");
   }
   set_setting('migr_marks_ms', '1');
+}
+
+// Die mit #331 hinzugekommenen Tabellen bekamen updated_at zunächst in
+// Sekunden (#338). Wer damals schon aktualisiert hat, trägt sie noch so — und
+// hätte in diesen Bereichen genau die Ungenauigkeit, die migr_marks_ms für die
+// ersten fünf beseitigt hat. column_exists() fragt vorher: Die Liste enthält
+// Tabellen, die eine alte Installation womöglich noch gar nicht markiert.
+if (setting('migr_marks_ms_331') === '') {
+  foreach (['venues', 'absences', 'tasks', 'equipment', 'finances', 'guests',
+            'photos', 'media_links', 'stage_items', 'channels'] as $genauer) {
+    if (column_exists($genauer, 'updated_at')) {
+      $db->exec("ALTER TABLE `$genauer` MODIFY updated_at DATETIME(3) NULL");
+    }
+  }
+  set_setting('migr_marks_ms_331', '1');
 }
 
 if (setting('marks_since') === '') set_setting('marks_since', date('Y-m-d H:i:s'));

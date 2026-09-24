@@ -107,6 +107,15 @@ foreach (ITEM_KINDS as $sorte => $art) {
     $pruefe("$sorte: Spalte " . $art['wann'] . " vorhanden", in_array($art['wann'], $spalten, true));
     $pruefe("$sorte: Spalte " . $art['wer'] . " vorhanden", in_array($art['wer'], $spalten, true));
     $pruefe("$sorte: verglichene Felder vorhanden", array_diff($art['felder'], $spalten) === []);
+    // Millisekunden, nicht Sekunden (#338). Wer eine Karte liest, waehrend
+    // jemand anderes sie speichert, bekaeme die Aenderung sonst nie zu sehen -
+    // einmal im Jahr, nicht nachstellbar, und deshalb am teuersten zu suchen.
+    // Die zehn mit #331 hinzugekommenen Tabellen trugen genau deshalb monatelang
+    // eine Ungenauigkeit, die niemand bemerkt haette.
+    $typ = (string) (row('SELECT COLUMN_TYPE t FROM information_schema.COLUMNS
+                          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                         [$art['tabelle'], $art['wann']])['t'] ?? '');
+    $pruefe("$sorte: " . $art['wann'] . " in Millisekunden ($typ)", str_contains($typ, '(3)'));
 }
 
 // Jede Sorte muss in item_visible() einen Arm haben (#335). Vorher stand hier
