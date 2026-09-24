@@ -209,7 +209,7 @@ function od_secret_warn_run(): int {
     $betreff = $tage < 0
       ? push_t($lang, 'od_secret_subject_over')
       : str_replace('%1', (string) $tage, push_t($lang, 'od_secret_subject'));
-    if (band_mail_send((string) $u['email'], mail_header_value($betreff, 160),
+    if (band_mail_send((string) $u['email'], $betreff,
                        implode("\n", $zeilen), 'od_secret', (int) $u['id'])) $gesendet++;
   }
   return $gesendet;

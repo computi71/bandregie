@@ -143,7 +143,7 @@ function wichtig_mail(string $kind, int $id, string $notiz, array $von): void {
       $zeilen[] = '';
       $zeilen[] = '-- ';
       $zeilen[] = $band;
-      band_mail_send((string) $u['email'], mail_header_value($betreff, 160),
+      band_mail_send((string) $u['email'], $betreff,
                      implode("\n", $zeilen), 'wichtig', (int) $u['id']);
     }
   });
