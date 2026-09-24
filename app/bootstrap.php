@@ -4851,6 +4851,21 @@ function absolute_url(string $path): string {
   if (!preg_match('~^[A-Za-z0-9.\-]+(:\d+)?$~', $host)) $host = 'localhost';
   return $scheme . '://' . $host . $path;
 }
+/**
+ * Der Platzhalter für ein Feld, in dem schon ein Geheimnis liegt (#344).
+ *
+ * Punkte und nicht der Wert: Ein `value` würde beim Speichern mitgeschickt und
+ * als neues Geheimnis abgelegt — das echte wäre zerstört. Ein Platzhalter wird
+ * nie gesendet und verschwindet genau dann, wenn jemand anfängt zu tippen.
+ *
+ * Die Punkte stehen vor dem Text und nicht darin: Sie brauchen keine
+ * Übersetzung, und so bleiben die vorhandenen Fassungen in fünf Sprachen
+ * gültig, ohne dass ein Seed bewegt werden muss.
+ */
+function secret_placeholder(bool $gesetzt, string $key): string {
+  return $gesetzt ? '•••••••• · ' . t($key) : '';
+}
+
 function fmt_date(?string $iso): string {
   if (!$iso) return '';
   $t = strtotime($iso);
