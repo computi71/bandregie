@@ -473,9 +473,9 @@ const UI_STRINGS = [
   'digest_chat' => 'Im Chat', 'digest_chat_n' => '%1 ungelesen',
   'digest_tasks' => 'Deine offenen Aufgaben', 'digest_votes' => 'Fehlende Rückmeldungen',
   'digest_hello' => 'Hallo %1,',
-  'digest_intro' => 'das hier hast du noch nicht angesehen:',
+  'digest_intro' => 'das wartet im Bandbereich auf dich:',
   'digest_footer' => 'Häufigkeit, Uhrzeit und Erinnerung stellst du in deinem Profil ein:',
-  'digest_subject' => '%1 neue Sachen im Bandbereich',
+  'digest_subject' => '%1 offene Punkte im Bandbereich',
   // Profil
   'digest_title' => 'Tagesmail',
   'digest_hint' => 'Eine Mail mit allem, was du noch nicht angesehen hast. Ist nichts offen, kommt auch keine Mail.',
