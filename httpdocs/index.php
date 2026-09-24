@@ -4511,7 +4511,7 @@ if (str_starts_with($path, '/intern')) {
       q('UPDATE finances SET private_for = NULL WHERE id = ?', [(int) $f['id']]);
       item_touch('finance', (int) $f['id'], null, (int) $me['id']);
     }
-    flash(sprintf(t('fl_fin_orphan_freed'), count($frei)));
+    flash(str_replace('%1', (string) count($frei), t('fl_fin_orphan_freed')));
     back('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen/schema' && $method === 'POST') {

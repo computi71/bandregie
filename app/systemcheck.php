@@ -97,7 +97,12 @@ function system_checks(): array {
     foreach ($verwaist as $v) $summe += (int) $v['amount_cents'];
     $groups[t('sys_operation')][] = check_row(
       t('sys_fin_orphan'), 'warn',
-      sprintf(t('sys_fin_orphan_n'), count($verwaist), fmt_money($summe)),
+      // str_replace und nicht sprintf (#340): Der Text trägt %1/%2, und sprintf
+      // wirft darauf eine ValueError — also genau auf der Seite, die den Fehler
+      // melden soll, und nur dann, wenn es wirklich etwas zu melden gibt.
+      // Übersetzte Fassungen kommen aus der Datenbank; die dürfen nie eine
+      // Formatzeichenkette sein, die der Server auszuführen versucht.
+      str_replace(['%1', '%2'], [(string) count($verwaist), fmt_money($summe)], t('sys_fin_orphan_n')),
       t('sys_fin_orphan_hint')
     );
   }

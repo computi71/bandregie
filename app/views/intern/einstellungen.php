@@ -811,7 +811,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <?php $finVerwaist = perm_allows($user, 'kasse', 'write') ? finances_orphaned() : []; ?>
   <?php if ($finVerwaist !== []): ?>
     <form method="post" action="/intern/einstellungen/kasse-freigeben" class="inline"
-          data-confirm="<?= e(sprintf(t('set_fin_orphan_confirm'), count($finVerwaist))) ?>"><?= csrf_field() ?>
+          data-confirm="<?= e(str_replace('%1', (string) count($finVerwaist), t('set_fin_orphan_confirm'))) ?>"><?= csrf_field() ?>
       <button class="btn btn-small"><?= e(t('set_fin_orphan_btn')) ?></button>
     </form>
     <p class="muted small"><?= e(t('set_fin_orphan_hint')) ?></p>
