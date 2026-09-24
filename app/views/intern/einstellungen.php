@@ -324,7 +324,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <?php endif; ?>
     <?php if (!empty($settings['welcome_file'])): ?>
       <img src="/uploads/<?= e($settings['welcome_file']) ?>" alt="<?= e(t('set_welcome_img_own')) ?>" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_del')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_welcome_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['print_logo_file'])): ?>
       <img src="/uploads/<?= e($settings['print_logo_file']) ?>" alt="<?= e(t('set_slot_printlogo')) ?>" style="max-height:60px">

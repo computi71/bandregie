@@ -1,0 +1,196 @@
+<?php
+// Texte gegen ihre Verwendung halten (#348).
+//
+// Zwei Fehlerklassen haben sich beide schon einmal bis in eine Auslieferung
+// durchgeschlichen, und beide fallen bei keinem Seitenaufruf auf:
+//
+//   #340  Ein Text mit %1/%2 ging durch sprintf(). PHP 8 wirft darauf eine
+//         ValueError — auf der einen Seite, die den Fehler melden sollte, und
+//         nur dann, wenn es wirklich etwas zu melden gab.
+//   #345  Ein neuer Text bekam keinen Seed. t() und push_t() fallen still auf
+//         die deutsche Fassung zurück, also kam die ganze Mahnmail auf Deutsch
+//         bei jemandem an, der kein Deutsch liest.
+//
+// Beides ist mechanisch zu finden. Diese Prüfung liest nur — sie schreibt
+// nichts, braucht keine Datenbank und läuft deshalb überall:
+//
+//   php bin/texte-pruefen.php .
+//
+// Die Liste bin/texte-ohne-uebersetzung.txt hält den Rückstand fest, der bei
+// der Einführung schon bestand. Sie ist keine Ausnahmeregel, sondern eine
+// Aufgabenliste: Ein Schlüssel darin darf unübersetzt sein, jeder NEUE nicht.
+// Wer einen abarbeitet, streicht ihn dort.
+declare(strict_types=1);
+
+$basis = rtrim($argv[1] ?? '.', '/\\');
+if (!is_file($basis . '/app/strings/de.php')) {
+    fwrite(STDERR, "Aufruf: php bin/texte-pruefen.php <Verzeichnis>\n");
+    exit(2);
+}
+
+$ok = 0;
+$fehler = 0;
+$melde = static function (string $was, array $treffer) use (&$ok, &$fehler): void {
+    printf("%-52s %s%s", $was, $treffer ? 'FEHLER (' . count($treffer) . ')' : 'ok', PHP_EOL);
+    foreach (array_slice($treffer, 0, 12) as $t) printf("    %s%s", $t, PHP_EOL);
+    if (count($treffer) > 12) printf("    … und %d weitere%s", count($treffer) - 12, PHP_EOL);
+    $treffer ? $fehler++ : $ok++;
+};
+
+// ------------------------------------------------------------ Einlesen
+$deQuelle = (string) file_get_contents($basis . '/app/strings/de.php');
+// Nicht zeilenweise: de.php packt mehrere Texte in eine Zeile
+// ('set_bandname' => 'Bandname', 'set_contact_email' => '…'), und ein Muster,
+// das am Zeilenanfang ansetzt, findet nur den ersten. Das hat diese Prüfung
+// bei ihrem ersten Lauf 582 Texte für fehlend halten lassen, die es gibt.
+// Beide Anführungsarten: Mehrzeilige Beispieltexte (Songtext, Akkorde, Rider)
+// stehen in doppelten. Wer nur die einfachen kennt, hält gerade die für
+// fehlend — auch das ist dieser Prüfung beim ersten Lauf passiert.
+$texte = [];
+foreach (['~\'([a-z0-9_]+)\'\s*=>\s*\'((?:[^\'\\\\]|\\\\.)*)\'~',
+          '~\'([a-z0-9_]+)\'\s*=>\s*"((?:[^"\\\\]|\\\\.)*)"~'] as $muster) {
+    preg_match_all($muster, $deQuelle, $m, PREG_SET_ORDER);
+    foreach ($m as $eintrag) {
+        // Der erste Treffer gewinnt — steht ein Schlüssel doppelt, gilt in PHP
+        // zwar der letzte, aber ein doppelter ist ohnehin ein eigener Fehler.
+        if (!isset($texte[$eintrag[1]])) $texte[$eintrag[1]] = $eintrag[2];
+    }
+}
+
+$seed = '';
+foreach (glob($basis . '/seed/translations/*.sql') ?: [] as $datei) {
+    $seed .= (string) file_get_contents($datei);
+}
+$uebersetzt = [];
+preg_match_all("~\('([a-z]{2})','([a-z0-9_]+)'~", $seed, $sm, PREG_SET_ORDER);
+foreach ($sm as $z) $uebersetzt[$z[1]][$z[2]] = true;
+$sprachen = ['en', 'nl', 'fr', 'es', 'it'];
+
+$quellen = [];
+foreach (['app', 'httpdocs'] as $ordner) {
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($basis . '/' . $ordner));
+    foreach ($it as $datei) {
+        if ($datei->isFile() && $datei->getExtension() === 'php'
+            && !str_ends_with(str_replace('\\', '/', $datei->getPathname()), 'app/strings/de.php')) {
+            $quellen[str_replace($basis . DIRECTORY_SEPARATOR, '', $datei->getPathname())]
+                = (string) file_get_contents($datei->getPathname());
+        }
+    }
+}
+
+// --------------------------------------------- 1. Benutzte Schlüssel gibt es
+// Ein Tippfehler in t('termne_titel') gibt keinen Fehler, sondern zeigt den
+// Schlüssel selbst an — im Zweifel mitten auf der Seite.
+$unbekannt = [];
+$benutzt = [];
+foreach ($quellen as $pfad => $src) {
+    foreach (["~\bt\('([a-z0-9_]+)'\)~", "~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+)'\s*\)~"] as $muster) {
+        preg_match_all($muster, $src, $tm, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+        foreach ($tm as $treffer) {
+            $schluessel = $treffer[1][0];
+            $benutzt[$schluessel] = true;
+            if (!isset($texte[$schluessel])) {
+                $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
+                $unbekannt[] = "$pfad:$nr  t('$schluessel') — steht nicht in de.php";
+            }
+        }
+    }
+}
+$melde('jeder benutzte Schluessel steht in de.php', $unbekannt);
+
+// ------------------------------------- 2. sprintf bekommt sprintf-Texte (#340)
+// Erlaubt sind %s, %d und Verwandte, auch mit Stellenangabe (%1$s). Verboten
+// ist %1 ohne Dollarzeichen — das ist die str_replace-Schreibweise, und PHP
+// bricht darauf ab.
+$falschFormat = [];
+foreach ($quellen as $pfad => $src) {
+    preg_match_all("~sprintf\(\s*t\('([a-z0-9_]+)'\)~", $src, $fm, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+    foreach ($fm as $treffer) {
+        $schluessel = $treffer[1][0];
+        $text = $texte[$schluessel] ?? '';
+        if (preg_match('~%\d(?![$0-9])~', $text)) {
+            $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
+            $falschFormat[] = "$pfad:$nr  sprintf(t('$schluessel')) — Text traegt %1/%2 statt %s/%d";
+        }
+    }
+}
+$melde('sprintf-Texte benutzen %s und %d', $falschFormat);
+
+// ------------------------------- 3. str_replace bekommt str_replace-Texte
+// Die Gegenrichtung: %s in einem Text, der ersetzt statt formatiert wird,
+// bleibt einfach stehen und steht dann so in der Mail.
+$falschMarke = [];
+foreach ($quellen as $pfad => $src) {
+    preg_match_all("~str_replace\(([^;]{0,220}?)(?:t|push_t)\(\s*(?:\\\$[a-zA-Z_]+\s*,\s*)?'([a-z0-9_]+)'\s*\)~s",
+                   $src, $rm, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+    foreach ($rm as $treffer) {
+        $schluessel = $treffer[2][0];
+        $text = $texte[$schluessel] ?? '';
+        if ($text === '') continue;
+        if (preg_match('~%(?:\d+\$)?[sdfu]~', $text)) {
+            $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
+            $falschMarke[] = "$pfad:$nr  str_replace(… t('$schluessel')) — Text traegt %s/%d statt %1/%2";
+        }
+        // Wird %2 ersetzt, muss es auch im Text stehen, und umgekehrt.
+        $ersetzt = substr_count($treffer[1][0], "'%2'");
+        $imText = preg_match('~%2(?![0-9$])~', $text);
+        if ($ersetzt && !$imText) {
+            $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
+            $falschMarke[] = "$pfad:$nr  t('$schluessel') — %2 wird ersetzt, steht aber nicht im Text";
+        }
+    }
+}
+$melde('str_replace-Texte benutzen %1 und %2', $falschMarke);
+
+// ------------------------------------------ 4. Mailtexte sind uebersetzt (#345)
+// Hier gibt es keinen Rueckstand und darf keiner entstehen: Eine Mail kann der
+// Empfaenger nicht umschalten, und die Sprache der Oberflaeche hilft ihm nicht.
+$mailSchluessel = [];
+foreach ($quellen as $src) {
+    preg_match_all("~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+)'\s*\)~", $src, $pm);
+    foreach ($pm[1] as $k) $mailSchluessel[$k] = true;
+}
+$mailLuecken = [];
+foreach (array_keys($mailSchluessel) as $k) {
+    // Zusammengesetzte Schluessel (itemkind_ . $kind) faengt das Muster nicht;
+    // was es faengt, muss vollstaendig sein.
+    foreach ($sprachen as $l) {
+        if (!isset($uebersetzt[$l][$k])) $mailLuecken[] = "$k fehlt in $l";
+    }
+}
+$melde('Mailtexte sind in allen Sprachen vorhanden', $mailLuecken);
+
+// ------------------------------- 5. Neue Oberflaechentexte bekommen ihren Seed
+$listeDatei = $basis . '/bin/texte-ohne-uebersetzung.txt';
+$bekannt = [];
+foreach (file($listeDatei, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $zeile) {
+    $zeile = trim($zeile);
+    if ($zeile !== '' && !str_starts_with($zeile, '#')) $bekannt[$zeile] = true;
+}
+$neueLuecken = [];
+$offen = 0;
+foreach (array_keys($texte) as $k) {
+    if (!isset($benutzt[$k])) continue;              // ungenutzt — Abschnitt 6
+    foreach ($sprachen as $l) {
+        if (isset($uebersetzt[$l][$k])) continue;
+        $offen++;
+        if (!isset($bekannt[$k])) { $neueLuecken[] = "$k fehlt in $l — Seed nachziehen"; break; }
+    }
+}
+$melde('kein NEUER Text ohne Uebersetzung', $neueLuecken);
+
+// --------------------------------------------- 6. Was in der Liste steht, lebt
+// Ein abgearbeiteter oder geloeschter Schluessel soll die Liste verlassen,
+// sonst deckt sie irgendwann eine echte Luecke mit.
+$totInListe = [];
+foreach (array_keys($bekannt) as $k) {
+    if (!isset($texte[$k])) { $totInListe[] = "$k — steht in der Liste, aber nicht mehr in de.php"; continue; }
+    $fehltNoch = false;
+    foreach ($sprachen as $l) if (!isset($uebersetzt[$l][$k])) $fehltNoch = true;
+    if (!$fehltNoch) $totInListe[] = "$k — inzwischen uebersetzt, gehoert aus der Liste gestrichen";
+}
+$melde('die Rueckstandsliste ist aktuell', $totInListe);
+
+printf('%s%d ok, %d Fehler   (Rueckstand: %d Luecken ueber %d Schluessel)%s',
+       PHP_EOL, $ok, $fehler, $offen, count($bekannt), PHP_EOL);
+exit($fehler ? 1 : 0);
