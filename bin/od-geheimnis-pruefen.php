@@ -187,7 +187,15 @@ $pruefe('Betreff nennt die Tage', str_contains($betreffHin, '12'));
 $pruefe('Betreff ohne Platzhalterrest', !str_contains($betreffHin, '%'));
 $pruefe('Text nennt Tage und Datum',
     str_contains($textHin, '12') && str_contains($textHin, fmt_date('2028-08-03')));
-$pruefe('Text ohne Platzhalterrest', !str_contains($textHin, '%1') && !str_contains($textHin, '%2'));
+// Die Linkzeile bleibt aussen vor: rawurlencode() macht aus dem Schraegstrich
+// ein %2F, und ein naives Muster liest das als stehengebliebene Marke. Das ist
+// hier schon einmal passiert - die Pruefung hat den Code beschuldigt.
+$ohneLink = static fn(string $t): string => implode("
+",
+    array_filter(explode("
+", $t), static fn(string $z): bool => !str_contains($z, '://')));
+$pruefe('Text ohne Platzhalterrest',
+    !str_contains($ohneLink($textHin), '%1') && !str_contains($ohneLink($textHin), '%2'));
 $pruefe('Text nennt den Empfaenger', str_contains($textHin, (string) $empfTest['name']));
 $pruefe('Text enthaelt einen Link', str_contains($textHin, '/login?weiter='));
 
@@ -196,7 +204,8 @@ $pruefe('abgelaufen: anderer Betreff', $betreffWeg !== $betreffHin);
 $pruefe('abgelaufen: keine negative Zahl im Betreff', !str_contains($betreffWeg, '-4'));
 $pruefe('abgelaufen: keine negative Zahl im Text', !str_contains($textWeg, '-4'));
 $pruefe('abgelaufen: nennt das Datum', str_contains($textWeg, fmt_date('2026-09-20')));
-$pruefe('abgelaufen: ohne Platzhalterrest', !str_contains($textWeg, '%1'));
+$pruefe('abgelaufen: ohne Platzhalterrest',
+    !str_contains($ohneLink($textWeg), '%1') && !str_contains($ohneLink($textWeg), '%2'));
 $pruefe('die beiden Texte sind verschieden', $textWeg !== $textHin);
 
 // Eine unbekannte Sprache darf nicht in einem leeren Text muenden.
