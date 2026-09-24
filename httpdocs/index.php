@@ -1185,16 +1185,41 @@ if (str_starts_with($path, '/intern')) {
   // direkt in die Ansicht.
   $songList = function () use ($today, $me): array {
     [$songWhere, $songParams] = visible_clause(visible_song_ids($me), 's.id');
+    // Der Filter (#329) verengt nur, was ohnehin sichtbar ist: Er haengt HINTER
+    // visible_clause() und kann deshalb nichts aufmachen, was zugehoert hat.
+    //
+    // Die Auswahl steht in der Adresse und nicht in der Sitzung: So laesst sich
+    // eine gefilterte Liste weitergeben, der Zurueck-Knopf tut das Erwartete,
+    // und ein Neuladen zeigt dasselbe.
+    $suche = trim((string) ($_GET['q'] ?? ''));
+    $stand = array_key_exists($_GET['status'] ?? '', SONG_STATUS) ? (string) $_GET['status'] : '';
+    $filter = '';
+    $filterWerte = [];
+    if ($suche !== '') {
+      // Titel und Interpret zusammen: Wer "Beatles" tippt, sucht selten den
+      // Titel, und wer "Yesterday" tippt, selten die Band.
+      $filter .= ' AND (s.title LIKE ? OR s.artist LIKE ?)';
+      $filterWerte[] = '%' . $suche . '%';
+      $filterWerte[] = '%' . $suche . '%';
+    }
+    if ($stand !== '') {
+      $filter .= ' AND s.status = ?';
+      $filterWerte[] = $stand;
+    }
     $songs = rows(
       "SELECT s.*,
          (SELECT COUNT(*) FROM setlist_songs ss WHERE ss.song_id = s.id) AS setlist_count,
          (SELECT COUNT(DISTINCT e.id) FROM setlist_songs ss2 JOIN events e ON e.setlist_id = ss2.setlist_id
           WHERE ss2.song_id = s.id AND e.date < ?) AS played_count
-       FROM songs s WHERE 1 = 1$songWhere
+       FROM songs s WHERE 1 = 1$songWhere$filter
        ORDER BY FIELD(s.status, 'aktiv', 'in_arbeit', 'demo', 'vorschlag', 'abgewiesen', 'archiv'), s.title",
-      [$today, ...$songParams]
+      [$today, ...$songParams, ...$filterWerte]
     );
-    return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id'))];
+    // Wie viele es ohne Filter waeren - sonst sieht eine leere Liste aus wie
+    // ein leeres Repertoire.
+    $gesamt = (int) row("SELECT COUNT(*) n FROM songs s WHERE 1 = 1$songWhere", $songParams)['n'];
+    return ['songs' => $songs, 'chordsBy' => songs_with_chords(array_column($songs, 'id')),
+            'songQ' => $suche, 'songStatus' => $stand, 'songGesamt' => $gesamt];
   };
   if ($path === '/intern/songs' && $method === 'GET') {
     view('intern/songs', $songList() + ['title' => t('inav_songs'), 'edit' => null,

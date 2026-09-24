@@ -54,7 +54,31 @@
 </details>
 
 <div class="card">
-  <p class="muted small"><?= e(t('songs_usable_hint')) ?> <?= e(t('rate_hint')) ?></p>
+  <?php // Filter (#329). Eine GET-Form: Die Auswahl steht damit in der Adresse,
+        // laesst sich weitergeben, und der Zurueck-Knopf tut das Erwartete. ?>
+  <?php $songFilterAktiv = ($songQ ?? '') !== '' || ($songStatus ?? '') !== ''; ?>
+  <?php // row-buttons statt einer eigenen Klasse: Dieselbe Zeile benutzt die
+        // Fotogalerie fuer ihre Filter schon, und ein zweites Aussehen fuer
+        // dieselbe Sache waere nur eine Stelle mehr zum Vergessen. ?>
+  <form method="get" action="/intern/songs" class="row-buttons">
+    🔍 <input type="search" name="q" value="<?= e($songQ ?? '') ?>" maxlength="100"
+                     placeholder="<?= e(t('songs_filter_q_ph')) ?>" aria-label="<?= e(t('songs_filter_q')) ?>">
+    <select name="status" aria-label="<?= e(t('songs_filter_status')) ?>">
+      <option value=""><?= e(t('songs_filter_all')) ?></option>
+      <?php foreach (array_keys(SONG_STATUS) as $fStatus): ?>
+        <option value="<?= e($fStatus) ?>" <?= ($songStatus ?? '') === $fStatus ? 'selected' : '' ?>><?= e(song_status_label($fStatus)) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <button class="btn btn-small"><?= e(t('songs_filter_go')) ?></button>
+    <?php if ($songFilterAktiv): ?>
+      <a class="btn btn-ghost btn-small" href="/intern/songs"><?= e(t('songs_filter_reset')) ?></a>
+    <?php endif; ?>
+  </form>
+  <?php if ($songFilterAktiv): ?>
+    <p class="muted small"><?= e(str_replace(['%1', '%2'], [(string) count($songs), (string) ($songGesamt ?? count($songs))], t('songs_filter_count'))) ?></p>
+  <?php else: ?>
+    <p class="muted small"><?= e(t('songs_usable_hint')) ?> <?= e(t('rate_hint')) ?></p>
+  <?php endif; ?>
   <table class="table">
     <thead><tr><th><?= e(t('title_lbl')) ?></th><th><?= e(t('songs_col_original')) ?></th><th><?= e(t('song_year')) ?></th><th><?= e(t('song_keylbl')) ?></th><th><?= e(t('song_tempo')) ?></th><th><?= e(t('songs_col_len')) ?></th><th><?= e(t('status')) ?></th><th><?= e(t('songs_col_rating')) ?></th><th><?= e(t('songs_col_uses')) ?></th><th></th></tr></thead>
     <tbody>
@@ -105,6 +129,8 @@
       <?php endforeach; ?>
     </tbody>
   </table>
-  <?php if (!$songs): ?><p class="muted center"><?= e(t('songs_none')) ?></p><?php endif; ?>
+  <?php // Leer heisst zweierlei, und die Unterscheidung spart die Ratlosigkeit:
+        // gar kein Repertoire, oder nur der Filter passt nicht. ?>
+  <?php if (!$songs): ?><p class="muted center"><?= e($songFilterAktiv ? t('songs_filter_empty') : t('songs_none')) ?></p><?php endif; ?>
 </div>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
