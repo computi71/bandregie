@@ -59,11 +59,19 @@ q("INSERT INTO events (type, title, date, status) VALUES ('probe','ZZ Tagesmail'
 $ev = (int) $GLOBALS['db']->lastInsertId();
 item_new('event', $ev, (int) $B['id']);
 
-$gefunden = static function (array $abschnitte, string $text): bool {
+// Abschnittsgenau suchen. Ein Termin kann in der Mail zweimal vorkommen - als
+// Marke unter "Termine" und als fehlende Rueckmeldung. Wer nur nach dem Titel
+// sucht, prueft nichts: Genau daran ist diese Datei beim ersten Lauf
+// gescheitert und hat dem Code die Schuld gegeben.
+$inAbschnitt = static function (array $abschnitte, string $titel, string $text): bool {
     foreach ($abschnitte as $a) {
+        if ($a['titel'] !== $titel) continue;
         foreach ($a['eintraege'] as $e) if (str_contains($e['kopf'], $text)) return true;
     }
     return false;
+};
+$gefunden = static function (array $abschnitte, string $text) use ($inAbschnitt): bool {
+    return $inAbschnitt($abschnitte, UI_STRINGS['digest_termine'], $text);
 };
 $abschnitteA = digest_collect($A);
 $pruefe('der andere findet den neuen Termin', $gefunden($abschnitteA, 'ZZ Tagesmail'));
@@ -88,7 +96,12 @@ $pruefe('kein HTML im Text', !str_contains($text, '<'));
 // ------------------------------- 5. Nichts offen heisst keine Mail
 items_mark_seen($A, 'event', [$ev]);
 $leer = digest_collect($A);
-$pruefe('nach dem Ansehen nicht mehr in der Mail', !$gefunden($leer, 'ZZ Tagesmail'));
+$pruefe('nach dem Ansehen keine Marke mehr', !$gefunden($leer, 'ZZ Tagesmail'));
+// Und der zweite Weg bleibt bestehen: Wer nicht zugesagt hat, wird weiter
+// erinnert - angesehen zu haben ist nicht dasselbe wie geantwortet zu haben.
+$pruefe('fehlende Rueckmeldung bleibt stehen',
+    $inAbschnitt($leer, UI_STRINGS['digest_votes'], 'ZZ Tagesmail')
+    || !perm_allows($A, 'termine'));
 
 item_forget('event', $ev);
 q('DELETE FROM events WHERE id = ?', [$ev]);
