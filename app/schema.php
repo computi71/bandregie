@@ -1586,6 +1586,27 @@ if (setting('migr_marks_ms_331') === '') {
   set_setting('migr_marks_ms_331', '1');
 }
 
+// Auch die "nur angelegt"-Sorten brauchen Millisekunden (#338). Ihr
+// Zeitstempel ist created_at, und der wird gegen seen_at verglichen: Ein
+// Kommentar, der in derselben Sekunde entsteht, in der jemand den Termin
+// abhakt, gilt sonst als gesehen, bevor ihn jemand gelesen hat - denn
+// "05.000 > 05.412" ist falsch.
+//
+// Der Vorgabewert muss mit umgestellt werden. Ohne CURRENT_TIMESTAMP(3) stuende
+// beim naechsten Kommentar gar kein Zeitstempel mehr, und die Sorte waere still
+// kaputt.
+// Absichtlich hier und nicht in den drei CREATE TABLE: Eine Regel an einer
+// Stelle ist leichter richtig zu halten als dieselbe Regel an vier.
+if (setting('migr_marks_ms_born') === '') {
+  foreach (['files', 'comments', 'post_messages'] as $geboren) {
+    if (column_exists($geboren, 'created_at')) {
+      $db->exec("ALTER TABLE `$geboren`
+                 MODIFY created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)");
+    }
+  }
+  set_setting('migr_marks_ms_born', '1');
+}
+
 if (setting('marks_since') === '') set_setting('marks_since', date('Y-m-d H:i:s'));
 
 // Die Themenliste speichert ab jetzt das Abgewählte (#323). Umgerechnet wird
