@@ -141,6 +141,12 @@ if ($method === 'GET'
   if (digest_due()) {
     $hintergrund[] = fn() => digest_run();
   }
+  // Der Ablauf des OneDrive-Geheimnisses (#339) gehört in dieselbe Reihe: Er
+  // liest zwei Einstellungen und spricht nach draußen. od_secret_warn_run()
+  // beansprucht die Marke mit einem bedingten UPDATE, bevor es mahnt.
+  if (od_secret_warn_due()) {
+    $hintergrund[] = fn() => od_secret_warn_run();
+  }
   // push_prune() hält seine eigene Tagesgrenze; hier wird nur nicht umsonst
   // eingeplant, was heute schon gelaufen ist.
   if (setting('push_pruned_on') !== date('Y-m-d')) {
@@ -4505,7 +4511,7 @@ if (str_starts_with($path, '/intern')) {
       q('UPDATE finances SET private_for = NULL WHERE id = ?', [(int) $f['id']]);
       item_touch('finance', (int) $f['id'], null, (int) $me['id']);
     }
-    flash(sprintf(t('fl_fin_orphan_freed'), count($frei)));
+    flash(str_replace('%1', (string) count($frei), t('fl_fin_orphan_freed')));
     back('/intern/einstellungen');
   }
   if ($path === '/intern/einstellungen/schema' && $method === 'POST') {
@@ -4532,6 +4538,11 @@ if (str_starts_with($path, '/intern')) {
     if ($odSecret !== '') {
       set_setting('onedrive_client_secret', crypt_available() ? crypt_seal($odSecret) : $odSecret);
     }
+    // Ablaufdatum (#339). Ein unbrauchbarer Wert wird zu leer und nicht
+    // abgewiesen — od_secret_expires() prüft die Form ohnehin, und ein leeres
+    // Feld ist genau der Fall, den der Prüfpunkt anmahnt.
+    $odBis = trim((string) ($_POST['onedrive_secret_expires'] ?? ''));
+    set_setting('onedrive_secret_expires', preg_match('~^\d{4}-\d{2}-\d{2}$~', $odBis) ? $odBis : '');
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }

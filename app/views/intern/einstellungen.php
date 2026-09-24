@@ -539,6 +539,13 @@ $privacyDefault = "Datenschutzerklärung\n\n"
         <input type="password" name="onedrive_client_secret" value="" autocomplete="new-password">
         <?php if (setting('onedrive_client_secret') !== ''): ?><span class="muted small">🔒 <?= e(t('od_secret_kept')) ?></span><?php endif; ?>
       </label>
+      <?php // Das Ablaufdatum (#339) steht in Azure neben dem Geheimnis, im
+            // selben Augenblick, in dem es kopiert wird. Später ist es nur noch
+            // mit einem Recht zu erfahren, das diese Anwendung nicht hat. ?>
+      <label class="span2"><?= e(t('od_secret_expires')) ?>
+        <input type="date" name="onedrive_secret_expires" value="<?= e(od_secret_expires()) ?>">
+        <span class="muted small"><?= e(t('od_secret_expires_hint')) ?></span>
+      </label>
       <label class="span2"><?= e(t('od_tenant')) ?><input name="onedrive_tenant" value="<?= e(setting('onedrive_tenant', 'common')) ?>">
         <span class="muted small"><?= e(t('od_tenant_hint')) ?></span>
       </label>
@@ -804,7 +811,7 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <?php $finVerwaist = perm_allows($user, 'kasse', 'write') ? finances_orphaned() : []; ?>
   <?php if ($finVerwaist !== []): ?>
     <form method="post" action="/intern/einstellungen/kasse-freigeben" class="inline"
-          data-confirm="<?= e(sprintf(t('set_fin_orphan_confirm'), count($finVerwaist))) ?>"><?= csrf_field() ?>
+          data-confirm="<?= e(str_replace('%1', (string) count($finVerwaist), t('set_fin_orphan_confirm'))) ?>"><?= csrf_field() ?>
       <button class="btn btn-small"><?= e(t('set_fin_orphan_btn')) ?></button>
     </form>
     <p class="muted small"><?= e(t('set_fin_orphan_hint')) ?></p>
