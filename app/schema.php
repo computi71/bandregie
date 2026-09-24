@@ -146,6 +146,23 @@ $tables = [
     PRIMARY KEY (task_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Was als wichtig gekennzeichnet ist (#333). Eine Tabelle fuer alle Sorten
+  // statt einer Spalte in achtzehn: Das wird eine Handvoll Mal im Jahr benutzt,
+  // und so ist jede kuenftige Sorte ohne Migration dabei.
+  //
+  // Der eindeutige Schluessel ist die Bremse gegen die zweite Mail: Zweimal
+  // gekennzeichnet fuegt beim zweiten Mal nichts ein, und daran haengt der
+  // Versand.
+  "CREATE TABLE IF NOT EXISTS important_flags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kind VARCHAR(20) NOT NULL,
+    item_id INT NOT NULL,
+    note VARCHAR(200) NOT NULL DEFAULT '',
+    set_by INT NULL,
+    set_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uniq_flag (kind, item_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Woran eine Aufgabe hängt (#335). kind wird gegen ITEM_KINDS geprüft,
   // plus 'topic' - damit ist "und was sonst noch sinnvoll ist" keine Liste,
   // die jemand raten muss, sondern eine Tabelle.

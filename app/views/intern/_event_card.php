@@ -60,6 +60,9 @@
         <?php endforeach; ?>
       </p>
     <?php endif; ?>
+    <?php // „Wichtig" (#333) - derselbe Baustein wie an den Aufgaben. ?>
+    <?php $wArt = 'event'; $wNr = (int) $ev['id']; $wFlag = $wichtigByEvent[$wNr] ?? null;
+          require BASE_DIR . '/app/views/intern/_wichtig.php'; ?>
     <?php $att = $attendance[$ev['id']] ?? []; ?>
     <?php if ($att): ?>
       <p class="attendance-summary">

@@ -111,6 +111,9 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
           </div>
         <?php endif; ?>
         <?php if ($task['notes']): ?><div class="muted small prewrap"><?= e($task['notes']) ?></div><?php endif; ?>
+        <?php // „Wichtig" (#333) - derselbe Baustein wie an den Terminen. ?>
+        <?php $wArt = 'task'; $wNr = (int) $task['id']; $wFlag = $wichtigByTask[$wNr] ?? null;
+              require BASE_DIR . '/app/views/intern/_wichtig.php'; ?>
         <?php if (perm_allows($user, 'aufgaben', 'write')): ?>
           <details class="subsection">
             <summary>✏️ <?= e(t('task_edit')) ?></summary>

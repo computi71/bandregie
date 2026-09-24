@@ -1647,6 +1647,7 @@ if (str_starts_with($path, '/intern')) {
       'tasks' => $taskListe,
       'assigneesByTask' => task_assignees_map(array_column($taskListe, 'id')),
       'linksByTask' => task_links_map(array_column($taskListe, 'id'), $me),
+      'wichtigByTask' => wichtig_map('task', array_column($taskListe, 'id')),
       'linkable' => task_linkable($me),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'unseenTasks' => $taskOffen,
@@ -2447,6 +2448,26 @@ if (str_starts_with($path, '/intern')) {
       [$gewaehlt ? implode(',', $abgewaehlt) : PUSH_NICHTS, $me['id']]);
     flash(t('fl_push_saved'));
     redirect('/intern/profil');
+  }
+  // Einen Eintrag als wichtig kennzeichnen oder die Kennzeichnung loesen (#333).
+  // Eine Route fuer alle Sorten - die Pruefung, wer darf, steckt in
+  // wichtig_darf() und damit an einer Stelle.
+  if ($path === '/intern/wichtig' && $method === 'POST') {
+    $wArt = (string) ($_POST['art'] ?? '');
+    $wNr = (int) ($_POST['nr'] ?? 0);
+    if (!isset(ITEM_KINDS[$wArt]) || !$wNr || !wichtig_darf($me, $wArt, $wNr)) {
+      flash(t('fl_no_permission'));
+      back('/intern');
+    }
+    deny_in_demo('/intern');
+    if (($_POST['aus'] ?? '') !== '') {
+      wichtig_loesen($wArt, $wNr);
+      flash(t('fl_wichtig_unset'));
+    } else {
+      flash(wichtig_setzen($wArt, $wNr, (string) ($_POST['notiz'] ?? ''), $me)
+            ? t('fl_wichtig_set') : t('fl_wichtig_already'));
+    }
+    back('/intern');
   }
   if ($path === '/intern/gesehen' && $method === 'POST') {
     $gArt = (string) ($_POST['art'] ?? '');
@@ -4464,6 +4485,17 @@ if (str_starts_with($path, '/intern')) {
   // Verwaiste Privatbuchungen der Bandkasse zuschlagen (#337). Bewusst ein
   // Knopf und keine Migration: Geld wechselt den Eigentuemer, und das ist eine
   // Entscheidung, keine Nebenwirkung eines Updates.
+  // Ob es Sofortmails gibt und wer kennzeichnen darf, entscheidet die Band (#333).
+  if ($path === '/intern/einstellungen/wichtig' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    set_setting('important_mail', isset($_POST['important_mail']) ? '1' : '0');
+    $wer = in_array($_POST['important_who'] ?? '', ['alle', 'write', 'admin'], true)
+         ? $_POST['important_who'] : 'write';
+    set_setting('important_who', $wer);
+    flash(t('set_wichtig_saved'));
+    back('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/kasse-freigeben' && $method === 'POST') {
     require_admin();
     if (!perm_allows($me, 'kasse', 'write')) { flash(t('fl_finance_required')); redirect('/intern/einstellungen'); }

@@ -127,6 +127,12 @@ require_once BASE_DIR . '/app/help.php';
   <p class="muted"><?= e(t('help_tagesmail_3')) ?></p>
 </details>
 
+<details id="hilfe-wichtig" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
+  <summary>❗ <?= e(t('set_wichtig')) ?></summary>
+  <p class="help-lead"><?= e(t('help_wichtig')) ?></p>
+  <p class="muted"><?= e(t('help_wichtig_2')) ?></p>
+</details>
+
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>

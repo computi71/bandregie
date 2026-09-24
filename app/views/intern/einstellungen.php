@@ -754,6 +754,26 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 </details>
 
 <details class="card acc" name="setacc">
+  <summary>❗ <?= e(t('set_wichtig')) ?></summary>
+  <p class="muted small"><?= e(t('set_wichtig_hint')) ?></p>
+  <form method="post" action="/intern/einstellungen/wichtig" class="form-grid"><?= csrf_field() ?>
+    <label class="checkbox span2">
+      <input type="checkbox" name="important_mail" value="1" <?= wichtig_mail_an() ? 'checked' : '' ?>>
+      <?= e(t('set_wichtig_mail')) ?>
+    </label>
+    <label class="span2"><?= e(t('set_wichtig_who')) ?>
+      <select name="important_who">
+        <?php foreach (['write', 'admin', 'alle'] as $wWer): ?>
+          <option value="<?= e($wWer) ?>" <?= wichtig_wer() === $wWer ? 'selected' : '' ?>><?= e(t('set_wichtig_who_' . $wWer)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <p class="muted small span2"><?= e(t('set_wichtig_nooptout')) ?></p>
+    <button class="btn btn-primary btn-small span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
+<details class="card acc" name="setacc">
   <summary>🩺 <?= e(t('sys_title')) ?></summary>
   <p class="muted small"><?= e(t('sys_intro')) ?></p>
   <?php require_once BASE_DIR . '/app/systemcheck.php'; ?>
