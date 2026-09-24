@@ -80,7 +80,7 @@ function digest_collect(array $user): array {
               . ' · ' . push_t($lang, 'itemkind_' . $kind) . ': ' . $text;
         $wer = [];
         if (!$marke['neu'] && $marke['wer']) $wer[] = $marke['wer'];
-        if ($marke['wann']) $wer[] = fmt_date(substr((string) $marke['wann'], 0, 10));
+        if ($marke['wann']) $wer[] = fmt_date_lang(substr((string) $marke['wann'], 0, 10), $lang);
         $eintraege[] = ['kopf' => $kopf, 'wer' => implode(', ', $wer),
                         'url' => item_url($kind, (int) $id)];
       }
@@ -118,7 +118,7 @@ function digest_collect(array $user): array {
                    ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date",
                   [(int) $user['id']]) as $a) {
       $eintraege[] = ['kopf' => $a['title'],
-                      'wer' => $a['due_date'] ? push_t($lang, 'due_until') . ' ' . fmt_date($a['due_date']) : '',
+                      'wer' => $a['due_date'] ? push_t($lang, 'due_until') . ' ' . fmt_date_lang($a['due_date'], $lang) : '',
                       'url' => '/intern/aufgaben'];
     }
     if ($eintraege) $abschnitte[] = ['titel' => push_t($lang, 'digest_tasks'), 'eintraege' => $eintraege];
@@ -127,7 +127,7 @@ function digest_collect(array $user): array {
   if (perm_allows($user, 'termine')) {
     $eintraege = [];
     foreach (open_votes($user) as $ev) {
-      $eintraege[] = ['kopf' => $ev['title'] . ' · ' . fmt_date($ev['date']), 'wer' => '',
+      $eintraege[] = ['kopf' => $ev['title'] . ' · ' . fmt_date_lang($ev['date'], $lang), 'wer' => '',
                       'url' => item_url('event', (int) $ev['id'])];
     }
     if ($eintraege) $abschnitte[] = ['titel' => push_t($lang, 'digest_votes'), 'eintraege' => $eintraege];

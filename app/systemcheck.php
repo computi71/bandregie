@@ -127,7 +127,7 @@ function system_checks(): array {
   if (od_configured()) {
     $odBis = od_secret_expires();
     $odTage = od_secret_days_left();
-    $odBald = $odTage !== null && $odTage <= OD_SECRET_WARN[0];
+    $odBald = $odTage !== null && $odTage <= max(OD_SECRET_WARN);
     $groups[t('sys_operation')][] = check_row(
       t('sys_od_secret'),
       $odTage === null ? 'warn' : ($odTage < 0 ? 'fail' : ($odBald ? 'warn' : 'ok')),
