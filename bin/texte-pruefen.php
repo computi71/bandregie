@@ -145,15 +145,26 @@ $melde('str_replace-Texte benutzen %1 und %2', $falschMarke);
 // ------------------------------------------ 4. Mailtexte sind uebersetzt (#345)
 // Hier gibt es keinen Rueckstand und darf keiner entstehen: Eine Mail kann der
 // Empfaenger nicht umschalten, und die Sprache der Oberflaeche hilft ihm nicht.
+// Auch die zusammengesetzten: push_t($lang, 'itemkind_' . $kind) nennt keinen
+// fertigen Schlüssel, aber jeden, der mit „itemkind_" anfängt. Ohne diese
+// Zeilen blieben ganze Gruppen unsichtbar — die Abschnittsüberschriften der
+// Tagesmail und die Sortennamen waren genau so durchgerutscht.
 $mailSchluessel = [];
+$mailPraefixe = [];
 foreach ($quellen as $src) {
     preg_match_all("~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+)'\s*\)~", $src, $pm);
     foreach ($pm[1] as $k) $mailSchluessel[$k] = true;
+    preg_match_all("~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+_)'\s*\.~", $src, $pp);
+    foreach ($pp[1] as $p) $mailPraefixe[$p] = true;
+}
+foreach (array_keys($texte) as $k) {
+    foreach (array_keys($mailPraefixe) as $p) {
+        if (str_starts_with($k, $p)) { $mailSchluessel[$k] = true; break; }
+    }
 }
 $mailLuecken = [];
 foreach (array_keys($mailSchluessel) as $k) {
-    // Zusammengesetzte Schluessel (itemkind_ . $kind) faengt das Muster nicht;
-    // was es faengt, muss vollstaendig sein.
+    if (!isset($texte[$k])) continue;              // Abschnitt 1 meldet das
     foreach ($sprachen as $l) {
         if (!isset($uebersetzt[$l][$k])) $mailLuecken[] = "$k fehlt in $l";
     }
@@ -167,10 +178,14 @@ foreach (file($listeDatei, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] 
     $zeile = trim($zeile);
     if ($zeile !== '' && !str_starts_with($zeile, '#')) $bekannt[$zeile] = true;
 }
+// Über ALLE Schlüssel, nicht nur die wörtlich benutzten. Der Filter „wird
+// benutzt" war eine blinde Stelle: Sorten, Abschnitte, Rollen und Zustände
+// entstehen zur Laufzeit aus einem Wortstamm, und 48 Texte fehlten deshalb,
+// ohne dass sie irgendwo auffielen. Ein Text, den niemand benutzt, gehört
+// gelöscht — nicht von dieser Prüfung verschwiegen.
 $neueLuecken = [];
 $offen = 0;
 foreach (array_keys($texte) as $k) {
-    if (!isset($benutzt[$k])) continue;              // ungenutzt — Abschnitt 6
     foreach ($sprachen as $l) {
         if (isset($uebersetzt[$l][$k])) continue;
         $offen++;

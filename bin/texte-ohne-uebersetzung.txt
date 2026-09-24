@@ -1,104 +1,15 @@
 # Texte ohne vollstaendige Uebersetzung (#348)
 #
-# Keine Ausnahmeliste, sondern eine Aufgabenliste. Sie haelt den Rueckstand
-# fest, der bei Einfuehrung der Pruefung schon bestand - jeder NEUE Text ohne
-# Seed laesst bin/texte-pruefen.php scheitern.
+# Diese Liste ist LEER, und das soll so bleiben. Sie war eine Aufgabenliste:
+# bei Einfuehrung der Pruefung standen 140 Schluessel darin, die in mindestens
+# einer der fuenf Sprachen fehlten. Mit #350 sind sie abgearbeitet.
 #
-# Wer einen Schluessel uebersetzt, streicht ihn hier. Steht ein Schluessel hier,
-# den es nicht mehr gibt oder der inzwischen uebersetzt ist, meldet die Pruefung
-# das ebenfalls - sonst deckt die Liste irgendwann eine echte Luecke mit.
+# Steht hier ein Schluessel, heisst das: Er darf vorerst unuebersetzt bleiben.
+# Jeder Schluessel, der NICHT hier steht und irgendwo fehlt, laesst
+# bin/texte-pruefen.php scheitern - das ist der Sinn der Sache.
 #
-# Stand bei Einfuehrung: 92 Schluessel.
-
-contract_body_hint
-contract_fee_hint
-contract_intro
-contract_promoter_hint
-contract_rebuild
-contract_rebuild_confirm
-contract_signed_file
-digest_freq_lbl
-digest_hint
-digest_hour_lbl
-digest_repeat_hint
-digest_repeat_lbl
-digest_saved
-digest_title
-fl_contact_email_invalid
-fl_contract_deleted
-fl_contract_event_required
-fl_contract_promoter_required
-fl_contract_saved
-fl_contract_status
-fl_fee_unclear
-fl_fin_orphan_freed
-fl_photo_folder
-fl_photo_folder_none
-fl_photo_folder_unknown
-fl_topic_guest_added
-fl_topic_guest_removed
-fl_wichtig_already
-fl_wichtig_set
-fl_wichtig_unset
-help_tagesmail
-help_tagesmail_2
-help_tagesmail_3
-help_wichtig
-help_wichtig_2
-item_open_tasks
-mark_n_new
-od_import
-od_import_failed
-od_import_left
-od_imported
-od_open_original
-od_open_original_title
-photo_folder_assign
-photo_folder_assign_hint
-photo_folder_pick
-role_booking_hint
-set_contract_fields
-set_contract_intro
-set_contract_legal
-set_fin_orphan_btn
-set_fin_orphan_confirm
-set_fin_orphan_hint
-set_site_url_passkey
-set_wichtig
-set_wichtig_hint
-set_wichtig_mail
-set_wichtig_nooptout
-set_wichtig_saved
-set_wichtig_who
-song_year
-song_year_ph
-songs_filter_all
-songs_filter_count
-songs_filter_empty
-songs_filter_go
-songs_filter_q
-songs_filter_q_ph
-songs_filter_reset
-songs_filter_status
-sys_fin_orphan
-sys_fin_orphan_hint
-sys_fin_orphan_n
-task_done_by
-task_edit
-task_link_hint
-task_links
-task_needed
-task_needed_all
-task_nobody
-task_progress
-taxr_neutral
-taxr_neutral_hint
-topic_guests_hint
-wichtig_btn
-wichtig_by
-wichtig_confirm
-wichtig_flag
-wichtig_hint
-wichtig_note_ph
-wichtig_send
-wichtig_unset
+# Wer also einen Text anlegt, legt den Seed gleich mit an. Wer es ausnahmsweise
+# nicht kann, traegt den Schluessel hier ein und nimmt sich vor, ihn wieder zu
+# streichen. Ein Schluessel, den es nicht mehr gibt oder der inzwischen
+# uebersetzt ist, wird ebenfalls gemeldet - sonst deckt die Liste irgendwann
+# eine echte Luecke mit.
