@@ -166,6 +166,35 @@
 <?php // Push-Mitteilungen (#24): Themen gelten kontoweit, das Abo je Gerät.
       // push.js blendet den Geräte-Teil ohne Browser-Unterstützung aus —
       // stiller Rückfall statt Knopf ins Leere. ?>
+<?php // Die Tagesmail (#332) steht vor den Mitteilungen: Sie braucht kein
+      // angemeldetes Geraet und keine Browser-Erlaubnis, gilt also fuer jeden. ?>
+<details class="card acc" name="profilacc" id="tagesmail">
+  <summary>✉ <?= e(t('digest_title')) ?></summary>
+  <p class="muted small"><?= e(t('digest_hint')) ?></p>
+  <form method="post" action="/intern/profil/tagesmail" class="form-grid"><?= csrf_field() ?>
+    <label><?= e(t('digest_freq_lbl')) ?>
+      <select name="digest_freq">
+        <?php foreach (array_keys(DIGEST_FREQ) as $wie): ?>
+          <option value="<?= e($wie) ?>" <?= ($profile['digest_freq'] ?? 'taeglich') === $wie ? 'selected' : '' ?>><?= e(t('digest_freq_' . $wie)) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label><?= e(t('digest_hour_lbl')) ?>
+      <select name="digest_hour">
+        <?php for ($h = 0; $h < 24; $h++): ?>
+          <option value="<?= $h ?>" <?= (int) ($profile['digest_hour'] ?? 18) === $h ? 'selected' : '' ?>><?= sprintf('%02d:00', $h) ?></option>
+        <?php endfor; ?>
+      </select>
+    </label>
+    <label class="checkbox span2">
+      <input type="checkbox" name="digest_repeat" value="1" <?= !empty($profile['digest_repeat']) ? 'checked' : '' ?>>
+      <?= e(t('digest_repeat_lbl')) ?>
+    </label>
+    <p class="muted small span2"><?= e(t('digest_repeat_hint')) ?></p>
+    <button class="btn btn-primary btn-small span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <?php if (push_available()): ?>
 <details class="card acc" name="profilacc" id="mitteilungen" data-push
          data-push-key="<?= e(push_public_key()) ?>" data-push-token="<?= e(csrf_token()) ?>">

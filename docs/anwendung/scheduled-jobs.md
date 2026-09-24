@@ -1,7 +1,8 @@
 # Scheduled jobs
 
-Three things run without anybody asking: the **automatic backup**, the **daily
-look into linked OneDrive folders**, and the **mailbox fetch**. Each has one
+Four things run without anybody asking: the **automatic backup**, the **daily
+look into linked OneDrive folders**, the **mailbox fetch**, and the **daily
+digest mail**. Each has one
 due-check and two possible triggers — a page view, or the matching script from
 `bin/` as a cron.
 
@@ -26,6 +27,7 @@ nobody browses — has no trigger. Give it one:
 |---|---|---|
 | `bin/od-refresh.php` | re-checks linked OneDrive folders, notifies about new pictures | daily |
 | `bin/post-fetch.php` | fetches the configured mailbox, read-only | every few minutes to hourly |
+| `bin/tagesmail.php` | sends each member their daily digest | hourly |
 | `bin/update.sh` | pulls and deploys a new version | only for unattended updates |
 | `bin/demo-reset.sh` | resets a demo instance to its seed state | hourly, demo only |
 | `bin/mail-status.php` | reads what the mail server did with each invitation | every minute, see below |
