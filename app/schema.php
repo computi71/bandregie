@@ -791,6 +791,20 @@ foreach (['comment', 'attendance', 'venue', 'absence', 'task', 'equipment',
   }
 }
 
+// Die Tagesmail je Mitglied (#332). Vier Spalten, weil vier Fragen zu
+// beantworten sind: wie oft, wann, auch ohne Neues, und seit wann nicht mehr.
+//
+// digest_sent_at ist nicht nur Protokoll - daran haengt die Faelligkeit, und
+// es ist zugleich der Platz, den ein Lauf beansprucht, damit zwei gleichzeitige
+// Aufrufe nicht dieselbe Mail zweimal schicken.
+if (!column_exists('users', 'digest_freq')) {
+  $db->exec("ALTER TABLE users
+             ADD COLUMN digest_freq VARCHAR(10) NOT NULL DEFAULT 'taeglich',
+             ADD COLUMN digest_hour TINYINT UNSIGNED NOT NULL DEFAULT 18,
+             ADD COLUMN digest_repeat TINYINT(1) NOT NULL DEFAULT 1,
+             ADD COLUMN digest_sent_at DATETIME NULL");
+}
+
 // Aufgaben bekommen mehrere Zuständige und ein Quorum (#334).
 if (!column_exists('tasks', 'required_done')) {
   $db->exec('ALTER TABLE tasks ADD COLUMN required_done TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER status');

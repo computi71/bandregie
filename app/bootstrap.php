@@ -41,6 +41,9 @@ require_once __DIR__ . '/tresor.php';
 require_once __DIR__ . '/push.php';
 // Neu und geändert (#321): nur Funktionen, lädt wie die anderen oben mit.
 require_once __DIR__ . '/marks.php';
+// Die Tagesmail (#332) braucht die Marken, item_visible() und item_url() -
+// deshalb danach.
+require_once __DIR__ . '/tagesmail.php';
 // Steuerliche Werte: seit die Nutzungsdauer am einzelnen Gerät steht, fragen
 // auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
 // Steuerseite, die das Modul früher allein geladen hat.
@@ -478,6 +481,13 @@ const SONG_STATUS = [
 const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanaele'];
 
 // Worüber Push-Mitteilungen sprechen können — je Mitglied abwählbar.
+/**
+ * Wie oft die Tagesmail kommt (#332). 'aus' ist eine echte Auswahl und keine
+ * versteckte Abmeldung: Wer sie nicht will, stellt sie ab, und es passiert
+ * nichts mehr.
+ */
+const DIGEST_FREQ = ['aus' => 0, 'taeglich' => 1, '2tage' => 2, 'woche' => 7];
+
 const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
@@ -629,6 +639,41 @@ function current_user(): ?array {
   }
   return $user;
 }
+/**
+ * Darf dieser Pfad ein Ziel nach der Anmeldung sein? (#332)
+ *
+ * Streng gegen eigene Pfade im Bandbereich geprüft. Ohne das wäre ?weiter=
+ * eine offene Weiterleitung für jeden, der eine Mail fälschen kann — und die
+ * Tagesmail ist genau eine Mail voller Links.
+ */
+function login_weiter_gueltig(string $ziel): bool {
+  return $ziel !== ''
+      && str_starts_with($ziel, '/intern')
+      && !str_starts_with($ziel, '//')
+      && !str_contains($ziel, '..')
+      && !str_contains($ziel, "
+")
+      && !str_contains($ziel, "
+");
+}
+
+/**
+ * Wohin nach der Anmeldung? In den Bandbereich — es sei denn, jemand kam über
+ * einen Link aus der Tagesmail und wollte an eine bestimmte Stelle (#332).
+ *
+ * Das Ziel steht in der Sitzung und nicht im Formular: Es muss den zweiten
+ * Schritt der Zwei-Faktor-Anmeldung überleben, und der ist eine eigene Seite.
+ *
+ * Ein fälliger Passwortwechsel geht vor. Wer sein Passwort ändern muss, soll
+ * das tun und nicht an einem Termin landen.
+ */
+function login_ziel(array $u): string {
+  $ziel = (string) ($_SESSION['login_weiter'] ?? '');
+  unset($_SESSION['login_weiter']);
+  if (!empty($u['must_change_pw'])) return '/intern/passwort';
+  return login_weiter_gueltig($ziel) ? $ziel : '/intern';
+}
+
 function require_login(): array {
   $u = current_user();
   if (!$u) { redirect('/login'); }

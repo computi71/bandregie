@@ -134,6 +134,13 @@ if ($method === 'GET'
   if (orders_due()) {
     $hintergrund[] = fn() => orders_run();
   }
+  // Die Tagesmail (#332) gehört in dieselbe Reihe: Sie liest Einstellungen und
+  // Tabellen und spricht nach draußen, braucht also keine Sitzung. So löst sie
+  // auch der Aufruf auf die öffentliche Bandseite aus - eine Instanz ohne Cron
+  // bekommt sie trotzdem.
+  if (digest_due()) {
+    $hintergrund[] = fn() => digest_run();
+  }
   // push_prune() hält seine eigene Tagesgrenze; hier wird nur nicht umsonst
   // eingeplant, was heute schon gelaufen ist.
   if (setting('push_pruned_on') !== date('Y-m-d')) {
@@ -511,7 +518,12 @@ if (preg_match('~^/kalender/(\w+)\.ics$~', $path, $m)) {
 // ============================================================
 
 if ($path === '/login') {
-  if (current_user()) redirect('/intern');
+  // Das Ziel aus der Tagesmail zuerst aufnehmen - auch wenn die Sitzung noch
+  // steht, denn dann geht es sofort dorthin weiter (#332).
+  if (isset($_GET['weiter']) && login_weiter_gueltig((string) $_GET['weiter'])) {
+    $_SESSION['login_weiter'] = (string) $_GET['weiter'];
+  }
+  if ($u0 = current_user()) redirect(login_ziel($u0));
   if ($method === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
     if (throttle_blocked('login', $email)) {
@@ -543,7 +555,7 @@ if ($path === '/login') {
       login_stamp((int) $u['id']);
       if (!empty($_POST['bleiben'])) remember_issue((int) $u['id']);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
-      redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
+      redirect(login_ziel($u));
     }
     throttle_note('login', $email);
     http_response_code(401);
@@ -589,7 +601,7 @@ if ($path === '/login/code') {
       login_stamp($uid);
       if ($bleiben) remember_issue($uid);
       if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
-      redirect(!empty($u['must_change_pw']) ? '/intern/passwort' : '/intern');
+      redirect(login_ziel($u));
     }
     throttle_note('totp', (string) $uid);
     http_response_code(401);
@@ -662,7 +674,7 @@ if ($path === '/passkey/login' && $method === 'POST') {
   // angemeldet bleiben, ohne dass jemand ein Häkchen sucht (#262).
   remember_issue((int) $u['id']);
   if (array_key_exists($u['pref_lang'] ?? '', LANGS)) $_SESSION['pub_lang'] = $u['pref_lang'];
-  exit(json_encode(['ok' => true, 'weiter' => !empty($u['must_change_pw']) ? '/intern/passwort' : '/intern']));
+  exit(json_encode(['ok' => true, 'weiter' => login_ziel($u)]));
 }
 
 // Passwort vergessen: Link per E-Mail anfordern (ohne Konto-Enumeration)
@@ -2389,6 +2401,16 @@ if (str_starts_with($path, '/intern')) {
   }
   // Push (#24): Themen-Auswahl (kontoweit) und Geräte-Abos. Ein Abo gehört
   // dem, der es angelegt hat — abmelden kann es nur derselbe.
+  // Tagesmail einstellen (#332). Vier Werte, alle streng begrenzt: Was aus
+  // einem Formular kommt, entscheidet hier ueber einen Versand nach draussen.
+  if ($path === '/intern/profil/tagesmail' && $method === 'POST') {
+    $wie = array_key_exists($_POST['digest_freq'] ?? '', DIGEST_FREQ) ? $_POST['digest_freq'] : 'taeglich';
+    $std = max(0, min(23, (int) ($_POST['digest_hour'] ?? 18)));
+    q('UPDATE users SET digest_freq = ?, digest_hour = ?, digest_repeat = ? WHERE id = ?',
+      [$wie, $std, isset($_POST['digest_repeat']) ? 1 : 0, $me['id']]);
+    flash(t('digest_saved'));
+    redirect('/intern/profil');
+  }
   if ($path === '/intern/profil/push-topics' && $method === 'POST') {
     $gewaehlt = array_values(array_intersect(PUSH_TOPICS, (array) ($_POST['topics'] ?? [])));
     // Gespeichert wird das Abgewählte (#323): So ist ein Thema, das es morgen
