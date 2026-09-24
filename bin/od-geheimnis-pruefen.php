@@ -90,6 +90,18 @@ $pruefe('40 Tage vorher keine Mahnung', !od_secret_warn_due());
 $setzeDatum($inTagen(25));
 $pruefe('25 Tage vorher faellig', od_secret_warn_due());
 
+// ------------------------- 4b. Erstlauf: die Einstellungszeile fehlt ganz
+// Genau dafuer steht das INSERT IGNORE in od_secret_claim(). Vorher war dieser
+// Fall nie geprueft, weil die Pruefung die Zeile immer vorher anlegte.
+q("DELETE FROM settings WHERE `key` = 'od_secret_warned'");
+settings_forget();
+$pruefe('ohne Einstellungszeile ist faellig', od_secret_warn_due());
+$pruefe('und der Erste bekommt den Platz',
+    od_secret_claim(od_secret_expires() . '/' . od_secret_stufe(od_secret_days_left())));
+$pruefe('die Zeile steht danach da', setting('od_secret_warned') !== '');
+set_setting('od_secret_warned', '');
+settings_forget();
+
 // ---------------------------------------- 5. Jede Stufe mahnt nur einmal
 $marke = od_secret_expires() . '/' . od_secret_stufe(od_secret_days_left());
 $pruefe('Platz beanspruchen gelingt', od_secret_claim($marke));
@@ -151,12 +163,58 @@ foreach (['od_secret_expires', 'od_secret_expires_hint', 'od_secret_subject',
 }
 // Die Prueftexte gehen durch sprintf, die Mailtexte durch str_replace. Wer das
 // vertauscht, bekommt entweder einen Absturz oder eine Mail mit %1 darin.
-$pruefe('sys_od_secret_left formatiert', sprintf(t('sys_od_secret_left'), 5, '01.03.2027') !== '');
-$pruefe('sys_od_secret_over formatiert', sprintf(t('sys_od_secret_over'), '01.03.2027') !== '');
+// Nicht "nicht leer": Das ist fast jede Zeichenkette. Geprueft wird, dass die
+// Werte wirklich eingesetzt werden - sonst faellt ein vertauschtes %s nie auf.
+$pruefe('sys_od_secret_left setzt beide Werte ein', (static function (): bool {
+    $t = sprintf(t('sys_od_secret_left'), 5, '01.03.2027');
+    return str_contains($t, '5') && str_contains($t, '01.03.2027');
+})());
+$pruefe('sys_od_secret_over setzt das Datum ein',
+    str_contains(sprintf(t('sys_od_secret_over'), '01.03.2027'), '01.03.2027'));
 $pruefe('od_secret_body ersetzt beide Marken',
     !str_contains(str_replace(['%1', '%2'], ['5', '01.03.2027'], t('od_secret_body')), '%'));
 $pruefe('od_secret_subject ersetzt seine Marke',
     !str_contains(str_replace('%1', '5', t('od_secret_subject')), '%'));
+
+// ----------------------------------------------------- 11. Der Mailtext
+// od_secret_warn_run() laesst sich nicht aufrufen, ohne zu senden - die
+// Zusammenstellung des Textes schon. Genau dort sitzt der Fehler, der sonst
+// erst dem Empfaenger auffaellt: ein stehengebliebenes %2, ein vertauschter
+// Zweig, eine Sprache, die es nicht gibt.
+$empfTest = $empf[0] ?? $admin;
+[$betreffHin, $textHin] = od_secret_mail_text($empfTest, 12, '2028-08-03');
+$pruefe('Betreff nennt die Tage', str_contains($betreffHin, '12'));
+$pruefe('Betreff ohne Platzhalterrest', !str_contains($betreffHin, '%'));
+$pruefe('Text nennt Tage und Datum',
+    str_contains($textHin, '12') && str_contains($textHin, fmt_date('2028-08-03')));
+$pruefe('Text ohne Platzhalterrest', !str_contains($textHin, '%1') && !str_contains($textHin, '%2'));
+$pruefe('Text nennt den Empfaenger', str_contains($textHin, (string) $empfTest['name']));
+$pruefe('Text enthaelt einen Link', str_contains($textHin, '/login?weiter='));
+
+[$betreffWeg, $textWeg] = od_secret_mail_text($empfTest, -4, '2026-09-20');
+$pruefe('abgelaufen: anderer Betreff', $betreffWeg !== $betreffHin);
+$pruefe('abgelaufen: keine negative Zahl im Betreff', !str_contains($betreffWeg, '-4'));
+$pruefe('abgelaufen: keine negative Zahl im Text', !str_contains($textWeg, '-4'));
+$pruefe('abgelaufen: nennt das Datum', str_contains($textWeg, fmt_date('2026-09-20')));
+$pruefe('abgelaufen: ohne Platzhalterrest', !str_contains($textWeg, '%1'));
+$pruefe('die beiden Texte sind verschieden', $textWeg !== $textHin);
+
+// Eine unbekannte Sprache darf nicht in einem leeren Text muenden.
+$fremd = $empfTest; $fremd['pref_lang'] = 'kl';
+[$betreffFremd, $textFremd] = od_secret_mail_text($fremd, 12, '2028-08-03');
+$pruefe('unbekannte Sprache faellt auf Deutsch zurueck',
+    $betreffFremd === $betreffHin && $textFremd === $textHin);
+
+// ------------------------------------------------- 12. Datumspruefung (#347)
+$pruefe('echtes Datum gilt', od_datum_gueltig('2028-08-03'));
+$pruefe('Monat 13 gilt nicht', !od_datum_gueltig('2027-13-01'));
+$pruefe('31. Februar gilt nicht', !od_datum_gueltig('2027-02-31'));
+$pruefe('29.02. im Schaltjahr gilt', od_datum_gueltig('2028-02-29'));
+$pruefe('29.02. sonst nicht', !od_datum_gueltig('2027-02-29'));
+$pruefe('deutsches Format gilt nicht', !od_datum_gueltig('03.08.2028'));
+$pruefe('leer gilt nicht', !od_datum_gueltig(''));
+$setzeDatum('2027-13-45');
+$pruefe('unmoegliches Datum kommt nicht durch', od_secret_expires() === '');
 
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

@@ -4538,11 +4538,16 @@ if (str_starts_with($path, '/intern')) {
     if ($odSecret !== '') {
       set_setting('onedrive_client_secret', crypt_available() ? crypt_seal($odSecret) : $odSecret);
     }
-    // Ablaufdatum (#339). Ein unbrauchbarer Wert wird zu leer und nicht
-    // abgewiesen — od_secret_expires() prüft die Form ohnehin, und ein leeres
-    // Feld ist genau der Fall, den der Prüfpunkt anmahnt.
+    // Ablaufdatum (#339). Leer heißt löschen; Unsinn wird gemeldet und ändert
+    // nichts (#347). Wortlos verwerfen hieße: Wer auf einem Browser ohne
+    // Datumsfeld „01.03.2027" tippt, findet das Feld hinterher leer und
+    // erfährt nie, warum — dieselbe Überlegung wie bei der Kontaktadresse.
     $odBis = trim((string) ($_POST['onedrive_secret_expires'] ?? ''));
-    set_setting('onedrive_secret_expires', preg_match('~^\d{4}-\d{2}-\d{2}$~', $odBis) ? $odBis : '');
+    if ($odBis === '' || od_datum_gueltig($odBis)) {
+      set_setting('onedrive_secret_expires', $odBis);
+    } else {
+      flash(t('fl_od_expires_invalid'));
+    }
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }

@@ -101,7 +101,20 @@ const OD_SECRET_WARN = [30, 7, 0];
  */
 function od_secret_expires(): string {
   $d = trim(setting('onedrive_secret_expires'));
-  return preg_match('~^\d{4}-\d{2}-\d{2}$~', $d) ? $d : '';
+  return od_datum_gueltig($d) ? $d : '';
+}
+
+/**
+ * Ein Datum, das es wirklich gibt (#347).
+ *
+ * Die Form allein genügt nicht: „2027-13-45" passt auf das Muster, und
+ * createFromFormat() rollt daraus einen anderen, echten Tag. Der Countdown
+ * zählte dann auf einen Tag, den niemand eingetragen hat. Im Browser
+ * verhindert das Datumsfeld solche Werte, eine von Hand gebaute Anfrage nicht.
+ */
+function od_datum_gueltig(string $d): bool {
+  if (!preg_match('~^(\d{4})-(\d{2})-(\d{2})$~', $d, $m)) return false;
+  return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
 }
 
 /** Tage bis zum Ablauf, negativ danach. null heißt: kein Datum hinterlegt. */
@@ -179,6 +192,37 @@ function od_secret_claim(string $marke): bool {
 }
 
 /**
+ * Betreff und Text der Mahnung, in der Sprache des Empfängers (#346).
+ *
+ * Eigens herausgezogen, damit sich prüfen lässt, was in der Mail steht, ohne
+ * dass dabei Post entsteht. Ein stehengebliebenes %2 oder ein vertauschter
+ * Zweig fiele sonst erst dem Empfänger auf.
+ *
+ * @return array{0: string, 1: string} Betreff und Text
+ */
+function od_secret_mail_text(array $user, int $tage, string $bis): array {
+  $lang = array_key_exists($user['pref_lang'] ?? '', LANGS) ? $user['pref_lang'] : 'de';
+  $betreff = $tage < 0
+    ? push_t($lang, 'od_secret_subject_over')
+    : str_replace('%1', (string) $tage, push_t($lang, 'od_secret_subject'));
+  $zeilen = [
+    str_replace('%1', (string) $user['name'], push_t($lang, 'digest_hello')),
+    '',
+    $tage < 0
+      ? str_replace('%1', fmt_date($bis), push_t($lang, 'od_secret_body_over'))
+      : str_replace(['%1', '%2'], [(string) $tage, fmt_date($bis)], push_t($lang, 'od_secret_body')),
+    '',
+    push_t($lang, 'od_secret_howto'),
+    '',
+    '  ' . absolute_url('/login?weiter=' . rawurlencode('/intern/einstellungen')),
+    '',
+    '-- ',
+    setting('band_name'),
+  ];
+  return [$betreff, implode("\n", $zeilen)];
+}
+
+/**
  * Die Erinnerung an die Bandleitung.
  *
  * @return int wie viele Mails hinausgingen
@@ -187,30 +231,29 @@ function od_secret_warn_run(): int {
   if (!od_secret_warn_due()) return 0;
   $bis = od_secret_expires();
   $tage = od_secret_days_left();
+
+  // Erst sehen, wen es betrifft, dann die Stufe verbrauchen (#346). Eine
+  // Stufe zu belegen, ohne dass jemand erreicht wird, nimmt der Mahnung ihre
+  // Gelegenheit — und die letzte Stufe hat keine zweite.
+  $empfaenger = od_secret_empfaenger();
+  if (!$empfaenger) return 0;
+
+  $alt = setting('od_secret_warned');
   if (!od_secret_claim($bis . '/' . od_secret_stufe($tage))) return 0;
 
   $gesendet = 0;
-  foreach (od_secret_empfaenger() as $u) {
-    $lang = array_key_exists($u['pref_lang'] ?? '', LANGS) ? $u['pref_lang'] : 'de';
-    $zeilen = [
-      str_replace('%1', (string) $u['name'], push_t($lang, 'digest_hello')),
-      '',
-      $tage < 0
-        ? str_replace('%1', fmt_date($bis), push_t($lang, 'od_secret_body_over'))
-        : str_replace(['%1', '%2'], [(string) $tage, fmt_date($bis)], push_t($lang, 'od_secret_body')),
-      '',
-      push_t($lang, 'od_secret_howto'),
-      '',
-      '  ' . absolute_url('/login?weiter=' . rawurlencode('/intern/einstellungen')),
-      '',
-      '-- ',
-      setting('band_name'),
-    ];
-    $betreff = $tage < 0
-      ? push_t($lang, 'od_secret_subject_over')
-      : str_replace('%1', (string) $tage, push_t($lang, 'od_secret_subject'));
-    if (band_mail_send((string) $u['email'], $betreff,
-                       implode("\n", $zeilen), 'od_secret', (int) $u['id'])) $gesendet++;
+  foreach ($empfaenger as $u) {
+    [$betreff, $text] = od_secret_mail_text($u, $tage, $bis);
+    if (band_mail_send((string) $u['email'], $betreff, $text, 'od_secret', (int) $u['id'])) $gesendet++;
+  }
+
+  // Ging überhaupt nichts hinaus, war die Stufe nicht verbraucht: Ein
+  // Mailserver, der eine Minute lang tot ist, darf nicht für immer als
+  // „schon gemahnt" stehenbleiben. Bei einem Teilerfolg bleibt die Marke —
+  // sonst bekämen die Erreichten beim nächsten Aufruf eine zweite Mail.
+  if ($gesendet === 0) {
+    set_setting('od_secret_warned', $alt);
+    settings_forget();
   }
   return $gesendet;
 }
