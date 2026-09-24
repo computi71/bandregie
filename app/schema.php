@@ -803,6 +803,10 @@ if (!column_exists('users', 'digest_freq')) {
              ADD COLUMN digest_hour TINYINT UNSIGNED NOT NULL DEFAULT 18,
              ADD COLUMN digest_repeat TINYINT(1) NOT NULL DEFAULT 1,
              ADD COLUMN digest_sent_at DATETIME NULL");
+  // Bestandskonten starten auf 'aus'. Ein Update darf keine Band ungefragt
+  // bemailen - wer sie will, schaltet sie ein. Die Spaltenvorgabe bleibt
+  // 'taeglich', damit ein neu angelegtes Konto sie von sich aus bekommt.
+  $db->exec("UPDATE users SET digest_freq = 'aus'");
 }
 
 // Aufgaben bekommen mehrere Zuständige und ein Quorum (#334).
