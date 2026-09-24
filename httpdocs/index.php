@@ -1647,6 +1647,7 @@ if (str_starts_with($path, '/intern')) {
       'tasks' => $taskListe,
       'assigneesByTask' => task_assignees_map(array_column($taskListe, 'id')),
       'linksByTask' => task_links_map(array_column($taskListe, 'id'), $me),
+      'wichtigByTask' => wichtig_map('task', array_column($taskListe, 'id')),
       'linkable' => task_linkable($me),
       'members' => rows('SELECT id, name FROM users ORDER BY name'),
       'unseenTasks' => $taskOffen,

@@ -60,37 +60,9 @@
         <?php endforeach; ?>
       </p>
     <?php endif; ?>
-    <?php // "Wichtig" (#333): Wenn gekennzeichnet, steht es oben und faellt auf.
-          // Der Knopf erscheint nur, wer ihn benutzen darf - ein Knopf, der
-          // "keine Berechtigung" antwortet, ist eine Falle, keine Bedienung. ?>
-    <?php $evWichtig = $wichtigByEvent[(int) $ev['id']] ?? null; ?>
-    <?php $evDarfWichtig = wichtig_darf($user, 'event', (int) $ev['id']); ?>
-    <?php if ($evWichtig): ?>
-      <p class="warn">❗ <strong><?= e(t('wichtig_flag')) ?></strong>
-        <?php if ($evWichtig['note'] !== ''): ?>· <?= e($evWichtig['note']) ?><?php endif; ?>
-        <?php if ($evWichtig['wer']): ?><span class="muted small">· <?= e(str_replace('%1', $evWichtig['wer'], t('wichtig_by'))) ?></span><?php endif; ?>
-        <?php if ($evDarfWichtig): ?>
-          <form class="inline" method="post" action="/intern/wichtig"><?= csrf_field() ?>
-            <input type="hidden" name="art" value="event">
-            <input type="hidden" name="nr" value="<?= (int) $ev['id'] ?>">
-            <input type="hidden" name="aus" value="1">
-            <button class="btn btn-tiny btn-ghost"><?= e(t('wichtig_unset')) ?></button>
-          </form>
-        <?php endif; ?>
-      </p>
-    <?php elseif ($evDarfWichtig): ?>
-      <details class="subsection">
-        <summary>❗ <?= e(t('wichtig_btn')) ?></summary>
-        <form method="post" action="/intern/wichtig" class="row-buttons"><?= csrf_field() ?>
-          <input type="hidden" name="art" value="event">
-          <input type="hidden" name="nr" value="<?= (int) $ev['id'] ?>">
-          <input name="notiz" maxlength="200" placeholder="<?= e(t('wichtig_note_ph')) ?>"
-                 aria-label="<?= e(t('wichtig_note_ph')) ?>">
-          <button class="btn btn-small" data-confirm="<?= e(t('wichtig_confirm')) ?>"><?= e(t('wichtig_send')) ?></button>
-        </form>
-        <p class="muted small"><?= e(t('wichtig_hint')) ?></p>
-      </details>
-    <?php endif; ?>
+    <?php // „Wichtig" (#333) - derselbe Baustein wie an den Aufgaben. ?>
+    <?php $wArt = 'event'; $wNr = (int) $ev['id']; $wFlag = $wichtigByEvent[$wNr] ?? null;
+          require BASE_DIR . '/app/views/intern/_wichtig.php'; ?>
     <?php $att = $attendance[$ev['id']] ?? []; ?>
     <?php if ($att): ?>
       <p class="attendance-summary">
