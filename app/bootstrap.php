@@ -1251,6 +1251,25 @@ function may_see_file(?array $user, array $file): bool {
   };
 }
 
+/**
+ * Buchungen, deren privater Eigner nicht mehr existiert (#337).
+ *
+ * Eine private Auslage gehoert dem Mitglied und ist fuer alle anderen
+ * unsichtbar - auch fuer die Bandleitung. Ist das Konto weg, sieht sie
+ * niemand mehr, und der Kontostand zaehlt sie auch nicht mit, denn der summiert
+ * nur `private_for IS NULL`. Das Geld ist dann weder privat noch das der Band.
+ *
+ * user_purge() beugt dem vor, indem es private_for leert. Entsteht so eine
+ * Zeile trotzdem - ein Konto von Hand aus der Datenbank entfernt, oder ein
+ * Bestand aus der Zeit vor dieser Regel -, faellt sie sonst niemandem auf.
+ */
+function finances_orphaned(): array {
+  return rows('SELECT f.id, f.date, f.description, f.amount_cents, f.private_for
+                 FROM finances f LEFT JOIN users u ON u.id = f.private_for
+                WHERE f.private_for IS NOT NULL AND u.id IS NULL
+                ORDER BY f.date');
+}
+
 /** Darf jemand diese Kassenbuchung sehen? */
 function may_see_finance(?array $user, int $financeId): bool {
   if (!$user) return false;

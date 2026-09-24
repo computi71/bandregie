@@ -778,6 +778,17 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <button class="btn btn-small"><?= e(t('set_schema_recheck')) ?></button>
   </form>
   <p class="muted small"><?= e(t('set_schema_recheck_hint')) ?></p>
+
+  <?php // Nur zeigen, wenn es etwas zu tun gibt (#337). Ein Knopf, der nichts
+        // bewirkt, laesst jeden raten, ob er schon gedrueckt wurde. ?>
+  <?php $finVerwaist = perm_allows($user, 'kasse', 'write') ? finances_orphaned() : []; ?>
+  <?php if ($finVerwaist !== []): ?>
+    <form method="post" action="/intern/einstellungen/kasse-freigeben" class="inline"
+          data-confirm="<?= e(sprintf(t('set_fin_orphan_confirm'), count($finVerwaist))) ?>"><?= csrf_field() ?>
+      <button class="btn btn-small"><?= e(t('set_fin_orphan_btn')) ?></button>
+    </form>
+    <p class="muted small"><?= e(t('set_fin_orphan_hint')) ?></p>
+  <?php endif; ?>
 </details>
 
 <?php require_once BASE_DIR . '/app/demo.php'; ?>

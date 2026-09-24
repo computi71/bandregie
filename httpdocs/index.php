@@ -4461,6 +4461,21 @@ if (str_starts_with($path, '/intern')) {
   // Das Schema erneut prüfen lassen (#328): Die Marke wird gelöscht, der nächste
   // Seitenaufruf läuft durch schema.php. Für den Fall, dass jemand von Hand in
   // der Datenbank war — dann stimmt die Marke und das Tor bleibt trotzdem zu.
+  // Verwaiste Privatbuchungen der Bandkasse zuschlagen (#337). Bewusst ein
+  // Knopf und keine Migration: Geld wechselt den Eigentuemer, und das ist eine
+  // Entscheidung, keine Nebenwirkung eines Updates.
+  if ($path === '/intern/einstellungen/kasse-freigeben' && $method === 'POST') {
+    require_admin();
+    if (!perm_allows($me, 'kasse', 'write')) { flash(t('fl_finance_required')); redirect('/intern/einstellungen'); }
+    deny_in_demo('/intern/einstellungen');
+    $frei = finances_orphaned();
+    foreach ($frei as $f) {
+      q('UPDATE finances SET private_for = NULL WHERE id = ?', [(int) $f['id']]);
+      item_touch('finance', (int) $f['id'], null, (int) $me['id']);
+    }
+    flash(sprintf(t('fl_fin_orphan_freed'), count($frei)));
+    back('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/schema' && $method === 'POST') {
     require_admin();
     deny_in_demo('/intern/einstellungen');

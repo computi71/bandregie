@@ -1053,6 +1053,13 @@ const UI_STRINGS = [
   'sys_schema_broken_seed' => 'Eine mitgelieferte Übersetzungsdatei (%s) konnte nicht eingespielt werden — ein Text bleibt dadurch veraltet oder fehlt.',
   'sys_schema_broken_hint' => 'Behebt sich nicht von selbst. Serverprotokoll prüfen und die Datenbank von Hand nachziehen lassen.',
   'set_schema_recheck' => 'Schema prüfen',
+  'sys_fin_orphan' => 'Verwaiste Privatbuchungen',
+  'sys_fin_orphan_n' => '%1 Buchung(en) über %2 gehören einem Konto, das es nicht mehr gibt',
+  'sys_fin_orphan_hint' => 'Sie sind für niemanden sichtbar und fehlen im Kontostand — weder privat noch Bandgeld. Unter diesem Abschnitt gibt es einen Knopf, der sie der Bandkasse zuschlägt.',
+  'set_fin_orphan_btn' => 'Verwaiste Privatbuchungen der Bandkasse zuschlagen',
+  'set_fin_orphan_hint' => 'Danach zählen sie wieder im Kontostand mit und sind für alle sichtbar, die die Kasse sehen dürfen.',
+  'set_fin_orphan_confirm' => '%1 Buchung(en) werden zu Bandgeld. Fortfahren?',
+  'fl_fin_orphan_freed' => '%1 Buchung(en) der Bandkasse zugeschlagen.',
   'set_schema_recheck_hint' => 'Prüft beim nächsten Seitenaufruf alle Tabellen und Spalten nachträglich durch. Normalerweise passiert das einmal nach einem Update von selbst; von Hand gebraucht wird es nur, wenn jemand direkt in der Datenbank gearbeitet hat.',
   'fl_schema_recheck' => 'Das Schema wird beim nächsten Seitenaufruf geprüft.',
   // Daueraufträge
