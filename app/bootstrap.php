@@ -4867,10 +4867,22 @@ function secret_placeholder(bool $gesetzt, string $key): string {
 }
 
 function fmt_date(?string $iso): string {
+  return fmt_date_lang($iso, current_lang());
+}
+
+/**
+ * Dasselbe Datum, aber in einer genannten Sprache (#349).
+ *
+ * In einer Mail gibt es keinen Betrachter: current_lang() liefert dort die
+ * Browsersprache dessen, der zufällig die Seite aufgerufen hat, oder bei einem
+ * cron die Standardsprache der Installation. Der Empfänger kam darin nicht
+ * vor — und bekam „Do, 03.08.2028" in einer englischen Mail.
+ */
+function fmt_date_lang(?string $iso, string $lang): string {
   if (!$iso) return '';
   $t = strtotime($iso);
   if (!$t) return $iso;
-  $wd = explode(',', t('weekdays'))[(int) date('w', $t)] ?? '';
+  $wd = explode(',', push_t($lang, 'weekdays'))[(int) date('w', $t)] ?? '';
   return "$wd, " . date('d.m.Y', $t);
 }
 /**

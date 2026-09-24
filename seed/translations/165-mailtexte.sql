@@ -1,0 +1,66 @@
+-- The daily digest (#332) and the "important" mail (#333) shipped without
+-- translations, so both arrived in German whatever language the member reads
+-- — subject included (#349).
+SET NAMES utf8mb4;
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','digest_subject','%1 open items in the band area'),
+('en','digest_hello','Hello %1,'),
+('en','digest_intro','this is waiting for you in the band area:'),
+('en','digest_footer','Frequency, time of day and the reminder are set in your profile:'),
+('en','digest_tasks','Your open tasks'),
+('en','digest_votes','Missing replies'),
+('en','digest_chat','In the chat'),
+('en','digest_chat_n','%1 unread'),
+('en','wichtig_subject','Important'),
+('en','wichtig_intro','%1 marked a %2 as important:'),
+('en','wichtig_footer','This mail goes to everyone allowed to see the entry. It cannot be switched off individually — the band decides in the settings whether it exists at all.'),
+
+('nl','digest_subject','%1 open punten in het bandgedeelte'),
+('nl','digest_hello','Hallo %1,'),
+('nl','digest_intro','dit wacht op je in het bandgedeelte:'),
+('nl','digest_footer','Frequentie, tijdstip en herinnering stel je in je profiel in:'),
+('nl','digest_tasks','Jouw openstaande taken'),
+('nl','digest_votes','Ontbrekende reacties'),
+('nl','digest_chat','In de chat'),
+('nl','digest_chat_n','%1 ongelezen'),
+('nl','wichtig_subject','Belangrijk'),
+('nl','wichtig_intro','%1 heeft een %2 als belangrijk gemarkeerd:'),
+('nl','wichtig_footer','Deze mail gaat naar iedereen die het item mag zien. Hij is niet afzonderlijk uit te zetten — de band bepaalt in de instellingen of hij bestaat.'),
+
+('fr','digest_subject','%1 points ouverts dans l''espace du groupe'),
+('fr','digest_hello','Bonjour %1,'),
+('fr','digest_intro','voici ce qui t''attend dans l''espace du groupe :'),
+('fr','digest_footer','La fréquence, l''heure et le rappel se règlent dans ton profil :'),
+('fr','digest_tasks','Tes tâches en cours'),
+('fr','digest_votes','Réponses manquantes'),
+('fr','digest_chat','Dans le chat'),
+('fr','digest_chat_n','%1 non lus'),
+('fr','wichtig_subject','Important'),
+('fr','wichtig_intro','%1 a marqué un %2 comme important :'),
+('fr','wichtig_footer','Ce courriel part vers toutes les personnes autorisées à voir l''entrée. Il ne peut pas être désactivé individuellement — le groupe décide dans les réglages s''il existe.'),
+
+('es','digest_subject','%1 puntos pendientes en el área de la banda'),
+('es','digest_hello','Hola %1:'),
+('es','digest_intro','esto te espera en el área de la banda:'),
+('es','digest_footer','La frecuencia, la hora y el recordatorio se ajustan en tu perfil:'),
+('es','digest_tasks','Tus tareas pendientes'),
+('es','digest_votes','Respuestas que faltan'),
+('es','digest_chat','En el chat'),
+('es','digest_chat_n','%1 sin leer'),
+('es','wichtig_subject','Importante'),
+('es','wichtig_intro','%1 ha marcado un %2 como importante:'),
+('es','wichtig_footer','Este correo llega a todas las personas que pueden ver la entrada. No se puede desactivar individualmente: la banda decide en los ajustes si existe.'),
+
+('it','digest_subject','%1 punti aperti nell''area della band'),
+('it','digest_hello','Ciao %1,'),
+('it','digest_intro','questo ti aspetta nell''area della band:'),
+('it','digest_footer','Frequenza, orario e promemoria si impostano nel tuo profilo:'),
+('it','digest_tasks','I tuoi compiti aperti'),
+('it','digest_votes','Risposte mancanti'),
+('it','digest_chat','Nella chat'),
+('it','digest_chat_n','%1 non letti'),
+('it','wichtig_subject','Importante'),
+('it','wichtig_intro','%1 ha contrassegnato un %2 come importante:'),
+('it','wichtig_footer','Questa mail arriva a tutti quelli che possono vedere la voce. Non si può disattivare singolarmente: la band decide nelle impostazioni se esiste.')
+ON DUPLICATE KEY UPDATE value = value;

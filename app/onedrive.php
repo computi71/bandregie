@@ -209,8 +209,8 @@ function od_secret_mail_text(array $user, int $tage, string $bis): array {
     str_replace('%1', (string) $user['name'], push_t($lang, 'digest_hello')),
     '',
     $tage < 0
-      ? str_replace('%1', fmt_date($bis), push_t($lang, 'od_secret_body_over'))
-      : str_replace(['%1', '%2'], [(string) $tage, fmt_date($bis)], push_t($lang, 'od_secret_body')),
+      ? str_replace('%1', fmt_date_lang($bis, $lang), push_t($lang, 'od_secret_body_over'))
+      : str_replace(['%1', '%2'], [(string) $tage, fmt_date_lang($bis, $lang)], push_t($lang, 'od_secret_body')),
     '',
     push_t($lang, 'od_secret_howto'),
     '',
