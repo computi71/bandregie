@@ -218,7 +218,7 @@ function digest_send(array $user): bool {
   $lang = array_key_exists($user['pref_lang'] ?? '', LANGS) ? $user['pref_lang'] : 'de';
   $betreff = str_replace('%1', (string) digest_anzahl($abschnitte), push_t($lang, 'digest_subject'))
            . ' · ' . setting('band_name');
-  return band_mail_send((string) $user['email'], mail_header_value($betreff, 160),
+  return band_mail_send((string) $user['email'], $betreff,
                         digest_text($user, $abschnitte), 'tagesmail', (int) $user['id']);
 }
 

@@ -1824,7 +1824,7 @@ if (str_starts_with($path, '/intern')) {
           . "\r\nContent-Type: text/plain; charset=UTF-8";
     // Antworten heißt: eine Mail im Namen der Band hinausschicken (#270).
     if (!perm_allows($me, 'mailversand', 'write')) { flash(t('fl_no_permission')); redirect('/intern/post'); }
-    $ok = @mail($an, $betreff, $text, $kopf, '-f' . $from);
+    $ok = @mail($an, mail_subject($betreff), $text, $kopf, '-f' . $from);
     if ($ok) {
       q('INSERT INTO post_replies (message_id, sent_by, to_mail, subject, body) VALUES (?,?,?,?,?)',
         [$m[1], $me['id'], $an, $betreff, $text]);

@@ -3220,7 +3220,10 @@ function band_mail_send(string $to, string $subject, string $body, string $kind,
   $messageId = 'bandregie-' . bin2hex(random_bytes(16)) . '@' . substr($from, strpos($from, '@') + 1);
   // @: Ohne erreichbares Sendmail warnt mail() mitten in die Seite — das
   // Ergebnis steht ohnehin als Zeile in mail_log, samt Grund.
-  $ok = (bool) @mail($to, $subject, $body,
+  // Der Betreff wird hier entschärft und kodiert und nicht beim Aufrufer
+  // (#341): Das ist die eine Stelle, durch die jede Mail geht, und der nächste
+  // Absender denkt nicht daran.
+  $ok = (bool) @mail($to, mail_subject($subject), $body,
     "From: $from$replyTo\r\nMessage-ID: <$messageId>\r\nContent-Type: text/plain; charset=UTF-8", '-f' . $from);
   $grund = $ok ? $detail : trim('mail() hat die Nachricht nicht angenommen · ' . $detail, ' ·');
   q('INSERT INTO mail_log (user_id, to_email, kind, message_id, status, status_at, detail) VALUES (?,?,?,?,?,?,?)',
@@ -3440,7 +3443,7 @@ function guest_invite_mail(array $b): bool {
     . "Nach deiner Zusage ist derselbe Link dein Zugang zu allem, was du für den Abend brauchst — "
     . "Ablauf, Rider, Setliste. Er ist persönlich und gilt bis zum Mittag nach dem Termin.\n\n"
     . "Viele Grüße\n$band";
-  $ok = band_mail_send((string) $b['guest_email'], mail_header_value("$band: Anfrage für " . fmt_date($b['date']), 120),
+  $ok = band_mail_send((string) $b['guest_email'], "$band: Anfrage für " . fmt_date($b['date']),
                        $body, 'gast', null, 'Buchung ' . (int) $b['id']);
   if ($ok) q('UPDATE guest_bookings SET invited_at = NOW() WHERE id = ?', [$b['id']]);
   return $ok;
@@ -3527,6 +3530,31 @@ function mail_from_address(): string {
 function mail_header_value(string $wert, int $max = 200): string {
   $sauber = preg_replace('~[\r\n\x00\x0B\x0C]+~', ' ', $wert) ?? '';
   return mb_substr(trim($sauber), 0, $max);
+}
+
+/**
+ * Ein Betreff, wie er in einer Kopfzeile stehen darf (#341).
+ *
+ * Eine Kopfzeile ist nach RFC 5322 reines ASCII. Ein Umlaut im Betreff ging
+ * bisher roh hinaus; die meisten Programme kommen damit zurecht, und genau
+ * deshalb ist es nie aufgefallen. Ein Server auf einem Sieben-Bit-Weg schneidet
+ * das oberste Bit ab und hinterlässt Buchstabensalat — ausgerechnet in der
+ * einen Zeile, die der Empfänger zuerst liest.
+ *
+ * Reines ASCII bleibt unangetastet: So steht der Betreff auch im Protokoll des
+ * Mailservers lesbar da, und wer die Kodierung nicht auflöst, sieht trotzdem,
+ * worum es geht.
+ *
+ * Nur der Betreff, sonst nichts: „From" entsteht aus einem auf Hostnamen-
+ * zeichen gefilterten Wert, und „Reply-To" führt über FILTER_VALIDATE_EMAIL —
+ * beide können gar kein Zeichen außerhalb von ASCII tragen.
+ */
+function mail_subject(string $wert, int $max = 200): string {
+  $sauber = mail_header_value($wert, $max);
+  if (preg_match('~^[\x20-\x7E]*$~', $sauber)) return $sauber;
+  // 9 ist die Länge von „Subject: " — mb_encode_mimeheader bricht die Zeile
+  // sonst eine Handbreit zu spät um.
+  return mb_encode_mimeheader($sauber, 'UTF-8', 'B', "\r\n", 9);
 }
 
 /**
