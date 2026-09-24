@@ -67,6 +67,11 @@ function demo_run(callable $seed): void {
   $db->beginTransaction();
   try {
     $seed();
+    // Die Tagesmail bleibt in den Beispieldaten aus (#332). Die erfundenen
+    // Adressen gehen ins Leere, und eine Demo, die sich stuendlich neu
+    // installiert, schriebe sonst stuendlich Post an niemanden - und ihr
+    // Mailprotokoll voll. Wer sie ausprobieren will, schaltet sie im Profil an.
+    q("UPDATE users SET digest_freq = 'aus'");
     $db->commit();
   } catch (Throwable $e) {
     $db->rollBack();
