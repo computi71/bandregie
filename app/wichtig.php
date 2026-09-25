@@ -127,6 +127,10 @@ function wichtig_mail(string $kind, int $id, string $notiz, array $von): void {
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
     foreach ($empfaenger as $u) {
       $lang = array_key_exists($u['pref_lang'] ?? '', LANGS) ? $u['pref_lang'] : 'de';
+      // Der ganze Aufbau läuft in der Sprache des Empfängers (#353) — damit
+      // gilt sie auch für alles, was hier nur mittelbar vorkommt, etwa das
+      // Datum, das item_label() an einen Termin hängt.
+      with_lang($lang, static function () use ($u, $lang, $kind, $id, $url, $notiz, $wer, $band): void {
       $bezeichnung = item_label($kind, $id, $lang);
       $betreff = push_t($lang, 'wichtig_subject') . ': ' . $bezeichnung;
       $zeilen = [
@@ -147,6 +151,7 @@ function wichtig_mail(string $kind, int $id, string $notiz, array $von): void {
       $zeilen[] = $band;
       band_mail_send((string) $u['email'], $betreff,
                      implode("\n", $zeilen), 'wichtig', (int) $u['id']);
+      });
     }
   });
 }

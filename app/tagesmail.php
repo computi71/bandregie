@@ -206,6 +206,15 @@ function digest_text(array $user, array $abschnitte): string {
  */
 function digest_send(array $user): bool {
   if (!$user['email']) return false;
+  // Alles, was fuer diesen Empfaenger entsteht, entsteht in seiner Sprache
+  // (#353) - einschliesslich dessen, was digest_collect() nur mittelbar
+  // anfasst, etwa die Datumsangabe in item_label().
+  $lang = array_key_exists($user['pref_lang'] ?? '', LANGS) ? $user['pref_lang'] : 'de';
+  return with_lang($lang, static fn(): bool => digest_send_intern($user));
+}
+
+/** Der eigentliche Versand — laeuft immer in with_lang(), siehe oben. */
+function digest_send_intern(array $user): bool {
   $abschnitte = digest_collect($user);
   if (!$abschnitte) return false;                       // nichts offen: keine Mail
   if (empty($user['digest_repeat']) && !digest_neues_seit($user, $abschnitte)) return false;

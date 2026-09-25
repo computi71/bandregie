@@ -101,21 +101,38 @@ const OD_SECRET_WARN = [30, 7, 0];
  */
 function od_secret_expires(): string {
   $d = trim(setting('onedrive_secret_expires'));
-  return od_datum_gueltig($d) ? $d : '';
+  if (datum_gueltig($d)) return $d;
+  // Nichts eingetragen? Dann rechnen wir es aus dem Tag, an dem das Geheimnis
+  // hereinkam (#354). Azure gibt höchstens 24 Monate, also ist das die späteste
+  // Möglichkeit — eine Mahnung, die vielleicht zu früh kommt, ist unendlich
+  // viel besser als eine, die nie kommt. Wer es genauer weiß, trägt es ein.
+  $seit = trim(setting('onedrive_secret_set_at'));
+  if (!datum_gueltig($seit)) return '';
+  return (new DateTimeImmutable($seit))->modify('+24 months')->format('Y-m-d');
+}
+
+/** Stammt das Datum aus dem eingetragenen Geheimnis? Höchstens 24 Monate. */
+function od_secret_grenze(): string {
+  $seit = trim(setting('onedrive_secret_set_at'));
+  $ab = datum_gueltig($seit) ? new DateTimeImmutable($seit) : new DateTimeImmutable('today');
+  return $ab->modify('+24 months')->format('Y-m-d');
 }
 
 /**
- * Ein Datum, das es wirklich gibt (#347).
+ * Ein Ablaufdatum, das es geben kann (#354).
  *
- * Die Form allein genügt nicht: „2027-13-45" passt auf das Muster, und
- * createFromFormat() rollt daraus einen anderen, echten Tag. Der Countdown
- * zählte dann auf einen Tag, den niemand eingetragen hat. Im Browser
- * verhindert das Datumsfeld solche Werte, eine von Hand gebaute Anfrage nicht.
+ * checkdate() schließt „2027-13-45" aus — also den Tippfehler, den das
+ * Datumsfeld im Browser ohnehin verhindert. Nicht ausgeschlossen war der
+ * Fehler, den ein Mensch wirklich macht: eine Ziffer zu viel im Jahr. Ein
+ * „2037-03-01" lag zehn Jahre in der Zukunft, die Mahnung kam nie, und die
+ * Systemprüfung meldete zufrieden „ok" — genau der stille Ausfall, gegen den
+ * die ganze Sache gebaut wurde.
  */
-function od_datum_gueltig(string $d): bool {
-  if (!preg_match('~^(\d{4})-(\d{2})-(\d{2})$~', $d, $m)) return false;
-  return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+function od_secret_datum_plausibel(string $d): bool {
+  if (!datum_gueltig($d)) return false;
+  return $d >= date('Y-m-d') && $d <= od_secret_grenze();
 }
+
 
 /** Tage bis zum Ablauf, negativ danach. null heißt: kein Datum hinterlegt. */
 function od_secret_days_left(): ?int {
@@ -242,6 +259,11 @@ function od_secret_release(string $marke, string $alt): bool {
  */
 function od_secret_mail_text(array $user, int $tage, string $bis): array {
   $lang = array_key_exists($user['pref_lang'] ?? '', LANGS) ? $user['pref_lang'] : 'de';
+  return with_lang($lang, static fn(): array => od_secret_mail_bauen($user, $tage, $bis, $lang));
+}
+
+/** Der eigentliche Text — laeuft immer in with_lang(), siehe oben (#353). */
+function od_secret_mail_bauen(array $user, int $tage, string $bis, string $lang): array {
   $betreff = $tage < 0
     ? push_t($lang, 'od_secret_subject_over')
     : str_replace('%1', (string) $tage, push_t($lang, 'od_secret_subject'));
