@@ -1798,6 +1798,36 @@ if (setting('migr_vertrag_umbrueche_vorlage') === '') {
 // Version weitere Bausteine mitbringen kann. Geaendert wird dabei nichts, was
 // der Band gehoert — contract_blocks_seed() laesst Wortlaut und Vorauswahl in
 // Ruhe, sobald ein Baustein einmal steht.
+// Reparatur fuer Anlagen, die 2.25.0 schon bekommen haben (#367).
+//
+// Dort stellte der Seeder einen zweiten Satz neben den vorhandenen, wenn die
+// Bandsprache nicht Deutsch war. Weg kommt nur der hinzugekommene Satz, und
+// nur wenn alles dafuer spricht: Die Einstellung nennt seine Sprache, der
+// deutsche Satz steht daneben, und kein Vertrag benutzt einen seiner
+// Bausteine. Ein Baustein, an dem ein Vertrag haengt, bleibt stehen — dann
+// bleibt lieber ein Satz zu viel in der Liste als eine Luecke im Wortlaut.
+if (setting('migr_bausteine_doppelt') === '') {
+  $bdSprache = (string) setting('contract_blocks_lang');
+  if ($bdSprache !== '' && $bdSprache !== 'de') {
+    $bdFremd = array_column(contract_block_seed_set($bdSprache), 'bkey');
+    $bdDeutsch = array_column(contract_block_seed_set('de'), 'bkey');
+    $bdVorhanden = array_column(rows('SELECT bkey FROM contract_blocks'), 'bkey');
+    $bdBenutzt = array_map('intval', array_column(
+      rows('SELECT DISTINCT block_id FROM contract_block_use'), 'block_id'));
+
+    // Beide Saetze da? Dann ist der zweite der, den der Fehler gebracht hat.
+    if (array_intersect($bdDeutsch, $bdVorhanden) && array_intersect($bdFremd, $bdVorhanden)) {
+      foreach (rows('SELECT id, bkey FROM contract_blocks') as $bdZeile) {
+        if (!in_array((string) $bdZeile['bkey'], $bdFremd, true)) continue;
+        if (in_array((int) $bdZeile['id'], $bdBenutzt, true)) continue;
+        q('DELETE FROM contract_blocks WHERE id = ?', [$bdZeile['id']]);
+      }
+      set_setting('contract_blocks_lang', 'de');
+    }
+  }
+  set_setting('migr_bausteine_doppelt', '1');
+}
+
 contract_blocks_seed();
 
 // Laufende Entwuerfe bekommen die Vorauswahl, damit die Haekchenliste nicht

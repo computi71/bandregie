@@ -257,7 +257,12 @@ function contract_blocks_seed(): void {
   // geschoben bekommen (#360).
   $sprache = (string) setting('contract_blocks_lang');
   if ($sprache === '') {
-    $sprache = default_lang();
+    // Stehen schon Bausteine da, stammt die Anlage aus der Zeit vor dieser
+    // Einstellung — und damals gab es nur den deutschen Satz. Dann wird der
+    // festgeschrieben und nichts Neues danebengestellt. Ohne diese Zeile
+    // bekommt eine Anlage mit anderer Bandsprache beim Update einen zweiten
+    // Satz Klauseln aus einem anderen Rechtsraum in dieselbe Liste (#367).
+    $sprache = row('SELECT id FROM contract_blocks LIMIT 1') ? 'de' : default_lang();
     set_setting('contract_blocks_lang', $sprache);
   }
 

@@ -106,6 +106,21 @@ foreach (LANGS as $sprache => $unused) {
 }
 $pruef('kein Schluessel kommt in zwei Saetzen vor', !$doppelt, implode(' ', $doppelt));
 
+// Steht in dieser Anlage genau ein Satz? Zwei nebeneinander ergeben einen
+// Vertrag in zwei Sprachen und aus zwei Rechtsraeumen (#367).
+$vorhanden = array_column(rows('SELECT bkey FROM contract_blocks'), 'bkey');
+$saetzeDrin = [];
+foreach (LANGS as $sprache => $unused2) {
+  if (!is_file(__DIR__ . '/../app/bausteine/' . $sprache . '.php')) continue;
+  if (array_intersect(array_column(contract_block_seed_set($sprache), 'bkey'), $vorhanden)) {
+    $saetzeDrin[] = $sprache;
+  }
+}
+$pruef('in dieser Anlage steht genau ein Satz', count($saetzeDrin) === 1, implode('+', $saetzeDrin));
+$pruef('und es ist der, den die Einstellung nennt',
+  ($saetzeDrin[0] ?? '') === (string) setting('contract_blocks_lang'),
+  ($saetzeDrin[0] ?? '?') . ' vs. ' . (setting('contract_blocks_lang') ?: '(leer)'));
+
 echo PHP_EOL, '— Wortlaut des eingespielten Satzes —', PHP_EOL;
 $ohneText = array_filter($alle, static fn(array $b): bool => trim((string) $b['body']) === '');
 $ohneName = array_filter($alle, static fn(array $b): bool => trim((string) $b['label']) === '');
