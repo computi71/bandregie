@@ -777,6 +777,15 @@ const UI_STRINGS = [
   // Kalkulation (#302)
   'inav_angebote' => 'Angebote',
   'quote_title' => 'Angebote',
+  // Dasselbe Rechenblatt, zwei Rollen (#355): Im zweistufigen Weg geht es als
+  // Angebot hinaus, im einstufigen bleibt es im Haus. „Kalkulation" und nicht
+  // „Preisrechnung" — „Rechnung" ist hier das Papier an den Veranstalter.
+  'quote_calc_title' => 'Kalkulation',
+  'quote_calc_new' => 'Neue Kalkulation',
+  'quote_calc_btn' => 'Preis rechnen',
+  'quote_calc_open' => 'Kalkulation',
+  'quote_calc_intro' => 'Was ein Auftritt kosten soll, aus eurer Preisliste gerechnet statt im Kopf. Die Summe wandert als Gage in den Vertrag zum selben Termin.',
+  'quote_calc_none' => 'Noch nichts gerechnet.',
   // Ein einzelner Bogen heißt „Angebot", die Liste „Angebote" — auf dem
   // Papier steht die Einzahl, sonst liest es sich wie ein Katalog.
   'quote_sheet_title' => 'Angebot',

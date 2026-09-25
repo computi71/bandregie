@@ -42,13 +42,27 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
       // beides (#325). Der Vertragsstand gehört dazu, weil sich die Frage
       // „ist das Papier zurück?" beim Blick auf den Termin stellt (#303). ?>
 <?php $evVertrag = ($contractByEvent ?? [])[(int) $ev['id']] ?? null; ?>
-<?php if ($naviDest !== '' || $ev['setlist_id'] || $evVertrag): ?>
+<?php // Rechnen gehört dorthin, wo der Preis entschieden wird (#355). Im
+      // einstufigen Weg steht der Bereich in keinem Menü, und ohne diesen
+      // Knopf käme man an die Preisliste nur über die Adresszeile.
+      // Nur bei Gigs: Bei einer Probe gibt es nichts zu rechnen. ?>
+<?php $evRechnung = ($quoteByEvent ?? [])[(int) $ev['id']] ?? null; ?>
+<?php $evDarfRechnen = $ev['type'] === 'gig' && isset($quoteByEvent); ?>
+<?php if ($naviDest !== '' || $ev['setlist_id'] || $evVertrag || $evDarfRechnen): ?>
   <p class="event-links">
     <?php if ($naviDest !== ''): ?><a class="badge link navi-link" data-navi="<?= e($naviDest) ?>" href="<?= e(navi_web($naviDest)) ?>" target="_blank" rel="noopener" title="<?= e(t('geo_navigate')) ?>">🧭 <?= e(t('geo_navigate')) ?></a><?php endif; ?>
     <?php if ($ev['setlist_id']): ?><a class="badge link" href="/intern/setlists/<?= (int) $ev['setlist_id'] ?>">🎵 <?= e(t('ev_setlist')) ?></a><?php endif; ?>
     <?php if ($evVertrag): ?>
       <a class="badge link <?= $evVertrag['status'] === 'unterschrieben' ? 'public' : '' ?>"
          href="/intern/vertraege/<?= (int) $evVertrag['id'] ?>">✍ <?= e(contract_status_label((string) $evVertrag['status'])) ?></a>
+    <?php endif; ?>
+    <?php if ($evDarfRechnen): ?>
+      <?php // Gibt es schon eine, führt der Knopf hin statt eine zweite
+            // anzulegen — sonst stünden zwei Zahlen zum selben Termin da,
+            // und der Vertrag nähme wortlos die jüngere. ?>
+      <a class="badge link" href="<?= $evRechnung
+            ? '/intern/angebote/' . (int) $evRechnung['id']
+            : '/intern/angebote?termin=' . (int) $ev['id'] ?>">🧮 <?= e(t($evRechnung ? 'quote_calc_open' : 'quote_calc_btn')) ?></a>
     <?php endif; ?>
   </p>
 <?php endif; ?>

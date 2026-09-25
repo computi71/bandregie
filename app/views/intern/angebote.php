@@ -1,22 +1,22 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <?php // Die Liste der gerechneten Angebote (#302). Gerechnet und gepflegt wird
       // im Angebot selbst; hier steht nur, was es gibt und was es ergeben hat. ?>
-<h1>🧮 <?= e(t('quote_title')) ?></h1>
-<p class="muted"><?= e(t('quote_intro')) ?></p>
+<h1>🧮 <?= e(t(quote_ist_angebot() ? 'quote_title' : 'quote_calc_title')) ?></h1>
+<p class="muted"><?= e(t(quote_ist_angebot() ? 'quote_intro' : 'quote_calc_intro')) ?></p>
 
 <?php if ($ratesMissing): ?>
   <p class="warn small"><?= e(t('quote_rates_missing')) ?></p>
 <?php endif; ?>
 
 <?php if (perm_allows($user, 'angebote', 'write')): ?>
-<details class="card collapsible">
-  <summary>➕ <?= e(t('quote_new')) ?></summary>
+<details class="card collapsible" <?= !empty($vorgabeEvent) ? 'open' : '' ?>>
+  <summary>➕ <?= e(t(quote_ist_angebot() ? 'quote_new' : 'quote_calc_new')) ?></summary>
   <form method="post" action="/intern/angebote" class="form-grid"><?= csrf_field() ?>
     <label><?= e(t('quote_event')) ?>
       <select name="event_id">
         <option value=""><?= e(t('quote_event_none')) ?></option>
         <?php foreach ($events as $qEv): ?>
-          <option value="<?= (int) $qEv['id'] ?>"><?= e(fmt_date($qEv['date'])) ?> · <?= e($qEv['title']) ?></option>
+          <option value="<?= (int) $qEv['id'] ?>" <?= (int) $qEv['id'] === (int) ($vorgabeEvent ?? 0) ? 'selected' : '' ?>><?= e(fmt_date($qEv['date'])) ?> · <?= e($qEv['title']) ?></option>
         <?php endforeach; ?>
       </select>
     </label>
@@ -29,7 +29,7 @@
 <?php endif; ?>
 
 <?php if (!$quotes): ?>
-  <p class="muted"><?= e(t('quote_none')) ?></p>
+  <p class="muted"><?= e(t(quote_ist_angebot() ? 'quote_none' : 'quote_calc_none')) ?></p>
 <?php endif; ?>
 
 <?php foreach ($quotes as $q): ?>
