@@ -22,6 +22,9 @@
 //   sudo -u www-data php bin/hilfe-pruefen.php
 
 require __DIR__ . '/../app/bootstrap.php';
+// help_sections() und help_section_name() leben hier und nicht im bootstrap:
+// Sie werden nur von der Hilfeseite gebraucht.
+require_once __DIR__ . '/../app/help.php';
 
 $fehler = 0;
 $pruef = function (string $was, bool $ok, string $mehr = '') use (&$fehler): void {
