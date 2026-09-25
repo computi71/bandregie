@@ -3078,7 +3078,10 @@ if (str_starts_with($path, '/intern')) {
     ]);
     $vId = (int) $db->lastInsertId();
     item_new('contract', $vId, (int) $me['id']);
-    // Wortlaut gleich bilden und einfrieren.
+    // Erst die Punkte, dann der Wortlaut: contract_render() liest die Auswahl,
+    // und ohne sie fiele es auf die Vorauswahl zurück — dasselbe Ergebnis,
+    // aber der Vertrag wüsste hinterher nicht, woraus er entstanden ist.
+    contract_blocks_set($vId, contract_blocks_default());
     q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render(contract_full($vId) ?? []), $vId]);
     flash(t('fl_contract_saved'));
     redirect('/intern/vertraege/' . $vId);
@@ -3094,6 +3097,8 @@ if (str_starts_with($path, '/intern')) {
       'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
       'events' => rows("SELECT id, title, date FROM events WHERE type = 'gig' ORDER BY date DESC LIMIT 100"),
       'quote' => $vertrag['quote_id'] ? row('SELECT * FROM quotes WHERE id = ?', [$vertrag['quote_id']]) : null,
+      'blocks' => contract_blocks(),
+      'blockIds' => contract_block_ids((int) $vertrag['id']),
       'outsiders' => contract_outsiders((int) $vertrag['id']),
       'outsideAccounts' => is_outsider($me) ? [] : rows("SELECT id, name FROM users WHERE role = 'booking' ORDER BY name"),
     ]);
@@ -3142,7 +3147,86 @@ if (str_starts_with($path, '/intern')) {
     }
     back('/intern/vertraege/' . $m[1]);
   }
+  // ---------- Die Bausteinsammlung der Band (#359) ----------
+  //
+  // Schreibrecht auf Verträge genügt nicht: Ein Bookingagent von außen darf
+  // seine eigenen Verträge verhandeln, aber nicht die Standardklauseln der
+  // Band umschreiben. Nicht dürfen sieht aus wie nicht vorhanden.
+  if (str_starts_with($path, '/intern/bausteine') && is_outsider($me)) {
+    http_response_code(404);
+    view('404', ['title' => t('cb_title')]);
+  }
+  if ($path === '/intern/bausteine' && $method === 'GET') {
+    view('intern/bausteine', [
+      'title' => t('cb_title'),
+      'blocks' => contract_blocks(true),
+      'vorschau' => contract_blocks_rohtext(contract_blocks_default()),
+    ]);
+  }
+  if (preg_match('~^/intern/bausteine/(\d+)$~', $path, $m) && $method === 'POST') {
+    deny_in_demo();
+    $bLabel = trim((string) ($_POST['label'] ?? ''));
+    if ($bLabel === '') { flash(t('fl_cb_label_required')); back('/intern/bausteine'); }
+    // gruppe und wahl kommen aus dem Formular und landen in der Zusammen-
+    // setzung: Ein unbekannter Abschnitt fiele dort still unter den Tisch,
+    // deshalb wird auf die bekannten zurückgefallen.
+    $bGruppe = isset(CONTRACT_BLOCK_GROUPS[$_POST['gruppe'] ?? '']) ? (string) $_POST['gruppe'] : 'veranstalter';
+    q('UPDATE contract_blocks SET gruppe = ?, sort = ?, wahl = ?, label = ?, body = ?,
+         hinweis = ?, default_on = ?, active = ? WHERE id = ?', [
+      $bGruppe,
+      max(0, (int) ($_POST['sort'] ?? 0)),
+      mb_substr(trim((string) ($_POST['wahl'] ?? '')), 0, 20),
+      mb_substr($bLabel, 0, 120),
+      trim((string) ($_POST['body'] ?? '')),
+      mb_substr(trim((string) ($_POST['hinweis'] ?? '')), 0, 500),
+      empty($_POST['default_on']) ? 0 : 1,
+      empty($_POST['active']) ? 0 : 1,
+      $m[1],
+    ]);
+    flash(t('fl_cb_saved'));
+    back('/intern/bausteine');
+  }
+  if ($path === '/intern/bausteine/neu' && $method === 'POST') {
+    deny_in_demo();
+    // Ein eigener Baustein bekommt keinen bkey: Der gehört dem mitgelieferten
+    // Satz, und ein Update darf einen selbst geschriebenen Punkt nicht für
+    // einen von uns halten und überschreiben.
+    q("INSERT INTO contract_blocks (bkey, gruppe, sort, label, body)
+       VALUES (NULL, 'veranstalter', 9000, ?, '')", [t('cb_new')]);
+    flash(t('fl_cb_saved'));
+    back('/intern/bausteine');
+  }
+  if (preg_match('~^/intern/bausteine/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    deny_in_demo();
+    // Feste Bausteine bleiben: Ohne Kopf und Unterschrift ist das kein Vertrag,
+    // und die Abgabenklausel darf nicht verschwinden können.
+    $bZeile = row('SELECT fest FROM contract_blocks WHERE id = ?', [$m[1]]);
+    if ($bZeile && !$bZeile['fest']) {
+      q('DELETE FROM contract_block_use WHERE block_id = ?', [$m[1]]);
+      q('DELETE FROM contract_blocks WHERE id = ?', [$m[1]]);
+      flash(t('fl_cb_deleted'));
+    }
+    back('/intern/bausteine');
+  }
+
+  // Die Punkte dieses Vertrages an- und abwählen (#359).
+  //
+  // Nur am Entwurf: Was verschickt ist, bekommt keine Klausel mehr dazu und
+  // verliert auch keine. Der Wortlaut wird dabei neu gebildet — deshalb steht
+  // an der Liste, dass Änderungen von Hand dabei verloren gehen.
+  if (preg_match('~^/intern/vertraege/(\d+)/bausteine$~', $path, $m) && $method === 'POST') {
+    $vertrag = contract_full((int) $m[1]);
+    if ($vertrag && $vertrag['status'] === 'entwurf') {
+      contract_blocks_set((int) $m[1], array_map('intval', (array) ($_POST['block'] ?? [])));
+      item_update('contract', (int) $m[1], function () use ($m, $vertrag): void {
+        q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render($vertrag), $m[1]]);
+      }, (int) $me['id']);
+      flash(t('fl_cb_applied'));
+    }
+    back('/intern/vertraege/' . $m[1]);
+  }
   if (preg_match('~^/intern/vertraege/(\d+)/delete$~', $path, $m) && $method === 'POST') {
+    q('DELETE FROM contract_block_use WHERE contract_id = ?', [$m[1]]);
     item_forget('contract', (int) $m[1]);
     q('DELETE FROM contracts WHERE id = ?', [$m[1]]);
     flash(t('fl_contract_deleted'));
@@ -5107,8 +5191,13 @@ if (str_starts_with($path, '/intern')) {
   }
   if ($path === '/intern/einstellungen/vertrag' && $method === 'POST') {
     require_admin();
+    // Steht im Feld noch genau das, was die Bausteine ergeben, wird nichts
+    // gespeichert: Sonst friert ein versehentliches „Speichern" den heutigen
+    // Stand ein, und die Bausteine wären ab da wirkungslos, ohne dass es
+    // jemand gewollt hätte (#359).
     $vText = trim((string) ($_POST['contract_text'] ?? ''));
-    set_setting('contract_text', $vText === '' || $vText === trim(t('contract_template')) ? '' : $vText);
+    set_setting('contract_text',
+      $vText === '' || $vText === trim(contract_blocks_rohtext(contract_blocks_default())) ? '' : $vText);
     flash(t('fl_settings_saved'));
     redirect('/intern/einstellungen');
   }

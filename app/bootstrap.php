@@ -56,6 +56,7 @@ require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/qr.php';
 require_once __DIR__ . '/onedrive.php';
 require_once __DIR__ . '/rechnung.php';
+require_once __DIR__ . '/bausteine.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -198,7 +199,12 @@ const PERM_MODULES = [
   // Verträge stehen neben den Angeboten und doch für sich: Wer rechnen darf,
   // muss nicht unterschreiben dürfen, und ein Bookingagent von außen bekommt
   // genau diese beiden und sonst nichts (#303, #308).
-  'vertraege'     => ['/intern/vertraege'],
+  // Die Bausteine liegen beim Vertrag und nicht bei den Einstellungen: Wer
+  // Verträge schreiben darf, formuliert auch die Klauseln. Nicht jeder mit
+  // diesem Recht allerdings — ein Bookingagent von außen hat Schreibrecht auf
+  // seine Verträge, soll aber nicht die Standardklauseln der Band umschreiben.
+  // Das prüft die Route zusätzlich (#359).
+  'vertraege'     => ['/intern/vertraege', '/intern/bausteine'],
   // Die Rechnung geht hinaus und nennt Betraege — dasselbe Vertrauen wie beim
   // Vertrag, aber eine eigene Entscheidung: Wer verhandeln darf, muss nicht
   // abrechnen duerfen (#356).
@@ -2089,15 +2095,44 @@ function contract_values(array $vertrag): array {
   ];
 }
 
-/** Die Vorlage: was die Band eingetragen hat, sonst die mitgelieferte. */
-function contract_template(): string {
-  $eigen = (string) setting('contract_text');
-  return trim($eigen) !== '' ? $eigen : t('contract_template');
+/**
+ * Die Platzhalter, die in einem Vertragstext stehen dürfen.
+ *
+ * Aus contract_values() selbst gezogen und nicht danebengeschrieben: Eine
+ * Liste, die man von Hand pflegt, nennt früher oder später einen Platzhalter,
+ * den es nicht mehr gibt — und den setzt dann niemand ein.
+ */
+function contract_placeholders(): array {
+  return array_keys(contract_values([
+    'play_from' => '', 'play_to' => '', 'get_in' => '', 'fee_cents' => 0, 'contract_no' => '',
+  ]));
 }
 
-/** Aus der Vorlage wird der Wortlaut dieses Vertrages. */
+/**
+ * Die Vorlage: was die Band eingetragen hat, sonst der Satz aus Bausteinen.
+ *
+ * Die Platzhalter bleiben stehen — das ist die Vorlage, nicht der Vertrag.
+ * Gezeigt wird sie in den Einstellungen, damit man sieht, was hinausginge.
+ */
+function contract_template(): string {
+  $eigen = (string) setting('contract_text');
+  if (trim($eigen) !== '') return $eigen;
+  return contract_blocks_rohtext(contract_blocks_default());
+}
+
+/**
+ * Aus den Bausteinen dieses Vertrages wird sein Wortlaut.
+ *
+ * Hat die Band eigenen Text eingetragen, gilt der — wer sich einen eigenen
+ * Vertrag geschrieben hat, will ihn nicht von Bausteinen überschrieben
+ * bekommen. Sonst zählt die Auswahl am Vertrag, und wenn noch keine da ist
+ * (frisch angelegt), die Vorauswahl.
+ */
 function contract_render(array $vertrag): string {
-  return strtr(contract_template(), contract_values($vertrag));
+  $eigen = (string) setting('contract_text');
+  if (trim($eigen) !== '') return strtr($eigen, contract_values($vertrag));
+  $ids = !empty($vertrag['id']) ? contract_block_ids((int) $vertrag['id']) : [];
+  return contract_compose($vertrag, $ids ?: contract_blocks_default());
 }
 
 /** Ein Vertrag mit allem, was sein Wortlaut braucht. */

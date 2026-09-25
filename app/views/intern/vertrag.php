@@ -46,6 +46,58 @@ $entwurf = $contract['status'] === 'entwurf';
   <p class="muted small">📎 <?= e(t('contract_signed_file')) ?></p>
 </section>
 
+<?php
+// Die Punkte, aus denen dieser Vertrag besteht (#359).
+//
+// Bewusst über dem Wortlaut: Wer hier ein Häkchen setzt, schreibt den Text
+// darunter neu — das soll man sehen, bevor man dort etwas von Hand
+// hineinschreibt. Und bewusst ein eigenes Formular neben dem Speichern-
+// Formular, nicht darin: Verschachtelte Formulare gibt es in HTML nicht, und
+// ein Browser entscheidet dann selbst, welches er wegwirft.
+$vbOffen = $darf && $entwurf && contract_blocks_aktiv();
+?>
+<details class="card acc">
+  <summary>🧩 <?= e(t('cb_pick')) ?> <span class="muted small">(<?= count($blockIds) ?>)</span></summary>
+  <?php if (!contract_blocks_aktiv()): ?>
+    <p class="warn small">⚖ <?= e(t('cb_own_text')) ?></p>
+  <?php elseif (!$entwurf): ?>
+    <p class="muted small"><?= e(t('cb_pick_locked')) ?></p>
+  <?php elseif ($darf): ?>
+    <p class="muted small"><?= e(t('cb_pick_hint')) ?></p>
+  <?php endif; ?>
+
+  <form method="post" action="/intern/vertraege/<?= (int) $contract['id'] ?>/bausteine"><?= csrf_field() ?>
+    <?php $vbGruppe = null; ?>
+    <?php foreach ($blocks as $vb): ?>
+      <?php if ($vb['gruppe'] !== $vbGruppe):
+              $vbGruppe = (string) $vb['gruppe'];
+              $vbTitel = CONTRACT_BLOCK_GROUPS[$vbGruppe]['title'] ?? ''; ?>
+        <?php if ($vbTitel !== ''): ?><p class="small"><strong><?= e(t($vbTitel)) ?></strong></p><?php endif; ?>
+      <?php endif; ?>
+      <label class="checkbox">
+        <?php // Feste Punkte stehen als abgeschaltetes Häkchen da: Man sieht,
+              // dass sie drin sind, und kann sie nicht versehentlich lösen.
+              // Mitgeschickt werden sie nicht — contract_blocks_set() nimmt
+              // sie ohnehin von sich aus dazu. ?>
+        <input type="checkbox" name="block[]" value="<?= (int) $vb['id'] ?>"
+               <?= $vb['fest'] || in_array((int) $vb['id'], $blockIds, true) ? 'checked' : '' ?>
+               <?= $vbOffen && !$vb['fest'] ? '' : 'disabled' ?>>
+        <?= e($vb['label']) ?>
+        <?php if ($vb['fest']): ?> <span class="badge">🔒 <?= e(t('cb_fixed')) ?></span><?php endif; ?>
+        <?php if ($vb['wahl']): ?> <span class="badge"><?= e(t('cb_either')) ?>: <?= e($vb['wahl']) ?></span><?php endif; ?>
+        <?php if ($vb['hinweis']): ?><br><span class="muted small"><?= e($vb['hinweis']) ?></span><?php endif; ?>
+      </label>
+    <?php endforeach; ?>
+    <?php if ($vbOffen): ?>
+      <div class="row-buttons"><button class="btn btn-primary"><?= e(t('cb_apply')) ?></button></div>
+    <?php endif; ?>
+  </form>
+  <p class="muted small"><?= e(t('cb_either_hint')) ?></p>
+  <?php if ($darf && !is_outsider($user)): ?>
+    <p class="row-buttons"><a class="btn btn-small btn-ghost" href="/intern/bausteine">✎ <?= e(t('cb_edit')) ?></a></p>
+  <?php endif; ?>
+</details>
+
 <?php if ($darf): ?>
 <form method="post" action="/intern/vertraege/<?= (int) $contract['id'] ?>/update" class="card form-grid"><?= csrf_field() ?>
   <label><?= e(t('contract_event')) ?>

@@ -410,6 +410,36 @@ $tables = [
     INDEX idx_event (event_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Die Bausteine, aus denen sich ein Vertrag zusammensetzt (#359).
+  //
+  // bkey ist der Schlüssel des mitgelieferten Satzes und eindeutig, damit ein
+  // Update einen Baustein wiederfindet, statt ihn ein zweites Mal anzulegen.
+  // Selbst angelegte Bausteine bekommen einen leeren bkey — deshalb erlaubt
+  // der Index mehrere davon und NULL statt Leerstring.
+  "CREATE TABLE IF NOT EXISTS contract_blocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bkey VARCHAR(40) NULL,
+    gruppe VARCHAR(20) NOT NULL DEFAULT 'veranstalter',
+    sort INT NOT NULL DEFAULT 0,
+    wahl VARCHAR(20) NOT NULL DEFAULT '',
+    label VARCHAR(120) NOT NULL DEFAULT '',
+    body TEXT,
+    hinweis VARCHAR(500) NOT NULL DEFAULT '',
+    fest TINYINT(1) NOT NULL DEFAULT 0,
+    default_on TINYINT(1) NOT NULL DEFAULT 0,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_bkey (bkey)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Welche Bausteine dieser Vertrag benutzt. Der Wortlaut bleibt trotzdem in
+  // contracts.body eingefroren: Die Auswahl sagt, woraus er entstanden ist,
+  // nicht, wie er heute aussähe.
+  "CREATE TABLE IF NOT EXISTS contract_block_use (
+    contract_id INT NOT NULL,
+    block_id INT NOT NULL,
+    PRIMARY KEY (contract_id, block_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Ein Angebot friert seine Posten ein (#302): Ändert die Band später ihre
   // Preisliste, darf ein verschicktes Angebot nicht plötzlich anders aussehen.
   // Deshalb stehen die gerechneten Zeilen als Zeilen in der Datenbank und
@@ -1741,6 +1771,27 @@ if (setting('migr_vertrag_umbrueche') === '') {
       [str_replace($literal, chr(10), (string) $cZeile['body']), $cZeile['id']]);
   }
   set_setting('migr_vertrag_umbrueche', '1');
+}
+
+// Die Vertragsbausteine (#359).
+//
+// Der mitgelieferte Satz kommt bei jedem Schemalauf nach, damit eine neue
+// Version weitere Bausteine mitbringen kann. Geaendert wird dabei nichts, was
+// der Band gehoert — contract_blocks_seed() laesst Wortlaut und Vorauswahl in
+// Ruhe, sobald ein Baustein einmal steht.
+contract_blocks_seed();
+
+// Laufende Entwuerfe bekommen die Vorauswahl, damit die Haekchenliste nicht
+// leer dasteht. Der eingefrorene Wortlaut bleibt unangetastet: Er aendert sich
+// erst, wenn jemand die Auswahl wirklich anfasst. Verschickte und
+// unterschriebene Vertraege bleiben ganz aussen vor - bei ihnen waere eine
+// Auswahl eine Behauptung darueber, woraus sie entstanden sind.
+if (setting('migr_vertrag_bausteine') === '') {
+  $vBVorauswahl = contract_blocks_default();
+  foreach (rows("SELECT id FROM contracts WHERE status = 'entwurf'") as $vBZeile) {
+    contract_blocks_set((int) $vBZeile['id'], $vBVorauswahl);
+  }
+  set_setting('migr_vertrag_bausteine', '1');
 }
 
 // Der Haken „Rechnung benoetigt" am Termin (#356). Bar bezahlte Gigs, bei
