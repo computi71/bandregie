@@ -1318,7 +1318,7 @@ $defaults = [
   // Es sagt, von wem das Blatt ist. Das Wasserzeichen nur auf der Setliste —
   // Steuerübersicht und GEMA-Meldung sind Formulare, dort stört ein Bild
   // hinter den Zahlen. Angebot und Vertrag tragen es, sobald es sie gibt.
-  'print_logo_docs' => 'setlist,rider,tax,gema,quote,help', 'print_watermark_docs' => 'setlist,quote',
+  'print_logo_docs' => 'setlist,rider,tax,gema,quote,contract,invoice,help', 'print_watermark_docs' => 'setlist,quote,contract,invoice',
   // Preisliste der Kalkulation (#302), alles in Cent. Leer ausgeliefert:
   // Was eine Band verlangt, weiß nur sie selbst, und eine erfundene Zahl
   // im Angebot wäre schlimmer als ein leeres Feld.
@@ -1699,6 +1699,25 @@ if (setting('migr_push_abwahl') === '') {
       [$abgewaehlt ? implode(',', $abgewaehlt) : '', $zeile['id']]);
   }
   set_setting('migr_push_abwahl', '1');
+}
+
+// Die Rechnung ins Corporate Design (#358).
+//
+// print_logo_docs und print_watermark_docs wurden geseedet, als es die
+// Rechnung noch nicht gab. Sie druckte deshalb nackt, waehrend Vertrag und
+// Angebot daneben Logo und Wasserzeichen tragen - und sie ist das Blatt, das
+// zu jemandem geht, der Geld ueberweist.
+//
+// Nur dort ergaenzt, wo der Vertrag schon drinsteht: Wer die Liste selbst
+// zusammengestellt und den Vertrag herausgenommen hat, meinte das so.
+if (setting('migr_rechnung_branding') === '') {
+  foreach (['print_logo_docs', 'print_watermark_docs'] as $liste) {
+    $docs = array_map('trim', explode(',', (string) setting($liste)));
+    if (!in_array('contract', $docs, true) || in_array('invoice', $docs, true)) continue;
+    $docs[] = 'invoice';
+    set_setting($liste, implode(',', array_filter($docs)));
+  }
+  set_setting('migr_rechnung_branding', '1');
 }
 
 // Maskierte Umbrueche im Vertragstext geradeziehen (#357).
