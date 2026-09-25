@@ -269,6 +269,19 @@ function contract_blocks(bool $auchStille = false): array {
   return $satz;
 }
 
+/**
+ * Die Häkchenliste eines Vertrages: alles Angebotene, dazu das, was dieser
+ * Vertrag benutzt.
+ *
+ * Ein stillgelegter Baustein steht sonst im Wortlaut, ohne dass die Liste
+ * darüber ihn kennt — und wer ihn loswerden will, findet kein Häkchen dafür.
+ */
+function contract_blocks_fuer_vertrag(array $blockIds): array {
+  $benutzt = array_flip($blockIds);
+  return array_values(array_filter(contract_blocks(true),
+    static fn(array $b): bool => (bool) $b['active'] || isset($benutzt[(int) $b['id']])));
+}
+
 /** Welche Bausteine sind bei diesem Vertrag angehakt? */
 function contract_block_ids(int $contractId): array {
   return array_map('intval', array_column(
@@ -294,7 +307,10 @@ function contract_blocks_default(): array {
 function contract_blocks_set(int $contractId, array $ids): void {
   $erlaubt = [];
   $wahlBelegt = [];
-  foreach (contract_blocks() as $b) {
+  // Auch die stillgelegten, damit ein Vertrag einen behalten kann, den er
+  // schon benutzt. Angehakt werden muss er trotzdem — neu dazu kommt ein
+  // stillgelegter Punkt nirgends, weil er in keiner Liste mehr angeboten wird.
+  foreach (contract_blocks(true) as $b) {
     $id = (int) $b['id'];
     if ($b['fest']) { $erlaubt[$id] = true; continue; }
     if (!in_array($id, $ids, true)) continue;
@@ -344,7 +360,12 @@ function contract_compose(array $vertrag, array $blockIds): string {
  */
 function contract_blocks_rohtext(array $blockIds): string {
   $gewaehlt = array_flip($blockIds);
-  $alle = contract_blocks();
+  // Auch die stillgelegten: Wer einen Punkt abschaltet, nimmt ihn aus der
+  // Auswahl für neue Verträge — er zieht ihn nicht aus den Verträgen heraus,
+  // die ihn schon angehakt haben. Genau das verspricht der Hinweis am
+  // Schalter, und ein Entwurf, der beim nächsten Neubilden still eine Klausel
+  // verliert, bricht dieses Versprechen.
+  $alle = contract_blocks(true);
   $teile = [];
   $paragraf = 0;
 

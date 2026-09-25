@@ -98,6 +98,23 @@ try {
   $pruef('die Künstlersozialabgabe lässt sich nicht abwählen', str_contains($karg, 'Künstlersozialabgabe'));
   $pruef('im fertigen Vertrag steht keine geschweifte Klammer mehr', !preg_match('~[{}]~', $karg));
 
+  // Stillgelegt heißt „nicht mehr anbieten", nicht „aus laufenden Verträgen
+  // ziehen". Das steht so am Schalter, also muss es auch gelten.
+  $probe = $id('gaesteliste');
+  if ($probe > 0) {
+    contract_blocks_set($entwurf, [$probe]);
+    q('UPDATE contract_blocks SET active = 0 WHERE id = ?', [$probe]);
+    $nachher = contract_block_ids($entwurf);
+    $pruef('ein stillgelegter Punkt bleibt angehakt', in_array($probe, $nachher, true));
+    $pruef('und bleibt im Wortlaut stehen',
+      str_contains(contract_compose(contract_full($entwurf), $nachher), 'Gästeliste'));
+    $pruef('steht aber nicht mehr in der Vorauswahl',
+      !in_array($probe, contract_blocks_default(), true));
+    $pruef('und taucht in der Häkchenliste des Vertrages auf',
+      in_array($probe, array_map('intval', array_column(contract_blocks_fuer_vertrag($nachher), 'id')), true));
+    q('UPDATE contract_blocks SET active = 1 WHERE id = ?', [$probe]);
+  }
+
 } finally {
   // Auch wenn oben etwas geworfen hat: Der Wegwerf-Entwurf verschwindet.
   q('DELETE FROM contract_block_use WHERE contract_id = ?', [$entwurf]);

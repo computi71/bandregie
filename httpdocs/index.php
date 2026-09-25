@@ -3097,8 +3097,11 @@ if (str_starts_with($path, '/intern')) {
       'promoters' => rows('SELECT * FROM promoters ORDER BY name'),
       'events' => rows("SELECT id, title, date FROM events WHERE type = 'gig' ORDER BY date DESC LIMIT 100"),
       'quote' => $vertrag['quote_id'] ? row('SELECT * FROM quotes WHERE id = ?', [$vertrag['quote_id']]) : null,
-      'blocks' => contract_blocks(),
-      'blockIds' => contract_block_ids((int) $vertrag['id']),
+      // Stillgelegte Bausteine stehen in der Liste, wenn dieser Vertrag sie
+      // benutzt — sonst stünde eine Klausel im Text, die die Häkchenliste
+      // nicht kennt (#359).
+      'blocks' => contract_blocks_fuer_vertrag($vBlockIds = contract_block_ids((int) $vertrag['id'])),
+      'blockIds' => $vBlockIds,
       'outsiders' => contract_outsiders((int) $vertrag['id']),
       'outsideAccounts' => is_outsider($me) ? [] : rows("SELECT id, name FROM users WHERE role = 'booking' ORDER BY name"),
     ]);
@@ -3164,7 +3167,7 @@ if (str_starts_with($path, '/intern')) {
     ]);
   }
   if (preg_match('~^/intern/bausteine/(\d+)$~', $path, $m) && $method === 'POST') {
-    deny_in_demo();
+    deny_in_demo('/intern/bausteine');
     $bLabel = trim((string) ($_POST['label'] ?? ''));
     if ($bLabel === '') { flash(t('fl_cb_label_required')); back('/intern/bausteine'); }
     // gruppe und wahl kommen aus dem Formular und landen in der Zusammen-
@@ -3187,7 +3190,7 @@ if (str_starts_with($path, '/intern')) {
     back('/intern/bausteine');
   }
   if ($path === '/intern/bausteine/neu' && $method === 'POST') {
-    deny_in_demo();
+    deny_in_demo('/intern/bausteine');
     // Ein eigener Baustein bekommt keinen bkey: Der gehört dem mitgelieferten
     // Satz, und ein Update darf einen selbst geschriebenen Punkt nicht für
     // einen von uns halten und überschreiben.
@@ -3197,7 +3200,7 @@ if (str_starts_with($path, '/intern')) {
     back('/intern/bausteine');
   }
   if (preg_match('~^/intern/bausteine/(\d+)/delete$~', $path, $m) && $method === 'POST') {
-    deny_in_demo();
+    deny_in_demo('/intern/bausteine');
     // Feste Bausteine bleiben: Ohne Kopf und Unterschrift ist das kein Vertrag,
     // und die Abgabenklausel darf nicht verschwinden können.
     $bZeile = row('SELECT fest FROM contract_blocks WHERE id = ?', [$m[1]]);
