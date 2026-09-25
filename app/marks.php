@@ -40,6 +40,12 @@ const ITEM_KINDS = [
   'contract' => ['tabelle' => 'contracts', 'wann' => 'updated_at', 'wer' => 'updated_by',
                  'felder' => ['event_id', 'promoter_id', 'contract_no', 'contract_date',
                               'fee_cents', 'play_from', 'play_to', 'get_in', 'status', 'notes']],
+  // Die Rechnung an den Veranstalter (#356) — sie steht neben dem Vertrag und
+  // hat dieselbe Sichtbarkeit: Wer den Vertrag nicht sieht, hat auch mit der
+  // Rechnung dazu nichts zu tun.
+  'invoice'  => ['tabelle' => 'sales_invoices', 'wann' => 'updated_at', 'wer' => 'updated_by',
+                 'felder' => ['event_id', 'promoter_id', 'invoice_no', 'invoice_date',
+                              'net_cents', 'total_cents', 'status', 'paid_cash', 'notes']],
   'file'     => ['tabelle' => 'files', 'wann' => 'created_at', 'wer' => 'uploaded_by',
                  'felder' => []],
   // Ein Kommentar wird geschrieben und nie geändert - wie eine Datei. Daher
@@ -277,6 +283,15 @@ function item_visible(?array $user, string $kind, int $id): bool {
     'setlist'    => may_see_setlist($user, $id),
     'quote'      => perm_allows($user, 'angebote'),
     'contract'   => may_see_contract($user, $id),
+    'invoice'    => (static function () use ($user, $id): bool {
+      // Ueber den Vertrag: eine Rechnung ohne Vertrag sieht, wer Rechnungen
+      // sehen darf, und sonst niemand.
+      $r = row('SELECT contract_id FROM sales_invoices WHERE id = ?', [$id]);
+      if (!$r) return false;
+      return $r['contract_id']
+        ? may_see_contract($user, (int) $r['contract_id'])
+        : perm_allows($user, 'rechnungen');
+    })(),
     'file'       => ($f = row('SELECT * FROM files WHERE id = ?', [$id])) && may_see_file($user, $f),
     // Kommentar und Zusage sind so sichtbar wie ihr Termin — eine eigene Regel
     // gibt es nicht, und eine zweite wäre die nächste, die auseinanderläuft.

@@ -55,6 +55,7 @@ require_once __DIR__ . '/passkey.php';
 require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/qr.php';
 require_once __DIR__ . '/onedrive.php';
+require_once __DIR__ . '/rechnung.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -198,6 +199,10 @@ const PERM_MODULES = [
   // muss nicht unterschreiben dürfen, und ein Bookingagent von außen bekommt
   // genau diese beiden und sonst nichts (#303, #308).
   'vertraege'     => ['/intern/vertraege'],
+  // Die Rechnung geht hinaus und nennt Betraege — dasselbe Vertrauen wie beim
+  // Vertrag, aber eine eigene Entscheidung: Wer verhandeln darf, muss nicht
+  // abrechnen duerfen (#356).
+  'rechnungen'    => ['/intern/rechnungen'],
 ];
 
 /** Dateianhänge gehören zum Bereich der Sache, an der sie hängen. */
@@ -251,6 +256,7 @@ const PERM_TEMPLATES = [
     'kasse' => [1, 0], 'equipment' => [1, 1], 'rider' => [1, 1],
     'fotos' => [1, 1], 'musik' => [1, 1], 'downloads' => [1, 1], 'mitglieder' => [1, 0],
     'mailversand' => [1, 1], 'gaeste' => [1, 1], 'angebote' => [1, 1], 'vertraege' => [1, 1],
+    'rechnungen' => [1, 1],
   ],
   // Wer nur einspringt, braucht die Termine, für die er eingeplant ist, und
   // das Material dazu — nicht die Kasse und nicht die Bandinterna. Der
@@ -262,6 +268,7 @@ const PERM_TEMPLATES = [
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
     'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [0, 0], 'vertraege' => [0, 0],
+    'rechnungen' => [0, 0],
   ],
   // Ein Bookingagent arbeitet für die Band, ohne in ihr zu sein: Er braucht die
   // Termine und die Verträge, und er muss ein Thema aufmachen können. Was die
@@ -273,6 +280,7 @@ const PERM_TEMPLATES = [
     'kasse' => [0, 0], 'equipment' => [0, 0], 'rider' => [1, 0],
     'fotos' => [0, 0], 'musik' => [0, 0], 'downloads' => [0, 0], 'mitglieder' => [0, 0],
     'mailversand' => [0, 0], 'gaeste' => [0, 0], 'angebote' => [1, 0], 'vertraege' => [1, 1],
+    'rechnungen' => [0, 0],
   ],
 ];
 
@@ -2856,7 +2864,7 @@ const MODULE_ICONS = [
   'abwesenheiten' => '🏖', 'aufgaben' => '✅', 'themen' => '💬', 'kasse' => '💰',
   'equipment' => '🎛', 'rider' => '📋', 'fotos' => '📷', 'post' => '✉',
   'musik' => '🎬', 'downloads' => '⬇', 'mitglieder' => '👥', 'gaeste' => '🎟',
-  'angebote' => '🧮', 'vertraege' => '✍', 'mailversand' => '📨',
+  'angebote' => '🧮', 'vertraege' => '✍', 'rechnungen' => '🧾', 'mailversand' => '📨',
 ];
 
 /**
@@ -2882,7 +2890,7 @@ const HELP_TASKS = [
   ['', 'help_task_notify', 'hilfe-push'],
 ];
 
-const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote', 'contract', 'help'];
+const PRINT_DOCS = ['setlist', 'rider', 'tax', 'gema', 'quote', 'contract', 'invoice', 'help'];
 
 /**
  * Trägt dieser Bogen Logo beziehungsweise Wasserzeichen? Je Dokument
@@ -4366,6 +4374,8 @@ function item_label(string $kind, int $id, ?string $lang = null): string {
                     ? ($r['title'] ?: $r['customer']) : '',
     'contract'   => ($r = $eine('SELECT contract_no FROM contracts WHERE id = ?'))
                     ? ($r['contract_no'] ?: '#' . $id) : '',
+    'invoice'    => ($r = $eine('SELECT invoice_no FROM sales_invoices WHERE id = ?'))
+                    ? ($r['invoice_no'] ?: '#' . $id) : '',
     'file'       => ($r = $eine('SELECT original_name FROM files WHERE id = ?')) ? $r['original_name'] : '',
     'venue'      => ($r = $eine('SELECT name FROM venues WHERE id = ?')) ? $r['name'] : '',
     'task'       => ($r = $eine('SELECT title FROM tasks WHERE id = ?')) ? $r['title'] : '',
@@ -4417,6 +4427,7 @@ function item_url(string $kind, int $id): string {
     'setlist'   => '/intern/setlists',
     'quote'     => '/intern/angebote',
     'contract'  => '/intern/vertraege',
+    'invoice'   => '/intern/rechnungen',
     'file'      => '/intern/dateien',
     'venue'     => '/intern/orte',
     'absence'   => '/intern/abwesenheiten',

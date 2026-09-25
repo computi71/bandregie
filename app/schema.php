@@ -446,6 +446,47 @@ $tables = [
     INDEX idx_quote (quote_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Die Rechnung an den Veranstalter (#356). Nicht zu verwechseln mit
+  // `invoices`: Das ist der Eingang, die Belege zum Equipment.
+  //
+  // Steuerlage und Wortlaut werden beim Anlegen eingefroren, wie beim Vertrag.
+  // Wer im naechsten Jahr die Kleinunternehmerregelung verlaesst, darf damit
+  // nicht ruekwirkend aendern, was einmal verschickt wurde.
+  "CREATE TABLE IF NOT EXISTS sales_invoices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NULL,
+    contract_id INT NULL,
+    promoter_id INT NULL,
+    invoice_no VARCHAR(40) NOT NULL,
+    invoice_date DATE NOT NULL,
+    net_cents INT NOT NULL DEFAULT 0,
+    vat_percent INT NOT NULL DEFAULT 0,
+    vat_cents INT NOT NULL DEFAULT 0,
+    total_cents INT NOT NULL DEFAULT 0,
+    small_business TINYINT(1) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'entwurf',
+    sent_at DATETIME NULL,
+    paid_at DATETIME NULL,
+    paid_cash TINYINT(1) NOT NULL DEFAULT 0,
+    body MEDIUMTEXT,
+    notes TEXT,
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME(3) NULL,
+    updated_by INT NULL,
+    UNIQUE KEY uniq_invoice_no (invoice_no),
+    INDEX idx_event (event_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  "CREATE TABLE IF NOT EXISTS sales_invoice_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    label VARCHAR(190) NOT NULL,
+    amount_cents INT NOT NULL DEFAULT 0,
+    sort INT NOT NULL DEFAULT 0,
+    INDEX idx_invoice (invoice_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS mail_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NULL,
@@ -1658,6 +1699,13 @@ if (setting('migr_push_abwahl') === '') {
       [$abgewaehlt ? implode(',', $abgewaehlt) : '', $zeile['id']]);
   }
   set_setting('migr_push_abwahl', '1');
+}
+
+// Der Haken „Rechnung benoetigt" am Termin (#356). Bar bezahlte Gigs, bei
+// denen niemand ein Papier will, bleiben ohne — deshalb ein Haken und nicht
+// „jeder Gig mit Vertrag".
+if (!column_exists('events', 'needs_invoice')) {
+  $db->exec("ALTER TABLE events ADD COLUMN needs_invoice TINYINT(1) NOT NULL DEFAULT 0");
 }
 
 if (setting('migr_topic_reads') === '') {
