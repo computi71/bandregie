@@ -82,6 +82,17 @@
           <label><?= e(t('promoter_contact')) ?><input name="contact_name" value="<?= e($p['contact_name']) ?>" maxlength="190"></label>
           <?php $kfWerte = $p; $kfFelder = ['email', 'phone', 'mobile', 'street', 'postcode', 'city']; $kfNamen = '';
                 require BASE_DIR . '/app/views/_contact_fields.php'; ?>
+          <?php // In welcher Sprache dieser Veranstalter seine Blätter bekommt (#363).
+                // Leer heißt: die der Band. ?>
+          <label><?= e(t('promoter_lang')) ?>
+            <select name="lang">
+              <option value=""><?= e(t('promoter_lang_band')) ?></option>
+              <?php foreach (LANGS as $lCode => $lName): ?>
+                <option value="<?= e($lCode) ?>" <?= ($p['lang'] ?? '') === $lCode ? 'selected' : '' ?>>
+                  <?= e($lName) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <span class="muted small"><?= e(t('promoter_lang_hint')) ?></span></label>
           <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"><?= e((string) $p['notes']) ?></textarea></label>
           <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
         </form>
@@ -96,6 +107,17 @@
         <label><?= e(t('promoter_contact')) ?><input name="contact_name" maxlength="190"></label>
         <?php $kfWerte = []; $kfFelder = ['email', 'phone', 'mobile', 'street', 'postcode', 'city']; $kfNamen = '';
               require BASE_DIR . '/app/views/_contact_fields.php'; ?>
+        <?php // In welcher Sprache dieser Veranstalter seine Blätter bekommt (#363).
+              // Leer heißt: die der Band. ?>
+        <label><?= e(t('promoter_lang')) ?>
+          <select name="lang">
+            <option value=""><?= e(t('promoter_lang_band')) ?></option>
+            <?php foreach (LANGS as $lCode => $lName): ?>
+              <option value="<?= e($lCode) ?>" <?= ('') === $lCode ? 'selected' : '' ?>>
+                <?= e($lName) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <span class="muted small"><?= e(t('promoter_lang_hint')) ?></span></label>
         <label class="span2"><?= e(t('notes')) ?><textarea name="notes" rows="2"></textarea></label>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('create')) ?></button></div>
       </form>

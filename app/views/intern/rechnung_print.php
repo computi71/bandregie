@@ -47,7 +47,8 @@ $printDoc = 'invoice';
   </style>
 </head>
 <body>
-<?php $zurueckUrl = '/intern/rechnungen/' . (int) $invoice['id']; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php $zurueckUrl = '/intern/rechnungen/' . (int) $invoice['id']; $sprachwahl = true;
+      require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
 

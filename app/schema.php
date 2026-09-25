@@ -1797,6 +1797,14 @@ if (setting('migr_vertrag_bausteine') === '') {
 // Der Haken „Rechnung benoetigt" am Termin (#356). Bar bezahlte Gigs, bei
 // denen niemand ein Papier will, bleiben ohne — deshalb ein Haken und nicht
 // „jeder Gig mit Vertrag".
+// Die Sprache des Veranstalters (#363). Leer heißt: die der Band.
+//
+// Sie steht am Empfaenger und nicht beim angemeldeten Mitglied, weil ein Blatt
+// fuer den Veranstalter nicht davon abhaengen darf, wer es ausdruckt.
+if (!column_exists('promoters', 'lang')) {
+  $db->exec("ALTER TABLE promoters ADD COLUMN lang VARCHAR(5) NOT NULL DEFAULT ''");
+}
+
 if (!column_exists('events', 'needs_invoice')) {
   $db->exec("ALTER TABLE events ADD COLUMN needs_invoice TINYINT(1) NOT NULL DEFAULT 0");
 }

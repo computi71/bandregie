@@ -732,6 +732,13 @@ const UI_STRINGS = [
   'contract_signed_file' => 'Das unterschriebene Blatt kommt als Scan an den Termin — dort liegen die Dateien zum Auftritt.',
   'contract_open_missing' => 'Ohne Vertrag',
 
+  // Die Sprache ausgehender Blätter (#363).
+  'promoter_lang' => 'Sprache der Unterlagen',
+  'promoter_lang_band' => 'Sprache der Band',
+  'promoter_lang_hint' => 'Vertrag, Rechnung und Angebot für diesen Veranstalter kommen in dieser Sprache heraus — unabhängig davon, wer sie ausdruckt.',
+  'doclang_contract_note' => 'Die Sprache schaltet Überschriften und Datum um. Die Klauseln bleiben so, wie sie in den Bausteinen stehen.',
+
+
   // Vertragsbausteine (#359). Die Überschriften der Abschnitte sind Gerüst und
   // stehen hier; die Klauseln selbst gehören der Band und stehen in der
   // Datenbank.

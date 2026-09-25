@@ -1662,6 +1662,25 @@ function lang_override(?string $lang = null, bool $setzen = true): ?string {
   return $aktiv;
 }
 
+/**
+ * In welcher Sprache geht ein Blatt hinaus? (#363)
+ *
+ * Reihenfolge: was in der Druckleiste gewählt wurde, sonst die Sprache des
+ * Empfängers, sonst die der Band. Die Sprache des Angemeldeten kommt bewusst
+ * nicht vor — ein Vertrag für denselben Veranstalter soll nicht anders
+ * beschriftet herauskommen, je nachdem wer auf Drucken drückt.
+ *
+ * Geprüft wird gegen LANGS und nicht gegen enabled_langs(): Welche Sprachen
+ * die Band für sich selbst eingeschaltet hat, geht den Veranstalter nichts an,
+ * und die Übersetzungen liegen ohnehin für alle mitgelieferten Sprachen bereit.
+ */
+function doc_lang(?string $vomEmpfaenger = null): string {
+  foreach ([(string) ($_GET['lang'] ?? ''), (string) $vomEmpfaenger] as $kandidat) {
+    if ($kandidat !== '' && array_key_exists($kandidat, LANGS)) return $kandidat;
+  }
+  return default_lang();
+}
+
 function current_lang(): string {
   $fest = lang_override(null, false);
   if ($fest !== null) return $fest;
@@ -2140,6 +2159,7 @@ function contract_full(int $id): ?array {
   return row('SELECT c.*, p.name AS promoter_name, p.contact_name AS promoter_contact,
                      p.email AS promoter_email, p.street AS promoter_street,
                      p.postcode AS promoter_postcode, p.city AS promoter_city,
+                     p.lang AS promoter_lang,
                      e.title AS event_title, e.date AS event_date, ' . EVENT_PLACE_COLS . '
               FROM contracts c
               LEFT JOIN promoters p ON p.id = c.promoter_id
@@ -2951,6 +2971,33 @@ function print_logo_html(string $doc): string {
     ? '<img src="/uploads/' . e($datei) . '" alt="' . e($name) . '">'
     : '<span class="bandname">' . e($name) . '</span>';
   return '<div class="logo">' . $inhalt . '</div>';
+}
+
+/**
+ * Die Sprachumschaltung für die Druckleiste (#363).
+ *
+ * Nur ein Link je Sprache, keine Auswahlliste mit Knopf: Ein Ausdruck wird
+ * angesehen und nicht ausgefüllt, und ein Klick ist schneller als zwei.
+ *
+ * Gewählt wird nur für dieses eine Blatt. Gespeichert wird nichts — was
+ * dauerhaft gelten soll, gehört an den Veranstalter.
+ */
+function print_lang_html(): string {
+  // Die eigene Adresse ohne ein etwa schon vorhandenes lang, damit zweimaliges
+  // Umschalten nicht ?lang=nl&lang=fr ergibt.
+  $pfad = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/'), '?');
+  parse_str((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_QUERY), $frage);
+  unset($frage['lang']);
+
+  $jetzt = current_lang();
+  $teile = [];
+  foreach (LANGS as $code => $name) {
+    $ziel = $pfad . '?' . http_build_query($frage + ['lang' => $code]);
+    $teile[] = $code === $jetzt
+      ? '<strong>' . e($code) . '</strong>'
+      : '<a href="' . e($ziel) . '" title="' . e($name) . '">' . e($code) . '</a>';
+  }
+  return '<span class="sprachen">🌐 ' . implode(' ', $teile) . '</span>';
 }
 
 /** Das Wasserzeichen eines Blattes. Gehört in das Blatt, nicht davor. */

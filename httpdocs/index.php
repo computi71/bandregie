@@ -3235,10 +3235,13 @@ if (str_starts_with($path, '/intern')) {
   if (preg_match('~^/intern/vertraege/(\d+)/druck$~', $path, $m) && $method === 'GET') {
     $vertrag = contract_full((int) $m[1]);
     if (!$vertrag) { http_response_code(404); view('404', ['title' => t('contract_title')]); }
-    view('intern/vertrag_print', [
-      'title' => t('contract_sheet_title') . ' · ' . ($vertrag['event_title'] ?? ''),
-      'contract' => $vertrag,
-    ]);
+    // Die Sprache kommt vom Veranstalter, nicht vom Angemeldeten (#363).
+    with_lang(doc_lang($vertrag['promoter_lang'] ?? null), static function () use ($vertrag): void {
+      view('intern/vertrag_print', [
+        'title' => t('contract_sheet_title') . ' · ' . ($vertrag['event_title'] ?? ''),
+        'contract' => $vertrag,
+      ]);
+    });
   }
   // Einen Bookingagenten zu einem fremden Vertrag dazuholen (#309).
   if (preg_match('~^/intern/vertraege/(\d+)/gast$~', $path, $m) && $method === 'POST') {
@@ -3350,6 +3353,7 @@ if (str_starts_with($path, '/intern')) {
 
   if (preg_match('~^/intern/rechnungen/(\d+)/druck$~', $path, $m) && $method === 'GET') {
     $rechnung = row('SELECT r.*, p.name AS promoter_name, p.contact_name, p.street, p.postcode, p.city,
+                            p.lang AS promoter_lang,
                             e.title AS event_title, e.date AS event_date
                      FROM sales_invoices r
                      LEFT JOIN promoters p ON p.id = r.promoter_id
@@ -3357,25 +3361,34 @@ if (str_starts_with($path, '/intern')) {
                      WHERE r.id = ?', [$m[1]]);
     if (!$rechnung) { http_response_code(404); view('404', ['title' => t('inv_out_title')]); }
     $rPosten = invoice_items((int) $m[1]);
-    view('intern/rechnung_print', [
-      'title' => $rechnung['invoice_no'],
-      'invoice' => $rechnung,
-      'items' => $rPosten,
-      'totals' => invoice_totals($rechnung, $rPosten),
-    ]);
+    with_lang(doc_lang($rechnung['promoter_lang'] ?? null), static function () use ($rechnung, $rPosten): void {
+      view('intern/rechnung_print', [
+        'title' => $rechnung['invoice_no'],
+        'invoice' => $rechnung,
+        'items' => $rPosten,
+        'totals' => invoice_totals($rechnung, $rPosten),
+      ]);
+    });
   }
 
   // Veranstalter pflegen — die Liste lebt bei den Verträgen, sie hat sonst
   // keinen Ort und wäre als eigener Menüpunkt eine leere Seite.
+  //
+  // Die Sprache kommt aus einer Auswahlliste, landet aber in der Datenbank —
+  // was von dort in ein Blatt geht, wird gegen LANGS gehalten und sonst
+  // verworfen. Leer ist gültig und heißt: die Sprache der Band (#363).
+  $pSprache = static fn(array $post): string =>
+    array_key_exists((string) ($post['lang'] ?? ''), LANGS) ? (string) $post['lang'] : '';
+
   if ($path === '/intern/vertraege/veranstalter' && $method === 'POST') {
     $pName = trim((string) ($_POST['name'] ?? ''));
     if ($pName === '') { flash(t('fl_contract_promoter_required')); back('/intern/vertraege'); }
     $pK = $gastKontakt($_POST);
-    q('INSERT INTO promoters (name, contact_name, email, phone, mobile, street, postcode, city, notes)
-       VALUES (?,?,?,?,?,?,?,?,?)', [
+    q('INSERT INTO promoters (name, contact_name, email, phone, mobile, street, postcode, city, notes, lang)
+       VALUES (?,?,?,?,?,?,?,?,?,?)', [
       mb_substr($pName, 0, 190), mb_substr(trim((string) ($_POST['contact_name'] ?? '')), 0, 190),
       $pK['email'], $pK['phone'], $pK['mobile'], $pK['street'], $pK['postcode'], $pK['city'],
-      trim((string) ($_POST['notes'] ?? '')),
+      trim((string) ($_POST['notes'] ?? '')), $pSprache($_POST),
     ]);
     flash(t('fl_contract_saved'));
     back('/intern/vertraege');
@@ -3394,10 +3407,10 @@ if (str_starts_with($path, '/intern')) {
     if ($pName === '') { flash(t('fl_contract_promoter_required')); back('/intern/vertraege'); }
     $pK = $gastKontakt($_POST);
     q('UPDATE promoters SET name = ?, contact_name = ?, email = ?, phone = ?, mobile = ?,
-         street = ?, postcode = ?, city = ?, notes = ? WHERE id = ?', [
+         street = ?, postcode = ?, city = ?, notes = ?, lang = ? WHERE id = ?', [
       mb_substr($pName, 0, 190), mb_substr(trim((string) ($_POST['contact_name'] ?? '')), 0, 190),
       $pK['email'], $pK['phone'], $pK['mobile'], $pK['street'], $pK['postcode'], $pK['city'],
-      trim((string) ($_POST['notes'] ?? '')), $m[1],
+      trim((string) ($_POST['notes'] ?? '')), $pSprache($_POST), $m[1],
     ]);
     flash(t('fl_contract_saved'));
     back('/intern/vertraege');
@@ -3543,12 +3556,16 @@ if (str_starts_with($path, '/intern')) {
                     WHERE q.id = ?', [$m[1]]);
     if (!$angebot) { http_response_code(404); view('404', ['title' => t('quote_title')]); }
     $angebotPosten = quote_items((int) $angebot['id']);
-    view('intern/angebot_print', [
-      'title' => t('quote_sheet_title') . ' · ' . $angebot['title'],
-      'quote' => $angebot,
-      'lines' => quote_display_lines($angebot, $angebotPosten),
-      'sums' => quote_totals($angebot, $angebotPosten),
-    ]);
+    // Ein Angebot nennt seinen Kunden als Freitext und kennt keinen
+    // Veranstaltersatz — hier gibt es nur die Wahl in der Leiste (#363).
+    with_lang(doc_lang(), static function () use ($angebot, $angebotPosten): void {
+      view('intern/angebot_print', [
+        'title' => t('quote_sheet_title') . ' · ' . $angebot['title'],
+        'quote' => $angebot,
+        'lines' => quote_display_lines($angebot, $angebotPosten),
+        'sums' => quote_totals($angebot, $angebotPosten),
+      ]);
+    });
   }
 
   // Zugangslink für ein Mitglied ohne Mailadresse (#307). Erzeugt wird der
@@ -4222,11 +4239,16 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/stagerider');
   }
   if ($path === '/intern/stagerider/print' && $method === 'GET') {
-    view('intern/stagerider_print', [
-      'title' => t('rider_title'),
-      'channels' => rows('SELECT * FROM channels ORDER BY number'),
-      'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
-    ]);
+    // Der Rider haengt an keinem Veranstalter - hier gibt es nur die Wahl in
+    // der Druckleiste und sonst die Sprache der Band (#363).
+    with_lang(doc_lang(), static function (): void {
+      view('intern/stagerider_print', [
+        'title' => t('rider_title'),
+        'sprachwahl' => true,
+        'channels' => rows('SELECT * FROM channels ORDER BY number'),
+        'stageItems' => rows('SELECT * FROM stage_items ORDER BY position, id'),
+      ]);
+    });
   }
 
   // ---------- Kanalbelegung ----------
