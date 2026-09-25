@@ -17,9 +17,6 @@ require_once BASE_DIR . '/app/help.php';
   <title><?= e(t('help_title')) ?> · <?= e(setting('band_name')) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     /* Jeder Abschnitt beginnt auf einer neuen Seite: So lässt sich ein einzelnes
        Blatt herausziehen und jemandem in die Hand drücken. */
     details { break-before: page; margin-top: 6mm; }
@@ -33,7 +30,7 @@ require_once BASE_DIR . '/app/help.php';
     @media screen { body { padding: 1rem 0; } }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php
   $zurueckUrl = '/intern/hilfe';
   $leisteExtra = '<a href="/intern/hilfe/druck' . ($druckBilder ? '' : '?bilder=1') . '">'

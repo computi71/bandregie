@@ -17,9 +17,6 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
   <title><?= e(t('quote_sheet_title')) ?> · <?= e($quote['title']) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     .meta { margin-top: 6mm; }
     .meta div { margin: 0.6mm 0; }
     .meta b { display: inline-block; min-width: 34mm; }
@@ -33,7 +30,7 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
     .prewrap { white-space: pre-wrap; }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php $zurueckUrl = '/intern/angebote/' . (int) $quote['id']; $sprachwahl = true;
       require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">

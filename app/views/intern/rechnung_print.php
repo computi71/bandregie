@@ -16,9 +16,6 @@ $printDoc = 'invoice';
   <title><?= e(t('inv_sheet_title')) ?> · <?= e($invoice['invoice_no']) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     .an { margin-top: 12mm; line-height: 1.45; }
     .meta { margin-top: 8mm; }
     .meta div { margin: 0.6mm 0; }
@@ -46,7 +43,7 @@ $printDoc = 'invoice';
     @media print { .stempel { opacity: 1; } }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php $zurueckUrl = '/intern/rechnungen/' . (int) $invoice['id']; $sprachwahl = true;
       require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
