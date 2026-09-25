@@ -682,6 +682,7 @@ const UI_STRINGS = [
   'help_flow_money' => 'Geld läuft an drei Stellen zusammen. In der Kasse stehen Einnahmen und Ausgaben, ein Gerätekauf zählt dort nicht als Ausgabe, sondern taucht als Anschaffung in der Steuerübersicht auf und verteilt sich über die Jahre. Die Gage eines Auftritts kommt aus dem Termin, und die Umsatzgrenze der Kleinunternehmerregelung rechnet aus allem zusammen, was eingenommen wurde.',
   // Verträge (#303)
   'inav_vertraege' => 'Verträge',
+  'inav_rechnungen' => 'Rechnungen',
   // Themen: wen die Band von außen dazuholt (#308)
   'ev_busy' => 'Belegt',
   'contract_guests' => 'Von außen dabei',
@@ -839,6 +840,10 @@ const UI_STRINGS = [
   'help_vertraege_2' => 'Der Vertragspartner ist der Veranstalter und nicht die Halle. Eine Halle heißt „Stadtfest" und wird oft über eine Agentur gebucht — unterschreiben tut die Agentur. Deshalb gibt es eine eigene Liste dafür.',
   'help_vertraege_3' => 'Der Wortlaut entsteht aus Bausteinen — einzelnen Punkten, die ihr am Vertrag an- und abhakt: Hotel ja, Anlage bringt ihr selbst mit, Beteiligung statt Festgage. Die Paragraphen zählen sich dabei von selbst neu, es bleibt keine Lücke. Einmal verschickt, steht der Text: Was unterschrieben wurde, darf sich nicht ändern, weil ein halbes Jahr später jemand die Bausteine anfasst. Solange ein Vertrag Entwurf ist, könnt ihr beides ändern — die Punkte und den Text darunter.',
   'help_vertraege_5' => 'In welcher Sprache ein Blatt herauskommt, hängt am Veranstalter und nicht daran, wer auf Drucken drückt. Beim Vertrag schaltet die Sprache allerdings nur Überschriften und Datum um: Die Klauseln stehen so, wie sie in euren Bausteinen stehen.',
+  'help_rechnungen' => 'Was ihr dem Veranstalter in Rechnung stellt. Die Zahlen kommen aus dem Vertrag — Veranstalter, Datum und Gage stehen dort schon, und abgetippt ist genau die Stelle, an der zwei Beträge anfangen auseinanderzulaufen.',
+  'help_rechnungen_2' => 'Die Nummern laufen lückenlos durch und werden beim Anlegen vergeben. Das ist keine Kosmetik: Eine Lücke in der Nummernfolge muss man einem Prüfer erklären können.',
+  'help_rechnungen_3' => 'Viele Auftritte werden am Abend bar abgerechnet. Dafür gibt es den Stempel „Bar bezahlt“ — die Rechnung geht damit auf „bezahlt“ und ist nur noch der Beleg.',
+  'help_rechnungen_4' => 'Ob Umsatzsteuer daraufkommt, hängt an eurer Band und steht in der einzelnen Rechnung, nicht in den Einstellungen: Wer im nächsten Jahr die Kleinunternehmerregelung verlässt, darf damit nicht ändern, was einmal verschickt wurde.',
   'help_vertraege_4' => 'Gedruckt wird er wie eure anderen Blätter, mit Logo und Wasserzeichen. Unterschrieben kommt er als Scan zurück und gehört zu den Dateien des Termins. Elektronische Unterschriften gibt es hier bewusst nicht: Sie sind ein eigenes Thema mit eigenen Anforderungen, und für eine Band bringen sie nichts, was ein eingescanntes Blatt nicht auch bringt.',
   // Heredoc und nicht einfache Anfuehrungszeichen (#357): Darin war das 
 

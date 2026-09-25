@@ -124,6 +124,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
             // Beim direkten Weg gibt es keinen Angebotsschritt (#312).
             '/intern/angebote' => quote_step_active() ? [MODULE_ICONS['angebote'], t('inav_angebote')] : null,
             '/intern/vertraege' => [MODULE_ICONS['vertraege'], t('inav_vertraege')],
+            // Die Rechnung steht hinter dem Vertrag, weil sie daraus entsteht.
+            // Sie fehlte hier seit ihrer Einfuehrung ganz - erreichbar war der
+            // Bereich nur vom Termin aus oder ueber die Adresse (#369).
+            '/intern/rechnungen' => [MODULE_ICONS['rechnungen'], t('inav_rechnungen')],
           ])],
           ['🎼', t('inavg_musik'), [
             '/intern/songs' => [MODULE_ICONS['songs'], t('inav_songs')],
