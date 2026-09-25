@@ -35,6 +35,29 @@ Afterwards read `VERSION` from the deployed directory — not the tag that was
 pushed, the file that is actually lying there. That is the only thing that
 proves the deploy step did what its name says.
 
+## The promo site
+
+bandregie.info says what the application can do, and it lives in a repository of
+its own. Nothing travels between the two by itself, which is how that page came
+to sit thirty-five releases behind, still promising the state that v2.0.0
+describes as the one it left.
+
+So a change carries one more question: would somebody reading that page need to
+know about this? If it would, the issue gets the label `website`. That is the
+whole of it — the page is never edited from here. Whoever works on it asks for
+the list:
+
+```
+gh issue list --repo computi71/bandregie --label website --state open
+```
+
+Open ones are what the page still owes. `--state all` shows everything ever
+marked, which is what a pass over a page that has fallen behind needs.
+
+A repair, a translation caught up, a query made faster: none of that belongs on
+that page. What belongs there is something a band can do that it could not do
+before.
+
 ## Version numbers
 
 `MAJOR.MINOR.FIX`, and the middle digit carries the meaning:
