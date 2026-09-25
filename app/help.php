@@ -28,13 +28,29 @@ declare(strict_types=1);
  *
  * Je Eintrag: Sprungmarke, Zeichen und Beschriftung.
  */
+/**
+ * Wie heißt ein Bereich in der Hilfe? (#370)
+ *
+ * Fast immer so wie im Menü. Das Rechenblatt ist die Ausnahme: Im
+ * zweistufigen Weg geht es als Angebot hinaus, im einstufigen bleibt es im
+ * Haus und heißt Kalkulation. Dasselbe Blatt, zwei Rollen — und die Hilfe
+ * soll das Wort benutzen, das der Leser auf seinem Bildschirm sieht.
+ *
+ * Früher verschwand der Abschnitt im einstufigen Weg ganz (#312). Das war
+ * richtig, solange es dort kein Rechenblatt gab. Seit es den Knopf „Preis
+ * rechnen" am Termin gibt (#355), war es falsch: Die Aufgabenliste verwies
+ * weiter darauf, und der Verweis lief ins Leere.
+ */
+function help_section_name(string $mod): string {
+  if ($mod === 'angebote' && !quote_ist_angebot()) return t('quote_calc_title');
+  return t('inav_' . $mod);
+}
+
 function help_sections(array $user): array {
   $abschnitte = ['zusammenhang' => ['🔗', t('help_flow_title')]];
   foreach (array_keys(PERM_MODULES) as $mod) {
-    // Wer den Angebotsschritt nicht benutzt, bekommt ihn auch nicht erklärt —
-    // sonst steht in der Hilfe ein Bereich, den es im Menü nicht gibt (#312).
-    if ($mod === 'angebote' && !quote_step_active()) continue;
-    if (perm_allows($user, $mod)) $abschnitte[$mod] = [MODULE_ICONS[$mod] ?? '•', t('inav_' . $mod)];
+    if (!perm_allows($user, $mod)) continue;
+    $abschnitte[$mod] = [MODULE_ICONS[$mod] ?? '•', help_section_name($mod)];
   }
   if (perm_allows($user, 'kasse')) {
     $abschnitte['steuer'] = ['⚖', t('taxr_title')];

@@ -133,11 +133,11 @@ require_once BASE_DIR . '/app/help.php';
 <?php $helpFirst = true; ?>
 <?php foreach (PERM_MODULES as $helpMod => $helpPfade): ?>
   <?php if (!perm_allows($user, $helpMod)) continue; ?>
-  <?php // Kein Angebotsschritt, kein Angebotsabschnitt (#312). ?>
-  <?php if ($helpMod === 'angebote' && !quote_step_active()) continue; ?>
   <details id="hilfe-<?= e($helpMod) ?>" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck || $helpFirst ? 'open' : '' ?>>
-    <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e(t('inav_' . $helpMod)) ?></summary>
-    <?php if (!$druck || $druckBilder) echo help_picture($helpMod, t('inav_' . $helpMod)); ?>
+    <?php // Das Rechenblatt heisst je nach Weg Angebot oder Kalkulation (#370). ?>
+    <?php $helpName = help_section_name($helpMod); ?>
+    <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e($helpName) ?></summary>
+    <?php if (!$druck || $druckBilder) echo help_picture($helpMod, $helpName); ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
     <?php // Bis zu vier Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
           // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen

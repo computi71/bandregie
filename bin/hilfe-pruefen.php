@@ -22,6 +22,9 @@
 //   sudo -u www-data php bin/hilfe-pruefen.php
 
 require __DIR__ . '/../app/bootstrap.php';
+// help_sections() und help_section_name() leben hier und nicht im bootstrap:
+// Sie werden nur von der Hilfeseite gebraucht.
+require_once __DIR__ . '/../app/help.php';
 
 $fehler = 0;
 $pruef = function (string $was, bool $ok, string $mehr = '') use (&$fehler): void {
@@ -73,6 +76,27 @@ foreach (PERM_MODULES as $modul => $pfade) {
 }
 $pruef('jeder Bereich mit einer Seite steht im Menü', !$nichtImMenue, implode(' ', $nichtImMenue));
 
+echo PHP_EOL, '— Die Aufgabenliste —', PHP_EOL;
+// „Ich möchte …" springt zu einem Abschnitt. Fehlt der, führt der Sprung ins
+// Leere und die Seite rührt sich nicht. Genau das passierte beim Rechenblatt:
+// Der Abschnitt verschwand im einstufigen Weg, der Verweis blieb (#370).
+$abschnitte = array_keys(help_sections(['id' => 1, 'role' => 'admin']));
+$ziellos = [];
+foreach (HELP_TASKS as [$modul, $textKey, $anker]) {
+  $ziel = preg_replace('~^hilfe-~', '', $anker);
+  if (!in_array($ziel, $abschnitte, true)) $ziellos[] = $anker;
+  if (t($textKey) === $textKey) $ziellos[] = $textKey . ' (ohne Text)';
+}
+$pruef('jede Aufgabe führt zu einem Abschnitt, den es gibt', !$ziellos, implode(' ', $ziellos));
+
+// Umgekehrt: Was die Band täglich tut, soll in der Liste stehen. Vertrag und
+// Rechnung fehlten dort, obwohl beides zum Weg von der Anfrage zum Geld gehört.
+$inListe = array_column(HELP_TASKS, 0);
+$sollte = array_intersect(['termine', 'vertraege', 'rechnungen', 'kasse'], array_keys(PERM_MODULES));
+$fehltInListe = array_diff($sollte, $inListe);
+$pruef('der Weg von der Anfrage bis zum Geld steht in der Liste',
+  !$fehltInListe, implode(' ', $fehltInListe));
+
 echo PHP_EOL, '— Übersetzungen —', PHP_EOL;
 $ohneUebersetzung = [];
 foreach (PERM_MODULES as $modul => $pfade) {
@@ -84,6 +108,14 @@ foreach (PERM_MODULES as $modul => $pfade) {
       if (!row('SELECT value FROM translations WHERE lang = ? AND tkey = ?', [$lang, $k])) {
         $ohneUebersetzung[] = "$lang/$k";
       }
+    }
+  }
+}
+foreach (array_column(HELP_TASKS, 1) as $k) {
+  foreach (LANGS as $lang => $unused) {
+    if ($lang === 'de') continue;
+    if (!row('SELECT value FROM translations WHERE lang = ? AND tkey = ?', [$lang, $k])) {
+      $ohneUebersetzung[] = "$lang/$k";
     }
   }
 }
