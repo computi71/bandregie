@@ -202,6 +202,14 @@
         ?>
         <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" value="<?= e($ev['fee']) ?>"></label>
         <label data-eventfield="fee"><?= e(t('ev_invoice')) ?><input name="invoice_no" value="<?= e($ev['invoice_no']) ?>"></label>
+        <?php // Der Haken legt die Rechnung gleich an (#356) - nicht jeder Gig
+              // braucht eine, viele werden am Abend bar abgerechnet. ?>
+        <?php if (perm_allows($user, 'rechnungen', 'write')): ?>
+          <label class="checkbox span2" data-eventfield="fee">
+            <input type="checkbox" name="needs_invoice" value="1" <?= !empty($ev['needs_invoice']) ? 'checked' : '' ?>>
+            🧾 <?= e(t('ev_needs_invoice')) ?>
+          </label>
+        <?php endif; ?>
         <label class="span2"><?= e(t('ev_notes')) ?><textarea name="notes" rows="2"><?= e($ev['notes']) ?></textarea></label>
         <?php if (public_page_active()): ?>
         <fieldset class="span2 pubfields" data-eventfield="public">

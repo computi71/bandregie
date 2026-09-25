@@ -1064,6 +1064,20 @@ if (str_starts_with($path, '/intern')) {
           [...event_values(), $id]);
       }, (int) $me['id']);
       save_event_gear((int) $id);
+      // Der Haken „Rechnung benötigt" (#356) als eigene Anweisung: event_values()
+      // ist positionsgebunden, und eine Spalte mehr trifft dort zwei Stellen,
+      // die stillschweigend auseinanderlaufen können.
+      if (perm_allows($me, 'rechnungen', 'write')) {
+        $evBraucht = isset($_POST['needs_invoice']) ? 1 : 0;
+        q('UPDATE events SET needs_invoice = ? WHERE id = ?', [$evBraucht, $id]);
+        // Angehakt heißt anlegen, nicht vormerken — der Entwurf entsteht aus
+        // dem Vertrag zum selben Termin. Gibt es keinen, bleibt es beim Haken:
+        // Eine Rechnung ohne Vertrag müsste jede Zahl raten.
+        if ($evBraucht) {
+          $evVertragR = row('SELECT id FROM contracts WHERE event_id = ? ORDER BY id DESC LIMIT 1', [$id]);
+          if ($evVertragR) invoice_from_contract((int) $evVertragR['id'], (int) $me['id']);
+        }
+      }
       // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und
       // aus einer Anfrage wird ein Auftritt, für den man sich freihalten muss.
       // Deshalb geht der Stand hinaus, und nur er: Eine Mitteilung bei jedem
@@ -3157,6 +3171,116 @@ if (str_starts_with($path, '/intern')) {
     }
     back('/intern/vertraege/' . $m[1]);
   }
+  // ---------- Rechnungen (#356) ----------
+  // Sie stehen neben den Verträgen, weil sie von dort kommen — aber mit
+  // eigenem Recht: Wer verhandeln darf, muss nicht abrechnen dürfen.
+  if ($path === '/intern/rechnungen' && $method === 'GET') {
+    $rechnungen = rows('SELECT r.*, p.name AS promoter_name, e.title AS event_title, e.date AS event_date
+                        FROM sales_invoices r
+                        LEFT JOIN promoters p ON p.id = r.promoter_id
+                        LEFT JOIN events e ON e.id = r.event_id
+                        ORDER BY r.invoice_date DESC, r.id DESC');
+    view('intern/rechnungen', [
+      'title' => t('inv_out_title'),
+      'invoices' => $rechnungen,
+      'unseen' => items_unseen($me, 'invoice'),
+      // Verträge, zu denen es noch keine Rechnung gibt — daraus entsteht eine.
+      'offeneVertraege' => rows("SELECT c.id, c.contract_no, c.fee_cents, e.title AS event_title, e.date AS event_date
+                                 FROM contracts c
+                                 LEFT JOIN events e ON e.id = c.event_id
+                                 LEFT JOIN sales_invoices r ON r.contract_id = c.id
+                                 WHERE r.id IS NULL ORDER BY e.date DESC LIMIT 50"),
+      'seenOnList' => ['invoice' => array_column($rechnungen, 'id')],
+    ]);
+  }
+
+  // Aus einem Vertrag eine Rechnung bilden.
+  if ($path === '/intern/rechnungen/aus-vertrag' && $method === 'POST') {
+    deny_in_demo('/intern/rechnungen');
+    $rVertrag = (int) ($_POST['contract_id'] ?? 0);
+    $rId = $rVertrag > 0 ? invoice_from_contract($rVertrag, (int) $me['id']) : 0;
+    if (!$rId) { flash(t('fl_inv_needs_contract')); back('/intern/rechnungen'); }
+    flash(t('fl_inv_created'));
+    redirect('/intern/rechnungen/' . $rId);
+  }
+
+  if (preg_match('~^/intern/rechnungen/(\d+)$~', $path, $m) && $method === 'GET') {
+    $rechnung = row('SELECT r.*, p.name AS promoter_name, p.street, p.postcode, p.city,
+                            e.title AS event_title, e.date AS event_date
+                     FROM sales_invoices r
+                     LEFT JOIN promoters p ON p.id = r.promoter_id
+                     LEFT JOIN events e ON e.id = r.event_id
+                     WHERE r.id = ?', [$m[1]]);
+    if (!$rechnung) { http_response_code(404); view('404', ['title' => t('inv_out_title')]); }
+    $rPosten = invoice_items((int) $m[1]);
+    view('intern/rechnung', [
+      'title' => $rechnung['invoice_no'],
+      'invoice' => $rechnung,
+      'items' => $rPosten,
+      'totals' => invoice_totals($rechnung, $rPosten),
+      'seenOnList' => ['invoice' => [(int) $m[1]]],
+    ]);
+  }
+
+  // Posten ändern. Die Nummer nicht — sie ist vergeben, und eine Lücke in der
+  // Reihe kann hinterher niemand erklären.
+  if (preg_match('~^/intern/rechnungen/(\d+)/posten$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/rechnungen');
+    $rId = (int) $m[1];
+    q('DELETE FROM sales_invoice_items WHERE invoice_id = ?', [$rId]);
+    $rSort = 0;
+    foreach ((array) ($_POST['label'] ?? []) as $rI => $rLabel) {
+      $rLabel = trim((string) $rLabel);
+      if ($rLabel === '') continue;
+      $rBetrag = price_to_cents((string) (($_POST['amount'] ?? [])[$rI] ?? '')) ?? 0;
+      q('INSERT INTO sales_invoice_items (invoice_id, label, amount_cents, sort) VALUES (?,?,?,?)',
+        [$rId, mb_substr($rLabel, 0, 190), (int) $rBetrag, ++$rSort]);
+    }
+    $rZeile = row('SELECT * FROM sales_invoices WHERE id = ?', [$rId]);
+    $rS = invoice_totals($rZeile, invoice_items($rId));
+    q('UPDATE sales_invoices SET net_cents = ?, vat_cents = ?, total_cents = ?, notes = ? WHERE id = ?',
+      [$rS['net'], $rS['vat'], $rS['total'], trim((string) ($_POST['notes'] ?? '')), $rId]);
+    item_update('invoice', $rId, (int) $me['id']);
+    flash(t('fl_inv_saved'));
+    back('/intern/rechnungen/' . $rId);
+  }
+
+  // Stand ändern: verschickt, bezahlt — und der Barstempel.
+  if (preg_match('~^/intern/rechnungen/(\d+)/stand$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/rechnungen');
+    $rId = (int) $m[1];
+    $rStand = (string) ($_POST['status'] ?? '');
+    if (!in_array($rStand, INVOICE_STATUSES, true)) back('/intern/rechnungen/' . $rId);
+    // Bar bezahlt heißt bezahlt — alles andere wäre eine Rechnung, die als
+    // offen dasteht, obwohl das Geld im Kasten liegt.
+    $rBar = !empty($_POST['paid_cash']) ? 1 : 0;
+    if ($rBar) $rStand = 'bezahlt';
+    q('UPDATE sales_invoices SET status = ?, paid_cash = ?,
+              sent_at = CASE WHEN ? IN (\'verschickt\',\'bezahlt\') AND sent_at IS NULL THEN NOW() ELSE sent_at END,
+              paid_at = CASE WHEN ? = \'bezahlt\' THEN COALESCE(paid_at, NOW()) ELSE NULL END
+       WHERE id = ?', [$rStand, $rBar, $rStand, $rStand, $rId]);
+    item_update('invoice', $rId, (int) $me['id']);
+    flash(sprintf(t('fl_inv_status'), invoice_status_label($rStand)));
+    back('/intern/rechnungen/' . $rId);
+  }
+
+  if (preg_match('~^/intern/rechnungen/(\d+)/druck$~', $path, $m) && $method === 'GET') {
+    $rechnung = row('SELECT r.*, p.name AS promoter_name, p.contact_name, p.street, p.postcode, p.city,
+                            e.title AS event_title, e.date AS event_date
+                     FROM sales_invoices r
+                     LEFT JOIN promoters p ON p.id = r.promoter_id
+                     LEFT JOIN events e ON e.id = r.event_id
+                     WHERE r.id = ?', [$m[1]]);
+    if (!$rechnung) { http_response_code(404); view('404', ['title' => t('inv_out_title')]); }
+    $rPosten = invoice_items((int) $m[1]);
+    view('intern/rechnung_print', [
+      'title' => $rechnung['invoice_no'],
+      'invoice' => $rechnung,
+      'items' => $rPosten,
+      'totals' => invoice_totals($rechnung, $rPosten),
+    ]);
+  }
+
   // Veranstalter pflegen — die Liste lebt bei den Verträgen, sie hat sonst
   // keinen Ort und wäre als eigener Menüpunkt eine leere Seite.
   if ($path === '/intern/vertraege/veranstalter' && $method === 'POST') {
