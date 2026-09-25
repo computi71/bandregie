@@ -362,8 +362,12 @@ function contract_blocks_rohtext(array $blockIds): string {
     $paragraf++;
     $punkte = [];
     // Ein einzelner Punkt braucht kein „a)" — das sieht nach abgeschnitten aus.
+    // Bei mehreren rücken die Folgezeilen unter den Buchstaben ein, sonst
+    // steht ein mehrzeiliger Punkt am Rand und sieht aus wie ein neuer.
     foreach ($drin as $i => $text) {
-      $punkte[] = count($drin) > 1 ? contract_block_marker($i) . $text : $text;
+      $punkte[] = count($drin) > 1
+        ? contract_block_marker($i) . str_replace("\n", "\n   ", $text)
+        : $text;
     }
     $teile[] = '§ ' . $paragraf . ' ' . t($g['title']) . "\n" . implode("\n", $punkte);
   }
