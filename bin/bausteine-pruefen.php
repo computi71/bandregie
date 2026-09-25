@@ -72,11 +72,12 @@ foreach ($satzweise as $name => $satz) {
 }
 
 echo PHP_EOL, '— Auswahl —', PHP_EOL;
-$entwurf = (int) (row("SELECT id FROM contracts WHERE status = 'entwurf' ORDER BY id DESC LIMIT 1")['id'] ?? 0);
-if ($entwurf === 0) {
-  echo '  (kein Entwurf vorhanden — Auswahl ungeprüft)', PHP_EOL;
-} else {
-  $vorher = contract_block_ids($entwurf);
+// Lieber ein eigener Wegwerf-Entwurf als der erstbeste echte: Die Prüfung
+// schreibt an der Auswahl herum, und ein halbfertiger Vertrag, an dem gerade
+// jemand sitzt, ist der falsche Ort dafür.
+q("INSERT INTO contracts (contract_date, status, body) VALUES (CURDATE(), 'entwurf', '')");
+$entwurf = (int) $db->lastInsertId();
+try {
 
   $gagenarten = array_filter([$id('gage_fix'), $id('gage_anteil'), $id('gage_mix')]);
   contract_blocks_set($entwurf, $gagenarten);
@@ -97,8 +98,12 @@ if ($entwurf === 0) {
   $pruef('die Künstlersozialabgabe lässt sich nicht abwählen', str_contains($karg, 'Künstlersozialabgabe'));
   $pruef('im fertigen Vertrag steht keine geschweifte Klammer mehr', !preg_match('~[{}]~', $karg));
 
-  contract_blocks_set($entwurf, $vorher);
-  $pruef('Testentwurf wieder hergestellt', contract_block_ids($entwurf) == $vorher);
+} finally {
+  // Auch wenn oben etwas geworfen hat: Der Wegwerf-Entwurf verschwindet.
+  q('DELETE FROM contract_block_use WHERE contract_id = ?', [$entwurf]);
+  q('DELETE FROM contracts WHERE id = ?', [$entwurf]);
+  $pruef('Wegwerf-Entwurf wieder entfernt',
+    row('SELECT id FROM contracts WHERE id = ?', [$entwurf]) === null);
 }
 
 echo PHP_EOL, $fehler === 0 ? 'Alles grün.' : "$fehler Punkte offen.", PHP_EOL;
