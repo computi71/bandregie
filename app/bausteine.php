@@ -85,23 +85,23 @@ const CONTRACT_BLOCK_SEED = [
    'hinweis' => 'Nur nötig, wenn die Veranstaltung in Sets geteilt ist. Sonst reicht die Spielzeit im Gegenstand.'],
 
   // ---------- § Gage und Kosten ----------
-  ['bkey' => 'gage_fix', 'gruppe' => 'gage', 'wahl' => 'gage_art', 'an' => 1,
+  ['bkey' => 'gage_fix', 'gruppe' => 'gage', 'wahl' => 'Gage', 'an' => 1,
    'label' => 'Festgage',
    'body' => 'Der Veranstalter zahlt dem Künstler für das Gastspiel eine Festgage von {gage}. Damit sind alle Leistungen des Künstlers nach diesem Vertrag abgegolten, soweit nachstehend nichts anderes vereinbart ist.'],
 
-  ['bkey' => 'gage_anteil', 'gruppe' => 'gage', 'wahl' => 'gage_art',
+  ['bkey' => 'gage_anteil', 'gruppe' => 'gage', 'wahl' => 'Gage',
    'label' => 'Beteiligung an den Eintrittsgeldern',
    'body' => 'Der Veranstalter zahlt dem Künstler einen Anteil von ____ % der Eintrittsgelder; maßgeblich sind die Einnahmen nach Abzug der Umsatzsteuer. Der Eintritt beträgt ____ Euro, ermäßigt ____ Euro. Der Veranstalter legt dem Künstler unmittelbar nach der Veranstaltung eine Abrechnung der verkauften Karten vor.'],
 
-  ['bkey' => 'gage_mix', 'gruppe' => 'gage', 'wahl' => 'gage_art',
+  ['bkey' => 'gage_mix', 'gruppe' => 'gage', 'wahl' => 'Gage',
    'label' => 'Mindestgage plus Beteiligung',
    'body' => 'Der Veranstalter zahlt dem Künstler eine Mindestgage von {gage}. Übersteigt ein Anteil von ____ % der Eintrittsgelder diesen Betrag, erhält der Künstler statt der Mindestgage diesen Anteil. Die Abrechnung der verkauften Karten legt der Veranstalter unmittelbar nach der Veranstaltung vor.'],
 
-  ['bkey' => 'zahlung_bar', 'gruppe' => 'gage', 'wahl' => 'zahlung', 'an' => 1,
+  ['bkey' => 'zahlung_bar', 'gruppe' => 'gage', 'wahl' => 'Zahlung', 'an' => 1,
    'label' => 'Zahlung: bar am Abend',
    'body' => 'Die Gage wird im Anschluss an den Auftritt in bar gegen Quittung ausgezahlt.'],
 
-  ['bkey' => 'zahlung_rechnung', 'gruppe' => 'gage', 'wahl' => 'zahlung',
+  ['bkey' => 'zahlung_rechnung', 'gruppe' => 'gage', 'wahl' => 'Zahlung',
    'label' => 'Zahlung: auf Rechnung',
    'body' => 'Der Künstler stellt die Gage nach dem Auftritt in Rechnung. Der Betrag ist innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug fällig.'],
 
@@ -146,11 +146,11 @@ const CONTRACT_BLOCK_SEED = [
    'hinweis' => 'Vorsicht: Eine Vertragsstrafe, die in jedem Vertrag unverändert mitgeschickt wird, ist im Streit oft nicht durchsetzbar — sie trägt im Zweifel nur, wenn beide Seiten sie im Einzelfall wirklich ausgehandelt haben. Die beiden Absageregelungen darüber kommen ohne sie aus.'],
 
   // ---------- § Pflichten des Veranstalters ----------
-  ['bkey' => 'technik_veranstalter', 'gruppe' => 'veranstalter', 'wahl' => 'technik', 'an' => 1,
+  ['bkey' => 'technik_veranstalter', 'gruppe' => 'veranstalter', 'wahl' => 'Technik', 'an' => 1,
    'label' => 'Technik: Veranstalter stellt Anlage',
    'body' => 'Der Veranstalter stellt eine bespielbare Bühne mit ausreichender Stromversorgung sowie Beschallungs- und Lichtanlage in einem der Örtlichkeit angemessenen Umfang. Während Aufbau, Soundcheck und Auftritt ist eine Person erreichbar, die die Anlage bedienen kann.'],
 
-  ['bkey' => 'technik_band', 'gruppe' => 'veranstalter', 'wahl' => 'technik',
+  ['bkey' => 'technik_band', 'gruppe' => 'veranstalter', 'wahl' => 'Technik',
    'label' => 'Technik: Künstler bringt Anlage mit',
    'body' => 'Der Veranstalter stellt Raum und Stromversorgung. Der Künstler bringt Beschallungs- und Lichtanlage in einem der Örtlichkeit angemessenen Umfang mit. Der Veranstalter teilt dem Künstler spätestens vier Wochen vor dem Gastspiel die erwartete Besucherzahl mit und ermöglicht auf Wunsch eine Besichtigung.'],
 
