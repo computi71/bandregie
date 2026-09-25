@@ -2105,6 +2105,35 @@ function contract_full(int $id): ?array {
 }
 
 /** Der Vertragsstand je Termin, für die Terminkarte. */
+/**
+ * Zu welchem Termin liegt schon eine Rechnung? (#355)
+ *
+ * Dieselbe Form wie contract_status_by_event(): eine Abfrage fuer die ganze
+ * Liste statt einer je Karte. Das juengste gewinnt, weil auch der Vertrag es
+ * so nimmt - zwei verschiedene Antworten auf dieselbe Frage waeren schlimmer
+ * als gar keine.
+ */
+function quote_by_event(array $eventIds): array {
+  if (!$eventIds) return [];
+  $marken = implode(',', array_fill(0, count($eventIds), '?'));
+  $karte = [];
+  foreach (rows("SELECT id, event_id FROM quotes WHERE event_id IN ($marken) ORDER BY id", $eventIds) as $z) {
+    $karte[(int) $z['event_id']] = $z;   // spaetere ueberschreiben, also gewinnt das juengste
+  }
+  return $karte;
+}
+
+/**
+ * Heisst das Rechenblatt „Angebot" oder „Preisrechnung"? (#355)
+ *
+ * Im zweistufigen Weg geht es als Angebot hinaus, im einstufigen bleibt es
+ * im Haus und wird nur zur Gage im Vertrag. Dasselbe Blatt, zwei Rollen —
+ * und ein Wort, das die falsche nennt, verwirrt mehr als es benennt.
+ */
+function quote_ist_angebot(): bool {
+  return setting('contract_flow', 'direkt') === 'angebot';
+}
+
 function contract_status_by_event(array $eventIds): array {
   if (!$eventIds) return [];
   $marken = implode(',', array_fill(0, count($eventIds), '?'));
@@ -5087,6 +5116,9 @@ function event_view_data(array $events, array $me): array {
     // bekommt die Abfrage überhaupt — sonst fragt die Terminliste Zeilen
     // ab, die der Lesende nie zu Gesicht bekommt.
     'contractByEvent' => perm_allows($me, 'vertraege') ? $ohne(contract_status_by_event($ids)) : [],
+    // Und die Rechnung dazu (#355) — nur fuer die, die sie auch anlegen
+    // duerfen; wer nur zusieht, braucht den Knopf nicht.
+    'quoteByEvent' => perm_allows($me, 'angebote', 'write') ? $ohne(quote_by_event($ids)) : [],
     // Der Kartenkopf nennt den Verantwortlichen beim Namen.
     'memberNames' => array_column(rows('SELECT id, name FROM users'), 'name', 'id'),
     // Was dieses Mitglied an Terminen noch nicht gesehen hat (#321). Auch das

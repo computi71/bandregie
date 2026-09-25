@@ -3205,7 +3205,10 @@ if (str_starts_with($path, '/intern')) {
       $angebotSummen[(int) $qZeile['id']] = quote_totals($qZeile, quote_items((int) $qZeile['id']));
     }
     view('intern/angebote', [
-      'title' => t('quote_title'),
+      'title' => t(quote_ist_angebot() ? 'quote_title' : 'quote_calc_title'),
+      // Vom Termin aus vorbelegt (#355): Wer dort auf „Preis rechnen" drückt,
+      // soll den Termin nicht noch einmal aus einer Liste suchen.
+      'vorgabeEvent' => (int) ($_GET['termin'] ?? 0),
       'quotes' => $angebote,
       'unseen' => items_unseen($me, 'quote'),
       'totals' => $angebotSummen,
