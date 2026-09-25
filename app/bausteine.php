@@ -369,7 +369,12 @@ function contract_blocks_rohtext(array $blockIds): string {
         ? contract_block_marker($i) . str_replace("\n", "\n   ", $text)
         : $text;
     }
-    $teile[] = '§ ' . $paragraf . ' ' . t($g['title']) . "\n" . implode("\n", $punkte);
+    // Die Überschrift kommt in der Sprache der Band, nicht in der des gerade
+    // Angemeldeten. Sonst bekäme derselbe Bausteinsatz je nachdem, wer den
+    // Vertrag anlegt, andere Paragraphenüberschriften — und der Veranstalter
+    // sähe an einem Blatt, wer in der Band welche Sprache eingestellt hat.
+    $teile[] = '§ ' . $paragraf . ' ' . push_t(default_lang(), $g['title'])
+      . "\n" . implode("\n", $punkte);
   }
 
   return implode("\n\n", $teile);
