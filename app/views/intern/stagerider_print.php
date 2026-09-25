@@ -42,7 +42,10 @@ $blocks = [
 </head>
 <body>
 <?php // Für einen Gast (#294) führt „Zurück" auf seine Seite, nicht in den Bandbereich.
-      $zurueckUrl = $zurueckUrl ?? '/intern/stagerider'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+      // Die Sprachwahl bekommt er nicht: Seine Route wertet ?lang= nicht aus,
+      // und ein Umschalter, der nichts tut, ist schlimmer als keiner (#363).
+      $zurueckUrl = $zurueckUrl ?? '/intern/stagerider';
+      require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
   <div class="head-row">

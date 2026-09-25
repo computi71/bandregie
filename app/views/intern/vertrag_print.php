@@ -25,7 +25,16 @@ $printDoc = 'contract';
   </style>
 </head>
 <body>
-<?php $zurueckUrl = '/intern/vertraege/' . (int) $contract['id']; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php
+// Die Sprachwahl schaltet hier nur den Rahmen um — Überschriften, Datum,
+// Beschriftungen. Die Klauseln sind Banddaten und stehen in der Sprache, in
+// der sie geschrieben wurden (#360). Das muss dastehen, sonst schickt jemand
+// einen Vertrag mit niederländischem Kopf über deutschen Klauseln hinaus und
+// merkt es erst beim Veranstalter.
+$zurueckUrl = '/intern/vertraege/' . (int) $contract['id'];
+$sprachwahl = true;
+$leisteExtra = '<span class="muted">' . e(t('doclang_contract_note')) . '</span>';
+require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
   <div class="head-row">

@@ -34,7 +34,8 @@ $zeigtRabatt = !empty($quote['discount_show']) && $sums['discount'] > 0;
   </style>
 </head>
 <body>
-<?php $zurueckUrl = '/intern/angebote/' . (int) $quote['id']; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php $zurueckUrl = '/intern/angebote/' . (int) $quote['id']; $sprachwahl = true;
+      require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
   <div class="head-row">

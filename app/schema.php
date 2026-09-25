@@ -410,6 +410,36 @@ $tables = [
     INDEX idx_event (event_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+  // Die Bausteine, aus denen sich ein Vertrag zusammensetzt (#359).
+  //
+  // bkey ist der Schlüssel des mitgelieferten Satzes und eindeutig, damit ein
+  // Update einen Baustein wiederfindet, statt ihn ein zweites Mal anzulegen.
+  // Selbst angelegte Bausteine bekommen einen leeren bkey — deshalb erlaubt
+  // der Index mehrere davon und NULL statt Leerstring.
+  "CREATE TABLE IF NOT EXISTS contract_blocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bkey VARCHAR(40) NULL,
+    gruppe VARCHAR(20) NOT NULL DEFAULT 'veranstalter',
+    sort INT NOT NULL DEFAULT 0,
+    wahl VARCHAR(20) NOT NULL DEFAULT '',
+    label VARCHAR(120) NOT NULL DEFAULT '',
+    body TEXT,
+    hinweis VARCHAR(500) NOT NULL DEFAULT '',
+    fest TINYINT(1) NOT NULL DEFAULT 0,
+    default_on TINYINT(1) NOT NULL DEFAULT 0,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_bkey (bkey)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  // Welche Bausteine dieser Vertrag benutzt. Der Wortlaut bleibt trotzdem in
+  // contracts.body eingefroren: Die Auswahl sagt, woraus er entstanden ist,
+  // nicht, wie er heute aussähe.
+  "CREATE TABLE IF NOT EXISTS contract_block_use (
+    contract_id INT NOT NULL,
+    block_id INT NOT NULL,
+    PRIMARY KEY (contract_id, block_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   // Ein Angebot friert seine Posten ein (#302): Ändert die Band später ihre
   // Preisliste, darf ein verschicktes Angebot nicht plötzlich anders aussehen.
   // Deshalb stehen die gerechneten Zeilen als Zeilen in der Datenbank und
@@ -1318,7 +1348,7 @@ $defaults = [
   // Es sagt, von wem das Blatt ist. Das Wasserzeichen nur auf der Setliste —
   // Steuerübersicht und GEMA-Meldung sind Formulare, dort stört ein Bild
   // hinter den Zahlen. Angebot und Vertrag tragen es, sobald es sie gibt.
-  'print_logo_docs' => 'setlist,rider,tax,gema,quote,help', 'print_watermark_docs' => 'setlist,quote',
+  'print_logo_docs' => 'setlist,rider,tax,gema,quote,contract,invoice,help', 'print_watermark_docs' => 'setlist,quote,contract,invoice',
   // Preisliste der Kalkulation (#302), alles in Cent. Leer ausgeliefert:
   // Was eine Band verlangt, weiß nur sie selbst, und eine erfundene Zahl
   // im Angebot wäre schlimmer als ein leeres Feld.
@@ -1701,21 +1731,37 @@ if (setting('migr_push_abwahl') === '') {
   set_setting('migr_push_abwahl', '1');
 }
 
+// Die Rechnung ins Corporate Design (#358).
+//
+// print_logo_docs und print_watermark_docs wurden geseedet, als es die
+// Rechnung noch nicht gab. Sie druckte deshalb nackt, waehrend Vertrag und
+// Angebot daneben Logo und Wasserzeichen tragen - und sie ist das Blatt, das
+// zu jemandem geht, der Geld ueberweist.
+//
+// Nur dort ergaenzt, wo der Vertrag schon drinsteht: Wer die Liste selbst
+// zusammengestellt und den Vertrag herausgenommen hat, meinte das so.
+if (setting('migr_rechnung_branding') === '') {
+  foreach (['print_logo_docs', 'print_watermark_docs'] as $liste) {
+    $docs = array_map('trim', explode(',', (string) setting($liste)));
+    if (!in_array('contract', $docs, true) || in_array('invoice', $docs, true)) continue;
+    $docs[] = 'invoice';
+    set_setting($liste, implode(',', array_filter($docs)));
+  }
+  set_setting('migr_rechnung_branding', '1');
+}
+
 // Maskierte Umbrueche im Vertragstext geradeziehen (#357).
 //
 // Die mitgelieferte Vorlage stand in einfachen Anfuehrungszeichen. Darin ist
 // die Folge Backslash-n kein Umbruch, sondern zwei Zeichen. Wer die Vorlage
-// uebernommen hat, traegt sie in der Einstellung; jeder daraus gebildete
-// Vertrag traegt sie eingefroren im Wortlaut - und auf dem gedruckten Blatt.
+// uebernommen hatte, trug sie in seiner eigenen Vorlage; jeder daraus
+// gebildete Vertrag traegt sie eingefroren im Wortlaut - und auf dem
+// gedruckten Blatt (#357).
 //
 // Ersetzt wird nur, wo die Folge wirklich steht. Ein Backslash-n in der Prosa
 // eines Gastspielvertrags schreibt niemand mit Absicht.
 if (setting('migr_vertrag_umbrueche') === '') {
   $literal = chr(92) . 'n';
-  $tpl = (string) setting('contract_template');
-  if ($tpl !== '' && str_contains($tpl, $literal)) {
-    set_setting('contract_template', str_replace($literal, chr(10), $tpl));
-  }
   foreach (rows('SELECT id, body FROM contracts') as $cZeile) {
     if (!str_contains((string) $cZeile['body'], $literal)) continue;
     q('UPDATE contracts SET body = ? WHERE id = ?',
@@ -1724,9 +1770,60 @@ if (setting('migr_vertrag_umbrueche') === '') {
   set_setting('migr_vertrag_umbrueche', '1');
 }
 
+// Dieselbe Reparatur fuer die eigene Vorlage der Band - beim ersten Anlauf
+// griff sie ins Leere.
+//
+// Dort stand setting('contract_template'). So heisst die Einstellung nicht:
+// Die eigene Vorlage liegt in contract_text. setting() lieferte also immer
+// leer, und ausgerechnet der Fall, fuer den die Reparatur gedacht war, blieb
+// ungerepariert. Die eingefrorenen Vertragstexte oben wurden richtig
+// behandelt, nur die Vorlage nicht.
+//
+// Eine eigene Marke, weil die alte ueberall schon gesetzt ist. Eine
+// Reparatur, die nach ihrer Korrektur nicht mehr laufen kann, repariert
+// nichts. Auf unseren vier Anlagen ist contract_text leer, dort gibt es also
+// nichts zu tun - aber die Anwendung laeuft nicht nur bei uns.
+if (setting('migr_vertrag_umbrueche_vorlage') === '') {
+  $literal = chr(92) . 'n';
+  $eigene = (string) setting('contract_text');
+  if ($eigene !== '' && str_contains($eigene, $literal)) {
+    set_setting('contract_text', str_replace($literal, chr(10), $eigene));
+  }
+  set_setting('migr_vertrag_umbrueche_vorlage', '1');
+}
+
+// Die Vertragsbausteine (#359).
+//
+// Der mitgelieferte Satz kommt bei jedem Schemalauf nach, damit eine neue
+// Version weitere Bausteine mitbringen kann. Geaendert wird dabei nichts, was
+// der Band gehoert — contract_blocks_seed() laesst Wortlaut und Vorauswahl in
+// Ruhe, sobald ein Baustein einmal steht.
+contract_blocks_seed();
+
+// Laufende Entwuerfe bekommen die Vorauswahl, damit die Haekchenliste nicht
+// leer dasteht. Der eingefrorene Wortlaut bleibt unangetastet: Er aendert sich
+// erst, wenn jemand die Auswahl wirklich anfasst. Verschickte und
+// unterschriebene Vertraege bleiben ganz aussen vor - bei ihnen waere eine
+// Auswahl eine Behauptung darueber, woraus sie entstanden sind.
+if (setting('migr_vertrag_bausteine') === '') {
+  $vBVorauswahl = contract_blocks_default();
+  foreach (rows("SELECT id FROM contracts WHERE status = 'entwurf'") as $vBZeile) {
+    contract_blocks_set((int) $vBZeile['id'], $vBVorauswahl);
+  }
+  set_setting('migr_vertrag_bausteine', '1');
+}
+
 // Der Haken „Rechnung benoetigt" am Termin (#356). Bar bezahlte Gigs, bei
 // denen niemand ein Papier will, bleiben ohne — deshalb ein Haken und nicht
 // „jeder Gig mit Vertrag".
+// Die Sprache des Veranstalters (#363). Leer heißt: die der Band.
+//
+// Sie steht am Empfaenger und nicht beim angemeldeten Mitglied, weil ein Blatt
+// fuer den Veranstalter nicht davon abhaengen darf, wer es ausdruckt.
+if (!column_exists('promoters', 'lang')) {
+  $db->exec("ALTER TABLE promoters ADD COLUMN lang VARCHAR(5) NOT NULL DEFAULT ''");
+}
+
 if (!column_exists('events', 'needs_invoice')) {
   $db->exec("ALTER TABLE events ADD COLUMN needs_invoice TINYINT(1) NOT NULL DEFAULT 0");
 }

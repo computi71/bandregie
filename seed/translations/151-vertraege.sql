@@ -62,57 +62,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','topic_guests_none','Nobody from outside.'),
 ('en','fl_topic_guest_added','%s can see this topic now.'),
 ('en','fl_topic_guest_removed','%s can no longer see this topic.'),
-('en','contract_template','PERFORMANCE AGREEMENT
-
-between
-{veranstalter}
-{veranstalter_anschrift}
-— the promoter —
-
-and
-{band}
-— the artist —
-
-1. Subject
-The promoter engages the artist for the following performance:
-a) Venue: {ort}
-b) Date: {datum}
-c) Playing time: {spielzeit}
-d) The room is open for load-in and soundcheck from: {einlass}
-
-2. Fee
-a) The promoter pays the artist a fixed fee of {gage}.
-b) Payable before the performance in cash or against invoice.
-c) Music rights fees and any social security levy for artists are borne by the
-   promoter.
-d) If the performance is cancelled for a reason within the promoter''s control,
-   the fee remains due. If it is cancelled for a reason within the artist''s
-   control, the claim lapses. Illness is to be reported without delay; both the
-   duty to perform and the duty to pay then lapse.
-
-3. The promoter''s obligations
-a) A stage that can be played on, with power.
-b) The attached stage rider forms part of this agreement.
-c) Recordings of the performance require the artist''s consent.
-d) A lockable dressing room and drinks in reasonable quantity.
-
-4. The artist''s obligations and rights
-a) The artist arrives punctually at the agreed times.
-b) The artist is free in the design of the programme.
-
-5. Severability
-Should any provision be invalid, the remaining provisions stay in force.
-
-6. Final provisions
-There are no verbal side agreements. Changes require written form. This
-agreement does not create an employment relationship.
-
-
-Place, date: ......................        Place, date: {heute}
-
-
-__________________________                __________________________
-The promoter                              The artist'),
 ('nl','inav_vertraege','Contracten'),
 ('nl','contract_title','Contracten'),
 ('nl','contract_sheet_title','Optredensovereenkomst'),
@@ -149,56 +98,6 @@ The promoter                              The artist'),
 ('nl','topic_guest_remove','Weer verwijderen'),
 ('nl','topic_guests_none','Niemand van buiten.'),
 ('nl','set_contract_title','Contractsjabloon'),
-('nl','contract_template','OPTREDENSOVEREENKOMST
-
-tussen
-{veranstalter}
-{veranstalter_anschrift}
-— de organisator —
-
-en
-{band}
-— de artiest —
-
-1. Onderwerp
-De organisator engageert de artiest voor het volgende optreden:
-a) Locatie: {ort}
-b) Datum: {datum}
-c) Speeltijd: {spielzeit}
-d) De ruimte is open voor opbouw en soundcheck vanaf: {einlass}
-
-2. Gage
-a) De organisator betaalt de artiest een vaste gage van {gage}.
-b) Te voldoen voor het optreden, contant of op factuur.
-c) Kosten voor muziekrechten en eventuele sociale heffingen voor artiesten zijn
-   voor rekening van de organisator.
-d) Vervalt het optreden door een oorzaak bij de organisator, dan blijft de gage
-   verschuldigd. Ligt de oorzaak bij de artiest, dan vervalt de aanspraak. Bij
-   ziekte wordt onverwijld bericht; beide verplichtingen vervallen dan.
-
-3. Verplichtingen van de organisator
-a) Een bespeelbaar podium met stroomvoorziening.
-b) De bijgevoegde stagerider maakt deel uit van deze overeenkomst.
-c) Opnamen van het optreden vereisen toestemming van de artiest.
-d) Een afsluitbare kleedruimte en drinken in redelijke hoeveelheid.
-
-4. Verplichtingen en rechten van de artiest
-a) De artiest is op de afgesproken tijden op tijd aanwezig.
-b) De artiest is vrij in de samenstelling van het programma.
-
-5. Deelbaarheid
-Is een bepaling ongeldig, dan blijven de overige bepalingen van kracht.
-
-6. Slotbepalingen
-Er zijn geen mondelinge nevenafspraken. Wijzigingen vereisen de schriftelijke
-vorm. Deze overeenkomst schept geen arbeidsverhouding.
-
-
-Plaats, datum: ....................        Plaats, datum: {heute}
-
-
-__________________________                __________________________
-De organisator                            De artiest'),
 ('fr','inav_vertraege','Contrats'),
 ('fr','contract_title','Contrats'),
 ('fr','contract_sheet_title','Contrat de représentation'),
@@ -235,57 +134,6 @@ De organisator                            De artiest'),
 ('fr','topic_guest_remove','Retirer'),
 ('fr','topic_guests_none','Personne de l’extérieur.'),
 ('fr','set_contract_title','Modèle de contrat'),
-('fr','contract_template','CONTRAT DE REPRÉSENTATION
-
-entre
-{veranstalter}
-{veranstalter_anschrift}
-— l''organisateur —
-
-et
-{band}
-— l''artiste —
-
-1. Objet
-L''organisateur engage l''artiste pour la représentation suivante :
-a) Lieu : {ort}
-b) Date : {datum}
-c) Durée de jeu : {spielzeit}
-d) La salle est ouverte pour le montage et les balances à partir de : {einlass}
-
-2. Cachet
-a) L''organisateur verse à l''artiste un cachet forfaitaire de {gage}.
-b) Payable avant la représentation, en espèces ou sur facture.
-c) Les droits d''auteur musicaux et les éventuelles cotisations sociales des
-   artistes sont à la charge de l''organisateur.
-d) Si la représentation est annulée pour un motif relevant de l''organisateur,
-   le cachet reste dû. Si elle est annulée pour un motif relevant de l''artiste,
-   le droit s''éteint. En cas de maladie, information sans délai ; les deux
-   obligations s''éteignent alors.
-
-3. Obligations de l''organisateur
-a) Une scène praticable avec alimentation électrique.
-b) La fiche technique jointe fait partie du présent contrat.
-c) Tout enregistrement de la représentation requiert l''accord de l''artiste.
-d) Une loge fermant à clé et des boissons en quantité raisonnable.
-
-4. Obligations et droits de l''artiste
-a) L''artiste se présente ponctuellement aux heures convenues.
-b) L''artiste est libre dans la conception de son programme.
-
-5. Clause de sauvegarde
-Si une disposition est nulle, les autres dispositions restent en vigueur.
-
-6. Dispositions finales
-Il n''existe aucun accord verbal annexe. Les modifications requièrent la forme
-écrite. Le présent contrat ne crée pas de relation de travail.
-
-
-Lieu, date : ......................        Lieu, date : {heute}
-
-
-__________________________                __________________________
-L''organisateur                            L''artiste'),
 ('es','inav_vertraege','Contratos'),
 ('es','contract_title','Contratos'),
 ('es','contract_sheet_title','Contrato de actuación'),
@@ -322,56 +170,6 @@ L''organisateur                            L''artiste'),
 ('es','topic_guest_remove','Quitar el acceso'),
 ('es','topic_guests_none','Nadie de fuera.'),
 ('es','set_contract_title','Plantilla de contrato'),
-('es','contract_template','CONTRATO DE ACTUACIÓN
-
-entre
-{veranstalter}
-{veranstalter_anschrift}
-— el organizador —
-
-y
-{band}
-— el artista —
-
-1. Objeto
-El organizador contrata al artista para la siguiente actuación:
-a) Lugar: {ort}
-b) Fecha: {datum}
-c) Tiempo de actuación: {spielzeit}
-d) La sala está abierta para montaje y prueba de sonido desde: {einlass}
-
-2. Caché
-a) El organizador paga al artista un caché fijo de {gage}.
-b) Pagadero antes de la actuación, en efectivo o contra factura.
-c) Los derechos de autor musicales y las eventuales cotizaciones sociales de
-   artistas corren a cargo del organizador.
-d) Si la actuación se cancela por causa del organizador, el caché sigue
-   debiéndose. Si se cancela por causa del artista, decae el derecho. En caso de
-   enfermedad se avisará sin demora; decaen entonces ambas obligaciones.
-
-3. Obligaciones del organizador
-a) Un escenario practicable con suministro eléctrico.
-b) El rider técnico adjunto forma parte de este contrato.
-c) Las grabaciones de la actuación requieren el consentimiento del artista.
-d) Un camerino con llave y bebidas en cantidad razonable.
-
-4. Obligaciones y derechos del artista
-a) El artista se presenta puntualmente a las horas acordadas.
-b) El artista es libre en la composición de su programa.
-
-5. Cláusula de salvedad
-Si alguna disposición fuera nula, las demás siguen en vigor.
-
-6. Disposiciones finales
-No existen acuerdos verbales adicionales. Las modificaciones requieren forma
-escrita. Este contrato no crea una relación laboral.
-
-
-Lugar, fecha: .....................        Lugar, fecha: {heute}
-
-
-__________________________                __________________________
-El organizador                            El artista'),
 ('it','inav_vertraege','Contratti'),
 ('it','contract_title','Contratti'),
 ('it','contract_sheet_title','Contratto di esibizione'),
@@ -407,55 +205,5 @@ El organizador                            El artista'),
 ('it','topic_guest_add','Far entrare'),
 ('it','topic_guest_remove','Togliere'),
 ('it','topic_guests_none','Nessuno dall’esterno.'),
-('it','set_contract_title','Modello di contratto'),
-('it','contract_template','CONTRATTO DI ESIBIZIONE
-
-tra
-{veranstalter}
-{veranstalter_anschrift}
-— l''organizzatore —
-
-e
-{band}
-— l''artista —
-
-1. Oggetto
-L''organizzatore ingaggia l''artista per la seguente esibizione:
-a) Luogo: {ort}
-b) Data: {datum}
-c) Tempo di esecuzione: {spielzeit}
-d) La sala è aperta per montaggio e prova del suono dalle: {einlass}
-
-2. Cachet
-a) L''organizzatore versa all''artista un cachet fisso di {gage}.
-b) Pagabile prima dell''esibizione, in contanti o dietro fattura.
-c) I diritti musicali e gli eventuali contributi previdenziali per gli artisti
-   sono a carico dell''organizzatore.
-d) Se l''esibizione salta per causa dell''organizzatore, il cachet resta dovuto.
-   Se salta per causa dell''artista, il diritto decade. In caso di malattia si
-   informa senza indugio; decadono allora entrambi gli obblighi.
-
-3. Obblighi dell''organizzatore
-a) Un palco agibile con alimentazione elettrica.
-b) La scheda tecnica allegata è parte di questo contratto.
-c) Le riprese dell''esibizione richiedono il consenso dell''artista.
-d) Un camerino chiudibile e bevande in quantità ragionevole.
-
-4. Obblighi e diritti dell''artista
-a) L''artista si presenta puntuale agli orari concordati.
-b) L''artista è libero nella composizione del programma.
-
-5. Clausola di salvaguardia
-Se una disposizione è nulla, le restanti restano valide.
-
-6. Disposizioni finali
-Non esistono accordi verbali accessori. Le modifiche richiedono la forma
-scritta. Questo contratto non instaura un rapporto di lavoro.
-
-
-Luogo, data: ......................        Luogo, data: {heute}
-
-
-__________________________                __________________________
-L''organizzatore                           L''artista')
+('it','set_contract_title','Modello di contratto')
 ON DUPLICATE KEY UPDATE value = value;

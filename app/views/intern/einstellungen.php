@@ -204,13 +204,18 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <summary><?= e(t('set_contract_title')) ?></summary>
   <p class="muted small"><?= e(t('set_contract_intro')) ?></p>
   <p class="warn small">⚖ <?= e(t('set_contract_legal')) ?></p>
+  <?php // Der Regelweg sind die Bausteine (#359). Das Textfeld darunter bleibt
+        // für Bands, die einen fertigen eigenen Vertrag haben — was darin
+        // steht, hat Vorrang, und dann rühren die Bausteine nichts mehr an. ?>
+  <p class="row-buttons">
+    <a class="btn btn-small" href="/intern/bausteine">🧩 <?= e(t('cb_edit')) ?></a>
+    <span class="muted small"><?= e(t('cb_intro')) ?></span>
+  </p>
   <form method="post" action="/intern/einstellungen/vertrag" class="form-grid"><?= csrf_field() ?>
     <label class="span2"><?= e(t('contract_body')) ?>
       <textarea name="contract_text" rows="20"><?= e(contract_template()) ?></textarea>
       <span class="muted small"><?= e(t('set_contract_fields')) ?></span></label>
-    <p class="muted small span2"><?= e(implode('  ', array_keys(contract_values([
-        'play_from' => '', 'play_to' => '', 'get_in' => '', 'fee_cents' => 0, 'contract_no' => '',
-      ])))) ?></p>
+    <p class="muted small span2"><?= e(implode('  ', contract_placeholders())) ?></p>
     <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
   </form>
 </details>

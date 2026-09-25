@@ -56,6 +56,7 @@ require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/qr.php';
 require_once __DIR__ . '/onedrive.php';
 require_once __DIR__ . '/rechnung.php';
+require_once __DIR__ . '/bausteine.php';
 
 // Die häufigste Hürde bei der Ersteinrichtung ist ein Tippfehler in den
 // Zugangsdaten. Der Rohfehler von PDO nennt Benutzernamen und Dateipfade und
@@ -198,7 +199,12 @@ const PERM_MODULES = [
   // Verträge stehen neben den Angeboten und doch für sich: Wer rechnen darf,
   // muss nicht unterschreiben dürfen, und ein Bookingagent von außen bekommt
   // genau diese beiden und sonst nichts (#303, #308).
-  'vertraege'     => ['/intern/vertraege'],
+  // Die Bausteine liegen beim Vertrag und nicht bei den Einstellungen: Wer
+  // Verträge schreiben darf, formuliert auch die Klauseln. Nicht jeder mit
+  // diesem Recht allerdings — ein Bookingagent von außen hat Schreibrecht auf
+  // seine Verträge, soll aber nicht die Standardklauseln der Band umschreiben.
+  // Das prüft die Route zusätzlich (#359).
+  'vertraege'     => ['/intern/vertraege', '/intern/bausteine'],
   // Die Rechnung geht hinaus und nennt Betraege — dasselbe Vertrauen wie beim
   // Vertrag, aber eine eigene Entscheidung: Wer verhandeln darf, muss nicht
   // abrechnen duerfen (#356).
@@ -1656,6 +1662,25 @@ function lang_override(?string $lang = null, bool $setzen = true): ?string {
   return $aktiv;
 }
 
+/**
+ * In welcher Sprache geht ein Blatt hinaus? (#363)
+ *
+ * Reihenfolge: was in der Druckleiste gewählt wurde, sonst die Sprache des
+ * Empfängers, sonst die der Band. Die Sprache des Angemeldeten kommt bewusst
+ * nicht vor — ein Vertrag für denselben Veranstalter soll nicht anders
+ * beschriftet herauskommen, je nachdem wer auf Drucken drückt.
+ *
+ * Geprüft wird gegen LANGS und nicht gegen enabled_langs(): Welche Sprachen
+ * die Band für sich selbst eingeschaltet hat, geht den Veranstalter nichts an,
+ * und die Übersetzungen liegen ohnehin für alle mitgelieferten Sprachen bereit.
+ */
+function doc_lang(?string $vomEmpfaenger = null): string {
+  foreach ([(string) ($_GET['lang'] ?? ''), (string) $vomEmpfaenger] as $kandidat) {
+    if ($kandidat !== '' && array_key_exists($kandidat, LANGS)) return $kandidat;
+  }
+  return default_lang();
+}
+
 function current_lang(): string {
   $fest = lang_override(null, false);
   if ($fest !== null) return $fest;
@@ -2089,15 +2114,44 @@ function contract_values(array $vertrag): array {
   ];
 }
 
-/** Die Vorlage: was die Band eingetragen hat, sonst die mitgelieferte. */
-function contract_template(): string {
-  $eigen = (string) setting('contract_text');
-  return trim($eigen) !== '' ? $eigen : t('contract_template');
+/**
+ * Die Platzhalter, die in einem Vertragstext stehen dürfen.
+ *
+ * Aus contract_values() selbst gezogen und nicht danebengeschrieben: Eine
+ * Liste, die man von Hand pflegt, nennt früher oder später einen Platzhalter,
+ * den es nicht mehr gibt — und den setzt dann niemand ein.
+ */
+function contract_placeholders(): array {
+  return array_keys(contract_values([
+    'play_from' => '', 'play_to' => '', 'get_in' => '', 'fee_cents' => 0, 'contract_no' => '',
+  ]));
 }
 
-/** Aus der Vorlage wird der Wortlaut dieses Vertrages. */
+/**
+ * Die Vorlage: was die Band eingetragen hat, sonst der Satz aus Bausteinen.
+ *
+ * Die Platzhalter bleiben stehen — das ist die Vorlage, nicht der Vertrag.
+ * Gezeigt wird sie in den Einstellungen, damit man sieht, was hinausginge.
+ */
+function contract_template(): string {
+  $eigen = (string) setting('contract_text');
+  if (trim($eigen) !== '') return $eigen;
+  return contract_blocks_rohtext(contract_blocks_default());
+}
+
+/**
+ * Aus den Bausteinen dieses Vertrages wird sein Wortlaut.
+ *
+ * Hat die Band eigenen Text eingetragen, gilt der — wer sich einen eigenen
+ * Vertrag geschrieben hat, will ihn nicht von Bausteinen überschrieben
+ * bekommen. Sonst zählt die Auswahl am Vertrag, und wenn noch keine da ist
+ * (frisch angelegt), die Vorauswahl.
+ */
 function contract_render(array $vertrag): string {
-  return strtr(contract_template(), contract_values($vertrag));
+  $eigen = (string) setting('contract_text');
+  if (trim($eigen) !== '') return strtr($eigen, contract_values($vertrag));
+  $ids = !empty($vertrag['id']) ? contract_block_ids((int) $vertrag['id']) : [];
+  return contract_compose($vertrag, $ids ?: contract_blocks_default());
 }
 
 /** Ein Vertrag mit allem, was sein Wortlaut braucht. */
@@ -2105,6 +2159,7 @@ function contract_full(int $id): ?array {
   return row('SELECT c.*, p.name AS promoter_name, p.contact_name AS promoter_contact,
                      p.email AS promoter_email, p.street AS promoter_street,
                      p.postcode AS promoter_postcode, p.city AS promoter_city,
+                     p.lang AS promoter_lang,
                      e.title AS event_title, e.date AS event_date, ' . EVENT_PLACE_COLS . '
               FROM contracts c
               LEFT JOIN promoters p ON p.id = c.promoter_id
@@ -2912,16 +2967,60 @@ function print_logo_html(string $doc): string {
   if (!print_brand_on($doc, 'logo')) return '';
   $datei = (string) (setting('print_logo_file') ?: setting('logo_file'));
   $name = (string) setting('band_name');
-  $inhalt = $datei !== ''
+  $inhalt = print_brand_datei_da($datei)
     ? '<img src="/uploads/' . e($datei) . '" alt="' . e($name) . '">'
     : '<span class="bandname">' . e($name) . '</span>';
   return '<div class="logo">' . $inhalt . '</div>';
 }
 
+/**
+ * Gibt es die Bilddatei wirklich? (#364)
+ *
+ * Die Einstellung merkt nicht, wenn die Datei verschwindet — eine
+ * zurückgespielte Sicherung ohne data/uploads reicht. Ohne diese Prüfung
+ * stünde im Vertrag beim Veranstalter ein kaputtes Bildsymbol, und ein
+ * Blatt mit dem Bandnamen darauf sieht gewollt aus, eines mit einem
+ * kaputten Bild sieht verwahrlost aus.
+ *
+ * basename(), damit ein ../ in der Einstellung nicht aus dem Ordner führt.
+ */
+function print_brand_datei_da(string $datei): bool {
+  return $datei !== '' && $datei === basename($datei) && is_file(UPLOADS_DIR . '/' . $datei);
+}
+
+/**
+ * Die Sprachumschaltung für die Druckleiste (#363).
+ *
+ * Nur ein Link je Sprache, keine Auswahlliste mit Knopf: Ein Ausdruck wird
+ * angesehen und nicht ausgefüllt, und ein Klick ist schneller als zwei.
+ *
+ * Gewählt wird nur für dieses eine Blatt. Gespeichert wird nichts — was
+ * dauerhaft gelten soll, gehört an den Veranstalter.
+ */
+function print_lang_html(): string {
+  // Die eigene Adresse ohne ein etwa schon vorhandenes lang, damit zweimaliges
+  // Umschalten nicht ?lang=nl&lang=fr ergibt.
+  $pfad = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/'), '?');
+  parse_str((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_QUERY), $frage);
+  unset($frage['lang']);
+
+  $jetzt = current_lang();
+  $teile = [];
+  foreach (LANGS as $code => $name) {
+    $ziel = $pfad . '?' . http_build_query($frage + ['lang' => $code]);
+    $teile[] = $code === $jetzt
+      ? '<strong>' . e($code) . '</strong>'
+      : '<a href="' . e($ziel) . '" title="' . e($name) . '">' . e($code) . '</a>';
+  }
+  return '<span class="sprachen">🌐 ' . implode(' ', $teile) . '</span>';
+}
+
 /** Das Wasserzeichen eines Blattes. Gehört in das Blatt, nicht davor. */
 function print_watermark_html(string $doc): string {
   $datei = (string) setting('print_watermark_file');
-  if ($datei === '' || !print_brand_on($doc, 'watermark')) return '';
+  // Fehlt die Datei, bleibt das Wasserzeichen weg — anders als beim Logo gibt
+  // es hier nichts, was an seine Stelle treten könnte (#364).
+  if (!print_brand_datei_da($datei) || !print_brand_on($doc, 'watermark')) return '';
   return '<div class="watermark"><img src="/uploads/' . e($datei) . '" alt=""></div>';
 }
 

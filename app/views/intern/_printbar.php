@@ -6,6 +6,10 @@
 // Vorher setzen:
 //   $zurueckUrl  — wohin „Zurück" führt (Pflicht)
 //   $leisteExtra — zusätzliche Bedienelemente als HTML (optional)
+//   $sprachwahl  — true, wenn die Route ?lang= wirklich auswertet (optional)
+//
+// Die Sprachwahl steht nur dort, wo sie auch wirkt (#363): Ein Umschalter, der
+// nichts tut, ist schlimmer als keiner — man glaubt, es ginge nicht anders.
 //
 // Ein echter Link, kein history.back(): Der Ausdruck öffnet sich in einem neuen
 // Tab, und dort gibt es keine Geschichte, in die man zurückgehen könnte.
@@ -35,10 +39,21 @@
   .printbar .extra label { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; font-size: 0.95rem; }
   .printbar .extra input[type="checkbox"] { width: 1.15rem; height: 1.15rem; }
   .printbar .extra select { min-height: 2.25rem; font-size: 0.95rem; }
+  /* Die Sprachkürzel sind schmal und liegen dicht beieinander — deshalb jedes
+     für sich auf Fingerbreite gebracht, sonst trifft man auf dem Telefon das
+     Nachbarkürzel. */
+  .printbar .sprachen { display: inline-flex; align-items: center; gap: 0.15rem; }
+  .printbar .sprachen a, .printbar .sprachen strong {
+    min-width: 2.75rem; min-height: 2.75rem; display: inline-flex;
+    align-items: center; justify-content: center; text-transform: uppercase;
+    font-size: 0.85rem; letter-spacing: 0.03em;
+  }
+  .printbar .sprachen strong { border: 1px solid transparent; }
   @media print { .printbar { display: none; } }
 </style>
 <div class="printbar">
   <a href="<?= e($zurueckUrl) ?>">← <?= e(t('back')) ?></a>
   <button class="drucken" data-print>🖨 <?= e(t('sl_print')) ?></button>
+  <?php if (!empty($sprachwahl)): ?><?= print_lang_html() ?><?php endif; ?>
   <?php if (!empty($leisteExtra)): ?><span class="extra"><?= $leisteExtra ?></span><?php endif; ?>
 </div>

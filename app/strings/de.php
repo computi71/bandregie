@@ -731,6 +731,53 @@ const UI_STRINGS = [
   'contract_delete_confirm' => 'Diesen Vertrag wirklich löschen?',
   'contract_signed_file' => 'Das unterschriebene Blatt kommt als Scan an den Termin — dort liegen die Dateien zum Auftritt.',
   'contract_open_missing' => 'Ohne Vertrag',
+
+  // Die Sprache ausgehender Blätter (#363).
+  'promoter_lang' => 'Sprache der Unterlagen',
+  'promoter_lang_band' => 'Sprache der Band',
+  'promoter_lang_hint' => 'Vertrag, Rechnung und Angebot für diesen Veranstalter kommen in dieser Sprache heraus — unabhängig davon, wer sie ausdruckt.',
+  'doclang_contract_note' => 'Die Sprache schaltet Überschriften und Datum um. Die Klauseln bleiben so, wie sie in den Bausteinen stehen.',
+
+
+  // Vertragsbausteine (#359). Die Überschriften der Abschnitte sind Gerüst und
+  // stehen hier; die Klauseln selbst gehören der Band und stehen in der
+  // Datenbank.
+  'cb_g_rahmen' => 'Gegenstand des Vertrages',
+  'cb_g_gage' => 'Gage und Kosten',
+  'cb_g_veranstalter' => 'Pflichten des Veranstalters',
+  'cb_g_kuenstler' => 'Pflichten und Rechte des Künstlers',
+  'cb_g_schluss' => 'Schlussbestimmungen',
+  'cb_title' => 'Vertragsbausteine',
+  'cb_intro' => 'Aus diesen Punkten setzt sich ein Vertrag zusammen. Ihr könnt jeden Wortlaut ändern, eigene Punkte dazunehmen und ungenutzte stilllegen.',
+  'cb_disclaimer' => 'Die mitgelieferten Texte sind eine Schreibhilfe, keine Rechtsberatung. Bei größeren Gagen oder ungewöhnlichen Abreden lohnt sich ein Blick von jemandem, der das beruflich macht.',
+  'cb_pick' => 'Punkte in diesem Vertrag',
+  'cb_pick_hint' => 'Ein Häkchen bildet den Wortlaut sofort neu. Was ihr unten im Textfeld von Hand geändert habt, geht dabei verloren.',
+  'cb_pick_locked' => 'Der Wortlaut ist eingefroren — Punkte lassen sich nur am Entwurf ändern.',
+  'cb_own_text' => 'In den Einstellungen steht ein eigener Vertragstext. Solange der dort steht, werden die Bausteine nicht verwendet.',
+  'cb_fixed' => 'steht immer drin',
+  'cb_either' => 'Entweder-oder',
+  'cb_either_hint' => 'Punkte mit demselben Wort schließen sich aus — es zählt der oberste angehakte.',
+  'cb_apply' => 'Auswahl übernehmen',
+  'cb_edit' => 'Bausteine bearbeiten',
+  'cb_group' => 'Abschnitt',
+  'cb_label' => 'Kurzname',
+  'cb_body' => 'Wortlaut',
+  'cb_note' => 'Hinweis für euch',
+  'cb_note_hint' => 'Steht in der Auswahlliste unter dem Punkt und nie im Vertrag.',
+  'cb_choice' => 'Entweder-oder-Gruppe',
+  'cb_choice_hint' => 'Gleiches Wort heißt: Nur einer dieser Punkte kommt in den Vertrag. Leer lassen, wenn der Punkt für sich steht.',
+  'cb_sort' => 'Reihenfolge',
+  'cb_default' => 'Bei neuen Verträgen vorausgewählt',
+  'cb_active' => 'In der Auswahl anbieten',
+  'cb_active_hint' => 'Abgeschaltete Punkte verschwinden aus der Liste, bleiben aber in Verträgen stehen, die sie schon benutzen.',
+  'cb_new' => 'Eigenen Baustein anlegen',
+  'cb_delete_confirm' => 'Diesen Baustein löschen? Verträge, die ihn schon benutzen, behalten ihren Wortlaut.',
+  'cb_preview' => 'So sieht der Vertrag damit aus',
+  'fl_cb_saved' => 'Baustein gespeichert.',
+  'fl_cb_deleted' => 'Baustein gelöscht.',
+  'fl_cb_applied' => 'Auswahl übernommen, Wortlaut neu gebildet.',
+  'fl_cb_label_required' => 'Ohne Kurznamen findet den Punkt später niemand wieder.',
+
   'fl_contract_saved' => 'Vertrag gespeichert.',
   'fl_contract_deleted' => 'Vertrag gelöscht.',
   'fl_contract_event_required' => 'Ein Vertrag gehört zu einem Termin — such einen aus.',
@@ -790,69 +837,14 @@ const UI_STRINGS = [
   // Hilfe
   'help_vertraege' => 'Ein Auftritt wird per Vertrag vereinbart, und fast alles, was darin steht, kennt das Programm schon: Datum, Ort, Spielzeit und Gage stehen am Termin. Hier kommt der Wortlaut dazu, und ihr seht in der Liste, bei welchem Auftritt noch kein unterschriebenes Blatt zurück ist.',
   'help_vertraege_2' => 'Der Vertragspartner ist der Veranstalter und nicht die Halle. Eine Halle heißt „Stadtfest" und wird oft über eine Agentur gebucht — unterschreiben tut die Agentur. Deshalb gibt es eine eigene Liste dafür.',
-  'help_vertraege_3' => 'Der Wortlaut wird beim Anlegen aus eurer Vorlage gebildet und bleibt dann stehen. Das ist Absicht: Was verschickt und unterschrieben wurde, darf sich nicht ändern, weil ein halbes Jahr später jemand die Vorlage anfasst. Solange ein Vertrag Entwurf ist, könnt ihr seinen Text trotzdem ändern.',
+  'help_vertraege_3' => 'Der Wortlaut entsteht aus Bausteinen — einzelnen Punkten, die ihr am Vertrag an- und abhakt: Hotel ja, Anlage bringt ihr selbst mit, Beteiligung statt Festgage. Die Paragraphen zählen sich dabei von selbst neu, es bleibt keine Lücke. Einmal verschickt, steht der Text: Was unterschrieben wurde, darf sich nicht ändern, weil ein halbes Jahr später jemand die Bausteine anfasst. Solange ein Vertrag Entwurf ist, könnt ihr beides ändern — die Punkte und den Text darunter.',
+  'help_vertraege_5' => 'In welcher Sprache ein Blatt herauskommt, hängt am Veranstalter und nicht daran, wer auf Drucken drückt. Beim Vertrag schaltet die Sprache allerdings nur Überschriften und Datum um: Die Klauseln stehen so, wie sie in euren Bausteinen stehen.',
   'help_vertraege_4' => 'Gedruckt wird er wie eure anderen Blätter, mit Logo und Wasserzeichen. Unterschrieben kommt er als Scan zurück und gehört zu den Dateien des Termins. Elektronische Unterschriften gibt es hier bewusst nicht: Sie sind ein eigenes Thema mit eigenen Anforderungen, und für eine Band bringen sie nichts, was ein eingescanntes Blatt nicht auch bringt.',
   // Heredoc und nicht einfache Anfuehrungszeichen (#357): Darin war das 
 
   // kein Umbruch, sondern zwei Zeichen - und die standen so im Formular und
   // auf jedem gedruckten Vertrag. So steht der Wortlaut da, wie er auf dem
   // Blatt erscheint, und der naechste, der ihn aendert, sieht das auch.
-  'contract_template' => <<<'VERTRAG'
-GASTSPIELVERTRAG
-
-zwischen
-{veranstalter}
-{veranstalter_anschrift}
-— nachfolgend Veranstalter —
-
-und
-{band}
-— nachfolgend Künstler —
-
-§ 1 Gegenstand des Vertrages
-Der Veranstalter engagiert den Künstler für folgendes Gastspiel:
-a) Veranstaltungsort: {ort}
-b) Veranstaltungstag: {datum}
-c) Spieldauer: {spielzeit}
-d) Der Veranstaltungsraum ist für Aufbau und Soundcheck geöffnet ab: {einlass}
-
-§ 2 Entgelt
-a) Der Veranstalter zahlt an den Künstler eine Festgage in Höhe von {gage}.
-b) Der Betrag ist vor dem Auftritt in bar oder nach Rechnung zu zahlen.
-c) Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der
-   Veranstalter.
-d) Entfällt der Auftritt aus einem vom Veranstalter zu vertretenden Grund,
-   bleibt die vereinbarte Gage geschuldet. Entfällt er aus einem vom Künstler
-   zu vertretenden Grund, entfällt der Anspruch. Bei Krankheit ist unverzüglich
-   zu informieren; Auftritts- und Zahlungspflicht entfallen dann beide.
-
-§ 3 Pflichten des Veranstalters
-a) Der Veranstalter stellt eine bespielbare Bühne mit Stromversorgung bereit.
-b) Die beigefügte Bühnenanweisung ist Bestandteil dieses Vertrages.
-c) Ton-, Film- und Fotoaufnahmen des Auftritts bedürfen der Zustimmung des
-   Künstlers.
-d) Der Veranstalter stellt eine abschließbare Garderobe sowie Getränke in
-   angemessenem Umfang.
-
-§ 4 Pflichten und Rechte des Künstlers
-a) Der Künstler erscheint pünktlich zu den vereinbarten Zeiten.
-b) Der Künstler ist in der Gestaltung seines Programms frei.
-
-§ 5 Salvatorische Klausel
-Sollte eine Bestimmung dieses Vertrages unwirksam sein, bleibt die Wirksamkeit
-der übrigen Bestimmungen unberührt.
-
-§ 6 Schlussbestimmungen
-Mündliche Nebenabreden bestehen nicht. Änderungen bedürfen der Schriftform.
-Durch diesen Vertrag wird kein Arbeitsverhältnis begründet.
-
-
-Ort, Datum: ......................        Ort, Datum: {heute}
-
-
-__________________________                __________________________
-Der Veranstalter                          Der Künstler
-VERTRAG,
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
   'help_open' => 'Diesen Bereich öffnen',
