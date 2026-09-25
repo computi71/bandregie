@@ -2967,10 +2967,25 @@ function print_logo_html(string $doc): string {
   if (!print_brand_on($doc, 'logo')) return '';
   $datei = (string) (setting('print_logo_file') ?: setting('logo_file'));
   $name = (string) setting('band_name');
-  $inhalt = $datei !== ''
+  $inhalt = print_brand_datei_da($datei)
     ? '<img src="/uploads/' . e($datei) . '" alt="' . e($name) . '">'
     : '<span class="bandname">' . e($name) . '</span>';
   return '<div class="logo">' . $inhalt . '</div>';
+}
+
+/**
+ * Gibt es die Bilddatei wirklich? (#364)
+ *
+ * Die Einstellung merkt nicht, wenn die Datei verschwindet — eine
+ * zurückgespielte Sicherung ohne data/uploads reicht. Ohne diese Prüfung
+ * stünde im Vertrag beim Veranstalter ein kaputtes Bildsymbol, und ein
+ * Blatt mit dem Bandnamen darauf sieht gewollt aus, eines mit einem
+ * kaputten Bild sieht verwahrlost aus.
+ *
+ * basename(), damit ein ../ in der Einstellung nicht aus dem Ordner führt.
+ */
+function print_brand_datei_da(string $datei): bool {
+  return $datei !== '' && $datei === basename($datei) && is_file(UPLOADS_DIR . '/' . $datei);
 }
 
 /**
@@ -3003,7 +3018,9 @@ function print_lang_html(): string {
 /** Das Wasserzeichen eines Blattes. Gehört in das Blatt, nicht davor. */
 function print_watermark_html(string $doc): string {
   $datei = (string) setting('print_watermark_file');
-  if ($datei === '' || !print_brand_on($doc, 'watermark')) return '';
+  // Fehlt die Datei, bleibt das Wasserzeichen weg — anders als beim Logo gibt
+  // es hier nichts, was an seine Stelle treten könnte (#364).
+  if (!print_brand_datei_da($datei) || !print_brand_on($doc, 'watermark')) return '';
   return '<div class="watermark"><img src="/uploads/' . e($datei) . '" alt=""></div>';
 }
 
