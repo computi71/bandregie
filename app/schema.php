@@ -1754,23 +1754,42 @@ if (setting('migr_rechnung_branding') === '') {
 //
 // Die mitgelieferte Vorlage stand in einfachen Anfuehrungszeichen. Darin ist
 // die Folge Backslash-n kein Umbruch, sondern zwei Zeichen. Wer die Vorlage
-// uebernommen hat, traegt sie in der Einstellung; jeder daraus gebildete
-// Vertrag traegt sie eingefroren im Wortlaut - und auf dem gedruckten Blatt.
+// uebernommen hatte, trug sie in seiner eigenen Vorlage; jeder daraus
+// gebildete Vertrag traegt sie eingefroren im Wortlaut - und auf dem
+// gedruckten Blatt (#357).
 //
 // Ersetzt wird nur, wo die Folge wirklich steht. Ein Backslash-n in der Prosa
 // eines Gastspielvertrags schreibt niemand mit Absicht.
 if (setting('migr_vertrag_umbrueche') === '') {
   $literal = chr(92) . 'n';
-  $tpl = (string) setting('contract_template');
-  if ($tpl !== '' && str_contains($tpl, $literal)) {
-    set_setting('contract_template', str_replace($literal, chr(10), $tpl));
-  }
   foreach (rows('SELECT id, body FROM contracts') as $cZeile) {
     if (!str_contains((string) $cZeile['body'], $literal)) continue;
     q('UPDATE contracts SET body = ? WHERE id = ?',
       [str_replace($literal, chr(10), (string) $cZeile['body']), $cZeile['id']]);
   }
   set_setting('migr_vertrag_umbrueche', '1');
+}
+
+// Dieselbe Reparatur fuer die eigene Vorlage der Band - beim ersten Anlauf
+// griff sie ins Leere.
+//
+// Dort stand setting('contract_template'). So heisst die Einstellung nicht:
+// Die eigene Vorlage liegt in contract_text. setting() lieferte also immer
+// leer, und ausgerechnet der Fall, fuer den die Reparatur gedacht war, blieb
+// ungerepariert. Die eingefrorenen Vertragstexte oben wurden richtig
+// behandelt, nur die Vorlage nicht.
+//
+// Eine eigene Marke, weil die alte ueberall schon gesetzt ist. Eine
+// Reparatur, die nach ihrer Korrektur nicht mehr laufen kann, repariert
+// nichts. Auf unseren vier Anlagen ist contract_text leer, dort gibt es also
+// nichts zu tun - aber die Anwendung laeuft nicht nur bei uns.
+if (setting('migr_vertrag_umbrueche_vorlage') === '') {
+  $literal = chr(92) . 'n';
+  $eigene = (string) setting('contract_text');
+  if ($eigene !== '' && str_contains($eigene, $literal)) {
+    set_setting('contract_text', str_replace($literal, chr(10), $eigene));
+  }
+  set_setting('migr_vertrag_umbrueche_vorlage', '1');
 }
 
 // Die Vertragsbausteine (#359).

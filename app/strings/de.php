@@ -844,62 +844,6 @@ const UI_STRINGS = [
   // kein Umbruch, sondern zwei Zeichen - und die standen so im Formular und
   // auf jedem gedruckten Vertrag. So steht der Wortlaut da, wie er auf dem
   // Blatt erscheint, und der naechste, der ihn aendert, sieht das auch.
-  'contract_template' => <<<'VERTRAG'
-GASTSPIELVERTRAG
-
-zwischen
-{veranstalter}
-{veranstalter_anschrift}
-— nachfolgend Veranstalter —
-
-und
-{band}
-— nachfolgend Künstler —
-
-§ 1 Gegenstand des Vertrages
-Der Veranstalter engagiert den Künstler für folgendes Gastspiel:
-a) Veranstaltungsort: {ort}
-b) Veranstaltungstag: {datum}
-c) Spieldauer: {spielzeit}
-d) Der Veranstaltungsraum ist für Aufbau und Soundcheck geöffnet ab: {einlass}
-
-§ 2 Entgelt
-a) Der Veranstalter zahlt an den Künstler eine Festgage in Höhe von {gage}.
-b) Der Betrag ist vor dem Auftritt in bar oder nach Rechnung zu zahlen.
-c) Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der
-   Veranstalter.
-d) Entfällt der Auftritt aus einem vom Veranstalter zu vertretenden Grund,
-   bleibt die vereinbarte Gage geschuldet. Entfällt er aus einem vom Künstler
-   zu vertretenden Grund, entfällt der Anspruch. Bei Krankheit ist unverzüglich
-   zu informieren; Auftritts- und Zahlungspflicht entfallen dann beide.
-
-§ 3 Pflichten des Veranstalters
-a) Der Veranstalter stellt eine bespielbare Bühne mit Stromversorgung bereit.
-b) Die beigefügte Bühnenanweisung ist Bestandteil dieses Vertrages.
-c) Ton-, Film- und Fotoaufnahmen des Auftritts bedürfen der Zustimmung des
-   Künstlers.
-d) Der Veranstalter stellt eine abschließbare Garderobe sowie Getränke in
-   angemessenem Umfang.
-
-§ 4 Pflichten und Rechte des Künstlers
-a) Der Künstler erscheint pünktlich zu den vereinbarten Zeiten.
-b) Der Künstler ist in der Gestaltung seines Programms frei.
-
-§ 5 Salvatorische Klausel
-Sollte eine Bestimmung dieses Vertrages unwirksam sein, bleibt die Wirksamkeit
-der übrigen Bestimmungen unberührt.
-
-§ 6 Schlussbestimmungen
-Mündliche Nebenabreden bestehen nicht. Änderungen bedürfen der Schriftform.
-Durch diesen Vertrag wird kein Arbeitsverhältnis begründet.
-
-
-Ort, Datum: ......................        Ort, Datum: {heute}
-
-
-__________________________                __________________________
-Der Veranstalter                          Der Künstler
-VERTRAG,
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
   'help_open' => 'Diesen Bereich öffnen',
