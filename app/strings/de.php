@@ -792,7 +792,67 @@ const UI_STRINGS = [
   'help_vertraege_2' => 'Der Vertragspartner ist der Veranstalter und nicht die Halle. Eine Halle heißt „Stadtfest" und wird oft über eine Agentur gebucht — unterschreiben tut die Agentur. Deshalb gibt es eine eigene Liste dafür.',
   'help_vertraege_3' => 'Der Wortlaut wird beim Anlegen aus eurer Vorlage gebildet und bleibt dann stehen. Das ist Absicht: Was verschickt und unterschrieben wurde, darf sich nicht ändern, weil ein halbes Jahr später jemand die Vorlage anfasst. Solange ein Vertrag Entwurf ist, könnt ihr seinen Text trotzdem ändern.',
   'help_vertraege_4' => 'Gedruckt wird er wie eure anderen Blätter, mit Logo und Wasserzeichen. Unterschrieben kommt er als Scan zurück und gehört zu den Dateien des Termins. Elektronische Unterschriften gibt es hier bewusst nicht: Sie sind ein eigenes Thema mit eigenen Anforderungen, und für eine Band bringen sie nichts, was ein eingescanntes Blatt nicht auch bringt.',
-  'contract_template' => 'GASTSPIELVERTRAG\n\nzwischen\n{veranstalter}\n{veranstalter_anschrift}\n— nachfolgend Veranstalter —\n\nund\n{band}\n— nachfolgend Künstler —\n\n§ 1 Gegenstand des Vertrages\nDer Veranstalter engagiert den Künstler für folgendes Gastspiel:\na) Veranstaltungsort: {ort}\nb) Veranstaltungstag: {datum}\nc) Spieldauer: {spielzeit}\nd) Der Veranstaltungsraum ist für Aufbau und Soundcheck geöffnet ab: {einlass}\n\n§ 2 Entgelt\na) Der Veranstalter zahlt an den Künstler eine Festgage in Höhe von {gage}.\nb) Der Betrag ist vor dem Auftritt in bar oder nach Rechnung zu zahlen.\nc) Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der\n   Veranstalter.\nd) Entfällt der Auftritt aus einem vom Veranstalter zu vertretenden Grund,\n   bleibt die vereinbarte Gage geschuldet. Entfällt er aus einem vom Künstler\n   zu vertretenden Grund, entfällt der Anspruch. Bei Krankheit ist unverzüglich\n   zu informieren; Auftritts- und Zahlungspflicht entfallen dann beide.\n\n§ 3 Pflichten des Veranstalters\na) Der Veranstalter stellt eine bespielbare Bühne mit Stromversorgung bereit.\nb) Die beigefügte Bühnenanweisung ist Bestandteil dieses Vertrages.\nc) Ton-, Film- und Fotoaufnahmen des Auftritts bedürfen der Zustimmung des\n   Künstlers.\nd) Der Veranstalter stellt eine abschließbare Garderobe sowie Getränke in\n   angemessenem Umfang.\n\n§ 4 Pflichten und Rechte des Künstlers\na) Der Künstler erscheint pünktlich zu den vereinbarten Zeiten.\nb) Der Künstler ist in der Gestaltung seines Programms frei.\n\n§ 5 Salvatorische Klausel\nSollte eine Bestimmung dieses Vertrages unwirksam sein, bleibt die Wirksamkeit\nder übrigen Bestimmungen unberührt.\n\n§ 6 Schlussbestimmungen\nMündliche Nebenabreden bestehen nicht. Änderungen bedürfen der Schriftform.\nDurch diesen Vertrag wird kein Arbeitsverhältnis begründet.\n\n\nOrt, Datum: ......................        Ort, Datum: {heute}\n\n\n__________________________                __________________________\nDer Veranstalter                          Der Künstler',
+  // Heredoc und nicht einfache Anfuehrungszeichen (#357): Darin war das 
+
+  // kein Umbruch, sondern zwei Zeichen - und die standen so im Formular und
+  // auf jedem gedruckten Vertrag. So steht der Wortlaut da, wie er auf dem
+  // Blatt erscheint, und der naechste, der ihn aendert, sieht das auch.
+  'contract_template' => <<<'VERTRAG'
+GASTSPIELVERTRAG
+
+zwischen
+{veranstalter}
+{veranstalter_anschrift}
+— nachfolgend Veranstalter —
+
+und
+{band}
+— nachfolgend Künstler —
+
+§ 1 Gegenstand des Vertrages
+Der Veranstalter engagiert den Künstler für folgendes Gastspiel:
+a) Veranstaltungsort: {ort}
+b) Veranstaltungstag: {datum}
+c) Spieldauer: {spielzeit}
+d) Der Veranstaltungsraum ist für Aufbau und Soundcheck geöffnet ab: {einlass}
+
+§ 2 Entgelt
+a) Der Veranstalter zahlt an den Künstler eine Festgage in Höhe von {gage}.
+b) Der Betrag ist vor dem Auftritt in bar oder nach Rechnung zu zahlen.
+c) Gebühren für Wort und Musik sowie die Künstlersozialabgabe trägt der
+   Veranstalter.
+d) Entfällt der Auftritt aus einem vom Veranstalter zu vertretenden Grund,
+   bleibt die vereinbarte Gage geschuldet. Entfällt er aus einem vom Künstler
+   zu vertretenden Grund, entfällt der Anspruch. Bei Krankheit ist unverzüglich
+   zu informieren; Auftritts- und Zahlungspflicht entfallen dann beide.
+
+§ 3 Pflichten des Veranstalters
+a) Der Veranstalter stellt eine bespielbare Bühne mit Stromversorgung bereit.
+b) Die beigefügte Bühnenanweisung ist Bestandteil dieses Vertrages.
+c) Ton-, Film- und Fotoaufnahmen des Auftritts bedürfen der Zustimmung des
+   Künstlers.
+d) Der Veranstalter stellt eine abschließbare Garderobe sowie Getränke in
+   angemessenem Umfang.
+
+§ 4 Pflichten und Rechte des Künstlers
+a) Der Künstler erscheint pünktlich zu den vereinbarten Zeiten.
+b) Der Künstler ist in der Gestaltung seines Programms frei.
+
+§ 5 Salvatorische Klausel
+Sollte eine Bestimmung dieses Vertrages unwirksam sein, bleibt die Wirksamkeit
+der übrigen Bestimmungen unberührt.
+
+§ 6 Schlussbestimmungen
+Mündliche Nebenabreden bestehen nicht. Änderungen bedürfen der Schriftform.
+Durch diesen Vertrag wird kein Arbeitsverhältnis begründet.
+
+
+Ort, Datum: ......................        Ort, Datum: {heute}
+
+
+__________________________                __________________________
+Der Veranstalter                          Der Künstler
+VERTRAG,
   'help_tasks_title' => 'Ich möchte …',
   'help_tasks_hint' => 'Such dir aus, was du vorhast. Wenn nichts passt, steht darunter jeder Bereich einzeln erklärt.',
   'help_open' => 'Diesen Bereich öffnen',
