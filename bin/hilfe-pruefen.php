@@ -80,14 +80,26 @@ echo PHP_EOL, '— Die Aufgabenliste —', PHP_EOL;
 // „Ich möchte …" springt zu einem Abschnitt. Fehlt der, führt der Sprung ins
 // Leere und die Seite rührt sich nicht. Genau das passierte beim Rechenblatt:
 // Der Abschnitt verschwand im einstufigen Weg, der Verweis blieb (#370).
-$abschnitte = array_keys(help_sections(['id' => 1, 'role' => 'admin']));
+//
+// Geprüft wird je Mitglied und nicht gegen ein ausgedachtes Konto. Beides
+// hängt an denselben Rechten: Wer die Kasse nicht sehen darf, bekommt weder
+// die Aufgabe noch den Abschnitt. Ein erfundener Admin hätte hier Lücken
+// gemeldet, die auf der Seite niemand zu sehen bekommt — der erste Lauf
+// dieser Prüfung tat das prompt.
 $ziellos = [];
-foreach (HELP_TASKS as [$modul, $textKey, $anker]) {
-  $ziel = preg_replace('~^hilfe-~', '', $anker);
-  if (!in_array($ziel, $abschnitte, true)) $ziellos[] = $anker;
+foreach (rows('SELECT id, role FROM users') as $konto) {
+  $abschnitte = array_keys(help_sections($konto));
+  foreach (HELP_TASKS as [$modul, $textKey, $anker]) {
+    if ($modul !== '' && !perm_allows($konto, $modul)) continue;   // wird nicht gezeigt
+    $ziel = preg_replace('~^hilfe-~', '', $anker);
+    if (!in_array($ziel, $abschnitte, true)) $ziellos[] = $anker . ' (Konto ' . $konto['id'] . ')';
+  }
+}
+foreach (array_column(HELP_TASKS, 1) as $textKey) {
   if (t($textKey) === $textKey) $ziellos[] = $textKey . ' (ohne Text)';
 }
-$pruef('jede Aufgabe führt zu einem Abschnitt, den es gibt', !$ziellos, implode(' ', $ziellos));
+$pruef('jede Aufgabe führt zu einem Abschnitt, den es gibt',
+  !$ziellos, implode(' ', array_unique($ziellos)));
 
 // Umgekehrt: Was die Band täglich tut, soll in der Liste stehen. Vertrag und
 // Rechnung fehlten dort, obwohl beides zum Weg von der Anfrage zum Geld gehört.
