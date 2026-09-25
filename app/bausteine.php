@@ -181,16 +181,34 @@ function contract_blocks_rohtext(array $blockIds): string {
   // die ihn schon angehakt haben. Genau das verspricht der Hinweis am
   // Schalter, und ein Entwurf, der beim nächsten Neubilden still eine Klausel
   // verliert, bricht dieses Versprechen.
-  $alle = contract_blocks(true);
+  $drin = array_filter(contract_blocks(true), static fn(array $b): bool =>
+    $b['fest'] || isset($gewaehlt[(int) $b['id']]));
+  return contract_blocks_satz($drin, default_lang());
+}
+
+/**
+ * Der Zusammensetzer selbst: aus fertig ausgewählten Bausteinen wird ein
+ * Vertrag mit Paragraphen und Buchstaben.
+ *
+ * Nimmt reine Zeilen und fragt die Datenbank nichts mehr. Das ist der Grund
+ * für den eigenen Schritt: So lässt sich auch ein mitgelieferter Satz
+ * durchrechnen, der noch in keiner Anlage steht — sonst fiele ein Fehler im
+ * italienischen Satz erst der ersten italienischen Band auf (#360).
+ *
+ * $lang bestimmt die Paragraphenüberschriften. Sie folgen der Sprache der
+ * Band und nicht der des gerade Angemeldeten: Sonst bekäme derselbe Satz je
+ * nachdem, wer den Vertrag anlegt, andere Überschriften — und der
+ * Veranstalter sähe an einem Blatt, wer in der Band welche Sprache
+ * eingestellt hat.
+ */
+function contract_blocks_satz(array $bausteine, string $lang): string {
   $teile = [];
   $paragraf = 0;
 
   foreach (CONTRACT_BLOCK_GROUPS as $gruppe => $g) {
     $drin = [];
-    foreach ($alle as $b) {
-      if ($b['gruppe'] !== $gruppe) continue;
-      if (!$b['fest'] && !isset($gewaehlt[(int) $b['id']])) continue;
-      $drin[] = (string) $b['body'];
+    foreach ($bausteine as $b) {
+      if (($b['gruppe'] ?? '') === $gruppe) $drin[] = (string) ($b['body'] ?? '');
     }
     if (!$drin) continue;
 
@@ -203,18 +221,20 @@ function contract_blocks_rohtext(array $blockIds): string {
     // steht ein mehrzeiliger Punkt am Rand und sieht aus wie ein neuer.
     foreach ($drin as $i => $text) {
       $punkte[] = count($drin) > 1
-        ? contract_block_marker($i) . str_replace("\n", "\n   ", $text)
+        ? contract_block_marker($i) . str_replace("
+", "
+   ", $text)
         : $text;
     }
-    // Die Überschrift kommt in der Sprache der Band, nicht in der des gerade
-    // Angemeldeten. Sonst bekäme derselbe Bausteinsatz je nachdem, wer den
-    // Vertrag anlegt, andere Paragraphenüberschriften — und der Veranstalter
-    // sähe an einem Blatt, wer in der Band welche Sprache eingestellt hat.
-    $teile[] = '§ ' . $paragraf . ' ' . push_t(default_lang(), $g['title'])
-      . "\n" . implode("\n", $punkte);
+    $teile[] = '§ ' . $paragraf . ' ' . push_t($lang, $g['title'])
+      . "
+" . implode("
+", $punkte);
   }
 
-  return implode("\n\n", $teile);
+  return implode("
+
+", $teile);
 }
 
 /** Setzt sich der Vertrag aus Bausteinen zusammen — oder aus eigenem Text? */

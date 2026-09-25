@@ -57,9 +57,21 @@ foreach (LANGS as $sprache => $sprachname) {
   preg_match_all('~\{[a-z_]+\}~', implode("\n", array_column($satz, 'body')), $pm);
   $platzhalter = array_diff(array_unique($pm[0]), contract_placeholders());
 
+  // Setzt sich der Satz auch wirklich zu einem Vertrag zusammen? Gerechnet
+  // wird die Vorauswahl, also das, was eine neue Anlage zuerst sieht.
+  $vorauswahl = array_filter($satz, static fn(array $b): bool => !empty($b['an']) || !empty($b['fest']));
+  $text = contract_blocks_satz($vorauswahl, $sprache);
+  preg_match_all('~^§ (\d+) ~m', $text, $tr);
+  $nummern = array_map('intval', $tr[1]);
+  $zaehltDurch = $nummern === range(1, count($nummern));
+  foreach (preg_split('~^(?=§ )~m', $text) as $abschnitt) {
+    preg_match_all('~^([a-z])\) ~m', $abschnitt, $bt);
+    if ($bt[1] && $bt[1] !== array_slice(range('a', 'z'), 0, count($bt[1]))) $zaehltDurch = false;
+  }
+
   $ok = count($schluessel) === count(array_unique($schluessel))
     && !array_diff($gruppen, array_keys(CONTRACT_BLOCK_GROUPS))
-    && !$leer && $feste && $hatKopf && $hatFuss && !$platzhalter;
+    && !$leer && $feste && $hatKopf && $hatFuss && !$platzhalter && $zaehltDurch;
 
   $fehler += $ok ? 0 : 1;
   printf("  %s %-12s %2d Bausteine, %d fest, %d vorausgewaehlt%s%s",
@@ -72,7 +84,12 @@ foreach (LANGS as $sprache => $sprachname) {
       !$feste ? 'kein fester Baustein' : '',
       !$hatKopf ? 'kein Kopf' : '', !$hatFuss ? 'keine Unterschrift' : '',
       $platzhalter ? 'Platzhalter ' . implode(' ', $platzhalter) : '',
+      !$zaehltDurch ? 'Luecke in der Zaehlung' : '',
     ])), PHP_EOL);
+  // Die Paragraphenueberschriften dazu, damit beim Lesen sichtbar ist, was
+  // der Satz ergibt - und in welcher Sprache.
+  preg_match_all('~^§ \d+ (.+)$~m', $text, $ueber);
+  printf("       %s%s", implode(' | ', $ueber[1]), PHP_EOL);
 }
 
 // Kein Schluessel darf in zwei Saetzen vorkommen: bkey ist in der Datenbank
