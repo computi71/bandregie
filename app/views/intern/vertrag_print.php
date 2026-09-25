@@ -15,16 +15,13 @@ $printDoc = 'contract';
   <title><?= e(t('contract_sheet_title')) ?> · <?= e($contract['event_title'] ?? '') ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     /* Der Vertragstext kommt als Fließtext mit eigenen Umbrüchen. Er wird nicht
        umformatiert: Wer Paragraphen einrückt, meint das so. */
     .body { white-space: pre-wrap; margin-top: 8mm; position: relative; z-index: 1; line-height: 1.45; }
     .note { font-size: 9pt; color: #555; margin-top: 8mm; }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php
 // Die Sprachwahl schaltet hier nur den Rahmen um — Überschriften, Datum,
 // Beschriftungen. Die Klauseln sind Banddaten und stehen in der Sprache, in

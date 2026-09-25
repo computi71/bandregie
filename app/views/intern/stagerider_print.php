@@ -20,11 +20,8 @@ $blocks = [
   <title><?= e(t('rider_title')) ?> · <?= e($settings['band_name']) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
     /* Strich unter dem Kopf: Darunter beginnen die Anforderungen, und die liest
        jemand am Pult im Halbdunkel. */
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; text-transform: uppercase; letter-spacing: 0.04em; }
     .block { margin-bottom: 2mm; }
     .block dt { font-weight: 700; }
@@ -40,7 +37,7 @@ $blocks = [
     @media print { .new-page { break-before: page; page-break-before: always; margin-top: 0; } }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php // Für einen Gast (#294) führt „Zurück" auf seine Seite, nicht in den Bandbereich.
       // Die Sprachwahl bekommt er nicht: Seine Route wertet ?lang= nicht aus,
       // und ein Umschalter, der nichts tut, ist schlimmer als keiner (#363).

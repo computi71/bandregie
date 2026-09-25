@@ -13,9 +13,6 @@ $printDoc = 'tax';
   <title><?= e(t('taxr_title')) ?> <?= (int) $year ?> · <?= e($taxOwner) ?></title>
   <style>
 <?php require BASE_DIR . '/app/views/intern/_print_style.php'; ?>
-    body { font-size: 10.5pt; }
-    .head-row { border-bottom: 0.5mm solid #000; padding-bottom: 4mm; }
-    h1 { font-size: 17pt; margin: 0 0 1mm; }
     h2 { font-size: 11.5pt; margin: 6mm 0 1.5mm; text-transform: uppercase; letter-spacing: 0.04em; }
     table { width: 100%; border-collapse: collapse; font-size: 10pt; }
     th, td { border-bottom: 0.2mm solid #bbb; padding: 1.2mm 2mm; text-align: left; vertical-align: top; }
@@ -26,7 +23,7 @@ $printDoc = 'tax';
     .note { font-size: 9pt; color: #555; margin-top: 6mm; }
   </style>
 </head>
-<body>
+<body class="brief">
 <?php $zurueckUrl = '/intern/kasse/steuer'; require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
 <div class="sheet">
   <?= print_watermark_html($printDoc) ?>
