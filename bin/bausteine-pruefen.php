@@ -32,7 +32,81 @@ $nach = [];
 foreach ($alle as $b) $nach[(string) $b['bkey']] = $b;
 $id = static fn(string $bkey): int => (int) ($nach[$bkey]['id'] ?? 0);
 
-echo '— Wortlaut —', PHP_EOL;
+// Jeder mitgelieferte Satz, nicht nur der eingespielte (#360). Ein Fehler im
+// italienischen Satz faellt sonst erst der ersten italienischen Band auf.
+echo '— Mitgelieferte Saetze —', PHP_EOL;
+foreach (LANGS as $sprache => $sprachname) {
+  $satz = contract_block_seed_set($sprache);
+  $eigen = is_file(__DIR__ . '/../app/bausteine/' . $sprache . '.php');
+  if (!$eigen) {
+    printf("  --   %-12s kein eigener Satz, faellt auf Deutsch zurueck%s", $sprache, PHP_EOL);
+    continue;
+  }
+
+  $schluessel = array_column($satz, 'bkey');
+  $gruppen = array_unique(array_column($satz, 'gruppe'));
+  $feste = array_filter($satz, static fn(array $b): bool => !empty($b['fest']));
+  $leer = array_filter($satz, static fn(array $b): bool =>
+    trim((string) ($b['body'] ?? '')) === '' || trim((string) ($b['label'] ?? '')) === '');
+
+  // Ein Satz ohne Kopf oder ohne Unterschrift ergaebe keinen Vertrag.
+  $hatKopf = array_filter($satz, static fn(array $b): bool => $b['gruppe'] === 'kopf');
+  $hatFuss = array_filter($satz, static fn(array $b): bool => $b['gruppe'] === 'fuss');
+
+  $platzhalter = [];
+  preg_match_all('~\{[a-z_]+\}~', implode("\n", array_column($satz, 'body')), $pm);
+  $platzhalter = array_diff(array_unique($pm[0]), contract_placeholders());
+
+  // Setzt sich der Satz auch wirklich zu einem Vertrag zusammen? Gerechnet
+  // wird die Vorauswahl, also das, was eine neue Anlage zuerst sieht.
+  $vorauswahl = array_filter($satz, static fn(array $b): bool => !empty($b['an']) || !empty($b['fest']));
+  $text = contract_blocks_satz($vorauswahl, $sprache);
+  preg_match_all('~^§ (\d+) ~m', $text, $tr);
+  $nummern = array_map('intval', $tr[1]);
+  $zaehltDurch = $nummern === range(1, count($nummern));
+  foreach (preg_split('~^(?=§ )~m', $text) as $abschnitt) {
+    preg_match_all('~^([a-z])\) ~m', $abschnitt, $bt);
+    if ($bt[1] && $bt[1] !== array_slice(range('a', 'z'), 0, count($bt[1]))) $zaehltDurch = false;
+  }
+
+  $ok = count($schluessel) === count(array_unique($schluessel))
+    && !array_diff($gruppen, array_keys(CONTRACT_BLOCK_GROUPS))
+    && !$leer && $feste && $hatKopf && $hatFuss && !$platzhalter && $zaehltDurch;
+
+  $fehler += $ok ? 0 : 1;
+  printf("  %s %-12s %2d Bausteine, %d fest, %d vorausgewaehlt%s%s",
+    $ok ? 'ok  ' : 'FEHL', $sprache, count($satz), count($feste),
+    count(array_filter($satz, static fn(array $b): bool => !empty($b['an']))),
+    $ok ? '' : '  <-- ' . implode(' ', array_filter([
+      count($schluessel) !== count(array_unique($schluessel)) ? 'doppelter bkey' : '',
+      array_diff($gruppen, array_keys(CONTRACT_BLOCK_GROUPS)) ? 'fremder Abschnitt' : '',
+      $leer ? 'leerer Baustein' : '',
+      !$feste ? 'kein fester Baustein' : '',
+      !$hatKopf ? 'kein Kopf' : '', !$hatFuss ? 'keine Unterschrift' : '',
+      $platzhalter ? 'Platzhalter ' . implode(' ', $platzhalter) : '',
+      !$zaehltDurch ? 'Luecke in der Zaehlung' : '',
+    ])), PHP_EOL);
+  // Die Paragraphenueberschriften dazu, damit beim Lesen sichtbar ist, was
+  // der Satz ergibt - und in welcher Sprache.
+  preg_match_all('~^§ \d+ (.+)$~m', $text, $ueber);
+  printf("       %s%s", implode(' | ', $ueber[1]), PHP_EOL);
+}
+
+// Kein Schluessel darf in zwei Saetzen vorkommen: bkey ist in der Datenbank
+// eindeutig, und zwei Saetze mit demselben Schluessel wuerden sich beim
+// Einspielen gegenseitig ueberschreiben.
+$gesehen = [];
+$doppelt = [];
+foreach (LANGS as $sprache => $unused) {
+  if (!is_file(__DIR__ . '/../app/bausteine/' . $sprache . '.php')) continue;
+  foreach (array_column(contract_block_seed_set($sprache), 'bkey') as $k) {
+    if (isset($gesehen[$k])) $doppelt[] = "$k ({$gesehen[$k]}/$sprache)";
+    $gesehen[$k] = $sprache;
+  }
+}
+$pruef('kein Schluessel kommt in zwei Saetzen vor', !$doppelt, implode(' ', $doppelt));
+
+echo PHP_EOL, '— Wortlaut des eingespielten Satzes —', PHP_EOL;
 $ohneText = array_filter($alle, static fn(array $b): bool => trim((string) $b['body']) === '');
 $ohneName = array_filter($alle, static fn(array $b): bool => trim((string) $b['label']) === '');
 $pruef('jeder Baustein hat einen Wortlaut', !$ohneText, implode(' ', array_column($ohneText, 'bkey')));
