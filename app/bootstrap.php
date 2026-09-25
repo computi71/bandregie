@@ -2936,6 +2936,11 @@ const HELP_TASKS = [
   ['setlists', 'help_task_setlist', 'hilfe-setlists'],
   ['rider', 'help_task_rider', 'hilfe-rider'],
   ['angebote', 'help_task_quote', 'hilfe-angebote'],
+  // Vertrag und Rechnung fehlten hier, obwohl beides alltaegliche Arbeit ist
+  // (#370). Wer den Weg von der Anfrage zum Geld sucht, findet ihn jetzt auch
+  // in dieser Liste und nicht nur im Abschnitt „Wie alles zusammenhaengt".
+  ['vertraege', 'help_task_contract', 'hilfe-vertraege'],
+  ['rechnungen', 'help_task_invoice', 'hilfe-rechnungen'],
   ['gaeste', 'help_task_guest', 'hilfe-gaeste'],
   ['kasse', 'help_task_money', 'hilfe-kasse'],
   ['abwesenheiten', 'help_task_absence', 'hilfe-abwesenheiten'],
