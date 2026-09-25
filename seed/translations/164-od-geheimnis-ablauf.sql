@@ -4,12 +4,20 @@
 -- The mail matters most here: it goes to the one person who can renew the
 -- secret, and without these lines it would arrive in German whatever language
 -- that person reads.
+-- Der Hinweistext nannte nur zwei der drei Mahnstufen und wusste nichts vom
+-- Rueckfall auf den Eintragetag (#354). Weil der frueheste Seed gewinnt, muss
+-- die alte Fassung einmal weg - und zwar HIER, nicht in einem spaeteren Seed,
+-- der sonst loescht, was diese Datei gerade eingesetzt hat.
+DELETE FROM translations WHERE tkey = 'od_secret_expires_hint'
+  AND (SELECT COUNT(*) FROM settings WHERE `key` = 'od_hint_v2') = 0;
+INSERT INTO settings (`key`, value) VALUES ('od_hint_v2', '1')
+  ON DUPLICATE KEY UPDATE value = value;
 SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','date_pick','Open calendar'),
 ('en','od_secret_expires','Secret valid until'),
-('en','od_secret_expires_hint','Azure shows this date when the secret is created; 24 months is the maximum. Entered here, Bandregie reminds the band leadership by mail 30 and 7 days beforehand. Without it the secret expires at some point and OneDrive stops without a word.'),
+('en','od_secret_expires_hint','Azure shows this date when the secret is created; 24 months is the maximum. Leaving it empty is fine — Bandregie then counts 24 months from the day the secret was entered, and would rather warn too early than not at all. Reminders go to the band leadership 30 and 7 days beforehand and on the day it lapses.'),
 ('en','od_secret_subject','OneDrive: the secret expires in %1 days'),
 ('en','od_secret_subject_over','OneDrive: the secret has expired'),
 ('en','od_secret_body','the secret of the Microsoft application expires in %1 days, on %2. After that Bandregie can no longer reach the OneDrive: no new pictures, no storage, and no word about it.'),
@@ -25,7 +33,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 
 ('nl','date_pick','Kalender openen'),
 ('nl','od_secret_expires','Geheim geldig tot'),
-('nl','od_secret_expires_hint','Azure toont deze datum bij het aanmaken van het geheim; langer dan 24 maanden kan niet. Als de datum hier staat, herinnert Bandregie de bandleiding per mail 30 en 7 dagen van tevoren. Zonder datum verloopt het geheim ooit en stopt OneDrive zonder een woord.'),
+('nl','od_secret_expires_hint','Azure toont deze datum bij het aanmaken van het geheim; langer dan 24 maanden kan niet. Leeg laten mag — Bandregie rekent dan 24 maanden vanaf de dag waarop het geheim is ingevoerd, en waarschuwt liever te vroeg dan helemaal niet. Er wordt 30 en 7 dagen van tevoren gewaarschuwd en op de dag zelf, per mail aan de bandleiding.'),
 ('nl','od_secret_subject','OneDrive: het geheim verloopt over %1 dagen'),
 ('nl','od_secret_subject_over','OneDrive: het geheim is verlopen'),
 ('nl','od_secret_body','het geheim van de Microsoft-toepassing verloopt over %1 dagen, op %2. Daarna kan Bandregie niet meer bij de OneDrive: geen nieuwe foto''s, geen opslag en geen melding daarover.'),
@@ -41,7 +49,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 
 ('fr','date_pick','Ouvrir le calendrier'),
 ('fr','od_secret_expires','Secret valable jusqu''au'),
-('fr','od_secret_expires_hint','Azure affiche cette date au moment où le secret est créé ; 24 mois est le maximum. Renseignée ici, Bandregie prévient la direction du groupe par courriel 30 et 7 jours à l''avance. Sans elle, le secret expire un jour et OneDrive s''arrête sans un mot.'),
+('fr','od_secret_expires_hint','Azure affiche cette date au moment où le secret est créé ; 24 mois est le maximum. La laisser vide est possible — Bandregie compte alors 24 mois à partir du jour où le secret a été saisi, et préfère prévenir trop tôt que pas du tout. Les rappels partent vers la direction du groupe 30 et 7 jours avant, et le jour même.'),
 ('fr','od_secret_subject','OneDrive : le secret expire dans %1 jours'),
 ('fr','od_secret_subject_over','OneDrive : le secret a expiré'),
 ('fr','od_secret_body','le secret de l''application Microsoft expire dans %1 jours, le %2. Ensuite, Bandregie n''atteint plus le OneDrive : plus de nouvelles photos, plus de dépôt, et aucun message à ce sujet.'),
@@ -57,7 +65,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 
 ('es','date_pick','Abrir calendario'),
 ('es','od_secret_expires','Secreto válido hasta'),
-('es','od_secret_expires_hint','Azure muestra esta fecha al crear el secreto; más de 24 meses no es posible. Indicada aquí, Bandregie avisa a la dirección de la banda por correo 30 y 7 días antes. Sin ella el secreto caduca algún día y OneDrive se detiene sin decir nada.'),
+('es','od_secret_expires_hint','Azure muestra esta fecha al crear el secreto; más de 24 meses no es posible. Dejarla vacía está bien — Bandregie cuenta entonces 24 meses desde el día en que se introdujo el secreto, y prefiere avisar demasiado pronto que no avisar. Los avisos van a la dirección de la banda 30 y 7 días antes y el mismo día.'),
 ('es','od_secret_subject','OneDrive: el secreto caduca en %1 días'),
 ('es','od_secret_subject_over','OneDrive: el secreto ha caducado'),
 ('es','od_secret_body','el secreto de la aplicación de Microsoft caduca en %1 días, el %2. Después Bandregie ya no llega al OneDrive: ni fotos nuevas, ni archivo, ni aviso alguno.'),
@@ -73,7 +81,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 
 ('it','date_pick','Apri calendario'),
 ('it','od_secret_expires','Segreto valido fino al'),
-('it','od_secret_expires_hint','Azure mostra questa data quando il segreto viene creato; oltre 24 mesi non si può. Indicata qui, Bandregie avvisa la direzione della band per posta 30 e 7 giorni prima. Senza, il segreto prima o poi scade e OneDrive si ferma senza dire nulla.'),
+('it','od_secret_expires_hint','Azure mostra questa data quando il segreto viene creato; oltre 24 mesi non si può. Lasciarla vuota va bene — Bandregie conta allora 24 mesi dal giorno in cui il segreto è stato inserito, e preferisce avvisare troppo presto che non avvisare. Gli avvisi arrivano alla direzione della band 30 e 7 giorni prima e il giorno stesso.'),
 ('it','od_secret_subject','OneDrive: il segreto scade tra %1 giorni'),
 ('it','od_secret_subject_over','OneDrive: il segreto è scaduto'),
 ('it','od_secret_body','il segreto dell''applicazione Microsoft scade tra %1 giorni, il %2. Dopodiché Bandregie non raggiunge più il OneDrive: niente foto nuove, niente archivio e nessun avviso in proposito.'),

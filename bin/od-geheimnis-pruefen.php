@@ -218,15 +218,44 @@ $pruefe('unbekannte Sprache faellt auf Deutsch zurueck',
     $betreffFremd === $betreffHin && $textFremd === $textHin);
 
 // ------------------------------------------------- 12. Datumspruefung (#347)
-$pruefe('echtes Datum gilt', od_datum_gueltig('2028-08-03'));
-$pruefe('Monat 13 gilt nicht', !od_datum_gueltig('2027-13-01'));
-$pruefe('31. Februar gilt nicht', !od_datum_gueltig('2027-02-31'));
-$pruefe('29.02. im Schaltjahr gilt', od_datum_gueltig('2028-02-29'));
-$pruefe('29.02. sonst nicht', !od_datum_gueltig('2027-02-29'));
-$pruefe('deutsches Format gilt nicht', !od_datum_gueltig('03.08.2028'));
-$pruefe('leer gilt nicht', !od_datum_gueltig(''));
+$pruefe('echtes Datum gilt', datum_gueltig('2028-08-03'));
+$pruefe('Monat 13 gilt nicht', !datum_gueltig('2027-13-01'));
+$pruefe('31. Februar gilt nicht', !datum_gueltig('2027-02-31'));
+$pruefe('29.02. im Schaltjahr gilt', datum_gueltig('2028-02-29'));
+$pruefe('29.02. sonst nicht', !datum_gueltig('2027-02-29'));
+$pruefe('deutsches Format gilt nicht', !datum_gueltig('03.08.2028'));
+$pruefe('leer gilt nicht', !datum_gueltig(''));
 $setzeDatum('2027-13-45');
 $pruefe('unmoegliches Datum kommt nicht durch', od_secret_expires() === '');
+
+// ------------------------- 13. Datum am Geheimnis festgemacht (#354)
+$warSeit = setting('onedrive_secret_set_at');
+set_setting('onedrive_secret_set_at', '2026-08-03');
+$setzeDatum('');
+settings_forget();
+$pruefe('ohne Datum faellt es aus dem Eintragetag', od_secret_expires() === '2028-08-03');
+$pruefe('Grenze sind 24 Monate', od_secret_grenze() === '2028-08-03');
+$setzeDatum('2027-03-01');
+$pruefe('ein eingetragenes Datum gewinnt', od_secret_expires() === '2027-03-01');
+$pruefe('plausibel: innerhalb der Grenze', od_secret_datum_plausibel('2028-08-03'));
+$pruefe('unplausibel: zehn Jahre voraus', !od_secret_datum_plausibel('2037-03-01'));
+$pruefe('unplausibel: in der Vergangenheit', !od_secret_datum_plausibel('2020-01-01'));
+$pruefe('unplausibel: unmoegliches Datum', !od_secret_datum_plausibel('2027-13-45'));
+$pruefe('unplausibel: leer', !od_secret_datum_plausibel(''));
+set_setting('onedrive_secret_set_at', '');
+$setzeDatum('');
+settings_forget();
+$pruefe('weder Datum noch Eintragetag: leer', od_secret_expires() === '');
+set_setting('onedrive_secret_set_at', $warSeit);
+settings_forget();
+
+// --------------------------------- 14. Sprachkontext greift auch mittelbar
+$pruefe('with_lang schaltet um',
+    with_lang('en', static fn(): string => fmt_date('2028-08-03')) !== fmt_date('2028-08-03'));
+$vorher = current_lang();
+try { with_lang('fr', static function () { throw new RuntimeException('Absicht'); }); }
+catch (Throwable $e) { /* gewollt */ }
+$pruefe('und stellt sich auch nach einer Ausnahme zurueck', current_lang() === $vorher);
 
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

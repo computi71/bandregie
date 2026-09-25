@@ -1789,7 +1789,7 @@ if (str_starts_with($path, '/intern')) {
     $nachricht = row('SELECT * FROM post_messages WHERE id = ?', [$m[1]]);
     $titel = trim((string) ($_POST['title'] ?? ''));
     $datum = trim((string) ($_POST['date'] ?? ''));
-    if (!$nachricht || $titel === '' || !preg_match('~^\d{4}-\d{2}-\d{2}$~', $datum)) {
+    if (!$nachricht || $titel === '' || !datum_gueltig($datum)) {
       flash(t('fl_title_date_required'));
       redirect('/intern/post/' . (int) $m[1]);
     }
@@ -3099,7 +3099,7 @@ if (str_starts_with($path, '/intern')) {
       ((int) ($_POST['event_id'] ?? 0) ?: null),
       ((int) ($_POST['promoter_id'] ?? 0) ?: null),
       mb_substr(trim((string) ($_POST['contract_no'] ?? '')), 0, 60),
-      preg_match('~^\d{4}-\d{2}-\d{2}$~', (string) ($_POST['contract_date'] ?? '')) ? $_POST['contract_date'] : $vertrag['contract_date'],
+      datum_gueltig((string) ($_POST['contract_date'] ?? '')) ? $_POST['contract_date'] : $vertrag['contract_date'],
       max(0, $vGage ?? 0), $vZeit('play_from'), $vZeit('play_to'), $vZeit('get_in'),
       $vBody, trim((string) ($_POST['notes'] ?? '')), $m[1],
     ]);
@@ -3265,7 +3265,7 @@ if (str_starts_with($path, '/intern')) {
       'event_id' => $qEventId > 0 && row('SELECT id FROM events WHERE id = ?', [$qEventId]) ? $qEventId : null,
       'title' => mb_substr(trim((string) ($_POST['title'] ?? '')), 0, 190),
       'customer' => mb_substr(trim((string) ($_POST['customer'] ?? '')), 0, 190),
-      'quote_date' => preg_match('~^\d{4}-\d{2}-\d{2}$~', (string) ($_POST['quote_date'] ?? '')) ? $_POST['quote_date'] : $angebot['quote_date'],
+      'quote_date' => datum_gueltig((string) ($_POST['quote_date'] ?? '')) ? $_POST['quote_date'] : $angebot['quote_date'],
       'play_minutes' => max(0, (int) ($_POST['play_minutes'] ?? 0)),
       'km' => max(0, (int) ($_POST['km'] ?? 0)),
       'nights' => max(0, (int) ($_POST['nights'] ?? 0)),
@@ -3945,7 +3945,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/equipment');
   }
   if (preg_match('~^/intern/equipment/(\d+)/frist$~', $path, $m) && $method === 'POST') {
-    if (($_POST['title'] ?? '') !== '' && preg_match('~^\d{4}-\d{2}-\d{2}$~', $_POST['due_date'] ?? '')) {
+    if (($_POST['title'] ?? '') !== '' && datum_gueltig((string) ($_POST['due_date'] ?? ''))) {
       q('INSERT INTO equipment_deadlines (equipment_id, title, due_date, interval_months, notes) VALUES (?,?,?,?,?)', [
         $m[1], trim($_POST['title']), $_POST['due_date'],
         in_array((int) ($_POST['interval_months'] ?? 0), [0, 6, 12, 24], true) ? (int) $_POST['interval_months'] : 0,
@@ -4335,8 +4335,8 @@ if (str_starts_with($path, '/intern')) {
     // damit zu 1.250,00 €, und ein Handy-Zahlenfeld liefert nun einmal Punkte.
     $amount = (int) (price_to_cents((string) ($_POST['amount'] ?? '')) ?? 0);
     $desc = trim($_POST['description'] ?? '');
-    $date = $_POST['date'] ?? '';
-    if ($amount > 0 && $desc !== '' && preg_match('~^\d{4}-\d{2}-\d{2}$~', $date)) {
+    $date = (string) ($_POST['date'] ?? '');
+    if ($amount > 0 && $desc !== '' && datum_gueltig($date)) {
       q('INSERT INTO finances (date, type, amount_cents, category, description, event_id, member_id, created_by) VALUES (?,?,?,?,?,?,?,?)', [
         $date,
         ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
@@ -4542,16 +4542,27 @@ if (str_starts_with($path, '/intern')) {
     set_setting('onedrive_client_id', trim((string) ($_POST['onedrive_client_id'] ?? '')));
     set_setting('onedrive_tenant', trim((string) ($_POST['onedrive_tenant'] ?? 'common')));
     $odSecret = trim((string) ($_POST['onedrive_client_secret'] ?? ''));
-    if ($odSecret !== '') {
+    $odNeuesGeheimnis = $odSecret !== '';
+    if ($odNeuesGeheimnis) {
       set_setting('onedrive_client_secret', crypt_available() ? crypt_seal($odSecret) : $odSecret);
+      // Der Tag, an dem es eingetragen wurde (#354). Daraus faellt das
+      // Ablaufdatum notfalls von selbst, und die Mahnung spannt sich wieder,
+      // ohne dass jemand daran denkt.
+      set_setting('onedrive_secret_set_at', date('Y-m-d'));
+      set_setting('od_secret_warned', '');
     }
     // Ablaufdatum (#339). Leer heißt löschen; Unsinn wird gemeldet und ändert
     // nichts (#347). Wortlos verwerfen hieße: Wer auf einem Browser ohne
     // Datumsfeld „01.03.2027" tippt, findet das Feld hinterher leer und
     // erfährt nie, warum — dieselbe Überlegung wie bei der Kontaktadresse.
     $odBis = trim((string) ($_POST['onedrive_secret_expires'] ?? ''));
-    $odBisSchlecht = $odBis !== '' && !od_datum_gueltig($odBis);
+    $odBisSchlecht = $odBis !== '' && !od_secret_datum_plausibel($odBis);
     if (!$odBisSchlecht) set_setting('onedrive_secret_expires', $odBis);
+    // Ein neues Geheimnis ohne neues Datum: Das alte gehoerte zum alten
+    // Geheimnis und waere jetzt eine Falschaussage - sichtbar als dauerhaft
+    // rote Pruefung, die niemand loswird. Dann lieber keins; od_secret_expires()
+    // rechnet aus dem Eintragetag weiter.
+    if ($odNeuesGeheimnis && $odBis === '') set_setting('onedrive_secret_expires', '');
     // Die Meldung erst am Ende, und nur eine: flash() hat einen einzigen Platz
     // (app/bootstrap.php), kein Postfach. Ein flash() im else-Zweig wurde von
     // dem hier eine Zeile später überschrieben — die Seite meldete Erfolg,
@@ -4825,11 +4836,11 @@ if (str_starts_with($path, '/intern')) {
       set_setting('tax_prices_gross', isset($_POST['tax_prices_gross']) ? '1' : '0');
       // Gründungsdatum: leer heißt „gibt es nicht" — dann rechnet die Kasse wie
       // bisher mit Vorjahr und laufendem Jahr.
-      $taxStart = trim($_POST['tax_business_start'] ?? '');
-      set_setting('tax_business_start', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxStart) ? $taxStart : '');
+      $taxStart = trim((string) ($_POST['tax_business_start'] ?? ''));
+      set_setting('tax_business_start', datum_gueltig($taxStart) ? $taxStart : '');
       set_setting('tax_small_business', isset($_POST['tax_small_business']) ? '1' : '0');
-      $taxDate = trim($_POST['tax_values_checked'] ?? '');
-      set_setting('tax_values_checked', preg_match('~^\d{4}-\d{2}-\d{2}$~', $taxDate) ? $taxDate : date('Y-m-d'));
+      $taxDate = trim((string) ($_POST['tax_values_checked'] ?? ''));
+      set_setting('tax_values_checked', datum_gueltig($taxDate) ? $taxDate : date('Y-m-d'));
       flash(t('fl_tax_saved'));
     }
     if (isset($_POST['_update_form'])) {

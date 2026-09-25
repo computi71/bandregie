@@ -1428,7 +1428,7 @@ Zeile zwei
   'od_secret_kept' => 'Ein Geheimnis ist eingetragen. Leer lassen heißt behalten — nur eine Eingabe ersetzt es.',
   'od_secret_expires' => 'Geheimnis gültig bis',
   'fl_od_expires_invalid' => 'Das ist kein gültiges Datum — das Ablaufdatum blieb unverändert.',
-  'od_secret_expires_hint' => 'Azure zeigt das Datum beim Anlegen des Geheimnisses an; länger als 24 Monate geht nicht. Hier eingetragen, erinnert Bandregie die Bandleitung 30 und 7 Tage vorher per Mail. Ohne Datum läuft es irgendwann ab, und OneDrive hört wortlos auf.',
+  'od_secret_expires_hint' => 'Azure zeigt das Datum beim Anlegen des Geheimnisses an; länger als 24 Monate geht nicht. Leer lassen ist in Ordnung — dann rechnet Bandregie 24 Monate ab dem Tag, an dem das Geheimnis eingetragen wurde, und mahnt lieber zu früh als gar nicht. Gemahnt wird 30 und 7 Tage vorher und am Ablauftag, jeweils per Mail an die Bandleitung.',
   // Die Mahnmail (#339) an die Bandleitung. %1/%2 werden ersetzt, nicht formatiert.
   'od_secret_subject' => 'OneDrive: Das Geheimnis läuft in %1 Tagen ab',
   'od_secret_subject_over' => 'OneDrive: Das Geheimnis ist abgelaufen',

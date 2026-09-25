@@ -1609,7 +1609,48 @@ function browser_lang(): ?string {
   return null;
 }
 // Reihenfolge: eigene Wahl (Umschalter/Profil) -> Browsersprache -> Standardsprache
+/**
+ * Die Sprache für einen Abschnitt festnageln (#353).
+ *
+ * In einer Mail gibt es keinen Betrachter. current_lang() liefert dort die
+ * Browsersprache dessen, der zufällig die Seite aufgerufen hat, die den
+ * Hintergrundlauf ausgelöst hat — bei der Tagesmail also irgendein Besucher
+ * der öffentlichen Bandseite. Ein deutsches Mitglied bekam so einen
+ * niederländischen Wochentag in seiner Mail.
+ *
+ * Mit #349 habe ich das an fünf Stellen durch einen Parameter ersetzt. Das
+ * Review fand drei weitere, die der Sweep übersehen hatte, und nichts hätte
+ * die vierte gefunden. Deshalb hier die Ursache statt der Fundstellen: Wer
+ * eine Mail zusammenstellt, schaltet die Sprache um, und alles darin — t(),
+ * fmt_date(), item_label(), die Beschriftungen — folgt von selbst.
+ *
+ * @template T
+ * @param callable(): T $was
+ * @return T
+ */
+function with_lang(string $lang, callable $was): mixed {
+  $vorher = lang_override();
+  lang_override(array_key_exists($lang, LANGS) ? $lang : 'de');
+  try {
+    return $was();
+  } finally {
+    // finally, nicht danach: Wirft die Zusammenstellung, bliebe die Sprache
+    // sonst für den Rest der Anfrage stehen — und die nächste Seite käme in
+    // der Sprache eines Mailempfängers heraus.
+    lang_override($vorher);
+  }
+}
+
+/** Die festgenagelte Sprache lesen oder setzen; null heißt „keine". */
+function lang_override(?string $lang = null, bool $setzen = true): ?string {
+  static $aktiv = null;
+  if ($setzen && func_num_args() > 0) $aktiv = $lang;
+  return $aktiv;
+}
+
 function current_lang(): string {
+  $fest = lang_override(null, false);
+  if ($fest !== null) return $fest;
   static $lang = null;
   if ($lang !== null) return $lang;
   foreach ([$_SESSION['pub_lang'] ?? null, browser_lang(), default_lang()] as $candidate) {
@@ -1618,14 +1659,27 @@ function current_lang(): string {
   return $lang = default_lang();
 }
 function t(string $key): string {
-  static $cache = null;
+  // Der Speicher liegt je Sprache: Seit with_lang() existiert, können in
+  // einer Anfrage zwei Sprachen leben — die des Betrachters und die des
+  // Empfängers, für den gerade eine Mail entsteht.
+  static $cache = [];
   $lang = current_lang();
   if ($lang === 'de') return UI_STRINGS[$key] ?? $key;
-  if ($cache === null) {
-    $cache = [];
-    foreach (rows('SELECT tkey, value FROM translations WHERE lang = ?', [$lang]) as $r) $cache[$r['tkey']] = $r['value'];
+  if (!isset($cache[$lang])) {
+    $cache[$lang] = [];
+    foreach (rows('SELECT tkey, value FROM translations WHERE lang = ?', [$lang]) as $r) $cache[$lang][$r['tkey']] = $r['value'];
   }
-  return ($cache[$key] ?? '') !== '' ? $cache[$key] : (UI_STRINGS[$key] ?? $key);
+  $tabelle = $cache[$lang];
+  // Vorhanden-und-leer ist eine Antwort, nicht das Fehlen einer (#351): Eine
+  // Sprache darf ein Wort weglassen, das das Deutsche braucht. Italienisch
+  // schreibt „20:30" ohne Zusatz, während en „h" und nl „uur" setzen — mit der
+  // alten Prüfung auf `!== ''` fiel genau das auf Deutsch zurück, und auf einer
+  // italienischen Seite stand „20:30 Uhr".
+  //
+  // Ungefährlich, weil die Oberfläche einen geleerten Text LÖSCHT statt ihn
+  // leer zu speichern (httpdocs/index.php): Eine leere Zeile kann nur aus
+  // einem Seed kommen und ist dort immer gewollt.
+  return array_key_exists($key, $tabelle) ? $tabelle[$key] : (UI_STRINGS[$key] ?? $key);
 }
 // Übersetzte Labels für Termin-Arten/-Status und Song-Status
 function event_type_label(string $k): string { return t('evtype_' . $k) !== 'evtype_' . $k ? t('evtype_' . $k) : $k; }
@@ -4872,6 +4926,23 @@ function absolute_url(string $path): string {
  */
 function secret_placeholder(bool $gesetzt, string $key): string {
   return $gesetzt ? '•••••••• · ' . t($key) : '';
+}
+
+/**
+ * Ein Datum, das es wirklich gibt (#352).
+ *
+ * Die Form allein genuegt nicht: "2027-13-45" passt auf das Muster, und
+ * createFromFormat() bzw. MySQL rollen daraus einen anderen, echten Tag - der
+ * Countdown zaehlt dann auf einen Tag, den niemand eingetragen hat. Im Browser
+ * verhindert das Datumsfeld solche Werte, eine von Hand gebaute Anfrage nicht.
+ *
+ * Stand hier zuerst als od_datum_gueltig() im OneDrive-Teil (#347). Dort war
+ * sie richtig und am falschen Platz: Sechs weitere Routen pruegten weiter nur
+ * die Form, und der naechste Leser haette eine siebte Abschrift angelegt.
+ */
+function datum_gueltig(string $d): bool {
+  if (!preg_match('~^(\d{4})-(\d{2})-(\d{2})$~', $d, $m)) return false;
+  return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
 }
 
 function fmt_date(?string $iso): string {

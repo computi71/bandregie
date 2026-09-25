@@ -288,7 +288,8 @@ function push_t(string $lang, string $key): string {
         $cache[$lang][$r['tkey']] = $r['value'];
       }
     }
-    if (($cache[$lang][$key] ?? '') !== '') return $cache[$lang][$key];
+    // Vorhanden-und-leer gilt, wie bei t() (#351).
+    if (array_key_exists($key, $cache[$lang])) return $cache[$lang][$key];
   }
   return UI_STRINGS[$key] ?? $key;
 }
