@@ -74,7 +74,7 @@ function digest_collect(array $user): array {
       if (!isset(ITEM_KINDS[$kind])) continue;
       foreach (items_unseen($user, $kind) as $id => $marke) {
         if (!item_visible($user, $kind, (int) $id)) continue;
-        $text = item_label($kind, (int) $id);
+        $text = item_label($kind, (int) $id, $lang);
         if ($text === '') continue;              // gelöscht — überspringen
         $kopf = push_t($lang, $marke['neu'] ? 'mark_new' : 'mark_changed')
               . ' · ' . push_t($lang, 'itemkind_' . $kind) . ': ' . $text;

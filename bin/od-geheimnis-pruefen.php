@@ -181,21 +181,25 @@ $pruefe('od_secret_subject ersetzt seine Marke',
 // Zusammenstellung des Textes schon. Genau dort sitzt der Fehler, der sonst
 // erst dem Empfaenger auffaellt: ein stehengebliebenes %2, ein vertauschter
 // Zweig, eine Sprache, die es nicht gibt.
-$empfTest = $empf[0] ?? $admin;
+// Ohne Empfaenger keine Textpruefung - aber auch kein Absturz. Hier stand
+// einmal "?? $admin", und die Variable gab es in dieser Datei nie: Genau im
+// Fall ohne Admin starb das Skript, statt den Abschnitt zu ueberspringen.
+// Die Sprache wird festgenagelt, sonst prueft der Vergleich unten die
+// Voreinstellung des ersten Admins statt den Code.
+$empfTest = ($empf[0] ?? []) + ['name' => 'Pruefkonto', 'pref_lang' => 'de'];
+$empfTest['pref_lang'] = 'de';
 [$betreffHin, $textHin] = od_secret_mail_text($empfTest, 12, '2028-08-03');
 $pruefe('Betreff nennt die Tage', str_contains($betreffHin, '12'));
 $pruefe('Betreff ohne Platzhalterrest', !str_contains($betreffHin, '%'));
+// fmt_date() waere die Sprache des Betrachters - im Skript die Voreinstellung
+// der Installation. Der Text entsteht in der Sprache des EMPFAENGERS. Wer das
+// verwechselt, baut genau den Fehler nach, gegen den #349 angetreten ist.
 $pruefe('Text nennt Tage und Datum',
-    str_contains($textHin, '12') && str_contains($textHin, fmt_date('2028-08-03')));
+    str_contains($textHin, '12') && str_contains($textHin, fmt_date_lang('2028-08-03', 'de')));
 // Die Linkzeile bleibt aussen vor: rawurlencode() macht aus dem Schraegstrich
 // ein %2F, und ein naives Muster liest das als stehengebliebene Marke. Das ist
 // hier schon einmal passiert - die Pruefung hat den Code beschuldigt.
-$ohneLink = static fn(string $t): string => implode("
-",
-    array_filter(explode("
-", $t), static fn(string $z): bool => !str_contains($z, '://')));
-$pruefe('Text ohne Platzhalterrest',
-    !str_contains($ohneLink($textHin), '%1') && !str_contains($ohneLink($textHin), '%2'));
+$pruefe('Text ohne Platzhalterrest', !preg_match('~%[12](?![0-9A-Fa-f])~', $textHin));
 $pruefe('Text nennt den Empfaenger', str_contains($textHin, (string) $empfTest['name']));
 $pruefe('Text enthaelt einen Link', str_contains($textHin, '/login?weiter='));
 
@@ -203,9 +207,8 @@ $pruefe('Text enthaelt einen Link', str_contains($textHin, '/login?weiter='));
 $pruefe('abgelaufen: anderer Betreff', $betreffWeg !== $betreffHin);
 $pruefe('abgelaufen: keine negative Zahl im Betreff', !str_contains($betreffWeg, '-4'));
 $pruefe('abgelaufen: keine negative Zahl im Text', !str_contains($textWeg, '-4'));
-$pruefe('abgelaufen: nennt das Datum', str_contains($textWeg, fmt_date('2026-09-20')));
-$pruefe('abgelaufen: ohne Platzhalterrest',
-    !str_contains($ohneLink($textWeg), '%1') && !str_contains($ohneLink($textWeg), '%2'));
+$pruefe('abgelaufen: nennt das Datum', str_contains($textWeg, fmt_date_lang('2026-09-20', 'de')));
+$pruefe('abgelaufen: ohne Platzhalterrest', !preg_match('~%[12](?![0-9A-Fa-f])~', $textWeg));
 $pruefe('die beiden Texte sind verschieden', $textWeg !== $textHin);
 
 // Eine unbekannte Sprache darf nicht in einem leeren Text muenden.

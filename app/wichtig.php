@@ -117,15 +117,17 @@ function wichtig_mail(string $kind, int $id, string $notiz, array $von): void {
   $empfaenger = wichtig_empfaenger($kind, $id, $von);
   if (!$empfaenger) return;
 
-  $bezeichnung = item_label($kind, $id);
+  // Die Bezeichnung entsteht je Empfaenger, nicht einmal fuer alle (#349):
+  // Sie enthaelt bei Terminen ein Datum, und ein Datum hat eine Sprache.
   $url = item_url($kind, $id);
   $wer = (string) $von['name'];
   $band = setting('band_name');
 
-  register_shutdown_function(static function () use ($empfaenger, $kind, $bezeichnung, $url, $notiz, $wer, $band): void {
+  register_shutdown_function(static function () use ($empfaenger, $kind, $id, $url, $notiz, $wer, $band): void {
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
     foreach ($empfaenger as $u) {
       $lang = array_key_exists($u['pref_lang'] ?? '', LANGS) ? $u['pref_lang'] : 'de';
+      $bezeichnung = item_label($kind, $id, $lang);
       $betreff = push_t($lang, 'wichtig_subject') . ': ' . $bezeichnung;
       $zeilen = [
         str_replace('%1', (string) $u['name'], push_t($lang, 'digest_hello')),

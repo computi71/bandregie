@@ -2,6 +2,9 @@
 -- links (#334/#335), folder assignment and the OneDrive import for photos, the
 -- orphaned private bookings (#337) and a handful of singles — all shipped
 -- without translations (#350).
+-- Vier englische Zeilen fehlen hier mit Absicht: topic_guests_hint,
+-- role_booking_hint und die beiden fl_topic_guest_* liefert bereits
+-- 151-vertraege.sql, und der frueheste Seed gewinnt.
 SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
@@ -50,10 +53,6 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','fl_fin_orphan_freed','%1 booking(s) handed to the band''s cash.'),
 ('en','fl_fee_unclear','The fee stands there as text and cannot be read unambiguously as an amount — please book it by hand.'),
 ('en','fl_contact_email_invalid','That is not an e-mail address — the contact address was left unchanged.'),
-('en','fl_topic_guest_added','%s can see this topic now.'),
-('en','fl_topic_guest_removed','%s can no longer see this topic.'),
-('en','topic_guests_hint','Anyone not in the band sees this topic only when listed here. For members nothing changes — they see everything anyway.'),
-('en','role_booking_hint','Somebody from outside who books for you: sees dates, venues, riders and contracts. Of the topics they see only the ones they opened themselves — to all others you have to add them one by one.'),
 ('en','taxr_neutral','Contributions and payouts (not in the result)'),
 ('en','taxr_neutral_hint','Money between the band and its members is not a business result: a contribution is not a profit, a payout is not a business expense. Both appear in the list below but do not count up here.'),
 ('en','set_site_url_passkey','For passkeys the entry is a precondition: a passkey is valid for exactly one name, and without a fixed address the same installation would be called something else under www than without. As long as nothing stands here, signing in with a passkey stays hidden.'),

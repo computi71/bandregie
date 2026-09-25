@@ -269,11 +269,26 @@ function push_send_one(array $sub, string $json): bool {
   return false;
 }
 
-/** Ein UI-Text in der Sprache des Empfängers — t() kennt nur die Sitzung. */
+/**
+ * Ein UI-Text in der Sprache des Empfängers — t() kennt nur die Sitzung.
+ *
+ * Je Sprache eine Abfrage, dann aus dem Speicher — genau wie t(). Vorher stand
+ * hier eine Abfrage je Aufruf, was stimmte, solange nur Mails so übersetzt
+ * wurden. Seit fmt_date() darüber läuft, ist das eine Abfrage je Datum in
+ * jeder Liste: eine Seite mit dreihundert Terminen kostete dreihundert Mal
+ * dieselbe Zeile. Auf Deutsch fiel es nie auf, weil der Zweig darüber
+ * abkürzt — und Deutsch ist die Sprache, in der geprüft wird.
+ */
 function push_t(string $lang, string $key): string {
+  static $cache = [];
   if ($lang !== 'de') {
-    $r = row('SELECT value FROM translations WHERE lang = ? AND tkey = ?', [$lang, $key]);
-    if ($r && $r['value'] !== '') return $r['value'];
+    if (!isset($cache[$lang])) {
+      $cache[$lang] = [];
+      foreach (rows('SELECT tkey, value FROM translations WHERE lang = ?', [$lang]) as $r) {
+        $cache[$lang][$r['tkey']] = $r['value'];
+      }
+    }
+    if (($cache[$lang][$key] ?? '') !== '') return $cache[$lang][$key];
   }
   return UI_STRINGS[$key] ?? $key;
 }

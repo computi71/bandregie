@@ -38,33 +38,78 @@ $melde = static function (string $was, array $treffer) use (&$ok, &$fehler): voi
 };
 
 // ------------------------------------------------------------ Einlesen
+//
+// de.php wird EINGEBUNDEN, nicht zerlegt. Hier standen zwei Muster, und beide
+// lagen daneben: Ein mit `.` zusammengesetzter Text (fl_demo_locked,
+// demo_locked_hint) kam nur bis zum ersten Stück, und bei einem doppelt
+// vergebenen Schlüssel (stage_empty, od_not_connected) nahm das Muster den
+// ersten, während PHP den letzten nimmt — die Prüfung beurteilte also einen
+// Text, den die Anwendung nie ausgibt. Die Datei definiert nur eine Konstante,
+// braucht keine Datenbank und kein bootstrap; einbinden ist exakt und kürzer.
+require $basis . '/app/strings/de.php';
+$texte = UI_STRINGS;
+
+// Doppelte Schlüssel fallen beim Einbinden nicht auf — PHP nimmt still den
+// letzten. Also getrennt suchen und melden, statt sie nur im Kommentar zu
+// erwähnen.
 $deQuelle = (string) file_get_contents($basis . '/app/strings/de.php');
-// Nicht zeilenweise: de.php packt mehrere Texte in eine Zeile
-// ('set_bandname' => 'Bandname', 'set_contact_email' => '…'), und ein Muster,
-// das am Zeilenanfang ansetzt, findet nur den ersten. Das hat diese Prüfung
-// bei ihrem ersten Lauf 582 Texte für fehlend halten lassen, die es gibt.
-// Beide Anführungsarten: Mehrzeilige Beispieltexte (Songtext, Akkorde, Rider)
-// stehen in doppelten. Wer nur die einfachen kennt, hält gerade die für
-// fehlend — auch das ist dieser Prüfung beim ersten Lauf passiert.
-$texte = [];
-foreach (['~\'([a-z0-9_]+)\'\s*=>\s*\'((?:[^\'\\\\]|\\\\.)*)\'~',
-          '~\'([a-z0-9_]+)\'\s*=>\s*"((?:[^"\\\\]|\\\\.)*)"~'] as $muster) {
-    preg_match_all($muster, $deQuelle, $m, PREG_SET_ORDER);
-    foreach ($m as $eintrag) {
-        // Der erste Treffer gewinnt — steht ein Schlüssel doppelt, gilt in PHP
-        // zwar der letzte, aber ein doppelter ist ohnehin ein eigener Fehler.
-        if (!isset($texte[$eintrag[1]])) $texte[$eintrag[1]] = $eintrag[2];
-    }
+preg_match_all("~^\s*'([a-z0-9_]+)'\s*=>~m", $deQuelle, $dm);
+$gesehen = [];
+$doppelt = [];
+foreach ($dm[1] as $k) {
+    if (isset($gesehen[$k])) $doppelt[] = "$k — steht mehrfach in de.php, PHP nimmt den letzten";
+    $gesehen[$k] = true;
 }
 
-$seed = '';
-foreach (glob($basis . '/seed/translations/*.sql') ?: [] as $datei) {
-    $seed .= (string) file_get_contents($datei);
-}
+// LANGS statt einer eigenen Liste: Käme eine siebte Sprache dazu, liefe diese
+// Prüfung sonst weiter grün, während jeder neue Text dort fehlt.
+require_once $basis . '/app/lang.php';
+$sprachen = array_values(array_diff(array_keys(LANGS), ['de']));
+
+// Aus den Seeds: was eingefügt wird, abzüglich dessen, was ein späterer Seed
+// wieder löscht. Ein leerer Wert zählt NICHT als übersetzt — t() fällt darauf
+// genauso auf Deutsch zurück wie auf eine fehlende Zeile (('it','events_oclock','')
+// ist so ein Fall und stand bis eben als „übersetzt" da).
+// In der Reihenfolge, in der die Anweisungen dastehen — nicht erst alle
+// Einfügungen und dann alle Löschungen. Mehrere Seeds löschen einen Text und
+// setzen ihn im selben Atemzug neu (29-help-and-music.sql sagt im Kopf sogar,
+// warum es HIER stehen muss); wer die Löschung nachträglich anwendet, erklärt
+// genau die für fehlend, die gerade erneuert wurden. Erster Lauf: 23
+// Fehlalarme, von denen die Datenbank keinen einzigen bestätigte.
 $uebersetzt = [];
-preg_match_all("~\('([a-z]{2})','([a-z0-9_]+)'~", $seed, $sm, PREG_SET_ORDER);
-foreach ($sm as $z) $uebersetzt[$z[1]][$z[2]] = true;
-$sprachen = ['en', 'nl', 'fr', 'es', 'it'];
+$leer = [];
+foreach (glob($basis . '/seed/translations/*.sql') ?: [] as $datei) {
+    $seed = (string) file_get_contents($datei);
+    $schritte = [];
+    // Beide Maskierungen: Die Seeds schreiben ein Apostroph mal als '' und mal
+    // als \' (MySQL kann beides). Wer nur '' kennt, bricht die Zeile mitten im
+    // Wort ab und erklärt „Foto\'s" für nicht vorhanden — sechs Fehlalarme,
+    // alle in genau den Sprachen, die Apostrophe benutzen.
+    preg_match_all("~\\('([a-z]{2})','([a-z0-9_]+)','((?:[^'\\\\]|\\\\.|'')*)'\\)~", $seed, $sm,
+                   PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+    foreach ($sm as $z) $schritte[$z[0][1]] = ['setzen', $z[1][0], $z[2][0], $z[3][0]];
+    preg_match_all("~DELETE\s+FROM\s+translations[^;]*~is", $seed, $dl, PREG_OFFSET_CAPTURE);
+    foreach ($dl[0] as $d) $schritte[$d[1]] = ['loeschen', $d[0]];
+    ksort($schritte);
+
+    foreach ($schritte as $schritt) {
+        if ($schritt[0] === 'setzen') {
+            $uebersetzt[$schritt[1]][$schritt[2]] = true;
+            // Ein leer gesetzter Wert ist eine Zeile, aber keine Uebersetzung:
+            // t() faellt darauf auf Deutsch zurueck. Gemeldet wird er unten
+            // eigens - als Seed ist er da, seine Wirkung ist es nicht.
+            if (trim($schritt[3]) === '') $leer[] = $schritt[1] . '/' . $schritt[2];
+            continue;
+        }
+        // Nur echte Schlüssel entfernen — in der Anweisung stehen auch
+        // Sprachkürzel und Vergleichswerte in Anführungszeichen.
+        preg_match_all("~'([a-z0-9_]+)'~", $schritt[1], $weg);
+        foreach ($weg[1] as $k) {
+            if (!isset($texte[$k])) continue;
+            foreach ($sprachen as $l) unset($uebersetzt[$l][$k]);
+        }
+    }
+}
 
 $quellen = [];
 foreach (['app', 'httpdocs'] as $ordner) {
@@ -78,17 +123,20 @@ foreach (['app', 'httpdocs'] as $ordner) {
     }
 }
 
+$melde('kein Schluessel doppelt in de.php', $doppelt);
+// Kein Fehler, aber auch kein Schweigen: Ein leer geseedeter Text sieht
+// uebersetzt aus und kommt beim Leser auf Deutsch an.
+if ($leer) printf("%-52s %s%s", 'Hinweis: leer geseedet (wirkt deutsch)', implode(', ', $leer), PHP_EOL);
+
 // --------------------------------------------- 1. Benutzte Schlüssel gibt es
 // Ein Tippfehler in t('termne_titel') gibt keinen Fehler, sondern zeigt den
 // Schlüssel selbst an — im Zweifel mitten auf der Seite.
 $unbekannt = [];
-$benutzt = [];
 foreach ($quellen as $pfad => $src) {
     foreach (["~\bt\('([a-z0-9_]+)'\)~", "~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+)'\s*\)~"] as $muster) {
         preg_match_all($muster, $src, $tm, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
         foreach ($tm as $treffer) {
             $schluessel = $treffer[1][0];
-            $benutzt[$schluessel] = true;
             if (!isset($texte[$schluessel])) {
                 $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
                 $unbekannt[] = "$pfad:$nr  t('$schluessel') — steht nicht in de.php";
@@ -131,11 +179,18 @@ foreach ($quellen as $pfad => $src) {
             $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
             $falschMarke[] = "$pfad:$nr  str_replace(… t('$schluessel')) — Text traegt %s/%d statt %1/%2";
         }
-        // Wird %2 ersetzt, muss es auch im Text stehen, und umgekehrt.
+        // Beide Richtungen, und die zweite ist die gefährliche: Ein %2 im Text,
+        // das die Aufrufstelle nie ersetzt, bleibt stehen und geht so in die
+        // Mail. Genau dafür wurde od_secret_mail_text() herausgezogen — geprüft
+        // wurde bis hierher aber nur die harmlose Richtung, obwohl der
+        // Kommentar „und umgekehrt" versprach.
         $ersetzt = substr_count($treffer[1][0], "'%2'");
         $imText = preg_match('~%2(?![0-9$])~', $text);
+        $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
+        if (!$ersetzt && $imText) {
+            $falschMarke[] = "$pfad:$nr  t('$schluessel') — %2 steht im Text, wird hier aber nicht ersetzt";
+        }
         if ($ersetzt && !$imText) {
-            $nr = substr_count(substr($src, 0, (int) $treffer[0][1]), "\n") + 1;
             $falschMarke[] = "$pfad:$nr  t('$schluessel') — %2 wird ersetzt, steht aber nicht im Text";
         }
     }
@@ -157,8 +212,9 @@ foreach ($quellen as $src) {
     preg_match_all("~push_t\(\s*\\\$[a-zA-Z_]+\s*,\s*'([a-z0-9_]+_)'\s*\.~", $src, $pp);
     foreach ($pp[1] as $p) $mailPraefixe[$p] = true;
 }
+$praefixListe = array_keys($mailPraefixe);
 foreach (array_keys($texte) as $k) {
-    foreach (array_keys($mailPraefixe) as $p) {
+    foreach ($praefixListe as $p) {
         if (str_starts_with($k, $p)) { $mailSchluessel[$k] = true; break; }
     }
 }
@@ -184,12 +240,16 @@ foreach (file($listeDatei, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] 
 // ohne dass sie irgendwo auffielen. Ein Text, den niemand benutzt, gehört
 // gelöscht — nicht von dieser Prüfung verschwiegen.
 $neueLuecken = [];
+$gemeldet = [];
 $offen = 0;
 foreach (array_keys($texte) as $k) {
     foreach ($sprachen as $l) {
         if (isset($uebersetzt[$l][$k])) continue;
         $offen++;
-        if (!isset($bekannt[$k])) { $neueLuecken[] = "$k fehlt in $l — Seed nachziehen"; break; }
+        if (!isset($bekannt[$k]) && !isset($gemeldet[$k])) {
+            $gemeldet[$k] = true;
+            $neueLuecken[] = "$k fehlt in $l — Seed nachziehen";
+        }
     }
 }
 $melde('kein NEUER Text ohne Uebersetzung', $neueLuecken);

@@ -105,7 +105,7 @@ const EVENT_STATUS = [
   'blockiert' => 'Blockiert – offen f. Anfragen', 'abgesagt' => 'Abgesagt',
 ];
 // Sprachen der öffentlichen Seite (Belgien ist über NL/FR abgedeckt)
-const LANGS = ['de' => 'Deutsch', 'en' => 'English', 'nl' => 'Nederlands', 'fr' => 'Français', 'es' => 'Español', 'it' => 'Italiano'];
+require_once __DIR__ . '/lang.php';   // const LANGS — auch von bin/texte-pruefen.php gelesen
 
 // UI-Texte der öffentlichen Seite (Deutsch = Standard und Fallback)
 // Die deutschen Texte, das Wörterbuch der Oberfläche (#328).
@@ -3435,7 +3435,7 @@ function guest_invite_mail(array $b): bool {
   $ort = guest_event_place($b)['ort'];
   $body = 'Hallo ' . trim((string) $b['guest_name']) . ",\n\n"
     . "$band fragt dich für einen Termin an:\n\n"
-    . '  ' . fmt_date($b['date']) . ($b['time'] ? ' · ' . $b['time'] . ' Uhr' : '') . "\n"
+    . '  ' . fmt_date_lang($b['date'], 'de') . ($b['time'] ? ' · ' . $b['time'] . ' Uhr' : '') . "\n"
     . '  ' . $b['title'] . "\n"
     . ($ort !== '' ? "  $ort\n" : '')
     . ($b['function_name'] !== '' ? '  Deine Aufgabe: ' . $b['function_name'] . "\n" : '')
@@ -3443,7 +3443,11 @@ function guest_invite_mail(array $b): bool {
     . "Nach deiner Zusage ist derselbe Link dein Zugang zu allem, was du für den Abend brauchst — "
     . "Ablauf, Rider, Setliste. Er ist persönlich und gilt bis zum Mittag nach dem Termin.\n\n"
     . "Viele Grüße\n$band";
-  $ok = band_mail_send((string) $b['guest_email'], "$band: Anfrage für " . fmt_date($b['date']),
+  // Deutsch festgenagelt (#349): Der Rumpf dieser Mail ist deutsch geschrieben,
+  // also hat das Datum darin nichts in der Browsersprache dessen zu suchen, der
+  // gerade einlädt. Vorher stand im Betreff „Anfrage für Thu, 03.08.2028“,
+  // sobald ein Admin die Oberfläche auf Englisch gestellt hatte.
+  $ok = band_mail_send((string) $b['guest_email'], "$band: Anfrage für " . fmt_date_lang($b['date'], 'de'),
                        $body, 'gast', null, 'Buchung ' . (int) $b['id']);
   if ($ok) q('UPDATE guest_bookings SET invited_at = NOW() WHERE id = ?', [$b['id']]);
   return $ok;
@@ -4264,11 +4268,15 @@ function task_assignees_map(array $taskIds): array {
  * vergessene zeigt irgendwann auf eine neu vergebene Nummer, also auf das
  * Falsche statt auf nichts.
  */
-function item_label(string $kind, int $id): string {
+function item_label(string $kind, int $id, ?string $lang = null): string {
+  // $lang ist der Ausweg aus current_lang() (#349). Ohne ihn nahm die
+  // Bezeichnung die Sprache dessen, der den Hintergrundlauf ausgeloest hat -
+  // und das ist bei der Tagesmail irgendein Besucher der oeffentlichen Seite.
   $eine = static fn(string $sql): ?array => row($sql, [$id]);
+  $datum = static fn(?string $iso): string => fmt_date_lang($iso, $lang ?? current_lang());
   return match ($kind) {
     'event'      => ($r = $eine('SELECT title, date FROM events WHERE id = ?'))
-                    ? $r['title'] . ' - ' . fmt_date($r['date']) : '',
+                    ? $r['title'] . ' - ' . $datum($r['date']) : '',
     'song'       => ($r = $eine('SELECT title FROM songs WHERE id = ?')) ? $r['title'] : '',
     'setlist'    => ($r = $eine('SELECT name FROM setlists WHERE id = ?')) ? $r['name'] : '',
     'quote'      => ($r = $eine('SELECT title, customer FROM quotes WHERE id = ?'))
@@ -4294,7 +4302,7 @@ function item_label(string $kind, int $id): string {
     'stageitem'  => ($r = $eine('SELECT label, kind FROM stage_items WHERE id = ?'))
                     ? ($r['label'] ?: $r['kind']) : '',
     'absence'    => ($r = $eine('SELECT date_from, date_to FROM absences WHERE id = ?'))
-                    ? fmt_date($r['date_from']) . ' - ' . fmt_date($r['date_to']) : '',
+                    ? $datum($r['date_from']) . ' - ' . $datum($r['date_to']) : '',
     'comment'    => ($r = $eine('SELECT text FROM comments WHERE id = ?'))
                     ? mb_substr($r['text'], 0, 60) : '',
     'attendance' => ($r = row('SELECT u.name FROM attendance a JOIN users u ON u.id = a.user_id
