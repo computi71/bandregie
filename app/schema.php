@@ -1701,6 +1701,29 @@ if (setting('migr_push_abwahl') === '') {
   set_setting('migr_push_abwahl', '1');
 }
 
+// Maskierte Umbrueche im Vertragstext geradeziehen (#357).
+//
+// Die mitgelieferte Vorlage stand in einfachen Anfuehrungszeichen. Darin ist
+// die Folge Backslash-n kein Umbruch, sondern zwei Zeichen. Wer die Vorlage
+// uebernommen hat, traegt sie in der Einstellung; jeder daraus gebildete
+// Vertrag traegt sie eingefroren im Wortlaut - und auf dem gedruckten Blatt.
+//
+// Ersetzt wird nur, wo die Folge wirklich steht. Ein Backslash-n in der Prosa
+// eines Gastspielvertrags schreibt niemand mit Absicht.
+if (setting('migr_vertrag_umbrueche') === '') {
+  $literal = chr(92) . 'n';
+  $tpl = (string) setting('contract_template');
+  if ($tpl !== '' && str_contains($tpl, $literal)) {
+    set_setting('contract_template', str_replace($literal, chr(10), $tpl));
+  }
+  foreach (rows('SELECT id, body FROM contracts') as $cZeile) {
+    if (!str_contains((string) $cZeile['body'], $literal)) continue;
+    q('UPDATE contracts SET body = ? WHERE id = ?',
+      [str_replace($literal, chr(10), (string) $cZeile['body']), $cZeile['id']]);
+  }
+  set_setting('migr_vertrag_umbrueche', '1');
+}
+
 // Der Haken „Rechnung benoetigt" am Termin (#356). Bar bezahlte Gigs, bei
 // denen niemand ein Papier will, bleiben ohne — deshalb ein Haken und nicht
 // „jeder Gig mit Vertrag".
