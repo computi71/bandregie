@@ -383,6 +383,11 @@ const UI_STRINGS = [
   // Termine
   'ev_only_upcoming' => 'Nur kommende', 'ev_also_past' => 'Auch vergangene',
   'ev_show_cancelled' => 'Abgesagte (%1)', 'ev_hide_cancelled' => 'Abgesagte ausblenden',
+  // Der Filter nach Terminart (#372). „Alle Arten" traegt die Gesamtzahl, damit
+  // man sieht, wovon die gewaehlte Art ein Teil ist.
+  'ev_filter_type' => 'Terminart',
+  'ev_filter_all' => 'Alle Arten (%1)',
+  'ev_filter_apply' => 'Anzeigen',
   'ev_count' => '%1 Termine', 'ev_count_requested' => '%1 angefragt',
   'ev_count_cancelled' => '%1 abgesagt, ausgeblendet',
   'ev_cal_abo' => 'Kalender-Abo', 'ev_new' => 'Neuer Termin', 'ev_type' => 'Art',

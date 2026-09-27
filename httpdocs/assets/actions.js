@@ -35,3 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// Eine Auswahlliste, die beim Umstellen gleich abschickt (#372).
+//
+// Ohne JavaScript bleibt der Knopf daneben der Weg — deshalb steht er im HTML
+// und verschwindet erst hier. Andersherum, also den Knopf per Skript
+// hinzufügen, wäre eine Seite, die ohne Skript nicht bedienbar ist.
+document.querySelectorAll('select[data-autosubmit]').forEach(select => {
+  select.addEventListener('change', () => select.form && select.form.submit());
+});
+document.querySelectorAll('[data-autosubmit-hide]').forEach(el => {
+  el.hidden = true;
+});

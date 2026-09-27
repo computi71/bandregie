@@ -992,15 +992,37 @@ if (str_starts_with($path, '/intern')) {
     // Ersatzleute sehen nur die Termine, für die sie angefragt sind
     [$evWhere, $evParams] = visible_clause(visible_event_ids($me));
     $evStatus = $showCancelled ? '' : " AND status <> 'abgesagt'";
-    $events = $showPast
-      ? rows("SELECT * FROM events WHERE 1 = 1$evWhere$evStatus ORDER BY date DESC, time", $evParams)
-      : rows("SELECT * FROM events WHERE date >= ?$evWhere$evStatus ORDER BY date, time", [$today, ...$evParams]);
+    // Nach Terminart filtern (#372). Eine unbekannte Art wird verworfen statt
+    // als leere Liste beantwortet — sonst sieht ein Tippfehler in der Adresse
+    // aus wie „keine Termine".
+    $evArt = array_key_exists($_GET['art'] ?? '', EVENT_TYPES) ? (string) $_GET['art'] : '';
+    $evArtWhere = $evArt !== '' ? ' AND type = ?' : '';
+    $evArtParam = $evArt !== '' ? [$evArt] : [];
+    // Der Zeitraum gilt fuer die Liste, die Zaehlung und die Artenauswahl
+    // gleichermassen: Steht ueber der Auswahl „Probe (30)", muessen es die
+    // dreissig sein, die man mit einem Klick auch bekaeme.
+    $evZeit = $showPast ? '1 = 1' : 'date >= ?';
+    $evZeitParam = $showPast ? [] : [$today];
+
+    $events = rows("SELECT * FROM events WHERE $evZeit$evWhere$evStatus$evArtWhere
+                    ORDER BY date" . ($showPast ? ' DESC' : '') . ", time",
+                   [...$evZeitParam, ...$evParams, ...$evArtParam]);
+
+    // Welche Arten kommen ueberhaupt vor, und wie oft? Ohne die Zahlen ist die
+    // Auswahl eine Liste von zehn Woertern, von denen die meisten nichts
+    // treffen. Die Arten selbst zaehlen ohne den Artenfilter - sonst bliebe
+    // nach der ersten Wahl nur noch eine Art uebrig, und man kaeme nicht mehr
+    // heraus, ohne den Filter zu loeschen.
+    $evArten = [];
+    foreach (rows("SELECT type, COUNT(*) n FROM events WHERE $evZeit$evWhere$evStatus
+                   GROUP BY type", [...$evZeitParam, ...$evParams]) as $evZeile) {
+      $evArten[(string) $evZeile['type']] = (int) $evZeile['n'];
+    }
     // Wie viele liegen hinter dem Link? Eine Zahl, die niemand nennt, liest
     // sich wie „keine".
-    $cancelledCount = (int) ($showPast
-      ? row("SELECT COUNT(*) n FROM events WHERE status = 'abgesagt'$evWhere", $evParams)['n']
-      : row("SELECT COUNT(*) n FROM events WHERE date >= ? AND status = 'abgesagt'$evWhere",
-            [$today, ...$evParams])['n']);
+    $cancelledCount = (int) row(
+      "SELECT COUNT(*) n FROM events WHERE $evZeit AND status = 'abgesagt'$evWhere$evArtWhere",
+      [...$evZeitParam, ...$evParams, ...$evArtParam])['n'];
     // Offen dargestellt heißt angesehen (#321). Gesammelt in einer Anweisung,
     // und hier statt in der Ansicht: Eine Seite, die angezeigt wird, soll nicht
     // nebenbei schreiben, und „alle Termine" sind schnell ein paar hundert.
@@ -1009,6 +1031,8 @@ if (str_starts_with($path, '/intern')) {
       'title' => t('nav_termine'),
       'showPast' => $showPast,
       'showCancelled' => $showCancelled,
+      'evArt' => $evArt,
+      'evArten' => $evArten,
       'cancelledCount' => $cancelledCount,
       // Nur Angefragtes zählen, was auch angezeigt wird — sonst behauptet die
       // Zeile etwas über Zeilen, die niemand sieht.
@@ -4478,12 +4502,23 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/termine/export' && $method === 'GET') {
     require_once BASE_DIR . '/app/export.php';
     $rows = [];
-    // Der Export zeigt genau die Termine, die auch die Liste zeigt
+    // Sichtbar ist, was auch die Liste zeigen wuerde - und gefiltert wird mit
+    // denselben Schaltern (#372). Wer die Liste auf Gigs stellt und dann auf
+    // Herunterladen drueckt, will die Gigs und nicht alles.
     [$expWhere, $expParams] = visible_clause(visible_event_ids($me), 'e.id');
+    $expArt = array_key_exists($_GET['art'] ?? '', EVENT_TYPES) ? (string) $_GET['art'] : '';
+    $expArtWhere = $expArt !== '' ? ' AND e.type = ?' : '';
+    $expArtParam = $expArt !== '' ? [$expArt] : [];
+    // Vergangenes und Abgesagtes sind in der Liste ausgeblendet, nicht
+    // geloescht. Die Ausfuhr folgt derselben Wahl.
+    $expZeit = ($_GET['alle'] ?? '') === '1' ? '1 = 1' : 'e.date >= ?';
+    $expZeitParam = ($_GET['alle'] ?? '') === '1' ? [] : [$today];
+    $expStatus = ($_GET['abgesagt'] ?? '') === '1' ? '' : " AND e.status <> 'abgesagt'";
     $allEvents = rows("SELECT e.*, v.name AS venue_name, u.name AS responsible_name FROM events e
                        LEFT JOIN venues v ON v.id = e.venue_id
                        LEFT JOIN users u ON u.id = e.responsible_id
-                       WHERE 1 = 1$expWhere ORDER BY e.date", $expParams);
+                       WHERE $expZeit$expWhere$expStatus$expArtWhere ORDER BY e.date",
+                      [...$expZeitParam, ...$expParams, ...$expArtParam]);
     $exportGear = event_gear_map(array_column($allEvents, 'id'));
     foreach ($allEvents as $ev) {
       $rows[] = [

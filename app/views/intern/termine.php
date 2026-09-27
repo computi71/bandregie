@@ -4,8 +4,12 @@ require BASE_DIR . '/app/views/_header.php';
 <?php
 // Die Schalter erhalten sich gegenseitig: Wer die Abgesagten eingeblendet hat
 // und dann „auch vergangene" drückt, will nicht beides von vorn einstellen.
-$evLink = function (array $anders) use ($showPast, $showCancelled): string {
-  $q = array_filter(['alle' => $showPast ? '1' : '', 'abgesagt' => $showCancelled ? '1' : ''] + [], 'strlen');
+$evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): string {
+  $q = array_filter([
+    'alle' => $showPast ? '1' : '',
+    'abgesagt' => $showCancelled ? '1' : '',
+    'art' => $evArt,
+  ], 'strlen');
   foreach ($anders as $k => $v) {
     if ($v === '') unset($q[$k]); else $q[$k] = $v;
   }
@@ -33,8 +37,38 @@ $evLink = function (array $anders) use ($showPast, $showCancelled): string {
       <a class="btn btn-ghost" href="<?= e($evLink(['abgesagt' => '1'])) ?>">🚫 <?= e(str_replace('%1', (string) $cancelledCount, t('ev_show_cancelled'))) ?></a>
     <?php endif; ?>
     <a class="btn btn-ghost" href="/intern/kalender">📅 <?= e(t('ev_cal_abo')) ?></a>
-    <a class="btn btn-ghost" href="/intern/termine/export">⬇ <?= e(t('ev_export')) ?></a>
+    <?php // Die Ausfuhr nimmt dieselben Schalter mit: Erst filtern und dann
+          // alles herunterladen waere eine Falle (#372). ?>
+    <?php $evFrage = (string) parse_url($evLink([]), PHP_URL_QUERY); ?>
+    <a class="btn btn-ghost" href="/intern/termine/export<?= $evFrage !== '' ? '?' . e($evFrage) : '' ?>">⬇ <?= e(t('ev_export')) ?></a>
   </div>
+
+  <?php // Nach Terminart filtern (#372). Eine Auswahlliste und keine Knopfreihe:
+        // Es gibt zehn Arten, und zehn Knöpfe nebeneinander verdecken die zwei
+        // Schalter darüber. Angeboten wird nur, was wirklich vorkommt — wer nie
+        // aufnimmt, soll nicht an „Aufnahme-Session" vorbeilesen müssen.
+        //
+        // Ein Formular mit GET, damit der Filter in der Adresse steht: So lässt
+        // er sich als Lesezeichen ablegen und überlebt das Zurückgehen. Die
+        // beiden anderen Schalter reisen als verstecktes Feld mit. ?>
+  <?php if ($evArten): ?>
+    <form method="get" action="/intern/termine" class="row-buttons">
+      <?php if ($showPast): ?><input type="hidden" name="alle" value="1"><?php endif; ?>
+      <?php if ($showCancelled): ?><input type="hidden" name="abgesagt" value="1"><?php endif; ?>
+      <label><?= e(t('ev_filter_type')) ?>
+      <select name="art" data-autosubmit>
+        <option value=""><?= e(str_replace('%1', (string) array_sum($evArten), t('ev_filter_all'))) ?></option>
+        <?php foreach (EVENT_TYPES as $artKey => $artLabel): ?>
+          <?php if (!isset($evArten[$artKey])) continue; ?>
+          <option value="<?= e($artKey) ?>" <?= $evArt === $artKey ? 'selected' : '' ?>>
+            <?= e(event_type_label($artKey)) ?> (<?= (int) $evArten[$artKey] ?>)</option>
+        <?php endforeach; ?>
+      </select></label>
+      <?php // Ohne JavaScript bleibt der Knopf der Weg. Mit JavaScript ist er
+            // überflüssig und verschwindet — siehe assets/actions.js. ?>
+      <button class="btn btn-small" data-autosubmit-hide><?= e(t('ev_filter_apply')) ?></button>
+    </form>
+  <?php endif; ?>
 </div>
 
 <details class="card collapsible" <?= $events ? '' : 'open' ?>>
