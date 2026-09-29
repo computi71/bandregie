@@ -865,3 +865,28 @@ textarea.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
 /* Hinweis auf einen Stand aus dem Zwischenspeicher: auffällig, aber nicht im Weg */
 .stale-banner { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border-radius: 6px;
                 background: rgba(200, 120, 40, 0.14); font-size: 0.9rem; }
+
+/* Wo bin ich gelandet? (#373)
+   Ein Anker springt an die richtige Stelle und sagt dann nichts mehr. In einer
+   Liste mit dreissig Aufgaben oder Terminen sucht man danach trotzdem, welche
+   gemeint war. Die Markierung verblasst von selbst: Sie zeigt den Weg und
+   hebt nicht dauerhaft etwas hervor.
+
+   Gefaerbt wird mit --bg-elevated, der Flaeche, die dieses Blatt ohnehin fuer
+   Hervorgehobenes benutzt - und nicht mit einem festen Farbwert. Aendert
+   jemand das Erscheinungsbild, zieht die Markierung mit, statt als einziges
+   Element in der alten Farbe stehenzubleiben. */
+.task-list li:target,
+details.event-card:target {
+  animation: anker-zeigen 2.4s ease-out 1;
+  border-radius: 6px;
+}
+@keyframes anker-zeigen {
+  0%, 55% { background: var(--bg-elevated); }
+  100% { background: transparent; }
+}
+/* Wer schnelle Bewegung nicht sehen will, bekommt sie ruhig stehend. */
+@media (prefers-reduced-motion: reduce) {
+  .task-list li:target,
+  details.event-card:target { animation: none; background: var(--bg-elevated); }
+}

@@ -82,7 +82,9 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
           if ((int) $a['user_id'] === (int) $user['id'] && $a['done_at'] !== null) $meinHaken = true;
         }
       ?>
-      <li class="<?= $task['status'] === 'erledigt' ? 'done' : '' ?>">
+      <?php // Der Anker, auf den die Übersicht und die Marken zeigen (#373).
+            // Ohne ihn landet man auf der Liste und sucht die Aufgabe selbst. ?>
+      <li id="aufgabe<?= (int) $task['id'] ?>" class="<?= $task['status'] === 'erledigt' ? 'done' : '' ?>">
         <form class="inline" action="/intern/aufgaben/<?= (int) $task['id'] ?>/toggle" method="post"><?= csrf_field() ?>
           <button class="check" title="<?= e(t('task_toggle')) ?>"><?= $meinHaken ? '☑' : '☐' ?></button>
         </form>
