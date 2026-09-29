@@ -4535,7 +4535,7 @@ function item_url(string $kind, int $id): string {
     'file'      => '/intern/dateien',
     'venue'     => '/intern/orte',
     'absence'   => '/intern/abwesenheiten',
-    'task'      => '/intern/aufgaben',
+    'task'      => '/intern/aufgaben#aufgabe' . $id,
     'finance'   => '/intern/kasse',
     'equipment' => '/intern/equipment',
     'guest'     => '/intern/gaeste',

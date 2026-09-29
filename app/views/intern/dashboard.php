@@ -110,7 +110,10 @@
           <li>
             <span class="badge"><?= e(t('dash_vote_missing')) ?></span>
             <span class="event-date"><?= fmt_date($ov['date']) ?></span>
-            <strong><?= e($ov['title']) ?></strong>
+            <?php // Zusagen, ohne den Abend ansehen zu können, ist eine Zumutung
+                  // (#373). event_url() bringt die Filter mit, ohne die die
+                  // Karte gar nicht auf der Seite steht. ?>
+            <a href="<?= e(event_url($ov)) ?>"><strong><?= e($ov['title']) ?></strong></a>
             <?php if ($ov['status'] !== 'bestaetigt'): ?>
               <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
             <?php endif; ?>
@@ -127,7 +130,7 @@
       <?php foreach ($tasks as $task): ?>
         <li>
           <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
-          <strong><?= e($task['title']) ?></strong>
+          <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
           <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
           <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
           <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
