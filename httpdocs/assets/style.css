@@ -873,8 +873,9 @@ textarea.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
    hebt nicht dauerhaft etwas hervor.
 
    Gefaerbt wird mit --bg-elevated, der Flaeche, die dieses Blatt ohnehin fuer
-   Hervorgehobenes benutzt - damit es im hellen wie im dunklen Erscheinungsbild
-   stimmt, statt ein Blau festzuschreiben, das nur in einem von beiden passt. */
+   Hervorgehobenes benutzt - und nicht mit einem festen Farbwert. Aendert
+   jemand das Erscheinungsbild, zieht die Markierung mit, statt als einziges
+   Element in der alten Farbe stehenzubleiben. */
 .task-list li:target,
 details.event-card:target {
   animation: anker-zeigen 2.4s ease-out 1;
