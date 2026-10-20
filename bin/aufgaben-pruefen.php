@@ -240,5 +240,77 @@ $pruefe('beide Pfade gehören zum Bereich Aufgaben',
     perm_module_for('/intern/aufgaben/7/toggle') === 'aufgaben'
     && perm_module_for('/intern/aufgaben/7/update') === 'aufgaben');
 
+// ---------------- 13. Sich selbst herausnehmen (#379)
+// Die Route tut genau zwei Dinge: die eigene Zeile loeschen und den Stand neu
+// rechnen. Hier wird beides nachgestellt, damit die Faelle festgehalten sind,
+// ueber die beim Bauen entschieden wurde.
+$verlasse = static function (int $id, array $u): void {
+    q('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$id, (int) $u['id']]);
+    task_status_apply($id);
+};
+
+$pruefe('verlassen ist Selbstbedienung', is_self_service('/intern/aufgaben/7/verlassen'));
+$pruefe('verlassen gehoert zum Bereich Aufgaben',
+    perm_module_for('/intern/aufgaben/7/verlassen') === 'aufgaben');
+
+// Nur die eigene Zeile: Die beiden anderen bleiben stehen.
+$t13 = $aufgabe([$A, $B, $C], 0);
+$verlasse($t13, $B);
+$pruefe('verlassen nimmt nur die eigene Zeile',
+    (int) row('SELECT COUNT(*) n FROM task_assignees WHERE task_id = ?', [$t13])['n'] === 2
+    && !row('SELECT 1 x FROM task_assignees WHERE task_id = ? AND user_id = ?', [$t13, (int) $B['id']]));
+
+// Das Haekchen geht mit - sonst stuende "erledigt von B" an einer Aufgabe,
+// die B gerade abgegeben hat.
+$hake($t13, $A);
+$verlasse($t13, $A);
+$pruefe('verlassen nimmt das eigene Haekchen mit',
+    (int) row('SELECT COUNT(done_at) n FROM task_assignees WHERE task_id = ?', [$t13])['n'] === 0);
+
+// Der Letzte darf gehen: Danach ist niemand zustaendig, und genau dann darf
+// wieder jeder abhaken - derselbe Zustand wie bei einer frisch angelegten
+// Aufgabe ohne Zustaendige.
+$verlasse($t13, $C);
+$pruefe('auch der Letzte darf gehen',
+    (int) row('SELECT COUNT(*) n FROM task_assignees WHERE task_id = ?', [$t13])['n'] === 0);
+$pruefe('ohne Zustaendige bleibt sie offen', $stand($t13) === 'offen');
+$weg($t13);
+
+// Durch das Gehen kann eine Aufgabe fertig werden: Zwei von drei haben
+// abgehakt, der dritte geht - dann haben alle Verbliebenen ihren Teil getan.
+$t14 = $aufgabe([$A, $B, $C], 0);
+$hake($t14, $A);
+$hake($t14, $B);
+task_status_apply($t14);
+$pruefe('bei 2 von 3 noch offen', $stand($t14) === 'offen');
+$verlasse($t14, $C);
+$pruefe('verlassen kann die Aufgabe fertig machen', $stand($t14) === 'erledigt');
+$weg($t14);
+
+// Umgekehrt nicht: Eine erledigte Aufgabe geht nicht wieder auf, nur weil der
+// geht, dessen Haekchen sie fertig gemacht hat. So haelt es auch das
+// Aenderungsformular, wenn es jemanden aus der Liste nimmt.
+$t15 = $aufgabe([$A, $B], 0);
+$hake($t15, $A);
+$hake($t15, $B);
+task_status_apply($t15);
+$pruefe('beide fertig heisst erledigt', $stand($t15) === 'erledigt');
+$verlasse($t15, $A);
+$pruefe('verlassen oeffnet keine erledigte Aufgabe', $stand($t15) === 'erledigt');
+$weg($t15);
+
+// Die verlangte Zahl schrumpft mit: Steht dort 3 und es bleiben zwei uebrig,
+// waere "2 von 3" eine Zahl, die nie kaeme. task_status_apply deckelt sie.
+$t16 = $aufgabe([$A, $B, $C], 3);
+$hake($t16, $A);
+$hake($t16, $B);
+task_status_apply($t16);
+$pruefe('3 von 3 verlangt, 2 getan: offen', $stand($t16) === 'offen');
+$verlasse($t16, $C);
+$pruefe('verlangte Zahl schrumpft mit der Gruppe', $stand($t16) === 'erledigt');
+$pruefe('required_done bleibt unangetastet',
+    (int) row('SELECT required_done FROM tasks WHERE id = ?', [$t16])['required_done'] === 3);
+$weg($t16);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);
