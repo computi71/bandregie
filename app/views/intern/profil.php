@@ -118,7 +118,7 @@
               <button class="btn btn-tiny btn-ghost"><?= e(t('pk_rename')) ?></button>
             </form>
             <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/delete"
-                  data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+                  data-confirm="<?= e(t('pk_delete_confirm')) ?>"><?= csrf_field() ?>
               <button class="btn btn-tiny btn-ghost"><?= e(t('pk_remove')) ?></button>
             </form>
           </li>

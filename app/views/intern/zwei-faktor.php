@@ -35,7 +35,7 @@
 
     <?php if (!$erzwungen): ?>
       <form method="post" action="/intern/zwei-faktor" class="inline" style="margin-top:0.8rem"
-            data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+            data-confirm="<?= e(t('totp_delete_confirm')) ?>"><?= csrf_field() ?>
         <input type="hidden" name="tat" value="delete">
         <button class="btn btn-tiny btn-danger"><?= e(t('totp_remove')) ?></button>
       </form>

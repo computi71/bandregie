@@ -232,7 +232,7 @@
         <?php endif; ?>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>" class="inline"><?= csrf_field() ?>
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" data-confirm="<?= e(t('ev_delete_confirm')) ?>" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('ev_delete')) ?></button>
       </form>
     </details>
