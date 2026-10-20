@@ -28,7 +28,7 @@
         <span class="muted small"><?= e(substr($post['created_at'], 0, 16)) ?></span>
         <p class="prewrap"><?= e($post['text']) ?></p>
         <?php if ((int) $post['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-          <form class="inline" method="post" action="/intern/beitrag/<?= $post['id'] ?>/delete"><?= csrf_field() ?>
+          <form class="inline" method="post" action="/intern/beitrag/<?= $post['id'] ?>/delete" data-confirm="<?= e(t('post_delete_confirm')) ?>"><?= csrf_field() ?>
             <button class="btn btn-tiny btn-danger"><?= e(mb_strtolower(t('delete'))) ?></button>
           </form>
         <?php endif; ?>
