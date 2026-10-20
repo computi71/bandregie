@@ -1743,6 +1743,23 @@ if (str_starts_with($path, '/intern')) {
     task_status_apply($taskNr);
     redirect('/intern/aufgaben');
   }
+  // Sich selbst herausnehmen (#379): Zuständig werden konnte man mit einem
+  // Häkchen, wieder heraus nur über das volle Änderungsformular — das aber
+  // Schreibrecht verlangt und die ganze Aufgabe neu schreibt. Wer nur lesen
+  // darf, saß fest, und die Zahl daneben wartete für immer auf ihn.
+  //
+  // Diese Route fasst ausschließlich die eigene Zeile an. Das Häkchen geht
+  // mit: Wer sagt, die Aufgabe sei nicht seine, hinterlässt kein „erledigt".
+  if (preg_match('~^/intern/aufgaben/(\d+)/verlassen$~', $path, $m) && $method === 'POST') {
+    $taskNr = (int) $m[1];
+    q('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?', [$taskNr, (int) $me['id']]);
+    // Ohne Erlaubnis zum Öffnen, genau wie beim Ändern der Zuständigenliste:
+    // Eine erledigte Aufgabe geht nicht wieder auf, nur weil jemand gegangen
+    // ist. Umgekehrt kann sie dadurch fertig werden — bleiben zwei zurück,
+    // die beide abgehakt haben, ist sie es auch.
+    task_status_apply($taskNr);
+    back('/intern/aufgaben');
+  }
   if (preg_match('~^/intern/aufgaben/(\d+)/(toggle|delete)$~', $path, $m) && $method === 'POST') {
     $taskNr = (int) $m[1];
     if ($m[2] === 'toggle') {

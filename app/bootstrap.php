@@ -1344,6 +1344,9 @@ const SELF_SERVICE_PATHS = [
   // darf - und wer nichts ändern darf, soll trotzdem sagen können, dass er
   // seinen Teil getan hat.
   '~^/intern/aufgaben/\d+/toggle$~',
+  // Und derselbe Gedanke rückwärts (#379): Wer sagen darf, dass er seinen
+  // Teil getan hat, darf auch sagen, dass die Aufgabe nicht seine ist.
+  '~^/intern/aufgaben/\d+/verlassen$~',
   '~^/intern/kasse/dauerauftrag$~',
   '~^/intern/kasse/dauerauftrag/\d+/(pause|delete)$~',
   '~^/intern/kasse/\d+/delete$~',
