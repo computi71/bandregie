@@ -79,55 +79,53 @@
   </section>
 <?php endif; ?>
 
-<div class="grid-2">
-  <?php if (perm_allows($user, 'aufgaben')): ?>
-  <section class="card">
-    <h2><?= e(t('dash_open_tasks')) ?></h2>
-    <?php if (!$tasks && !$openVotes): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
-    <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
-          // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
-          // gleich daneben (#236). ?>
-    <?php if ($openVotes): ?>
-      <ul class="task-list">
-        <?php foreach ($openVotes as $ov): ?>
-          <li>
-            <span class="badge"><?= e(t('dash_vote_missing')) ?></span>
-            <span class="event-date"><?= fmt_date($ov['date']) ?></span>
-            <?php // Zusagen, ohne den Abend ansehen zu können, ist eine Zumutung
-                  // (#373). event_url() bringt die Filter mit, ohne die die
-                  // Karte gar nicht auf der Seite steht. ?>
-            <a href="<?= e(event_url($ov)) ?>"><strong><?= e($ov['title']) ?></strong></a>
-            <?php if ($ov['status'] !== 'bestaetigt'): ?>
-              <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
-            <?php endif; ?>
-            <form class="inline attendance" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
-              <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
-              <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
-              <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
-            </form>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    <?php endif; ?>
+<?php if (perm_allows($user, 'aufgaben')): ?>
+<section class="card">
+  <h2><?= e(t('dash_open_tasks')) ?></h2>
+  <?php if (!$tasks && !$openVotes): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
+  <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
+        // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
+        // gleich daneben (#236). ?>
+  <?php if ($openVotes): ?>
     <ul class="task-list">
-      <?php foreach ($tasks as $task): ?>
+      <?php foreach ($openVotes as $ov): ?>
         <li>
-          <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
-          <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
-          <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
-          <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
-          <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
+          <span class="badge"><?= e(t('dash_vote_missing')) ?></span>
+          <span class="event-date"><?= fmt_date($ov['date']) ?></span>
+          <?php // Zusagen, ohne den Abend ansehen zu können, ist eine Zumutung
+                // (#373). event_url() bringt die Filter mit, ohne die die
+                // Karte gar nicht auf der Seite steht. ?>
+          <a href="<?= e(event_url($ov)) ?>"><strong><?= e($ov['title']) ?></strong></a>
+          <?php if ($ov['status'] !== 'bestaetigt'): ?>
+            <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
+          <?php endif; ?>
+          <form class="inline attendance" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
+            <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
+            <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
+            <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
+          </form>
         </li>
       <?php endforeach; ?>
     </ul>
-    <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
-  </section>
   <?php endif; ?>
-</div>
+  <ul class="task-list">
+    <?php foreach ($tasks as $task): ?>
+      <li>
+        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
+        <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
+        <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
+        <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
+        <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+  <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
+</section>
+<?php endif; ?>
 
 <?php // Die nächsten Termine sind ein Ausschnitt der Terminliste und sehen
-      // deshalb genauso aus (#277). Ausserhalb des Rasters, weil eine Karte in
-      // einer halben Spalte nicht dieselbe Karte waere.
+      // deshalb genauso aus (#277). Volle Breite, wie alles auf dieser Seite —
+      // eine Terminkarte in einer halben Spalte waere nicht dieselbe Karte.
       //
       // Unter der offenen Arbeit und nicht darueber (#385): Die Termine sind
       // zum Ansehen da, die offene Arbeit verlangt etwas. Wer die Uebersicht
