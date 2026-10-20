@@ -79,23 +79,6 @@
   </section>
 <?php endif; ?>
 
-<?php // Die nächsten Termine sind ein Ausschnitt der Terminliste und sehen
-      // deshalb genauso aus (#277). Über dem Raster, weil eine Karte in einer
-      // halben Spalte nicht dieselbe Karte wäre. ?>
-<?php if (perm_allows($user, 'termine')): ?>
-  <h2><?= e(t('dash_next_events')) ?></h2>
-  <?php if (!$events): ?>
-    <p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p>
-  <?php endif; ?>
-  <?php // Zusammengeklappt passt die Übersicht wieder in einen Blick; der
-        // nächste Termin steht offen da, weil er der ist, um den es geht. ?>
-  <?php foreach ($events as $evNr => $ev): ?>
-    <?php $evGruppe = 'dashev'; $evOpen = $evNr === 0; ?>
-    <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
-  <?php endforeach; ?>
-  <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
-<?php endif; ?>
-
 <div class="grid-2">
   <?php if (perm_allows($user, 'aufgaben')): ?>
   <section class="card">
@@ -141,4 +124,25 @@
   </section>
   <?php endif; ?>
 </div>
+
+<?php // Die nächsten Termine sind ein Ausschnitt der Terminliste und sehen
+      // deshalb genauso aus (#277). Ausserhalb des Rasters, weil eine Karte in
+      // einer halben Spalte nicht dieselbe Karte waere.
+      //
+      // Unter der offenen Arbeit und nicht darueber (#385): Die Termine sind
+      // zum Ansehen da, die offene Arbeit verlangt etwas. Wer die Uebersicht
+      // aufmacht, soll nicht an dem vorbeiscrollen, was er tun muss. ?>
+<?php if (perm_allows($user, 'termine')): ?>
+  <h2><?= e(t('dash_next_events')) ?></h2>
+  <?php if (!$events): ?>
+    <p class="muted"><?= e(t('dash_no_events')) ?> <a href="/intern/termine"><?= e(t('dash_create_event')) ?></a></p>
+  <?php endif; ?>
+  <?php // Zusammengeklappt passt die Übersicht wieder in einen Blick; der
+        // nächste Termin steht offen da, weil er der ist, um den es geht. ?>
+  <?php foreach ($events as $evNr => $ev): ?>
+    <?php $evGruppe = 'dashev'; $evOpen = $evNr === 0; ?>
+    <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
+  <?php endforeach; ?>
+  <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
+<?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>
