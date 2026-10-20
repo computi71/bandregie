@@ -78,8 +78,11 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
           ? min((int) $task['required_done'], count($wer))
           : count($wer);
         $meinHaken = false;
+        $ichBinDabei = false;
         foreach ($wer as $a) {
-          if ((int) $a['user_id'] === (int) $user['id'] && $a['done_at'] !== null) $meinHaken = true;
+          if ((int) $a['user_id'] !== (int) $user['id']) continue;
+          $ichBinDabei = true;
+          if ($a['done_at'] !== null) $meinHaken = true;
         }
       ?>
       <?php // Der Anker, auf den die Übersicht und die Marken zeigen (#373).
@@ -124,6 +127,11 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
               <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
             </form>
           </details>
+        <?php endif; ?>
+        <?php // Nur wer zustaendig ist, kann gehen - und nur fuer sich selbst.
+              // Das Loeschen daneben trifft die ganze Aufgabe. ?>
+        <?php if ($ichBinDabei): ?>
+          <form class="inline" method="post" action="/intern/aufgaben/<?= (int) $task['id'] ?>/verlassen" data-confirm="<?= e(t('task_leave_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost"><?= e(t('task_leave')) ?></button></form>
         <?php endif; ?>
         <form class="inline" action="/intern/aufgaben/<?= (int) $task['id'] ?>/delete" method="post" data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
       </li>
