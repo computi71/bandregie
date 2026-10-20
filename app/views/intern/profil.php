@@ -5,7 +5,7 @@
   <div class="row-buttons" style="margin-bottom:0.8rem">
     <?php if ($profile['avatar_file']): ?>
       <img class="avatar avatar-big" src="/uploads/<?= e($profile['avatar_file']) ?>" alt="<?= e($profile['name']) ?>">
-      <form class="inline" method="post" action="/intern/profil/avatar/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('prof_avatar_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/profil/avatar/delete" data-confirm="<?= e(t('avatar_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('prof_avatar_remove')) ?></button></form>
     <?php else: ?>
       <span class="avatar avatar-big avatar-placeholder"><?= e(mb_substr($profile['name'], 0, 1)) ?></span>
       <span class="muted small"><?= e(t('prof_no_avatar')) ?></span>
@@ -118,7 +118,7 @@
               <button class="btn btn-tiny btn-ghost"><?= e(t('pk_rename')) ?></button>
             </form>
             <form class="inline" method="post" action="/intern/profil/passkey/<?= (int) $pk['id'] ?>/delete"
-                  data-confirm="<?= e(t('confirm_delete')) ?>"><?= csrf_field() ?>
+                  data-confirm="<?= e(t('pk_delete_confirm')) ?>"><?= csrf_field() ?>
               <button class="btn btn-tiny btn-ghost"><?= e(t('pk_remove')) ?></button>
             </form>
           </li>

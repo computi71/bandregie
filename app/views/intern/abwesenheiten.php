@@ -21,7 +21,7 @@
         <span><?= fmt_date($a['date_from']) ?><?= $a['date_to'] !== $a['date_from'] ? ' – ' . fmt_date($a['date_to']) : '' ?></span>
         <?php if ($a['note']): ?><span class="muted"><?= e($a['note']) ?></span><?php endif; ?>
         <?php if ((int) $a['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-          <form class="inline" method="post" action="/intern/abwesenheiten/<?= $a['id'] ?>/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
+          <form class="inline" method="post" action="/intern/abwesenheiten/<?= $a['id'] ?>/delete" data-confirm="<?= e(t('abs_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger">🗑</button></form>
         <?php endif; ?>
       </li>
     <?php endforeach; ?>

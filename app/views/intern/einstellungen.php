@@ -321,27 +321,27 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   <div class="row-buttons">
     <?php if (!empty($settings['logo_file'])): ?>
       <img src="/uploads/<?= e($settings['logo_file']) ?>" alt="Logo" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/logo/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/logo/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_logo_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['background_file'])): ?>
       <img src="/uploads/<?= e($settings['background_file']) ?>" alt="Hintergrund" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/background/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_bg_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/background/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_bg_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['welcome_file'])): ?>
       <img src="/uploads/<?= e($settings['welcome_file']) ?>" alt="<?= e(t('set_welcome_img_own')) ?>" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_welcome_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/welcome/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_welcome_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['print_logo_file'])): ?>
       <img src="/uploads/<?= e($settings['print_logo_file']) ?>" alt="<?= e(t('set_slot_printlogo')) ?>" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/printlogo/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_printlogo_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/printlogo/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_printlogo_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['print_watermark_file'])): ?>
       <img src="/uploads/<?= e($settings['print_watermark_file']) ?>" alt="<?= e(t('set_slot_watermark')) ?>" style="max-height:60px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/watermark/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_watermark_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/watermark/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_watermark_remove')) ?></button></form>
     <?php endif; ?>
     <?php if (!empty($settings['favicon_file'])): ?>
       <img src="/uploads/<?= e($settings['favicon_file']) ?>" alt="Favicon" style="max-height:32px">
-      <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
+      <form class="inline" method="post" action="/intern/einstellungen/branding/favicon/delete" data-confirm="<?= e(t('branding_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(t('set_favicon_remove')) ?></button></form>
       <?php // Das Favicon ist auch das Symbol auf dem Startbildschirm. Ein
             // Browsertab kommt mit 64 Pixeln aus, eine Kachel auf dem Handy
             // nicht — und hochrechnen kann das niemand. ?>

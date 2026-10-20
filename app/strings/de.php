@@ -360,6 +360,18 @@ const UI_STRINGS = [
   'save' => 'Speichern', 'delete' => 'Löschen', 'edit' => 'Bearbeiten', 'cancel' => 'Abbrechen',
   'upload' => 'Hochladen', 'copy' => 'Kopieren', 'add' => 'Hinzufügen', 'create' => 'Anlegen',
   'send' => 'Senden', 'view' => 'Ansehen', 'confirm_delete' => 'Wirklich löschen?',
+  // Rueckfragen, die sagen, was weggeht (#375). „Wirklich löschen?" beantwortet
+  // man im Zweifel mit ja, ohne zu wissen, was man gerade wegwirft.
+  'abs_delete_confirm' => 'Diese Abwesenheit löschen?',
+  'post_delete_confirm' => 'Diesen Beitrag löschen? Die Mitteilung darüber ist schon verschickt.',
+  'comment_delete_confirm' => 'Diesen Kommentar löschen?',
+  'sub_withdraw_confirm' => 'Die Ersatzanfrage zurückziehen?',
+  'avatar_delete_confirm' => 'Dein Bild entfernen?',
+  'branding_delete_confirm' => 'Dieses Bild entfernen? Zum Zurückholen muss es neu hochgeladen werden.',
+  'pk_delete_confirm' => 'Diesen Passkey entfernen? Danach meldet sich dieses Gerät wieder mit Passwort an.',
+  'totp_delete_confirm' => 'Den zweiten Faktor abschalten? Zum Anmelden genügt danach das Passwort allein.',
+  'mem_delete_confirm' => 'Dieses Konto löschen? Zu- und Absagen, Bewertungen, Abwesenheiten und Zugänge gehen mit. Kommentare bleiben ohne Namen stehen.',
+  'ev_delete_confirm' => 'Diesen Termin löschen? Zu- und Absagen, Kommentare, Ersatzanfragen und Gästebuchungen gehen mit. Fotos bleiben, verlieren aber ihre Zuordnung.',
   'name' => 'Name', 'email' => 'E-Mail', 'phone' => 'Telefon', 'notes' => 'Notizen',
   'status' => 'Status', 'date' => 'Datum', 'title_lbl' => 'Titel', 'unknown' => 'Unbekannt',
   'instrument' => 'Instrument', 'role' => 'Rolle', 'role_member' => 'Mitglied', 'role_admin' => 'Admin', 'role_ersatz' => 'Ersatz',

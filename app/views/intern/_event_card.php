@@ -110,7 +110,7 @@
               <?php $lbl = ['yes' => t('att_yes'), 'no' => t('att_no'), 'maybe' => t('att_maybe')][$req['answer'] ?? ''] ?? t('ev_sub_open'); ?>
               <span class="badge <?= ($req['answer'] ?? '') === 'yes' ? 'public' : '' ?>"><?= e($lbl) ?></span>
               <?php if ($mayAsk): ?>
-                <form class="inline" method="post" action="/intern/termine/<?= $ev['id'] ?>/ersatz/<?= $req['user_id'] ?>/delete"><?= csrf_field() ?>
+                <form class="inline" method="post" action="/intern/termine/<?= $ev['id'] ?>/ersatz/<?= $req['user_id'] ?>/delete" data-confirm="<?= e(t('sub_withdraw_confirm')) ?>"><?= csrf_field() ?>
                   <button class="btn btn-tiny btn-danger" title="<?= e(t('ev_sub_withdraw')) ?>">✕</button>
                 </form>
               <?php endif; ?>
@@ -152,7 +152,7 @@
             <span class="muted"><?= e($c['created_at']) ?></span>
             <p class="prewrap"><?= e($c['text']) ?></p>
             <?php if ((int) $c['user_id'] === (int) $user['id'] || $user['role'] === 'admin'): ?>
-              <form class="inline" action="/intern/kommentare/<?= $c['id'] ?>/delete" method="post"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(mb_strtolower(t('delete'))) ?></button></form>
+              <form class="inline" action="/intern/kommentare/<?= $c['id'] ?>/delete" method="post" data-confirm="<?= e(t('comment_delete_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger"><?= e(mb_strtolower(t('delete'))) ?></button></form>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>
@@ -232,7 +232,7 @@
         <?php endif; ?>
         <div class="span2 row-buttons"><button class="btn btn-primary"><?= e(t('save')) ?></button></div>
       </form>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" data-confirm="<?= e(t('confirm_delete')) ?>" class="inline"><?= csrf_field() ?>
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/delete" data-confirm="<?= e(t('ev_delete_confirm')) ?>" class="inline"><?= csrf_field() ?>
         <button class="btn btn-danger btn-small"><?= e(t('ev_delete')) ?></button>
       </form>
     </details>
