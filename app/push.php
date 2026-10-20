@@ -50,7 +50,11 @@ function push_ecdsa_der_to_raw(string $der): string {
 
 /** Kann diese Installation überhaupt Push? (Voraussetzungen von PHP) */
 function push_supported(): bool {
+  // cURL steht mit in der Liste, seit der Versand darueber laeuft (#374).
+  // Fehlt es, soll die Anwendung sagen, dass sie keine Mitteilungen kann -
+  // und nicht erst beim ersten Versand abstuerzen.
   return function_exists('openssl_pkey_derive') && function_exists('hash_hkdf')
+    && function_exists('curl_init')
     && in_array('aes-128-gcm', openssl_get_cipher_methods(), true);
 }
 
@@ -224,6 +228,16 @@ function push_encrypt(string $payload, string $p256dh, string $auth, ?string $ep
  * Bei Mitgliedern 2–7 und Abos 2–4 trifft das fast immer ein fremdes Gerät:
  * Wer einmal abgelehnt wurde, nahm jemand anderem die Mitteilungen weg (#236).
  */
+/**
+ * Zeitgrenzen je Abo (#374).
+ *
+ * Klein gehalten, weil ein Lauf sie mit der Zahl der Abos multipliziert. Ein
+ * Dienst, der in acht Sekunden nicht antwortet, antwortet auch in sechzig
+ * nicht; die Mitteilung ist dann beim naechsten Mal wieder dran.
+ */
+const PUSH_CONNECT_TIMEOUT = 4;
+const PUSH_TOTAL_TIMEOUT = 8;
+
 function push_send_one(array $sub, string $json): bool {
   $aboId = (int) $sub['sub_id'];
   // Auch gespeicherte Abos werden hier noch geprüft: was in der Datenbank
@@ -235,26 +249,39 @@ function push_send_one(array $sub, string $json): bool {
   $body = push_encrypt($json, $sub['p256dh'], $sub['auth']);
   $vapid = push_vapid_auth($sub['endpoint']);
   if ($body === null || $vapid === '') return false;
-  $ctx = stream_context_create(['http' => [
-    'method' => 'POST',
-    'header' => "Authorization: $vapid\r\nContent-Encoding: aes128gcm\r\n"
-      . "Content-Type: application/octet-stream\r\nTTL: 86400\r\nUrgency: normal\r\n",
-    'content' => $body,
-    'timeout' => 10,
-    'ignore_errors' => true,
+  // Ueber cURL statt ueber einen Stream-Kontext (#374): Dort ist 'timeout'
+  // die LESE-Zeitgrenze; der Verbindungsaufbau faellt auf
+  // default_socket_timeout zurueck, auf dem Produktionsserver sechzig
+  // Sekunden. Sieben Abos mal sechzig, und ein Arbeiter haengt minutenlang.
+  // CURLOPT_TIMEOUT deckt dagegen den ganzen Vorgang.
+  $ch = curl_init((string) $sub['endpoint']);
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $body,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+      'Authorization: ' . $vapid,
+      'Content-Encoding: aes128gcm',
+      'Content-Type: application/octet-stream',
+      'TTL: 86400',
+      'Urgency: normal',
+    ],
+    CURLOPT_CONNECTTIMEOUT => PUSH_CONNECT_TIMEOUT,
+    CURLOPT_TIMEOUT => PUSH_TOTAL_TIMEOUT,
     // Ein Push-Dienst hat keinen Grund umzuleiten; wohin, entscheidet sonst er.
-    'follow_location' => 0,
-    'max_redirects' => 0,
-  ]]);
-  @file_get_contents($sub['endpoint'], false, $ctx);
-  $status = 0;
-  foreach ($http_response_header ?? [] as $h) {
-    if (preg_match('~^HTTP/\S+\s+(\d{3})~', $h, $m)) $status = (int) $m[1];
-  }
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_USERAGENT => 'Bandregie/' . BANDREGIE_VERSION,
+  ]);
+  curl_exec($ch);
+  $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  // Zeitueberschreitung meldet Status 0. Das ist kein Grund, ein Abo
+  // wegzuwerfen - der Dienst war nur gerade nicht da.
+  if ($status === 0) return false;
   // Dauerhafte Ablehnungen wegräumen, nicht nur „weg" (404/410): ein Abo, das
   // der Dienst nicht mehr annimmt (falscher Schlüssel, ungültiger Pfad, zu
   // groß), würde sonst bei jeder Mitteilung erneut angefragt — und jede Anfrage
-  // kostet bis zu zehn Sekunden Wartezeit.
+  // kostet bis zu PUSH_TOTAL_TIMEOUT Sekunden Wartezeit.
   if (in_array($status, [400, 401, 403, 404, 410, 413], true)) {
     q('DELETE FROM push_subscriptions WHERE id = ?', [$aboId]);
     return false;
@@ -334,6 +361,15 @@ function push_notify(string $topic, int $exceptUserId, callable $build, int $eve
   if (!$subs) return;
   register_shutdown_function(function () use ($subs, $topic, $build): void {
     if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    // Die Antwort ist raus, der Arbeiter aber noch belegt - und PHP haelt die
+    // Sitzungsdatei bis zum Skriptende gesperrt. Ohne diese Zeile stellt sich
+    // jede weitere Anfrage DESSELBEN Browsers hinter den Versand, und bei
+    // pm.max_children = 5 ist die Seite nach fuenf davon fuer alle tot.
+    // Genau so ist sie es am 20.10.2026 siebzehn Minuten lang gewesen (#374).
+    //
+    // Gefahrlos hier: Die Anfrage ist beantwortet, nach uns schreibt niemand
+    // mehr in die Sitzung.
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
     $byLang = [];
     $offenJeNutzer = [];
     $failed = 0;
