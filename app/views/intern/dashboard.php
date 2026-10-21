@@ -1,5 +1,17 @@
 <?php require BASE_DIR . '/app/views/_header.php'; ?>
 <h1><?= e(t('dash_hello')) ?> <?= e($user['name']) ?>! 👋</h1>
+<?php // Steht das PHP darunter offen, ist das die wichtigste Nachricht der
+      // Seite — vor allem anderen und nicht wegklickbar, denn weggeklickt wäre
+      // sie beim nächsten Mal weg und die Lücke noch da (#389). Nur Admins
+      // sehen sie, und in der Demo niemand. ?>
+<?php if (($phpLuecke[0] ?? '') !== ''): ?>
+  <div class="card warn">
+    <strong><?= $phpLuecke[0] === 'offen' ? '🚨' : '⚠' ?>
+      <?= e(t($phpLuecke[0] === 'offen' ? 'dash_php_hole' : 'dash_php_eol')) ?></strong>
+    <p class="small"><?= e($phpLuecke[1]) ?></p>
+    <a class="btn btn-small" href="/intern/einstellungen#systempruefung"><?= e(t('dash_php_check')) ?> →</a>
+  </div>
+<?php endif; ?>
 <?php // Satz und Bild kommen aus den Einstellungen (#267). Die mitgelieferte
       // Flagge trägt in zwei Streifen bewusst die Markenfarben der AfD, so wie
       // deren CD-Handbuch (2021) sie festlegt: Hellblau RGB 0/162/223 und Rot

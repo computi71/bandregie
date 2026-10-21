@@ -15,18 +15,78 @@ function check_row(string $name, string $state, string $detail, string $conseque
   return ['name' => $name, 'state' => $state, 'detail' => $detail, 'consequence' => $consequence];
 }
 
+/**
+ * Die kleinste Fassung je Zweig, die PHP2Shell nicht mehr hat
+ * (CVE-2026-109618 und CVE-2026-109619, veröffentlicht am 21.10.2026).
+ *
+ * Beides ist Codeausführung aus der Ferne und greift, bevor eine einzige Zeile
+ * dieser Anwendung läuft — Bandregie kann sich dagegen nicht wehren, nur davor
+ * warnen.
+ *
+ * Bewusst eng: eine benannte Lücke mit nachlesbaren Zahlen. Ein allgemeiner
+ * Schwachstellenprüfer wäre dies nicht, und so zu tun wäre schlimmer als
+ * nichts zu sagen.
+ */
+const PHP_HOLE_FIXED = [
+  '8.5' => '8.5.12',
+  '8.4' => '8.4.27',
+  '8.3' => '8.3.36',
+  '8.2' => '8.2.35',
+];
+
+/**
+ * Steht diese PHP-Fassung die Lücke noch offen?
+ *
+ * @return array{0: string, 1: string} '' | 'offen' | 'eol', dazu der Rat im Klartext
+ */
+function php_hole_state(string $version): array {
+  $zweig = implode('.', array_slice(explode('.', $version), 0, 2));
+  $geflickt = PHP_HOLE_FIXED[$zweig] ?? null;
+
+  if ($geflickt === null) {
+    // Ein Zweig NEUER als alles hier Notierte: Diese Liste ist vom Oktober
+    // 2026 und kennt die Zukunft nicht. Darüber schweigen ist richtig —
+    // andernfalls meldete PHP 8.6 eines Tages „nicht mehr gepflegt", und die
+    // Warnung wäre ab dann genau falsch herum.
+    // Mit version_compare und nicht mit max(): Letzteres vergliche die
+    // Schlüssel als Zahlen, und dann wäre eines Tages 8.10 kleiner als 8.9.
+    $hoechster = '0.0';
+    foreach (array_keys(PHP_HOLE_FIXED) as $bekannt) {
+      if (version_compare((string) $bekannt, $hoechster, '>')) $hoechster = (string) $bekannt;
+    }
+    if (version_compare($zweig, $hoechster, '>')) return ['', ''];
+
+    // Und darunter: 8.1 und älter haben nie eine Veröffentlichung bekommen.
+    // Manche Distributionen flicken zurück, und das sieht man der Nummer
+    // nicht an — also wird hier nichts behauptet, weder so noch so.
+    return ['eol', str_replace('%1', $zweig, t('sys_php_eol_hint'))];
+  }
+  if (version_compare($version, $geflickt, '>=')) return ['', ''];
+  return ['offen', str_replace(['%1', '%2'], [$geflickt, $zweig], t('sys_php_hole_hint'))];
+}
+
 /** @return array<string, array<int, array>> Gruppenname => Prüfpunkte */
 function system_checks(): array {
   $groups = [];
 
   // --- Grundlagen, ohne die nichts läuft
   $php = PHP_VERSION;
-  $groups[t('sys_required')][] = check_row(
-    'PHP ' . $php,
-    version_compare($php, '8.1', '>=') ? 'ok' : 'fail',
-    version_compare($php, '8.1', '>=') ? t('sys_ok') : t('sys_php_old'),
-    version_compare($php, '8.1', '>=') ? '' : t('sys_php_old_hint')
-  );
+  if (!version_compare($php, '8.1', '>=')) {
+    $groups[t('sys_required')][] = check_row('PHP ' . $php, 'fail', t('sys_php_old'), t('sys_php_old_hint'));
+  } else {
+    // Alt genug ist nicht dasselbe wie heil. Am 21.10.2026 meldete diese
+    // Zeile ein grünes „PHP 8.3.35", während genau diese Fassung offenstand
+    // (#389). Deshalb zusätzlich gegen die geflickte Fassung des EIGENEN
+    // Zweigs prüfen — ein Vergleich gegen eine einzige Zahl ginge nicht, weil
+    // 8.2.35 geflickt ist und 8.3.35 nicht.
+    [$luecke, $rat] = php_hole_state($php);
+    $groups[t('sys_required')][] = check_row(
+      'PHP ' . $php,
+      $luecke === '' ? 'ok' : ($luecke === 'eol' ? 'warn' : 'fail'),
+      $luecke === '' ? t('sys_ok') : ($luecke === 'eol' ? t('sys_php_eol') : t('sys_php_hole')),
+      $rat
+    );
+  }
   foreach (['pdo_mysql' => t('sys_ext_db'), 'mbstring' => t('sys_ext_text'),
             'fileinfo' => t('sys_ext_files'), 'zlib' => t('sys_ext_zlib')] as $ext => $why) {
     $has = extension_loaded($ext);
