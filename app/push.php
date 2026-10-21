@@ -274,7 +274,6 @@ function push_send_one(array $sub, string $json): bool {
   ]);
   curl_exec($ch);
   $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
   // Zeitueberschreitung meldet Status 0. Das ist kein Grund, ein Abo
   // wegzuwerfen - der Dienst war nur gerade nicht da.
   if ($status === 0) return false;

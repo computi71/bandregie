@@ -114,7 +114,6 @@ function update_fetch_latest(): ?string {
   ]);
   $body = curl_exec($ch);
   $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
   if ($code !== 200 || !is_string($body)) return null;
 
   $data = json_decode($body, true);

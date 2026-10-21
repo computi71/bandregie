@@ -211,7 +211,6 @@ function system_probe_status(string $path): ?int {
   ]);
   $ok = curl_exec($ch) !== false;
   $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-  curl_close($ch);
   return $ok && $code > 0 ? $code : null;
 }
 
@@ -229,7 +228,6 @@ function system_cache_header(): ?string {
   ]);
   $head = curl_exec($ch);
   $failed = $head === false || curl_getinfo($ch, CURLINFO_RESPONSE_CODE) !== 200;
-  curl_close($ch);
   if ($failed) return null;
   return preg_match('~^cache-control:\s*(.+)$~im', (string) $head, $m) ? trim($m[1]) : '';
 }
