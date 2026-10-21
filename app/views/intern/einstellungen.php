@@ -785,7 +785,9 @@ $privacyDefault = "Datenschutzerklärung\n\n"
   </form>
 </details>
 
-<details class="card acc" name="setacc">
+<?php // Der Anker, auf den die Warnung in der Übersicht zeigt (#389);
+      // accordion.js klappt die Karte beim Sprung dorthin auf. ?>
+<details class="card acc" id="systempruefung" name="setacc">
   <summary>🩺 <?= e(t('sys_title')) ?></summary>
   <p class="muted small"><?= e(t('sys_intro')) ?></p>
   <?php require_once BASE_DIR . '/app/systemcheck.php'; ?>

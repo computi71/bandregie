@@ -947,6 +947,18 @@ if (str_starts_with($path, '/intern')) {
     // Ohne Terminrecht zeigt die Übersicht keine Karte — dann braucht sie auch
     // deren Daten nicht (#279).
     $kartenDaten = perm_allows($me, 'termine') ? event_view_data($events, $me) : [];
+    // Eine bekannte Lücke im PHP darunter gehört nach ganz oben (#389): Die
+    // Systemprüfung in den Einstellungen findet nur, wer dort nachsieht, und
+    // nachsehen tut man, wenn schon etwas passiert ist.
+    //
+    // Nur für Admins: Ein Mitglied kann daran nichts ändern, und eine Warnung
+    // ohne Handlungsmöglichkeit ist bloß Beunruhigung. In der Demo gar nicht —
+    // dort sieht ein Fremder zu, der weder betroffen ist noch handeln kann.
+    $phpLuecke = ['', ''];
+    if ($me['role'] === 'admin' && !is_demo()) {
+      require_once BASE_DIR . '/app/systemcheck.php';
+      $phpLuecke = php_hole_state(PHP_VERSION);
+    }
     $offeneZusagen = perm_allows($me, 'termine') ? open_votes($me) : [];
     // Verdeckte Termine fallen vor der Abfrage heraus, nicht danach: Was gar
     // nicht gelesen wird, kann auch nicht versehentlich durchrutschen.
@@ -980,6 +992,7 @@ if (str_starts_with($path, '/intern')) {
                            WHERE d.due_date <= DATE_ADD(?, INTERVAL 60 DAY) ORDER BY d.due_date', [$today]) : [],
       // Fehlende Rückmeldungen gehören zu den offenen Aufgaben: Die Zahl am
       // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
+      'phpLuecke' => $phpLuecke,
       'openVotes' => $offeneZusagen,
       // Der Stand der Band an der offenen Zeile (#377): Wer gefragt wird, will
       // sehen, wo die anderen stehen, ohne erst die Karte aufzuklappen.
