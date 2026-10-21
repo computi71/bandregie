@@ -82,7 +82,10 @@
 <?php if (perm_allows($user, 'aufgaben')): ?>
 <section class="card">
   <h2><?= e(t('dash_open_tasks')) ?></h2>
-  <?php if (!$tasks && !$openVotes): ?><p class="muted"><?= e(t('dash_nothing_open')) ?></p><?php endif; ?>
+  <?php // Der Satz steht immer im Seitentext und ist nur verborgen: Die letzte
+        // Zusage verschwindet erst im Browser (#377), und ohne ihn stuende die
+        // Karte danach leer da. ?>
+  <p class="muted" data-nothing-open<?= $tasks || $openVotes ? ' hidden' : '' ?>><?= e(t('dash_nothing_open')) ?></p>
   <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
         // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
         // gleich daneben (#236). ?>
@@ -99,7 +102,24 @@
           <?php if ($ov['status'] !== 'bestaetigt'): ?>
             <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
           <?php endif; ?>
-          <form class="inline attendance" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
+          <?php // Der Stand der Band an der Zeile (#377), dieselbe Gestalt wie
+                // auf der Terminkarte. Wer gefragt wird, soll sehen, wo die
+                // anderen stehen, ohne erst die Karte aufzuklappen. Verdeckte
+                // Termine stehen hier gar nicht erst drin. ?>
+          <?php $ovAtt = $voteAttendance[$ov['id']] ?? []; ?>
+          <?php if ($ovAtt): ?>
+            <span class="attendance-summary">
+              <?php $ovLabel = ['yes' => '✔', 'maybe' => '?', 'no' => '✘']; ?>
+              <?php foreach ($ovAtt as $a): ?><span class="att att-<?= e($a['status']) ?>"><?= $ovLabel[$a['status']] ?> <?= e($a['name']) ?></span><?php endforeach; ?>
+            </span>
+          <?php endif; ?>
+          <?php // data-vote schaltet das Abschicken im Hintergrund frei (#377):
+                // Ohne Neuladen faerbt sich der getippte Knopf ein, dann klappt
+                // die Zeile zu — und erst danach rueckt der Rest nach. Vorher
+                // sprang die naechste Zeile unter den Finger, und der zweite
+                // Tipp traf einen anderen Termin. Ohne Skript bleibt es das
+                // gewoehnliche Formular. ?>
+          <form class="inline attendance" data-vote action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
             <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
             <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
