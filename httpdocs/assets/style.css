@@ -332,6 +332,13 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .chip-maybe { border-color: var(--maybe); color: var(--maybe); background: rgba(234, 179, 8, 0.12); }
 .chip-no { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.12); }
 
+/* Nach der Antwort nehmen die Knoepfe nichts mehr an (#377). Der Browser graut
+   ausgeschaltete Knoepfe von sich aus ein - dann waere ausgerechnet die eben
+   gegebene Antwort die blasseste Stelle der Zeile. Also zurueckgenommen wird
+   hier nur, was NICHT gewaehlt wurde. */
+.chip:disabled { cursor: default; opacity: 1; }
+.chip-stumm { opacity: 0.4; }
+
 .attendance-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.85rem; margin: 0.3rem 0; }
 .att { padding: 0.05rem 0.5rem; border-radius: 99px; background: var(--bg-elevated); }
 .att-yes { color: var(--ok); }

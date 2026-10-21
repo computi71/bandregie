@@ -947,6 +947,11 @@ if (str_starts_with($path, '/intern')) {
     // Ohne Terminrecht zeigt die Übersicht keine Karte — dann braucht sie auch
     // deren Daten nicht (#279).
     $kartenDaten = perm_allows($me, 'termine') ? event_view_data($events, $me) : [];
+    $offeneZusagen = perm_allows($me, 'termine') ? open_votes($me) : [];
+    // Verdeckte Termine fallen vor der Abfrage heraus, nicht danach: Was gar
+    // nicht gelesen wird, kann auch nicht versehentlich durchrutschen.
+    [, $zusagenVerdeckt] = events_redact($offeneZusagen, $me);
+    $zusagenStand = attendance_map(array_diff(array_column($offeneZusagen, 'id'), $zusagenVerdeckt));
     // Ungelesenes aus dem Chat zählt am Symbol mit, also muss es auch hier
     // stehen — sonst sucht man eine Zahl, zu der nichts zu sehen ist (#317).
     $unreadTopics = [];
@@ -975,7 +980,15 @@ if (str_starts_with($path, '/intern')) {
                            WHERE d.due_date <= DATE_ADD(?, INTERVAL 60 DAY) ORDER BY d.due_date', [$today]) : [],
       // Fehlende Rückmeldungen gehören zu den offenen Aufgaben: Die Zahl am
       // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
-      'openVotes' => perm_allows($me, 'termine') ? open_votes($me) : [],
+      'openVotes' => $offeneZusagen,
+      // Der Stand der Band an der offenen Zeile (#377): Wer gefragt wird, will
+      // sehen, wo die anderen stehen, ohne erst die Karte aufzuklappen.
+      //
+      // Durch dieselbe Schwärzung wie die Karten: Für ein Konto außerhalb der
+      // Band ist der Termin nur „Belegt", und dann darf dort auch nicht stehen,
+      // wer zugesagt hat. events_redact() nennt die verdeckten Nummern, und die
+      // fliegen aus der Liste — nicht die Namen, sondern der ganze Eintrag.
+      'voteAttendance' => $zusagenStand,
       'tasks' => $dashTasks,
       'taskAssignees' => task_assignees_map(array_column($dashTasks, 'id')),
       'unreadTopics' => $unreadTopics,

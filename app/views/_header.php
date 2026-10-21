@@ -39,6 +39,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <script src="<?= e(asset('/assets/nav.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/accordion.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/seen.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/zusage.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/markers.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/geo.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/route.js')) ?>" defer></script>
