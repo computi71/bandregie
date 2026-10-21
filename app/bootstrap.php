@@ -75,6 +75,12 @@ if (!in_array($appZeitzone, timezone_identifiers_list(), true)) {
 }
 date_default_timezone_set($appZeitzone);
 
+// Der Platz dieser Konstante hat gewechselt; warum sie zur Laufzeit gewählt
+// wird, steht unten an der Stelle, die sie benutzt.
+define('PDO_INIT_COMMAND', defined('Pdo\Mysql::ATTR_INIT_COMMAND')
+  ? \Pdo\Mysql::ATTR_INIT_COMMAND
+  : PDO::MYSQL_ATTR_INIT_COMMAND);
+
 try {
   $db = new PDO(
     "mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4",
@@ -86,7 +92,13 @@ try {
       // Als Versatz statt als Name: Namen kennt MariaDB nur mit geladenen
       // Zeitzonentabellen, und die fehlen auf vielen Servern. Der Versatz gilt
       // für diese Anfrage, und eine Anfrage erlebt keinen Zeitumstellungswechsel.
-      PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '" . date('P') . "'",
+      //
+      // Die Konstante hat seit PHP 8.4 einen neuen Ort, und ab 8.5 meldet der
+      // alte sich als veraltet — auf jeder Seite. Der neue existiert aber erst
+      // ab 8.4, und die Anwendung verspricht 8.1. Also zur Laufzeit wählen: Das
+      // Fragezeichen wertet nur den genommenen Zweig aus, der veraltete wird
+      // dort, wo es ihn noch braucht, gar nicht erst angefasst.
+      PDO_INIT_COMMAND => "SET time_zone = '" . date('P') . "'",
     ]
   );
 } catch (PDOException $e) {
