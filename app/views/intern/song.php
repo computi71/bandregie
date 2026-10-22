@@ -38,7 +38,7 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
 <?php if (!empty($songTasks)): ?>
   <p class="muted small">✅ <?= e(t('item_open_tasks')) ?>:
     <?php foreach ($songTasks as $ta): ?>
-      <a class="badge" href="/intern/aufgaben"><?= e($ta['title']) ?><?php
+      <a class="badge" href="<?= e(item_url('task', (int) $ta['id'])) ?>"><?= e($ta['title']) ?><?php
         if ($ta['assignees']): ?> · <?= e(implode(', ', array_column($ta['assignees'], 'name'))) ?><?php endif; ?></a>
     <?php endforeach; ?>
   </p>
