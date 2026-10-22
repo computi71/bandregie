@@ -1744,7 +1744,10 @@ if (str_starts_with($path, '/intern')) {
       $taskLinks($taskNeu);
       item_new('task', $taskNeu, (int) $me['id']);
     }
-    redirect('/intern/aufgaben');
+    // Zurueck, woher der Absender kam (#390): Das Formular steht jetzt
+    // auch an der Terminkarte, und wer dort eine Aufgabe anlegt, will
+    // den Termin weiter vor sich haben und nicht die Aufgabenliste.
+    back('/intern/aufgaben');
   }
   // Ändern gab es bisher gar nicht (#334): Ohne das ließen sich Zuständige
   // und die verlangte Zahl nach dem Anlegen nie mehr korrigieren.

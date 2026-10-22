@@ -139,11 +139,14 @@ require_once BASE_DIR . '/app/help.php';
     <summary><?= MODULE_ICONS[$helpMod] ?? '' ?> <?= e($helpName) ?></summary>
     <?php if (!$druck || $druckBilder) echo help_picture($helpMod, $helpName); ?>
     <p class="help-lead"><?= e(t('help_' . $helpMod)) ?></p>
-    <?php // Bis zu vier Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz
-          // ist ein neuer Schlüssel — so bleibt der alte Text samt seinen
-          // Übersetzungen stehen. Fehlt der Schlüssel, liefert t() ihn selbst
-          // zurück, und dann steht hier nichts (#276, #298). ?>
-    <?php foreach (['_2', '_3', '_4', '_5'] as $helpNr): ?>
+    <?php // Zusatzabsätze: Ein Bereich wächst, und jeder neue Absatz ist ein
+          // neuer Schlüssel — so bleibt der alte Text samt seinen Übersetzungen
+          // stehen. Fehlt der Schlüssel, liefert t() ihn selbst zurück, und dann
+          // steht hier nichts (#276, #298).
+          //
+          // Die Liste wächst mit: Aufgaben und Termine waren bei _5 voll (#390).
+          // Ein Absatz mehr kostet nur einen Durchlauf ins Leere. ?>
+    <?php foreach (['_2', '_3', '_4', '_5', '_6'] as $helpNr): ?>
       <?php $helpMehr = t('help_' . $helpMod . $helpNr); ?>
       <?php if ($helpMehr !== 'help_' . $helpMod . $helpNr): ?>
         <p class="muted"><?= e($helpMehr) ?></p>

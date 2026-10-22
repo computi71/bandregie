@@ -5224,6 +5224,14 @@ function event_view_data(array $events, array $me): array {
   return [
     'events' => $events,
     'members' => rows('SELECT id, name FROM users ORDER BY name'),
+    // Lieder fuer das kleine Aufgabenformular an der Karte (#390). Nur wenn
+    // jemand Aufgaben anlegen UND Lieder sehen darf - sonst stuende dort eine
+    // Auswahl, die er weder braucht noch fuellen duerfte.
+    'taskSongs' => perm_allows($me, 'aufgaben', 'write') && perm_allows($me, 'songs')
+      ? array_values(array_filter(
+          rows('SELECT id, title FROM songs ORDER BY title'),
+          static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
+      : [],
     'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
     'venues' => $venues,
     'venueMap' => array_column($venues, null, 'id'),
