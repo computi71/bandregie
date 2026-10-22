@@ -60,6 +60,48 @@
         <?php endforeach; ?>
       </p>
     <?php endif; ?>
+    <?php // Eine Aufgabe gleich hier anlegen (#390). Vorher fuehrte der Weg
+          // ueber vier Bildschirme: Termin ansehen, verlassen, Aufgabenliste,
+          // den Termin in einer Auswahl der letzten hundert wiederfinden.
+          //
+          // Es ist dasselbe Ziel wie das grosse Formular, nur mit dem Termin
+          // schon verknuepft - ein verstecktes links[] traegt ihn. Nach dem
+          // Speichern bringt back() einen hierher zurueck. ?>
+    <?php if (perm_allows($user, 'aufgaben', 'write')): ?>
+      <details class="subsection">
+        <summary>➕ <?= e(t('ev_task_add')) ?></summary>
+        <form method="post" action="/intern/aufgaben" class="form-grid"><?= csrf_field() ?>
+          <input type="hidden" name="links[]" value="event:<?= (int) $ev['id'] ?>">
+          <label class="span2"><?= e(t('task_lbl')) ?>
+            <input name="title" required placeholder="<?= e(t('task_ph')) ?>">
+          </label>
+          <fieldset class="span2 gear-picker">
+            <legend><?= e(t('task_who')) ?></legend>
+            <?php foreach ($members as $evTm): ?>
+              <label class="checkbox">
+                <input type="checkbox" name="assignees[]" value="<?= (int) $evTm['id'] ?>">
+                <?= e($evTm['name']) ?>
+              </label>
+            <?php endforeach; ?>
+          </fieldset>
+          <label><?= e(t('task_due')) ?>
+            <?php // Vorbelegt mit dem Tag des Termins: Was zu einem Abend
+                  // gehoert, ist meistens bis dahin faellig. ?>
+            <input type="date" name="due_date" value="<?= e($ev['date']) ?>">
+          </label>
+          <?php if (!empty($taskSongs)): ?>
+            <label><?= e(t('ev_task_songs')) ?>
+              <select name="links[]" multiple size="4">
+                <?php foreach ($taskSongs as $evSo): ?>
+                  <option value="song:<?= (int) $evSo['id'] ?>"><?= e($evSo['title']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+          <?php endif; ?>
+          <button class="btn btn-primary span2"><?= e(t('task_add')) ?></button>
+        </form>
+      </details>
+    <?php endif; ?>
     <?php // „Wichtig" (#333) - derselbe Baustein wie an den Aufgaben. ?>
     <?php $wArt = 'event'; $wNr = (int) $ev['id']; $wFlag = $wichtigByEvent[$wNr] ?? null;
           require BASE_DIR . '/app/views/intern/_wichtig.php'; ?>
