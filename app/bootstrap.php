@@ -4678,12 +4678,20 @@ function open_items_count(array $user): int {
   // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
   // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
   // es gibt keinen persönlichen Reststand, der davon abweichen könnte.
-  $offen = (int) row("SELECT COUNT(*) c FROM tasks t
-                      JOIN task_assignees ta ON ta.task_id = t.id
-                      WHERE ta.user_id = ? AND t.status = 'offen'",
-                     [(int) $user['id']])['c'];
+  //
+  // Jeder Teil fragt nach seinem Recht (#387): Vorher zählten Aufgaben und
+  // Zusagen auch für jemanden, der den Bereich gar nicht sehen darf. Dann stand
+  // am Symbol eine Zahl, und wer darauf tippte, fand nichts — genau die Sorte
+  // Zahl, die das Symbol unglaubwürdig macht.
+  $offen = perm_allows($user, 'aufgaben')
+    ? (int) row("SELECT COUNT(*) c FROM tasks t
+                 JOIN task_assignees ta ON ta.task_id = t.id
+                 WHERE ta.user_id = ? AND t.status = 'offen'",
+                [(int) $user['id']])['c']
+    : 0;
+  $zusagen = perm_allows($user, 'termine') ? count(open_votes($user)) : 0;
   $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
-  return $offen + count(open_votes($user)) + $chat;
+  return $offen + $zusagen + $chat;
 }
 
 /**

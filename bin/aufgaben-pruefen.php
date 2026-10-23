@@ -151,15 +151,38 @@ $pruefe('zurueckgenommen: wieder offen', task_status_apply($t8, true) === 'offen
 $weg($t8);
 
 // ---------------- 9. Zahl am Symbol und das Loeschen eines Kontos
-$t9 = $aufgabe([$A, $B], 2);
-$hake($t9, $A);
-task_status_apply($t9);
-$vorher = open_items_count($B);
-$pruefe('offene Aufgabe zaehlt beim Zustaendigen', $vorher >= 1);
-$hake($t9, $B);
-task_status_apply($t9);
-$pruefe('erledigte Aufgabe zaehlt nicht mehr', open_items_count($B) === $vorher - 1);
-$weg($t9);
+// Gezaehlt wird seit #387 nur, was das Konto auch oeffnen darf. Deshalb misst
+// der erste Teil an einem Konto mit Recht auf Aufgaben - und der zweite macht
+// die Gegenprobe, denn genau darin lag der Fehler: Die Zahl am Symbol zeigte
+// auf etwas, das im Ueberblick gar nicht auftauchte.
+$darf      = array_values(array_filter($leute, static fn(array $u): bool => perm_allows($u, 'aufgaben')));
+$darfNicht = array_values(array_filter($leute, static fn(array $u): bool => !perm_allows($u, 'aufgaben')));
+
+if (count($darf) >= 2) {
+    [$z1, $z2] = $darf;
+    $t9 = $aufgabe([$z1, $z2], 2);
+    $hake($t9, $z1);
+    task_status_apply($t9);
+    $vorher = open_items_count($z2);
+    $pruefe('offene Aufgabe zaehlt beim Zustaendigen', $vorher >= 1);
+    $hake($t9, $z2);
+    task_status_apply($t9);
+    $pruefe('erledigte Aufgabe zaehlt nicht mehr', open_items_count($z2) === $vorher - 1);
+    $weg($t9);
+} else {
+    echo 'weniger als zwei Konten mit Recht auf Aufgaben - Zaehlung uebersprungen', PHP_EOL;
+}
+
+if ($darfNicht) {
+    $ohne    = $darfNicht[0];
+    $vorOhne = open_items_count($ohne);
+    $t9b     = $aufgabe([$ohne], 1);
+    $pruefe('ohne Recht auf Aufgaben zaehlt die eigene Aufgabe nicht',
+        open_items_count($ohne) === $vorOhne);
+    $weg($t9b);
+} else {
+    echo 'kein Konto ohne Recht auf Aufgaben - Gegenprobe uebersprungen', PHP_EOL;
+}
 
 // Ein Konto faellt weg, waehrend eine Aufgabe daran haengt.
 $t10 = $aufgabe([$A, $B, $C], 0);
