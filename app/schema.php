@@ -592,6 +592,24 @@ $tables = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   /*
+   * Lieder, an denen bei einer Probe gearbeitet wird (#390).
+   *
+   * Ein Auftritt hat ein Programm — geordnet, gedruckt, gespielt — und das ist
+   * die Setlist. Eine Probe hat einen Schwerpunkt: zwei Stuecke, die sitzen
+   * sollen. Dafuer eine Setlist anzulegen hiesse, die Liste der Programme mit
+   * Zetteln zu fuellen, die nie jemand aufhaengt.
+   *
+   * Welcher Weg gilt, entscheidet EVENT_TYPE_FIELDS: Eine Terminart bietet
+   * entweder 'setlist' oder 'songs' an, nie beides.
+   */
+  "CREATE TABLE IF NOT EXISTS event_songs (
+    event_id INT NOT NULL,
+    song_id INT NOT NULL,
+    PRIMARY KEY (event_id, song_id),
+    INDEX idx_song (song_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  /*
    * Rechnungen zu Anschaffungen (#180).
    *
    * Eine eigene Zeile und nicht ein Textfeld am Gerät: Eine Rechnung über
