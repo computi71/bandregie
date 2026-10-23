@@ -344,6 +344,9 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .att-yes { color: var(--ok); }
 .att-maybe { color: var(--maybe); }
 .att-no { color: var(--danger); }
+/* Noch nicht abgehakt: dieselbe Form wie eine Zusage, nur ohne Farbe —
+   die Aussage ist ja gerade, dass hier noch nichts passiert ist. */
+.att-open { color: var(--muted); }
 
 .subsection { margin-top: 0.5rem; border-top: 1px dashed var(--border); padding-top: 0.5rem; }
 .subsection summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
