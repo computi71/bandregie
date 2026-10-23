@@ -91,13 +91,20 @@
   </section>
 <?php endif; ?>
 
-<?php if (perm_allows($user, 'aufgaben')): ?>
+<?php // Die Karte traegt zweierlei: eigene Aufgaben und fehlende Zusagen. Sie
+      // hing frueher ganz an der Berechtigung fuer Aufgaben, und wer nur Termine
+      // sehen durfte, bekam seine offenen Zusagen nie zu Gesicht — waehrend die
+      // Zahl am Symbol sie mitzaehlte (#387). Jetzt entscheidet jeder Teil fuer
+      // sich, und die Ueberschrift sagt, was tatsaechlich drinsteht. ?>
+<?php $dashAufgaben = perm_allows($user, 'aufgaben'); ?>
+<?php $dashTermine  = perm_allows($user, 'termine'); ?>
+<?php if ($dashAufgaben || $dashTermine): ?>
 <section class="card">
-  <h2><?= e(t('dash_open_tasks')) ?></h2>
+  <h2><?= e(t($dashAufgaben ? 'dash_open_tasks' : 'dash_open_votes')) ?></h2>
   <?php // Der Satz steht immer im Seitentext und ist nur verborgen: Die letzte
         // Zusage verschwindet erst im Browser (#377), und ohne ihn stuende die
         // Karte danach leer da. ?>
-  <p class="muted" data-nothing-open<?= $tasks || $openVotes ? ' hidden' : '' ?>><?= e(t('dash_nothing_open')) ?></p>
+  <p class="muted" data-nothing-open<?= ($dashAufgaben && $tasks) || $openVotes ? ' hidden' : '' ?>><?= e(t('dash_nothing_open')) ?></p>
   <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
         // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
         // gleich daneben (#236). ?>
@@ -140,18 +147,24 @@
       <?php endforeach; ?>
     </ul>
   <?php endif; ?>
-  <ul class="task-list">
-    <?php foreach ($tasks as $task): ?>
-      <li>
-        <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
-        <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
-        <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
-        <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
-        <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
-      </li>
-    <?php endforeach; ?>
-  </ul>
-  <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
+  <?php if ($dashAufgaben): ?>
+    <ul class="task-list">
+      <?php foreach ($tasks as $task): ?>
+        <li>
+          <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
+          <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
+          <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
+          <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
+          <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+    <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
+  <?php else: ?>
+    <?php // Ohne Aufgabenrecht fuehrt der Knopf zu den Terminen: Dort gibt es
+          // alles, was hier nur in Auszuegen steht. ?>
+    <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 
