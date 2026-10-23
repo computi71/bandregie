@@ -154,7 +154,9 @@ const EQ_QUANTITY_RE = '~(?:^|\()\s*(\d{1,2})\s*[x×]\s*(?:\)|$)~ui';
  */
 const EVENT_TYPE_FIELDS = [
   'gig'          => ['times', 'venue', 'setlist', 'support', 'fee', 'production', 'gear', 'public'],
-  'probe'        => ['times', 'venue', 'setlist', 'gear'],
+  // Eine Probe bekommt Lieder statt einer Setlist (#390): Sie hat keinen
+  // Ablauf, sondern einen Schwerpunkt.
+  'probe'        => ['times', 'venue', 'songs', 'gear'],
   'aufnahme'     => ['times', 'venue', 'setlist', 'gear'],
   'fotoshooting' => ['times', 'venue', 'gear'],
   'aufbau'       => ['times', 'venue', 'production', 'gear'],
@@ -928,15 +930,29 @@ function visible_setlist_ids(?array $user): ?array {
     'setlist_id'));
 }
 
-/** Songs auf den sichtbaren Setlists; null heißt „alle". */
+/**
+ * Songs der sichtbaren Termine; null heißt „alle".
+ *
+ * Zwei Wege führen von einem Termin zu einem Lied: über die Setlist beim
+ * Auftritt und seit #390 direkt bei der Probe. Beide müssen hier stehen —
+ * sonst könnte eine Aushilfe, die zu einer Probe gebeten wurde, ausgerechnet
+ * die Lieder nicht öffnen, für die sie gebeten wurde.
+ *
+ * Hergeleitet wird aus den Terminen statt aus den Setlists: Ohne Setlist gäbe
+ * es sonst keine Termine mehr, an denen Lieder hängen könnten.
+ */
 function visible_song_ids(?array $user): ?array {
-  $setlists = visible_setlist_ids($user);
-  if ($setlists === null) return null;
-  if (!$setlists) return [];
-  $in = implode(',', array_fill(0, count($setlists), '?'));
-  return array_map('intval', array_column(
-    rows("SELECT DISTINCT song_id FROM setlist_songs WHERE setlist_id IN ($in) AND song_id IS NOT NULL", $setlists),
-    'song_id'));
+  $events = visible_event_ids($user);
+  if ($events === null) return null;
+  if (!$events) return [];
+  $in = implode(',', array_fill(0, count($events), '?'));
+  $ueberSetlist = array_column(rows(
+    "SELECT DISTINCT ss.song_id FROM events e
+     JOIN setlist_songs ss ON ss.setlist_id = e.setlist_id
+     WHERE e.id IN ($in) AND ss.song_id IS NOT NULL", $events), 'song_id');
+  $direkt = array_column(rows(
+    "SELECT DISTINCT song_id FROM event_songs WHERE event_id IN ($in)", $events), 'song_id');
+  return array_values(array_unique(array_map('intval', array_merge($ueberSetlist, $direkt))));
 }
 
 /**
@@ -4784,19 +4800,57 @@ function offline_scope(?array $user): array {
 const OFFLINE_BASE_PAGES = ['/intern', '/intern/termine', '/intern/songs',
                             '/intern/stagerider', '/intern/stagerider/print', '/intern/kanaele'];
 
+/**
+ * Die Lieder, an denen bei diesem Termin gearbeitet wird (#390).
+ *
+ * Nach Titel sortiert und nicht nach einer Position: Eine Probe hat keinen
+ * Ablauf. Wer einen braucht, meint einen Auftritt und damit eine Setlist.
+ *
+ * @return array<int, array> Zeilen aus songs
+ */
+function event_songs(int $eventId): array {
+  return rows('SELECT s.* FROM event_songs es JOIN songs s ON s.id = es.song_id
+               WHERE es.event_id = ? ORDER BY s.title', [$eventId]);
+}
+
+/** Die Lieder mehrerer Termine auf einmal — für die Liste der Terminkarten. */
+function event_songs_map(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_map('intval', $eventIds));
+  $karte = [];
+  foreach (rows("SELECT es.event_id, s.id, s.title FROM event_songs es
+                 JOIN songs s ON s.id = es.song_id
+                 WHERE es.event_id IN ($in) ORDER BY s.title") as $r) {
+    $karte[(int) $r['event_id']][] = $r;
+  }
+  return $karte;
+}
+
 function event_offline_urls(array $ev): array {
   $urls = OFFLINE_BASE_PAGES;
   $songIds = [];
+  // Lieder, die bei einer Probe direkt am Termin hängen (#390). Ohne sie stünde
+  // man im Proberaum mit einem Telefon, auf dem nichts drauf ist. Die Bühne
+  // bekommt hier ?ev statt ?sl — dieselbe Sache, nur ist die Liste der Termin.
+  foreach (rows('SELECT song_id FROM event_songs WHERE event_id = ?', [(int) $ev['id']]) as $es) {
+    $songIds[] = (int) $es['song_id'];
+    $urls[] = '/intern/songs/' . (int) $es['song_id'];
+    $urls[] = '/intern/songs/' . (int) $es['song_id'] . '/buehne?ev=' . (int) $ev['id'];
+    $urls[] = '/intern/songs/' . (int) $es['song_id'] . '/noten?ev=' . (int) $ev['id'];
+  }
   if ($ev['setlist_id']) {
     $sl = (int) $ev['setlist_id'];
     $urls[] = '/intern/setlists';
     $urls[] = '/intern/setlists/' . $sl;
     $urls[] = '/intern/setlists/' . $sl . '/print';
-    $songIds = array_map('intval', array_column(
+    // Anhängen statt ersetzen: Eine Terminart bietet zwar nur einen der beiden
+    // Wege an, aber was aus einer früheren Art noch dranhängt, bleibt stehen.
+    $ausSetlist = array_map('intval', array_column(
       rows('SELECT song_id FROM setlist_songs WHERE setlist_id = ? AND song_id IS NOT NULL', [$sl]), 'song_id'));
+    $songIds = array_merge($songIds, $ausSetlist);
     // Bühne und Noten mit der Setliste im Rücken (?sl) — ohne diese Adressen
     // käme der Teleprompter offline gar nicht erst hoch.
-    foreach ($songIds as $song) {
+    foreach ($ausSetlist as $song) {
       $urls[] = '/intern/songs/' . $song;
       $urls[] = '/intern/songs/' . $song . '/buehne?sl=' . $sl;
       $urls[] = '/intern/songs/' . $song . '/noten?sl=' . $sl;
@@ -4810,7 +4864,7 @@ function event_offline_urls(array $ev): array {
   $anhaenge = [
     ['event', [(int) $ev['id']]],
     ['setlist', $ev['setlist_id'] ? [(int) $ev['setlist_id']] : []],
-    ['song', $songIds],
+    ['song', array_values(array_unique($songIds))],
   ];
   foreach ($anhaenge as [$art, $wen]) {
     foreach (files_map($art, $wen) as $liste) {
@@ -5228,6 +5282,14 @@ function event_view_data(array $events, array $me): array {
     // jemand Aufgaben anlegen UND Lieder sehen darf - sonst stuende dort eine
     // Auswahl, die er weder braucht noch fuellen duerfte.
     'taskSongs' => perm_allows($me, 'aufgaben', 'write') && perm_allows($me, 'songs')
+      ? array_values(array_filter(
+          rows('SELECT id, title FROM songs ORDER BY title'),
+          static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
+      : [],
+    // Die Lieder einer Probe (#390) — und die Auswahl dafür. Beides nur mit
+    // Leserecht auf Lieder; sonst stünde dort eine Liste, die niemand sehen darf.
+    'songsByEvent' => $ohne(event_songs_map($ids)),
+    'eventSongPick' => perm_allows($me, 'songs')
       ? array_values(array_filter(
           rows('SELECT id, title FROM songs ORDER BY title'),
           static fn(array $s): bool => may_see_song($me, (int) $s['id'])))

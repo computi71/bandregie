@@ -1077,6 +1077,7 @@ if (str_starts_with($path, '/intern')) {
       $newEventId = (int) $db->lastInsertId();
       item_new('event', $newEventId, (int) $me['id']);
       save_event_gear($newEventId);
+      save_event_songs($newEventId);
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
       // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
@@ -1114,6 +1115,7 @@ if (str_starts_with($path, '/intern')) {
           [...event_values(), $id]);
       }, (int) $me['id']);
       save_event_gear((int) $id);
+      save_event_songs((int) $id);
       // Der Haken „Rechnung benötigt" (#356) als eigene Anweisung: event_values()
       // ist positionsgebunden, und eine Spalte mehr trifft dort zwei Stellen,
       // die stillschweigend auseinanderlaufen können.
@@ -1328,11 +1330,20 @@ if (str_starts_with($path, '/intern')) {
     $songOne = row('SELECT id, title, lyrics, tempo FROM songs WHERE id = ?', [$m[1]]);
     if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
+    // ?ev ist das Gegenstueck fuer eine Probe (#390): Dort ist die Liste
+    // der Termin und nicht die Setlist. Sonst haette der Teleprompter bei
+    // einer Probe nichts, worin er blaettern koennte.
+    $evId = isset($_GET['ev']) ? (int) $_GET['ev'] : 0;
     $stage = [];
     if ($slId) {
       foreach (may_see_setlist($me, $slId) ? setlist_entries($slId) : [] as $entry) {
         if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
         $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'], 'bpm' => song_bpm($entry['tempo']), 'lines' => lyrics_lines($entry['lyrics'])];
+      }
+    } elseif ($evId && may_see_event($me, $evId)) {
+      foreach (event_songs($evId) as $entry) {
+        $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'],
+                    'bpm' => song_bpm($entry['tempo']), 'lines' => lyrics_lines($entry['lyrics'])];
       }
     }
     if (!$stage) {
@@ -1350,11 +1361,20 @@ if (str_starts_with($path, '/intern')) {
     $songOne = row('SELECT id, title, tempo FROM songs WHERE id = ?', [$m[1]]);
     if (!$songOne || !may_see_song($me, (int) $m[1])) redirect('/intern/songs');
     $slId = isset($_GET['sl']) ? (int) $_GET['sl'] : 0;
+    // ?ev ist das Gegenstueck fuer eine Probe (#390): Dort ist die Liste
+    // der Termin und nicht die Setlist. Sonst haette der Teleprompter bei
+    // einer Probe nichts, worin er blaettern koennte.
+    $evId = isset($_GET['ev']) ? (int) $_GET['ev'] : 0;
     $stage = [];
     if ($slId) {
       foreach (may_see_setlist($me, $slId) ? setlist_entries($slId) : [] as $entry) {
         if ($entry['is_break'] || $entry['id'] === null) continue; // Pausen und Lücken überspringen
         $stage[] = noten_stage_entry($entry, $me['id']);
+      }
+    } elseif ($evId && may_see_event($me, $evId)) {
+      foreach (event_songs($evId) as $entry) {
+        $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'],
+                    'bpm' => song_bpm($entry['tempo']), 'lines' => lyrics_lines($entry['lyrics'])];
       }
     }
     if (!$stage) $stage[] = noten_stage_entry($songOne, $me['id']);
@@ -5649,6 +5669,27 @@ function save_event_gear(int $eventId): void {
 }
 
 
+
+/**
+ * Die Lieder einer Probe speichern (#390) — dasselbe Muster wie die Packliste.
+ *
+ * Die Prüfung auf die Terminart ist nicht Zierde: Ein ausgeblendetes Feld
+ * schickt der Browser trotzdem mit. Ohne sie hinge an einem Auftritt plötzlich
+ * eine Liederliste neben der Setlist, und niemand wüsste, welche gilt.
+ */
+function save_event_songs(int $eventId): void {
+  $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
+  if (!in_array('songs', EVENT_TYPE_FIELDS[$type] ?? [], true)) return;
+  q('DELETE FROM event_songs WHERE event_id = ?', [$eventId]);
+  foreach ((array) ($_POST['songs'] ?? []) as $songId) {
+    if ((int) $songId > 0) {
+      // Nur, was es auch wirklich gibt — sonst zeigte die Probe auf ein Lied,
+      // das niemand öffnen kann.
+      q('INSERT IGNORE INTO event_songs (event_id, song_id)
+         SELECT ?, id FROM songs WHERE id = ?', [$eventId, (int) $songId]);
+    }
+  }
+}
 
 function event_values(): array {
   $status = array_key_exists($_POST['status'] ?? '', EVENT_STATUS) ? $_POST['status'] : 'bestaetigt';

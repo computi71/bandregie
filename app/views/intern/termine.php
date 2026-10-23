@@ -89,6 +89,20 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
       <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>"><?= e($v['name']) ?><?= $v['city'] ? ' (' . e($v['city']) . ')' : '' ?></option><?php endforeach; ?></select>
     </label>
     <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" placeholder="<?= e(t('ev_location_free_ph')) ?>"></label>
+    <?php // Die Lieder einer Probe (#390). Dieselbe Stelle wie die Setlist,
+          // denn es ist dieselbe Frage — nur die Antwort einer Probe ist ein
+          // Schwerpunkt und kein Ablauf. eventfields.js blendet je nach
+          // Terminart das eine oder das andere ein. ?>
+    <?php if (!empty($eventSongPick)): ?>
+      <label data-eventfield="songs"><?= e(t('ev_songs')) ?>
+        <select name="songs[]" multiple size="6">
+          <?php foreach ($eventSongPick as $evSoOpt): ?>
+            <option value="<?= (int) $evSoOpt['id'] ?>"><?= e($evSoOpt['title']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <span class="muted small"><?= e(t('ev_songs_hint')) ?></span>
+      </label>
+    <?php endif; ?>
     <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
       <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>"><?= e($sl['name']) ?></option><?php endforeach; ?></select>
     </label>

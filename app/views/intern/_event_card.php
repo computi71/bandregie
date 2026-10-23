@@ -51,6 +51,17 @@
     <?php // Was an diesem Termin noch offen ist (#336) - die Aufgabe steht in
           // der Liste, aber wer den Termin aufmacht, soll nicht erst dorthin
           // wechseln müssen, um zu sehen, dass noch etwas fehlt. ?>
+    <?php // Woran bei dieser Probe gearbeitet wird (#390) — mit Verweis aufs
+          // Lied und auf die Bühne, die über ?ev durch die Probe blättert. ?>
+    <?php $evLieder = $songsByEvent[$ev['id']] ?? []; ?>
+    <?php if ($evLieder): ?>
+      <p class="muted small">🎵 <?= e(t('ev_songs')) ?>:
+        <?php foreach ($evLieder as $evLi): ?>
+          <a class="badge" href="/intern/songs/<?= (int) $evLi['id'] ?>"><?= e($evLi['title']) ?></a>
+        <?php endforeach; ?>
+        <a class="btn btn-tiny btn-ghost" href="/intern/songs/<?= (int) $evLieder[0]['id'] ?>/buehne?ev=<?= (int) $ev['id'] ?>" title="<?= e(t('stage_open')) ?>">🎤</a>
+      </p>
+    <?php endif; ?>
     <?php $evAufgaben = $tasksByEvent[$ev['id']] ?? []; ?>
     <?php if ($evAufgaben): ?>
       <p class="muted small">✅ <?= e(t('item_open_tasks')) ?>:
@@ -230,6 +241,21 @@
           <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>" <?= (int) $ev['venue_id'] === (int) $v['id'] ? 'selected' : '' ?>><?= e($v['name']) ?></option><?php endforeach; ?></select>
         </label>
         <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" value="<?= e($ev['location']) ?>"></label>
+        <?php // Die Lieder einer Probe (#390). Dieselbe Stelle wie die Setlist,
+              // denn es ist dieselbe Frage — nur die Antwort einer Probe ist ein
+              // Schwerpunkt und kein Ablauf. eventfields.js blendet je nach
+              // Terminart das eine oder das andere ein. ?>
+        <?php if (!empty($eventSongPick)): ?>
+          <?php $evSoGewaehlt = array_map(static fn(array $x): int => (int) $x['id'], $songsByEvent[$ev['id']] ?? []); ?>
+          <label data-eventfield="songs"><?= e(t('ev_songs')) ?>
+            <select name="songs[]" multiple size="6">
+              <?php foreach ($eventSongPick as $evSoOpt): ?>
+                <option value="<?= (int) $evSoOpt['id'] ?>" <?= in_array((int) $evSoOpt['id'], $evSoGewaehlt, true) ? 'selected' : '' ?>><?= e($evSoOpt['title']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <span class="muted small"><?= e(t('ev_songs_hint')) ?></span>
+          </label>
+        <?php endif; ?>
         <label data-eventfield="setlist"><?= e(t('ev_setlist')) ?>
           <select name="setlist_id"><option value="">–</option><?php foreach ($setlists as $sl): ?><option value="<?= $sl['id'] ?>" <?= (int) $ev['setlist_id'] === (int) $sl['id'] ? 'selected' : '' ?>><?= e($sl['name']) ?></option><?php endforeach; ?></select>
         </label>
