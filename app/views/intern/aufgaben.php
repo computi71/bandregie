@@ -97,14 +97,15 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
         <?php if (!$wer): ?>
           <span class="muted small"><?= e(t('task_nobody')) ?></span>
         <?php else: ?>
-          <span class="muted">→ <?= e(implode(', ', array_column($wer, 'name'))) ?></span>
+          <?php // Jeder Zuständige mit seinem Stand, in der Form, die der Termin
+                // schon benutzt (#376). Vorher standen hier zwei Listen — alle
+                // Namen, und daneben die fertigen — und wer wissen wollte, wen er
+                // noch fragen muss, zog sie im Kopf voneinander ab. ?>
+          <?php foreach ($wer as $a): ?><span class="att att-<?= $a['done_at'] !== null ? 'yes' : 'open' ?>"><?= $a['done_at'] !== null ? '✔' : '☐' ?> <?= e($a['name']) ?></span><?php endforeach; ?>
           <?php // Die Zahl nur bei mehreren: Bei einem sagt „1 von 1" nichts,
                 // was das Häkchen daneben nicht schon sagt. ?>
           <?php if (count($wer) > 1): ?>
             <span class="badge"><?= e(str_replace(['%1', '%2'], [(string) count($fertig), (string) $noetig], t('task_progress'))) ?></span>
-          <?php endif; ?>
-          <?php if ($fertig): ?>
-            <span class="muted small">✔ <?= e(t('task_done_by')) ?> <?= e(implode(', ', array_column($fertig, 'name'))) ?></span>
           <?php endif; ?>
         <?php endif; ?>
         <?php $verk = $linksByTask[(int) $task['id']] ?? []; ?>
