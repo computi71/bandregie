@@ -13,6 +13,15 @@
 //
 //   sudo -u www-data php bin/probe-lieder-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten
 //
+// Mit einem Hostnamen als drittem Wort werden die beiden Vollbildseiten auch
+// wirklich abgerufen:
+//
+//   ... --schreibt-testdaten staging.beatcuisine.de
+//
+// Das ist kein Beiwerk. #395 lag genau dort: Die Adresse stand im Paket, die
+// Seite dahinter lieferte den Liedtext statt der Akkorde, und eine Prüfung,
+// die nur Adressen zählt, sah nichts davon.
+//
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);
 
@@ -95,6 +104,38 @@ foreach ([$a, $b] as $s) {
     $pruefe("Offline: Noten von $s mit ?ev", in_array("/intern/songs/$s/noten?ev=$p1", $urls, true));
 }
 $pruefe('Offline: keine Adresse doppelt', count($urls) === count(array_unique($urls)));
+
+// ------------------------------- 4b. Was hinter diesen Adressen steht
+// Bühne und Noten sehen im Quelltext gleich aus und sind es nicht: Die eine
+// zeigt den Text, die andere die Notizzettel. Abgeschrieben wurde der falsche
+// Zweig, und niemandem fiel es auf, weil die Adresse ja stimmte (#395).
+$host = $argv[3] ?? '';
+if ($host !== '') {
+    $_SESSION['uid'] = (int) row('SELECT id FROM users ORDER BY id LIMIT 1')['id'];
+    $sid = session_id();
+    session_write_close();
+    $hol = static function (string $pfad) use ($host, $sid): string {
+        return (string) shell_exec(sprintf(
+            'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s%s',
+            escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host), $pfad));
+    };
+    $buehne = $hol("/intern/songs/$a/buehne?ev=$p1");
+    $noten  = $hol("/intern/songs/$a/noten?ev=$p1");
+    $pruefe('Buehne ueber die Probe: Seite kommt ganz', str_ends_with(rtrim($buehne), '</html>'));
+    $pruefe('Noten ueber die Probe: Seite kommt ganz', str_ends_with(rtrim($noten), '</html>'));
+    $pruefe('Buehne ueber die Probe traegt den Text', str_contains($buehne, '&quot;lines&quot;'));
+    $pruefe('Noten ueber die Probe tragen die Notizzettel', str_contains($noten, '&quot;musicians&quot;'));
+    // „lines“ steht auch in den Notizzetteln, nur eine Ebene tiefer. Geprüft
+    // wird deshalb die Reihenfolge: Kommt der Text VOR den Notizzetteln, hängt
+    // er direkt am Lied — und genau das war der Fehler.
+    $posM = strpos($noten, '&quot;musicians&quot;');
+    $posL = strpos($noten, '&quot;lines&quot;');
+    $pruefe('und nicht den Text an deren Stelle',
+        $posM !== false && ($posL === false || $posM < $posL));
+} else {
+    echo 'kein Host angegeben - die beiden Vollbildseiten wurden nicht abgerufen', PHP_EOL;
+}
+
 $weg($p1);
 
 // ------------------- 5. Ein Auftritt mit Setlist bleibt, wie er war

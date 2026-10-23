@@ -1372,9 +1372,12 @@ if (str_starts_with($path, '/intern')) {
         $stage[] = noten_stage_entry($entry, $me['id']);
       }
     } elseif ($evId && may_see_event($me, $evId)) {
+      // Durch noten_stage_entry() und nicht selbst gebaut: Diese Ansicht zeigt
+      // die Notizzettel, nicht den Text. Der Zweig daneben in /buehne sieht
+      // gleich aus und ist trotzdem etwas anderes — wer das hier abschreibt,
+      // liefert dem Proberaum den Liedtext statt der Akkorde (#395).
       foreach (event_songs($evId) as $entry) {
-        $stage[] = ['id' => (int) $entry['id'], 'title' => $entry['title'],
-                    'bpm' => song_bpm($entry['tempo']), 'lines' => lyrics_lines($entry['lyrics'])];
+        $stage[] = noten_stage_entry($entry, $me['id']);
       }
     }
     if (!$stage) $stage[] = noten_stage_entry($songOne, $me['id']);
