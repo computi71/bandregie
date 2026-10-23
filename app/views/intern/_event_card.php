@@ -66,8 +66,11 @@
     <?php if ($evAufgaben): ?>
       <p class="muted small">✅ <?= e(t('item_open_tasks')) ?>:
         <?php foreach ($evAufgaben as $ta): ?>
+          <?php // Auch hier der Haken am Namen (#376) - wer von der Terminkarte
+                // aus sieht, dass noch jemand fehlt, muss die Aufgabe nicht
+                // erst oeffnen, um zu wissen, wen er fragt. ?>
           <a class="badge" href="<?= e(item_url('task', (int) $ta['id'])) ?>"><?= e($ta['title']) ?><?php
-            if ($ta['assignees']): ?> · <?= e(implode(', ', array_column($ta['assignees'], 'name'))) ?><?php endif; ?></a>
+            foreach ($ta['assignees'] as $i => $taW): ?><?= $i ? ',' : ' ·' ?> <?= $taW['done_at'] !== null ? '✔' : '☐' ?> <?= e($taW['name']) ?><?php endforeach; ?></a>
         <?php endforeach; ?>
       </p>
     <?php endif; ?>

@@ -489,7 +489,6 @@ const UI_STRINGS = [
   'task_needed' => 'Wie viele müssen es tun?',
   'task_needed_all' => 'Alle Zuständigen',
   'task_progress' => '%1 von %2 erledigt',
-  'task_done_by' => 'Erledigt von',
   'task_nobody' => 'Niemand zugewiesen — wer abhakt, ist zuständig',
   'task_leave' => 'Nicht meine',
   'ev_task_add' => 'Aufgabe zu diesem Termin',
