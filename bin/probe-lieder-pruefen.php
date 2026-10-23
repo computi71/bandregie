@@ -125,8 +125,13 @@ if ($host !== '') {
     $pruefe('Noten ueber die Probe: Seite kommt ganz', str_ends_with(rtrim($noten), '</html>'));
     $pruefe('Buehne ueber die Probe traegt den Text', str_contains($buehne, '&quot;lines&quot;'));
     $pruefe('Noten ueber die Probe tragen die Notizzettel', str_contains($noten, '&quot;musicians&quot;'));
+    // „lines“ steht auch in den Notizzetteln, nur eine Ebene tiefer. Geprüft
+    // wird deshalb die Reihenfolge: Kommt der Text VOR den Notizzetteln, hängt
+    // er direkt am Lied — und genau das war der Fehler.
+    $posM = strpos($noten, '&quot;musicians&quot;');
+    $posL = strpos($noten, '&quot;lines&quot;');
     $pruefe('und nicht den Text an deren Stelle',
-        !preg_match('~data-songs="\[\{[^"]*&quot;lines&quot;~', $noten));
+        $posM !== false && ($posL === false || $posM < $posL));
 } else {
     echo 'kein Host angegeben - die beiden Vollbildseiten wurden nicht abgerufen', PHP_EOL;
 }
