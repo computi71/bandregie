@@ -107,7 +107,7 @@
   <?php // Der Satz steht immer im Seitentext und ist nur verborgen: Die letzte
         // Zusage verschwindet erst im Browser (#377), und ohne ihn stuende die
         // Karte danach leer da. ?>
-  <p class="muted" data-nothing-open<?= ($dashAufgaben && $tasks) || $openVotes ? ' hidden' : '' ?>><?= e(t('dash_nothing_open')) ?></p>
+  <p class="muted" data-nothing-open<?= ($dashAufgaben && $tasks) || $openVotes || $openTimes ? ' hidden' : '' ?>><?= e(t('dash_nothing_open')) ?></p>
   <?php // Ein Termin ohne eigenes Votum ist offene Arbeit — die Zahl am Symbol
         // zählt ihn, also gehört er hierher, mit den Knöpfen zum Erledigen
         // gleich daneben (#236). ?>
@@ -147,6 +147,28 @@
             <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
             <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
+          </form>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+  <?php // Wartende Zeitbestätigungen (#418), in derselben Karte und derselben
+        // Gestalt wie die offenen Rückmeldungen: Beides will etwas von genau
+        // dieser Person. Stand das nur in der Mitteilung, erfuhr jemand, der
+        // die abgestellt hat, nie, dass auf ihn gewartet wird — bis der
+        // Vorschlag nach einem Tag verfiel. ?>
+  <?php if ($openTimes): ?>
+    <ul class="task-list">
+      <?php foreach ($openTimes as $ot): ?>
+        <li>
+          <span class="badge">⏰</span>
+          <span class="event-date"><?= fmt_date($ot['date']) ?></span>
+          <a href="<?= e(event_url($ot)) ?>"><strong><?= e($ot['title']) ?></strong></a>
+          <span class="muted"><?= e(str_replace(['%1', '%2'],
+              [event_time_label($ot, '_proposed'), event_time_label($ot)],
+              t('ev_time_proposed'))) ?></span>
+          <form class="inline" action="/intern/termine/<?= (int) $ot['id'] ?>/zeit-ok" method="post"><?= csrf_field() ?>
+            <button class="btn btn-small">✓ <?= e(t('ev_time_ok')) ?></button>
           </form>
         </li>
       <?php endforeach; ?>
