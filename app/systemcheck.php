@@ -126,6 +126,20 @@ function system_checks(): array {
     $https ? t('sys_ok') : t('sys_no_https'), $https ? '' : t('sys_no_https_hint')
   );
 
+  // Bleibt die Warteschlange stehen, fehlt der Minutenlauf (#383). Das ist der
+  // Fehler, den sonst niemand bemerkt: Die Anwendung nimmt Mitteilungen
+  // weiterhin an, sie gehen nur nie hinaus. Wer nach dem Update den
+  // cron-Eintrag vergisst, sieht hier, woran es liegt.
+  if (push_available()) {
+    $pqAlt = (int) row('SELECT COUNT(*) n FROM push_queue
+                        WHERE created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)')['n'];
+    $groups[t('sys_operation')][] = check_row(
+      t('sys_pushqueue'), $pqAlt ? 'fail' : 'ok',
+      $pqAlt ? str_replace('%1', (string) $pqAlt, t('sys_pushqueue_stuck')) : t('sys_ok'),
+      $pqAlt ? t('sys_pushqueue_hint') : ''
+    );
+  }
+
   $site = setting('site_url');
   $groups[t('sys_operation')][] = check_row(
     t('set_site_url'), $site !== '' ? 'ok' : 'warn',

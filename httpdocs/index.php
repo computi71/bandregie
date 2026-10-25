@@ -1227,11 +1227,21 @@ if (str_starts_with($path, '/intern')) {
       $pushEvTitle = (string) ($pushEv['title'] ?? '');
       $pushKey = 'push_att_' . $status;
       $pushUrl = event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$id]));
+      // Gesammelt je Termin (#383): An einem Abend, an dem die Band durchplant,
+      // kamen bisher sechs Mitteilungen nacheinander. Jetzt wartet die erste
+      // ein paar Minuten, und was in der Zeit dazukommt, wird eine daraus.
+      // Der Eintrager bekommt die eine, auf die es ankommt, ohnehin aus #382.
       push_notify('attendance', (int) $me['id'], fn(string $lang): array => [
         'title' => str_replace(['%1', '%2'], [$pushWho, $pushEvTitle], push_t($lang, $pushKey)),
         'body' => '',
         'url' => $pushUrl,
-      ], (int) $id);
+      ], (int) $id, 0, 'attendance:' . (int) $id,
+        fn(int $n, string $lang): array => [
+          'title' => str_replace(['%1', '%2'], [(string) $n, $pushEvTitle],
+                                 push_t($lang, 'push_att_many')),
+          'body' => '',
+          'url' => $pushUrl,
+        ]);
       // Wer absagt, ist der Einzige, der weiß warum — und damit der, der am
       // ehesten einen anderen Termin vorschlagen kann (#401). Der Hinweis
       // kommt als Fenster und nicht als Mitteilung: Die Person hat gerade

@@ -337,6 +337,154 @@ function push_t(string $lang, string $key): string {
  * Gesendet wird erst NACH der Antwort (fastcgi_finish_request): niemand wartet
  * beim Speichern eines Kommentars auf die Push-Dienste von Google und Apple.
  */
+// ---------- Warteschlange für Mitteilungen (#383) ----------
+//
+// push_notify() gab die Seite frei und hielt den Arbeiter trotzdem fest:
+// fastcgi_finish_request() beendet die Antwort, nicht den Prozess. Jeder
+// Versand ist ein blockierender HTTPS-Aufruf je Gerät, einer nach dem
+// anderen, und bei pm.max_children = 5 sind fünf davon der ganze Pool. Genau
+// daran stand die Seite am 20.10.2026 siebzehn Minuten (#374).
+//
+// Jetzt landet die Mitteilung in einer Tabelle, und bin/push-senden.php holt
+// sie ab. Der Webarbeiter ist sofort frei.
+
+/** Wie oft ein Versand wiederholt wird, bevor die Zeile aufgibt. */
+const PUSH_QUEUE_TRIES = 4;
+
+/**
+ * Wie lange eine Mitteilung noch etwas wert ist, in Stunden.
+ *
+ * Eine Erinnerung an die Probe von gestern gehört verworfen und nicht
+ * verspätet zugestellt — sie wäre nicht nur nutzlos, sondern irreführend.
+ */
+const PUSH_QUEUE_TTL_HOURS = 12;
+
+/** Wie lange gleichartige Mitteilungen gesammelt werden, in Sekunden. */
+const PUSH_QUEUE_COLLAPSE = 300;
+
+/**
+ * Eine Mitteilung einreihen (#383).
+ *
+ * Gerendert wird HIER, in der Sprache des Empfängers: Zu diesem Zeitpunkt ist
+ * bekannt, wer sie bekommt und welche Sprache der eingestellt hat. Der
+ * Abholer bleibt damit dumm — er muss nichts über Termine, Themen oder
+ * Sprachen wissen, nur verschicken.
+ *
+ * Eine Zeile je EMPFÄNGER und nicht je Gerät: Wer zwischen Einreihen und
+ * Abholen ein zweites Telefon anmeldet, soll sie dort auch bekommen.
+ *
+ * @param array<int, array>       $empfaenger Zeilen aus users
+ * @param callable(string): array $build      Sprache => ['title','body','url']
+ * @param string                  $sammeln    Sammelschlüssel; leer heißt: sofort und einzeln
+ * @param null|callable(int, string): array $buildViele Sprache + Anzahl, für die gesammelte Fassung
+ */
+function push_queue_add(string $topic, array $empfaenger, callable $build,
+                        string $sammeln = '', ?callable $buildViele = null): void {
+  foreach ($empfaenger as $u) {
+    $uid = (int) ($u['id'] ?? 0);
+    if (!$uid) continue;
+    // Wer das Thema abgewählt hat, kommt gar nicht erst in die Schlange —
+    // sonst füllt sie sich mit Zeilen, die beim Abholen verworfen werden.
+    if (!in_array($topic, push_topics($u), true)) continue;
+    $lang = array_key_exists($u['pref_lang'] ?? '', LANGS) ? (string) $u['pref_lang'] : 'de';
+
+    // Liegt schon eine gleichartige Zeile und ist sie noch nicht los, wird
+    // daraus eine gesammelte: „3 neue Antworten zu X" statt dreimal klingeln.
+    if ($sammeln !== '' && $buildViele !== null) {
+      $alt = row('SELECT id, collapse_count FROM push_queue
+                  WHERE user_id = ? AND collapse_key = ? AND send_after > NOW()',
+                 [$uid, $sammeln]);
+      if ($alt) {
+        $n = (int) $alt['collapse_count'] + 1;
+        q('UPDATE push_queue SET collapse_count = ?, payload = ? WHERE id = ?',
+          [$n, (string) json_encode($buildViele($n, $lang), JSON_UNESCAPED_UNICODE), (int) $alt['id']]);
+        continue;
+      }
+    }
+    $wann = $sammeln !== '' ? PUSH_QUEUE_COLLAPSE : 0;
+    q('INSERT INTO push_queue (user_id, topic, payload, collapse_key, collapse_count, send_after)
+       VALUES (?,?,?,?,1, DATE_ADD(NOW(), INTERVAL ? SECOND))',
+      [$uid, $topic, (string) json_encode($build($lang), JSON_UNESCAPED_UNICODE), $sammeln, $wann]);
+  }
+}
+
+/**
+ * Die Schlange abarbeiten. Ruft bin/push-senden.php, nicht der Webarbeiter.
+ *
+ * @return array{gesendet: int, verworfen: int, spaeter: int}
+ */
+function push_queue_run(int $hoechstens = 200): array {
+  $gesendet = 0;
+  $verworfen = 0;
+  $spaeter = 0;
+
+  // Was zu alt ist, geht ungesehen weg — vor allem anderen, damit eine
+  // abgelaufene Zeile nicht noch einen Versuch kostet.
+  $alt = rows('SELECT id FROM push_queue WHERE created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)',
+              [PUSH_QUEUE_TTL_HOURS]);
+  if ($alt) {
+    q('DELETE FROM push_queue WHERE id IN (' . implode(',', array_column($alt, 'id')) . ')');
+    $verworfen += count($alt);
+  }
+
+  $faellig = rows('SELECT * FROM push_queue
+                   WHERE send_after <= NOW() AND attempts < ?
+                   ORDER BY id LIMIT ' . (int) $hoechstens, [PUSH_QUEUE_TRIES]);
+  foreach ($faellig as $zeile) {
+    $nr = (int) $zeile['id'];
+    $subs = rows("SELECT s.id AS sub_id, s.endpoint, s.p256dh, s.auth,
+                         u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
+                  FROM push_subscriptions s JOIN users u ON u.id = s.user_id
+                  WHERE s.user_id = ?", [(int) $zeile['user_id']]);
+    // Kein Gerät (mehr), oder das Thema inzwischen abgewählt: nichts zu tun.
+    $subs = array_values(array_filter($subs,
+      static fn(array $s): bool => in_array((string) $zeile['topic'], push_topics($s), true)));
+    if (!$subs) {
+      q('DELETE FROM push_queue WHERE id = ?', [$nr]);
+      $verworfen++;
+      continue;
+    }
+    // Die Zahl am Symbol entsteht JETZT und nicht beim Einreihen: Zwischen
+    // beidem kann eine Minute liegen, und in der Minute hakt jemand etwas ab.
+    // Eine Mitteilung, die eine veraltete Zahl mitbringt, setzt sie am Symbol
+    // auch wieder auf den alten Stand.
+    $erster = $subs[0];
+    $inhalt = (array) json_decode((string) $zeile['payload'], true);
+    $inhalt['offen'] = open_items_count(['id' => (int) $zeile['user_id'],
+                                         'role' => $erster['role'],
+                                         'substitute_for' => $erster['substitute_for']]);
+    // Ein neuer Termin steckt schon in „offen“ (er ist unbeantwortet) — ihn
+    // zusaetzlich als ungelesene Mitteilung zu zaehlen ergaebe eine 2 fuer
+    // einen einzigen offenen Punkt. Kommentare und Zusagen aendern nichts an
+    // dem, was zu tun ist, und zaehlen deshalb obendrauf.
+    $inhalt['zaehlt'] = (string) $zeile['topic'] !== 'events';
+    $fertig = (string) json_encode($inhalt, JSON_UNESCAPED_UNICODE);
+
+    $ok = false;
+    foreach ($subs as $sub) {
+      if (push_send_one($sub, $fertig)) $ok = true;
+    }
+    if ($ok) {
+      q('DELETE FROM push_queue WHERE id = ?', [$nr]);
+      $gesendet++;
+      continue;
+    }
+    // Nicht angekommen. Der Dienst war vielleicht nur gerade weg — also
+    // später noch einmal, mit wachsendem Abstand, und irgendwann gar nicht
+    // mehr. Ein totes Gerät hat push_send_one() schon selbst weggeräumt.
+    $versuche = (int) $zeile['attempts'] + 1;
+    if ($versuche >= PUSH_QUEUE_TRIES) {
+      q('DELETE FROM push_queue WHERE id = ?', [$nr]);
+      $verworfen++;
+      continue;
+    }
+    q('UPDATE push_queue SET attempts = ?, send_after = DATE_ADD(NOW(), INTERVAL ? MINUTE)
+       WHERE id = ?', [$versuche, 5 * $versuche, $nr]);
+    $spaeter++;
+  }
+  return ['gesendet' => $gesendet, 'verworfen' => $verworfen, 'spaeter' => $spaeter];
+}
+
 /**
  * Eine Mitteilung an genau eine Person (#382).
  *
@@ -352,87 +500,37 @@ function push_t(string $lang, string $key): string {
  */
 function push_to_user(int $userId, string $topic, callable $build): void {
   if (!push_available()) return;
-  $subs = rows("SELECT s.id AS sub_id, s.endpoint, s.p256dh, s.auth,
-                       u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
-                FROM push_subscriptions s JOIN users u ON u.id = s.user_id
-                WHERE u.id = ?", [$userId]);
-  $subs = array_values(array_filter($subs,
-    fn(array $s): bool => in_array($topic, push_topics($s), true)));
-  if (!$subs) return;
-  register_shutdown_function(function () use ($subs, $build): void {
-    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-    // Dieselbe Falle wie in push_notify() (#374): PHP haelt die Sitzungsdatei
-    // bis zum Skriptende gesperrt, und ohne diese Zeile stellt sich jede
-    // weitere Anfrage desselben Browsers hinter den Versand.
-    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
-    $lang = array_key_exists($subs[0]['pref_lang'] ?? '', LANGS) ? $subs[0]['pref_lang'] : 'de';
-    $inhalt = $build($lang);
-    $json = json_encode($inhalt, JSON_UNESCAPED_UNICODE);
-    foreach ($subs as $sub) push_send_one($sub, (string) $json);
-  });
+  $u = row('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id = ?', [$userId]);
+  if (!$u) return;
+  // Die Warteschlange prueft das Thema noch einmal; hier steht es, damit eine
+  // Zeile gar nicht erst entsteht.
+  if (!in_array($topic, push_topics($u), true)) return;
+  push_queue_add($topic, [$u], $build);
 }
 
 function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0,
-                     int $topicId = 0): void {
+                     int $topicId = 0, string $sammeln = '', ?callable $buildViele = null): void {
   if (!push_available()) return;
-  // Die Themen werden hier gefiltert, nicht in SQL: „nichts eingestellt" heißt
-  // alle Themen, und das lässt sich mit FIND_IN_SET nicht ausdrücken.
-  // Die Abo-Kennung heißt bewusst sub_id: hieße sie 'id', hielte jede Prüfung,
-  // die ein Mitglied erwartet, sie für die Mitglieds-Kennung — genau daran ist
-  // die Sichtbarkeitsprüfung unten schon einmal vorbeigelaufen.
-  $subs = rows("SELECT s.id AS sub_id, s.endpoint, s.p256dh, s.auth,
-                       u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
-                FROM push_subscriptions s JOIN users u ON u.id = s.user_id
-                WHERE u.id <> ?", [$exceptUserId]);
-  $subs = array_values(array_filter($subs,
-    fn(array $s): bool => in_array($topic, push_topics($s), true)));
+  // Empfaenger sind MITGLIEDER und nicht Geraete (#383): Die Warteschlange
+  // haelt eine Zeile je Person, und welche Geraete die hat, entscheidet sich
+  // beim Abholen. Wer zwischendurch ein zweites Telefon anmeldet, bekommt sie
+  // dort auch.
+  //
+  // Nur, wer ueberhaupt ein Geraet angemeldet hat: Eine Zeile fuer jemanden
+  // ohne Telefon waere eine, die der Abholer nur wegwirft.
+  $leute = rows("SELECT DISTINCT u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
+                 FROM push_subscriptions s JOIN users u ON u.id = s.user_id
+                 WHERE u.id <> ?", [$exceptUserId]);
+  // Die Themen werden hier gefiltert, nicht in SQL: „nichts eingestellt“ heisst
+  // alle Themen, und das laesst sich mit FIND_IN_SET nicht ausdruecken.
+  $leute = array_values(array_filter($leute,
+    fn(array $u): bool => in_array($topic, push_topics($u), true)));
   if ($eventId) {
-    $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_event($s, $eventId)));
+    $leute = array_values(array_filter($leute, fn(array $u): bool => may_see_event($u, $eventId)));
   }
   if ($topicId) {
-    $subs = array_values(array_filter($subs, fn(array $s): bool => may_see_topic($s, $topicId)));
+    $leute = array_values(array_filter($leute, fn(array $u): bool => may_see_topic($u, $topicId)));
   }
-  if (!$subs) return;
-  register_shutdown_function(function () use ($subs, $topic, $build): void {
-    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-    // Die Antwort ist raus, der Arbeiter aber noch belegt - und PHP haelt die
-    // Sitzungsdatei bis zum Skriptende gesperrt. Ohne diese Zeile stellt sich
-    // jede weitere Anfrage DESSELBEN Browsers hinter den Versand, und bei
-    // pm.max_children = 5 ist die Seite nach fuenf davon fuer alle tot.
-    // Genau so ist sie es am 20.10.2026 siebzehn Minuten lang gewesen (#374).
-    //
-    // Gefahrlos hier: Die Anfrage ist beantwortet, nach uns schreibt niemand
-    // mehr in die Sitzung.
-    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
-    $byLang = [];
-    $offenJeNutzer = [];
-    $failed = 0;
-    foreach ($subs as $sub) {
-      $lang = array_key_exists($sub['pref_lang'] ?? '', LANGS) ? $sub['pref_lang'] : 'de';
-      $byLang[$lang] ??= $build($lang);
-      // Die Zahl am Symbol ist für jeden eine andere — sie reist deshalb je
-      // Empfänger mit, nicht je Sprache. Je Mitglied nur einmal ermittelt,
-      // auch wenn es mehrere Geräte hat.
-      // Die Mitglieds-Kennung heißt in dieser Zeile 'id' — deshalb trägt die
-      // Abfrage oben die Abo-Kennung als sub_id. Hier stand 'user_id', das gibt
-      // es nicht: (int) null ist 0, und dann wurde die Zahl EINMAL für ein
-      // Mitglied 0 gerechnet, das nichts beantwortet hat, und ging so an alle.
-      // Gemessen: 17 statt 4 (#236).
-      $uid = (int) $sub['id'];
-      $offenJeNutzer[$uid] ??= open_items_count(['id' => $uid, 'role' => $sub['role'],
-                                                 'substitute_for' => $sub['substitute_for']]);
-      // Ein neuer Termin steckt bereits in „offen" (er ist unbeantwortet) —
-      // ihn zusätzlich als ungelesene Mitteilung zu zählen, ergäbe eine 2 für
-      // einen einzigen offenen Punkt. Kommentare und Zusagen dagegen ändern
-      // nichts an dem, was zu tun ist, und zählen deshalb obendrauf.
-      $inhalt = json_encode($byLang[$lang] + [
-        'offen' => $offenJeNutzer[$uid],
-        'zaehlt' => $topic !== 'events',
-      ], JSON_UNESCAPED_UNICODE);
-      if (!push_send_one($sub, $inhalt)) $failed++;
-    }
-    // Einmal je Vorgang vermerken, nicht je Abo: „warum kam nichts an?" ist
-    // sonst nicht zu beantworten, und eine Zeile je Gerät flutet das Log.
-    if ($failed) error_log("Bandregie: Push '$topic' — $failed von " . count($subs) . ' nicht zugestellt');
-  });
+  if (!$leute) return;
+  push_queue_add($topic, $leute, $build, $sammeln, $buildViele);
 }

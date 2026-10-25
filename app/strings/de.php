@@ -1809,6 +1809,10 @@ Gitarre: vorne rechts",
   // Hinweis nach einer Absage (#401)
   // Geänderter Termin fragt neu (#402)
   'fl_answers_reset' => '%1 Antworten wurden verworfen — die Band wird noch einmal gefragt.',
+  'sys_pushqueue' => 'Versand der Mitteilungen',
+  'sys_pushqueue_stuck' => '%1 Mitteilungen liegen seit über 15 Minuten fest',
+  'sys_pushqueue_hint' => 'Mitteilungen werden eingereiht und von einem Lauf im Minutentakt abgeholt. Bleibt die Schlange stehen, fehlt dieser Lauf. Einzutragen ist: * * * * * php /pfad/zur/app/bin/push-senden.php — bis dahin nimmt die Anwendung Mitteilungen an, verschickt aber keine.',
+  'push_att_many' => '%1 neue Antworten zu %2',
   'push_ev_again' => 'Termin verschoben — bitte noch einmal antworten',
   'ev_reset_confirm' => 'Datum, Zeit oder Ort haben sich geändert. Das verwirft die bisherigen %1 Antworten und fragt die Band noch einmal. Speichern?',
   'decline_title' => 'Schade, dass du nicht kannst',

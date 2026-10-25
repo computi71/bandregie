@@ -607,6 +607,33 @@ $tables = [
    * entweder 'setlist' oder 'songs' an, nie beides.
    */
   /*
+   * Mitteilungen, die noch hinaus müssen (#383).
+   *
+   * Der Webarbeiter legt sie hier ab und ist fertig; bin/push-senden.php holt
+   * sie. Der Wortlaut steht schon fertig drin, in der Sprache des Empfängers
+   * — der Abholer muss nichts über Termine, Themen oder Sprachen wissen.
+   *
+   * Eine Zeile je EMPFÄNGER und nicht je Gerät: Wer zwischen Einreihen und
+   * Abholen ein zweites Telefon anmeldet, bekommt sie dort auch.
+   *
+   * collapse_key fasst Gleichartiges zusammen: Sechs Antworten zu einem Termin
+   * sind eine Mitteilung und nicht sechs.
+   */
+  "CREATE TABLE IF NOT EXISTS push_queue (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    topic VARCHAR(20) NOT NULL,
+    payload TEXT NOT NULL,
+    collapse_key VARCHAR(60) NOT NULL DEFAULT '',
+    collapse_count INT NOT NULL DEFAULT 1,
+    send_after DATETIME NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_faellig (send_after, attempts),
+    INDEX idx_sammeln (user_id, collapse_key)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+  /*
    * Die Stimmen über einen Liedvorschlag (#391).
    *
    * Gebaut wie `attendance`, und zwar absichtlich: Die Band drückt dieselben
