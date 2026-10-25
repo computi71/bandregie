@@ -32,9 +32,10 @@ $pruef = function (string $was, bool $ok, string $mehr = '') use (&$fehler): voi
   echo ($ok ? '  ok   ' : '  FEHL '), $was, $mehr === '' ? '' : "  — $mehr", PHP_EOL;
 };
 
-// Die Hilfeseite bietet vier Zusatzabsätze an. Steht die Zahl hier anders als
-// dort, prüft dieses Skript an der Seite vorbei.
-const HILFE_ABSAETZE = ['_2', '_3', '_4', '_5'];
+// Die Liste kommt aus app/help.php, der Seite selbst (#415). Eine eigene
+// Abschrift hier war genau der Fehler: Sie sagte _5, die Seite zeigte bis _6,
+// geschrieben waren Absätze bis _11.
+const HILFE_ABSAETZE = HELP_PARAGRAPHS;
 
 echo '— Name und Erklärung je Bereich —', PHP_EOL;
 $ohneName = $ohneText = [];
@@ -61,6 +62,18 @@ foreach (PERM_MODULES as $modul => $pfade) {
   }
 }
 $pruef('kein Bereich überspringt einen Absatz', !$loecher, implode(' ', $loecher));
+
+// Und andersherum (#415): ein geschriebener Absatz, den die Liste nicht
+// abholt. Das ist der Fehler, den die Lückenprüfung oben nicht sehen kann —
+// sie schaut ja nur dorthin, wo die Liste hinreicht. Gesucht wird deshalb in
+// der Quelle der Texte, nicht in der Liste.
+$ausserhalb = [];
+$deutsch = (string) @file_get_contents(BASE_DIR . '/app/strings/de.php');
+preg_match_all("~'help_([a-z]+)(_\d+)' =>~", $deutsch, $treffer, PREG_SET_ORDER);
+foreach ($treffer as $t) {
+  if (!in_array($t[2], HILFE_ABSAETZE, true)) $ausserhalb[] = 'help_' . $t[1] . $t[2];
+}
+$pruef('kein Absatz steht ausserhalb der Liste', !$ausserhalb, implode(' ', array_unique($ausserhalb)));
 
 echo PHP_EOL, '— Erreichbarkeit —', PHP_EOL;
 // Ein Bereich mit einer Seite, den das Menü nicht nennt, findet nur, wer die
