@@ -1432,11 +1432,17 @@ if (!column_exists('setlist_songs', 'id')) {
 
 // ---------- Grunddaten beim ersten Start ----------
 $defaults = [
-  'band_name' => 'Meine Band',
-  'tagline' => 'Bandname, Logo und Hintergrund in den Einstellungen anpassen',
-  'bio' => 'Hier steht bald die Bandbeschreibung.',
+  // Der Name wird uebersetzt hineingeschrieben und nicht leer gelassen: Eine
+  // Kopfzeile ohne Namen ist schlimmer als ein Platzhalter, und die Band
+  // ersetzt ihn am ersten Tag (#371).
+  'band_name' => t('default_band_name'),
+  // Die drei bleiben LEER. Der Satz entsteht beim Lesen, in der Sprache des
+  // Lesers - siehe content(). Als Wert eingetragen stuende hier fuer immer
+  // Deutsch, auch bei einer Band, die das Programm auf Englisch benutzt.
+  'tagline' => '',
+  'bio' => '',
   'contact_email' => '',
-  'booking_text' => 'Ihr wollt uns buchen? Schreibt uns!',
+  'booking_text' => '',
   'facebook_url' => '', 'instagram_url' => '', 'spotify_url' => '', 'youtube_url' => '',
   'logo_file' => '', 'background_file' => '', 'favicon_file' => '',
   'print_logo_file' => '', 'print_watermark_file' => '',
@@ -1986,6 +1992,22 @@ if (!column_exists('events', 'answers_complete')) {
                                WHERE u.role IN ('admin','member')
                                  AND NOT EXISTS (SELECT 1 FROM attendance a
                                                  WHERE a.event_id = e.id AND a.user_id = u.id))");
+}
+
+// Die deutschen Platzhalter von frueher wegnehmen, aber nur die unberuehrten
+// (#371). Wer selbst etwas hingeschrieben hat, behaelt es - dieselbe Regel wie
+// bei den Vertragsbausteinen (#399): Geloescht wird nur, was Wort fuer Wort so
+// dasteht, wie es hingestellt wurde.
+if (setting('migr_platzhalter_leer') === '') {
+  $phAlt = [
+    'tagline' => 'Bandname, Logo und Hintergrund in den Einstellungen anpassen',
+    'bio' => 'Hier steht bald die Bandbeschreibung.',
+    'booking_text' => 'Ihr wollt uns buchen? Schreibt uns!',
+  ];
+  foreach ($phAlt as $phKey => $phWert) {
+    if ((string) setting($phKey) === $phWert) set_setting($phKey, '');
+  }
+  set_setting('migr_platzhalter_leer', '1');
 }
 
 // Welcher Termin als Ersatz fuer welchen gedacht ist (#403).
