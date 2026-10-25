@@ -1085,6 +1085,11 @@ const UI_STRINGS = [
   'set_crypt_plain_files' => '%d Anhänge stammen aus der Zeit davor und liegen noch offen.',
   'set_crypt_seal_now' => 'Jetzt nachverschlüsseln',
   'set_crypt_files_done' => 'Alle Anhänge sind verschlüsselt.',
+  // Der Weg zurück (#411). Er steht absichtlich nicht neben dem Knopf zum
+  // Verschlüsseln, sondern darunter und leiser: Er ist der seltene Fall.
+  'set_crypt_unseal_hint' => 'Umzug auf einen anderen Server, Schlüsselwechsel oder Abgabe der Anlage? Dann müssen die Anhänge wieder offen liegen, sonst nimmt sie niemand mit.',
+  'set_crypt_unseal_now' => 'Verschlüsselung aufheben (%d Dateien)',
+  'set_crypt_unseal_confirm' => 'Danach liegen alle Anhänge wieder im Klartext auf der Platte. Sicherungen bleiben verschlüsselt. Fortfahren?',
   'set_crypt_how' => 'Einen Schlüssel erzeugen und als „data_key" in app/config.php eintragen:',
   'set_crypt_lost' => 'Diesen Schlüssel aufbewahren wie das Datenbankpasswort — und nicht in derselben Sicherung. Ohne ihn ist keine verschlüsselte Sicherung mehr zu öffnen.',
   'set_crypt_law' => 'Art. 32 DSGVO verlangt Maßnahmen nach dem Stand der Technik und nennt Verschlüsselung ausdrücklich; Buchstabe d verlangt außerdem, ihre Wirksamkeit regelmäßig zu überprüfen. Genau das tut die Zeile darüber: versiegeln, wieder öffnen, und prüfen, ob eine Veränderung auffällt.',
@@ -1099,6 +1104,8 @@ const UI_STRINGS = [
   'sys_crypt_files' => 'Anhänge verschlüsselt',
   'sys_crypt_files_hint' => 'In den Einstellungen unter „Verschlüsselung ruhender Daten" nachverschlüsseln.',
   'fl_crypt_no_key' => 'Es ist kein Schlüssel eingetragen.',
+  'fl_crypt_unsealed' => '%d Anhänge liegen wieder offen.',
+  'fl_crypt_unsealed_some' => '%d Anhänge geöffnet, %d fehlgeschlagen — Einzelheiten im Fehlerprotokoll.',
   'fl_crypt_sealed' => '%d Anhänge verschlüsselt.',
   'fl_crypt_sealed_some' => '%d Anhänge verschlüsselt, %d fehlgeschlagen — Einzelheiten im Fehlerprotokoll.',
   'fl_dl_saved' => 'Download-Einstellungen gespeichert.',

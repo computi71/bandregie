@@ -5647,6 +5647,23 @@ if (str_starts_with($path, '/intern')) {
       : sprintf(t('fl_crypt_sealed'), $sealed['done']));
     redirect('/intern/einstellungen');
   }
+  // Und zurück (#411). Wer den Schlüssel aus der Hand gibt oder umzieht,
+  // braucht diesen Weg; ohne ihn wäre die Verschlüsselung eine Falle. Nicht
+  // in der Demo: Dort liegen die Anhänge aller Besucher im selben Ordner.
+  if ($path === '/intern/dateien/entsiegeln' && $method === 'POST') {
+    require_admin();
+    deny_in_demo('/intern/einstellungen');
+    if (!crypt_available()) {
+      flash(t('fl_crypt_no_key'));
+      redirect('/intern/einstellungen');
+    }
+    @set_time_limit(0);
+    $offen = files_unseal_all();
+    flash($offen['failed'] > 0
+      ? sprintf(t('fl_crypt_unsealed_some'), $offen['done'], $offen['failed'])
+      : sprintf(t('fl_crypt_unsealed'), $offen['done']));
+    redirect('/intern/einstellungen');
+  }
   // Ein Archiv von außen einspielen — für den Fall, dass der Server neu
   // aufgesetzt wurde und hier noch nichts liegt.
   if ($path === '/intern/backup/upload' && $method === 'POST') {
