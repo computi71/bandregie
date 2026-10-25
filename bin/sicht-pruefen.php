@@ -125,13 +125,16 @@ $pruefe('task_linkable() bleibt unter zwanzig Abfragen', $kostenLinkbar < 20);
 $pruefe('und liefert nur den Termin, zu dem gebeten wurde',
     array_column($verlinkbar['event'] ?? [], 'id') === [$gefragt]);
 
+$sichtbareTermine = rows('SELECT * FROM events WHERE id = ?', [$gefragt]);
 $vorher = $abfragen();
-$daten = event_view_data($aushilfe);
+event_view_data($sichtbareTermine, $aushilfe);
 $kostenTermine = $abfragen() - $vorher;
-printf("  event_view_data(): %d Abfragen bei %d Liedern%s",
+printf("  event_view_data(): %d Abfragen bei einem Termin und %d Liedern%s",
     $kostenTermine, count($lieder), PHP_EOL);
+// Ein Termin, elf Lieder: Ohne #410 wären allein für die Lieder 33 Abfragen
+// dabei. Die Schranke liegt bewusst darunter, damit ein Rückfall auffällt.
 $pruefe('event_view_data() wächst nicht mit der Zahl der Lieder',
-    $kostenTermine < 40 + count($daten['events'] ?? []));
+    $kostenTermine < 20 + count($lieder));
 
 $aufraeumen();
 $pruefe('Testkonto wieder weg',
