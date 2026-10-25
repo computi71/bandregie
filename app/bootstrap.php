@@ -2059,6 +2059,36 @@ function may_see_topic(?array $user, int $topicId): bool {
 }
 
 /**
+ * Wie viele andere diesen Beitrag lesen können (#380).
+ *
+ * Für die Rückfrage vor dem Abschicken. Gezählt wird, wer das Thema sehen
+ * darf — nicht, wer gerade ein Gerät für Mitteilungen angemeldet hat: Das
+ * zweite kann der Absender weder wissen noch beeinflussen, und eine Zahl, die
+ * morgen anders lautet, wäre keine Auskunft.
+ *
+ * Der Verfasser zählt nicht mit. Er weiß, was er schreibt.
+ */
+function topic_readers_count(int $topicId, array $autor): int {
+  $n = 0;
+  foreach (rows('SELECT * FROM users') as $u) {
+    if ((int) $u['id'] === (int) $autor['id']) continue;
+    if (may_see_topic($u, $topicId)) $n++;
+  }
+  return $n;
+}
+
+/**
+ * Der Anriss, so wie er auf den Telefonen ankommt (#316, #380).
+ *
+ * An einer Stelle, weil zwei ihn brauchen: der Versand und die Rückfrage, die
+ * ihn vorher zeigt. Liefen sie auseinander, zeigte die Rückfrage etwas
+ * anderes, als ankommt — und wäre schlimmer als keine.
+ */
+function topic_teaser(string $text): string {
+  return mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
+}
+
+/**
  * Ein Beitrag im Chat: anlegen und die Mitteilung dazu (#316).
  *
  * Beides an einer Stelle, weil es zwei Wege zu einem Beitrag gibt — das neue
@@ -2071,7 +2101,7 @@ function topic_post_add(int $topicId, array $author, string $text): void {
   $titel = (string) (row('SELECT title FROM topics WHERE id = ?', [$topicId])['title'] ?? '');
   $wer = (string) $author['name'];
   // Der Anriss, nicht der ganze Text — eine Mitteilung ist kein Chatfenster.
-  $anriss = mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
+  $anriss = topic_teaser($text);
   push_notify('topics', (int) $author['id'], fn(string $lang): array => [
     'title' => push_t($lang, 'push_chat_title') . ' · ' . $titel,
     'body'  => $wer . ': ' . $anriss,
