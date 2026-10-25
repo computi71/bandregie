@@ -153,9 +153,10 @@ require_once BASE_DIR . '/app/help.php';
           // stehen. Fehlt der Schlüssel, liefert t() ihn selbst zurück, und dann
           // steht hier nichts (#276, #298).
           //
-          // Die Liste wächst mit: Aufgaben und Termine waren bei _5 voll (#390).
-          // Ein Absatz mehr kostet nur einen Durchlauf ins Leere. ?>
-    <?php foreach (['_2', '_3', '_4', '_5', '_6'] as $helpNr): ?>
+          // Die Liste steht in app/help.php und nur dort (#415): Sie war hier
+          // länger als in der Prüfung und kürzer als die geschriebenen Absätze,
+          // und sechs davon hat niemand je gesehen. ?>
+    <?php foreach (HELP_PARAGRAPHS as $helpNr): ?>
       <?php $helpMehr = t('help_' . $helpMod . $helpNr); ?>
       <?php if ($helpMehr !== 'help_' . $helpMod . $helpNr): ?>
         <p class="muted"><?= e($helpMehr) ?></p>
