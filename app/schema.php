@@ -133,7 +133,11 @@ $tables = [
     status VARCHAR(20) NOT NULL DEFAULT 'offen',
     required_done TINYINT UNSIGNED NOT NULL DEFAULT 0,
     created_by INT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Abstimmung ueber einen Liedvorschlag (#391). Eine eigene Spalte und
+    -- nicht am Titel erkannt: Ein Titel ist uebersetzt, umbenennbar und von
+    -- Hand aenderbar, diese Marke nicht.
+    is_song_vote TINYINT(1) NOT NULL DEFAULT 0
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   // Wer für eine Aufgabe zuständig ist, und ob er sie getan hat (#334). Das
@@ -602,6 +606,24 @@ $tables = [
    * Welcher Weg gilt, entscheidet EVENT_TYPE_FIELDS: Eine Terminart bietet
    * entweder 'setlist' oder 'songs' an, nie beides.
    */
+  /*
+   * Die Stimmen über einen Liedvorschlag (#391).
+   *
+   * Gebaut wie `attendance`, und zwar absichtlich: Die Band drückt dieselben
+   * drei Knöpfe wie bei einem Termin, also soll auch dahinter dasselbe stehen.
+   * Wer gefragt ist, sagt song_vote_voters(); wer nichts gesagt hat, hat keine
+   * Zeile — eine ausgedachte Enthaltung wäre eine Aussage, die niemand
+   * getroffen hat.
+   */
+  "CREATE TABLE IF NOT EXISTS song_votes (
+    song_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status VARCHAR(10) NOT NULL,
+    updated_at DATETIME(3) NULL,
+    PRIMARY KEY (song_id, user_id),
+    INDEX idx_user (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS event_songs (
     event_id INT NOT NULL,
     song_id INT NOT NULL,
@@ -1894,6 +1916,11 @@ if (!column_exists('promoters', 'lang')) {
 
 if (!column_exists('events', 'needs_invoice')) {
   $db->exec("ALTER TABLE events ADD COLUMN needs_invoice TINYINT(1) NOT NULL DEFAULT 0");
+}
+
+// Abstimmung ueber Liedvorschlaege (#391).
+if (!column_exists('tasks', 'is_song_vote')) {
+  $db->exec("ALTER TABLE tasks ADD COLUMN is_song_vote TINYINT(1) NOT NULL DEFAULT 0");
 }
 
 if (setting('migr_topic_reads') === '') {
