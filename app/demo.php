@@ -303,7 +303,7 @@ TXT,
     ['Between the Lines', 'Own composition', 'F', '88 BPM', 262, 'aktiv'],
     ['Tailwind', 'Own composition', 'A', '160 BPM', 205, 'in_arbeit'],
     ['Night Shift', 'Own composition', 'Bm', '118 BPM', 228, 'in_arbeit'],
-    ['Old Road', 'Own composition', 'G', '104 BPM', 190, 'vorschlag'],
+    ['Old Road', 'Own composition', 'G', '104 BPM', 190, 'demo'],
     ['Untitled', 'Own composition', 'C', '', 0, 'vorschlag'],
   ] as [$title, $artist, $key, $tempo, $sec, $status]) {
     $songs[] = demo_insert('songs', [
@@ -384,16 +384,52 @@ TXT,
   ]);
 
   // --- Aufgaben
-  demo_insert('tasks', ['title' => 'Technik-Rider an den Veranstalter schicken', 'notes' => '',
-    'assigned_to' => $members[0], 'due_date' => $d('+10 days'), 'status' => 'offen']);
-  demo_insert('tasks', ['title' => 'Pick new photos for the website', 'notes' => 'Preferably from the summer festival.',
-    'assigned_to' => $members[2], 'due_date' => $d('+3 weeks'), 'status' => 'offen']);
-  demo_insert('tasks', ['title' => 'Book the trailer in for its test', 'notes' => '',
-    'assigned_to' => null, 'due_date' => $d('-1 week'), 'status' => 'erledigt']);
+  // Aufgaben mit Zustaendigen, Quorum und Verknuepfungen (#366). Vorher hingen
+  // drei Aufgaben am alten assigned_to, keine an einem Termin oder Lied - und
+  // damit war von dem, was eine Aufgabe seit 2.x kann, in der Demo nichts zu
+  // sehen: wer zustaendig ist, das persoenliche Haekchen, "2 von 3".
+  //
+  // Der Titel war ausserdem deutsch, mitten in einer durchweg englischen
+  // Beispielband.
+  $auf1 = demo_insert('tasks', [
+    'title' => 'Send the tech rider to the promoter', 'notes' => '',
+    'due_date' => $d('+10 days'), 'status' => 'offen', 'required_done' => 0,
+  ]);
+  foreach ([$members[0], $members[1]] as $wer) {
+    demo_insert('task_assignees', ['task_id' => $auf1, 'user_id' => $wer]);
+  }
+  demo_insert('task_links', ['task_id' => $auf1, 'kind' => 'event', 'item_id' => $evNext]);
+
+  // Eine, bei der einer von dreien reicht - und einer hat schon abgehakt.
+  // Daran zeigt sich "1 von 3" und der Haken mit Namen.
+  $auf2 = demo_insert('tasks', [
+    'title' => 'Pick new photos for the website',
+    'notes' => 'Preferably from the summer festival.',
+    'due_date' => $d('+3 weeks'), 'status' => 'offen', 'required_done' => 1,
+  ]);
+  foreach ([$members[1], $members[2], $members[3]] as $i => $wer) {
+    demo_insert('task_assignees', ['task_id' => $auf2, 'user_id' => $wer]);
+  }
+
+  // Eine am Lied: Der Vorschlag braucht noch einen Text.
+  $auf3 = demo_insert('tasks', [
+    'title' => 'Write a second verse', 'notes' => '',
+    'due_date' => $d('+2 weeks'), 'status' => 'offen', 'required_done' => 0,
+  ]);
+  demo_insert('task_assignees', ['task_id' => $auf3, 'user_id' => $members[0]]);
+  demo_insert('task_links', ['task_id' => $auf3, 'kind' => 'song', 'item_id' => $songs[9]]);
+
+  // Und eine erledigte, damit der Unterschied zu sehen ist.
+  $auf4 = demo_insert('tasks', [
+    'title' => 'Book the trailer in for its test', 'notes' => '',
+    'due_date' => $d('-1 week'), 'status' => 'erledigt', 'required_done' => 0,
+  ]);
+  demo_insert('task_assignees',
+    ['task_id' => $auf4, 'user_id' => $members[3], 'done_at' => date('Y-m-d H:i:s', strtotime('-8 days'))]);
 
   // --- Abwesenheit (erzeugt die Warnung beim Termin, falls sie zusammenfällt)
   demo_insert('absences', ['user_id' => $members[3], 'date_from' => $d('+13 days'),
-    'date_to' => $d('+20 days'), 'note' => 'Urlaub']);
+    'date_to' => $d('+20 days'), 'note' => 'Holiday']);
 
   // --- Kasse
   $adminId = (int) (row("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")['id'] ?? 0) ?: null;
@@ -546,6 +582,9 @@ TXT,
   demo_install_contract($evNext, $members[0]);
   demo_install_orders($members);
   $sub = demo_install_substitute($members, $evNext, $pw);
+  // Ein Bookingagent daneben (#366): Erst im Vergleich sieht man, was die
+  // eingeschraenkte Sicht bedeutet.
+  demo_install_booking($pw);
   demo_install_photos($members[0], $evPast, $members);
   demo_install_bereiche($members, $evPast, $evNext, $sub);
   demo_write_logins($logins);
@@ -738,6 +777,28 @@ function demo_install_contract(int $eventId, int $wer): void {
     'sent_at' => date('Y-m-d H:i:s', strtotime('-4 days')), 'created_by' => $wer,
   ]);
   q('UPDATE contracts SET body = ? WHERE id = ?', [contract_render(contract_full($id) ?? []), $id]);
+
+  // Und die Rechnung dazu (#366). Ohne sie zeigt die Demo einen Bereich, den
+  // die Anmerkungen zur Fassung ausdruecklich nennen, und ein Besucher
+  // schliesst daraus, das Programm koenne keine Rechnung schreiben.
+  //
+  // Ueber invoice_from_contract() und nicht von Hand zusammengesetzt: Das ist
+  // der Weg, den die Band auch geht, und eine Demo, die ihren eigenen Weg
+  // nimmt, zeigt etwas anderes als das Programm.
+  require_once BASE_DIR . '/app/rechnung.php';
+  $rechnung = invoice_from_contract($id, $wer);
+  if ($rechnung) {
+    demo_track('sales_invoices', $rechnung);
+    foreach (rows('SELECT id FROM sales_invoice_items WHERE invoice_id = ?', [$rechnung]) as $posten) {
+      demo_track('sales_invoice_items', (int) $posten['id']);
+    }
+    // Verschickt und bezahlt: Ein Entwurf zeigt den halben Weg. Wer sich die
+    // Demo ansieht, will wissen, wie es aussieht, wenn das Geld da ist.
+    q("UPDATE sales_invoices SET status = 'bezahlt', invoice_date = ?, sent_at = ?, paid_at = ?
+       WHERE id = ?",
+      [date('Y-m-d', strtotime('-3 days')), date('Y-m-d H:i:s', strtotime('-3 days')),
+       date('Y-m-d H:i:s', strtotime('-1 day')), $rechnung]);
+  }
 }
 
 function demo_write_logins(array $logins): void {
@@ -807,6 +868,28 @@ function demo_install_orders(array $members): void {
                 ['standing_orders']) as $booked) {
     demo_track('finances', (int) $booked['id']);
   }
+}
+
+/**
+ * Ein Bookingagent (#366).
+ *
+ * Gerade WEIL die Demo ihre Zugänge öffentlich aushängt, gehört dieses Konto
+ * hinein: Der Sinn der Rolle ist, dass sie weniger sieht als die Band, und das
+ * lässt sich nur zeigen, indem man beides nebeneinander aufmacht. Mit
+ * booking_event_scope auf „belegt“ sieht ein Besucher im einen Fenster den
+ * Abend mit Inhalt und im anderen nur, dass der Tag weg ist.
+ */
+function demo_install_booking(callable $pw): int {
+  $agent = demo_insert('users', [
+    'name' => 'Rita Sommer', 'first_name' => 'Rita', 'last_name' => 'Sommer', 'stage_name' => '',
+    'email' => 'booking@example.com', 'password_hash' => $pw('booking@example.com'),
+    'role' => 'booking', 'instrument' => '', 'must_change_pw' => 0,
+  ]);
+  perm_apply_template($agent, 'booking');
+  // Die engere Einstellung, nicht die weite: Was dieses Konto NICHT sieht, ist
+  // der Punkt, um den es geht.
+  set_setting('booking_event_scope', 'busy');
+  return $agent;
 }
 
 /**
@@ -1129,7 +1212,12 @@ function demo_remove(): void {
   // auf ein Konto, also müssen sie vor beiden weg.
   $order = ['comments', 'setlist_songs', 'equipment_deadlines', 'finances',
             'important_flags', 'task_assignees', 'task_links', 'tasks',
-            'guest_bookings', 'guests', 'contracts', 'promoters', 'quotes',
+            'guest_bookings', 'guests',
+            // Posten vor Rechnung, Rechnung vor Vertrag und Veranstalter (#366):
+            // Jede Zeile zeigt auf die naechste, und eine stehengebliebene
+            // Rechnung zeigte nach dem Zuruecksetzen auf einen Vertrag, den es
+            // nicht mehr gibt.
+            'sales_invoice_items', 'sales_invoices', 'contracts', 'promoters', 'quotes',
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
