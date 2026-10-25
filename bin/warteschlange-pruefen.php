@@ -121,11 +121,23 @@ $pruefe('ein anderer Termin ist eine eigene Zeile', $zahl() === 2);
 $pruefe('und dessen erste geht wieder sofort', strtotime((string) row(
     "SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:8'")['send_after']) <= time() + 2);
 
-// Was schon faellig ist, wird nicht mehr eingesammelt - sonst waechst eine
-// Zeile ewig weiter und geht nie hinaus.
+// Auch eine schon faellige Zeile sammelt ein (#406). Die Sorge, sie koenne
+// dann ewig weiterwachsen und nie hinausgehen, traegt nicht: Ihr Zeitpunkt
+// wird dabei NICHT verschoben, also nimmt der naechste Minutenlauf sie mit.
+// Laenger als eine Minute kann sie nicht sammeln.
+//
+// Vorher war es andersherum, und genau daran ging die erste Mitteilung
+// verloren: Die ist nach #404 sofort faellig und konnte deshalb nie
+// Sammelziel sein - zwei Antworten vor dem ersten Versand ergaben zwei
+// Mitteilungen statt einer.
+$vorFaellig = (string) row("SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:7'")['send_after'];
 q("UPDATE push_queue SET send_after = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE collapse_key = 'zzq:7'");
 push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
-$pruefe('eine faellige Zeile sammelt nicht mehr ein', $zahl() === 3);
+$pruefe('auch eine faellige Zeile sammelt ein', $zahl() === 2);
+$nachher = row("SELECT collapse_count, send_after FROM push_queue WHERE collapse_key = 'zzq:7'");
+$pruefe('und zaehlt weiter', (int) $nachher['collapse_count'] === 4);
+$pruefe('ihr Zeitpunkt bleibt, sie geht also beim naechsten Lauf hinaus',
+    strtotime((string) $nachher['send_after']) <= time());
 q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
 
 // ------------------------------------------------ 4. Abholen
