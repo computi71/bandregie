@@ -1320,6 +1320,15 @@ if (str_starts_with($path, '/intern')) {
       'otherChordsCount' => count(array_filter(song_chords_all((int) $songOne['id'], $me['id']), fn($c) => !$c['mine'])),
       'songTasks' => perm_allows($me, 'aufgaben')
         ? (tasks_for_item('song', [(int) $songOne['id']])[(int) $songOne['id']] ?? []) : [],
+      // Die Abstimmung ueber einen Vorschlag (#391). Der Stand steht auch
+      // denen offen, die nicht gefragt sind - wer das Lied sehen darf, darf
+      // sehen, wie die Band dazu steht; nur die Knoepfe bleiben ihm fort.
+      'songVotes' => song_votes((int) $songOne['id']),
+      'songVoters' => song_vote_voters(),
+      'songMayVote' => song_may_vote($me, (int) $songOne['id']),
+      'songMyVote' => (string) (row('SELECT status FROM song_votes WHERE song_id = ? AND user_id = ?',
+        [(int) $songOne['id'], (int) $me['id']])['status'] ?? ''),
+      'songVoteDeadline' => song_vote_deadline((int) $songOne['id']),
     ]);
   }
   // Bühne: der Liedtext im Vollbild, groß und selbstlaufend — das Handy als
@@ -1408,15 +1417,51 @@ if (str_starts_with($path, '/intern')) {
       $songNeu = (int) $db->lastInsertId();
       item_new('song', $songNeu, (int) $me['id']);
       song_chords_set($songNeu, $me['id'], $_POST['chords'] ?? '');
+      // Ein neuer Vorschlag fragt die Band (#391).
+      if (pick($_POST['status'] ?? null, SONG_STATUS, 'vorschlag') === 'vorschlag') {
+        song_vote_start($songNeu, (int) $me['id']);
+      }
     }
     redirect('/intern/songs');
   }
+  // Über einen Liedvorschlag abstimmen (#391). Dieselben drei Knöpfe wie am
+  // Termin, also derselbe Weg: Die Route fasst ausschließlich die eigene
+  // Stimme an, deshalb steht sie in SELF_SERVICE_PATHS und reicht mit
+  // Leserecht. Wer nicht gefragt ist, kommt hier trotzdem nicht durch.
+  if (preg_match('~^/intern/songs/(\d+)/abstimmung$~', $path, $m) && $method === 'POST') {
+    $songNr = (int) $m[1];
+    $stimme = pick($_POST['status'] ?? null, ['yes' => 1, 'maybe' => 1, 'no' => 1], '');
+    if ($stimme === '' || !song_may_vote($me, $songNr)) {
+      flash(t('fl_no_permission'));
+      back('/intern/songs/' . $songNr);
+    }
+    q('INSERT INTO song_votes (song_id, user_id, status, updated_at) VALUES (?,?,?,NOW(3))
+       ON DUPLICATE KEY UPDATE status = VALUES(status), updated_at = NOW(3)',
+      [$songNr, (int) $me['id'], $stimme]);
+    // Die eigene Zeile der Abstimmungsaufgabe gleich mit abhaken: Wer gesagt
+    // hat, was er denkt, hat seinen Teil getan.
+    foreach (song_vote_tasks($songNr) as $aufgabe) {
+      q('UPDATE task_assignees SET done_at = NOW(3) WHERE task_id = ? AND user_id = ?',
+        [$aufgabe, (int) $me['id']]);
+      task_status_apply($aufgabe);
+    }
+    song_vote_apply($songNr);
+    back('/intern/songs/' . $songNr);
+  }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
+      // Der Stand VOR dem Speichern (#391): Eine Abstimmung beginnt, wenn ein
+      // Lied zum Vorschlag wird - nicht jedesmal, wenn ein Vorschlag
+      // gespeichert wird.
+      $songVorher = (string) (row('SELECT status FROM songs WHERE id = ?', [$m[1]])['status'] ?? '');
       item_update('song', (int) $m[1], function () use ($m): void {
         q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
       }, (int) $me['id']);
       song_chords_set((int) $m[1], $me['id'], $_POST['chords'] ?? '');
+      if ($songVorher !== 'vorschlag'
+          && pick($_POST['status'] ?? null, SONG_STATUS, 'vorschlag') === 'vorschlag') {
+        song_vote_start((int) $m[1], (int) $me['id']);
+      }
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
       $played = row('SELECT 1 FROM setlist_songs ss JOIN events e ON e.setlist_id = ss.setlist_id
@@ -5311,6 +5356,14 @@ if (str_starts_with($path, '/intern')) {
   }
   // Die Vertragsvorlage (#303). Leer heißt „nimm die mitgelieferte" — deshalb
   // wird der Text nur gespeichert, wenn er sich von ihr unterscheidet.
+  // Wer ueber Liedvorschlaege abstimmt (#391).
+  if ($path === '/intern/einstellungen/abstimmung' && $method === 'POST') {
+    require_admin();
+    set_setting('song_vote_scope',
+      pick($_POST['song_vote_scope'] ?? null, array_flip(SONG_VOTE_SCOPES), 'mitglieder'));
+    flash(t('fl_settings_saved'));
+    redirect('/intern/einstellungen');
+  }
   if ($path === '/intern/einstellungen/booking' && $method === 'POST') {
     require_admin();
     set_setting('booking_event_scope', ($_POST['booking_event_scope'] ?? '') === 'all' ? 'all' : 'busy');

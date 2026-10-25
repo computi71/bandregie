@@ -33,6 +33,44 @@ $zeilen = lyrics_lines($song['lyrics'] ?? '');
   <?php if ($song['duration_sec']): ?> · <?= (int) floor($song['duration_sec'] / 60) ?>:<?= sprintf('%02d', $song['duration_sec'] % 60) ?><?php endif; ?>
 </p>
 
+<?php // Die Abstimmung über einen Vorschlag (#391). Dieselben drei Knöpfe wie
+      // an einem Termin — die Band drückt sie jede Woche, sie muss nichts
+      // Neues lernen. Darunter, wer was gesagt hat, in derselben Gestalt wie
+      // die Zusagen an der Terminkarte. ?>
+<?php if (in_array($song['status'], ['vorschlag', 'abgestimmt'], true)): ?>
+  <section class="card">
+    <h2>🗳 <?= e(t($song['status'] === 'vorschlag' ? 'song_vote_title' : 'song_vote_done')) ?></h2>
+    <?php if ($song['status'] === 'vorschlag'): ?>
+      <p class="muted small"><?= e(t('song_vote_hint')) ?></p>
+      <?php if ($songVoteDeadline !== ''): ?>
+        <p class="muted small">⏳ <?= e(str_replace('%1', fmt_date($songVoteDeadline), t('song_vote_until'))) ?></p>
+      <?php endif; ?>
+      <?php if ($songMayVote): ?>
+        <form class="inline attendance" action="/intern/songs/<?= (int) $song['id'] ?>/abstimmung" method="post"><?= csrf_field() ?>
+          <button name="status" value="yes" class="chip <?= $songMyVote === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
+          <button name="status" value="maybe" class="chip <?= $songMyVote === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>
+          <button name="status" value="no" class="chip <?= $songMyVote === 'no' ? 'chip-no' : '' ?>"><?= e(t('att_no')) ?></button>
+        </form>
+      <?php else: ?>
+        <p class="muted small"><?= e(t('song_vote_not_asked')) ?></p>
+      <?php endif; ?>
+    <?php endif; ?>
+    <?php // Wer nichts gesagt hat, steht ohne Zeichen da. Eine ausgedachte
+          // Enthaltung wäre eine Aussage, die niemand getroffen hat. ?>
+    <?php $svGesagt = array_column($songVotes, 'status', 'user_id'); ?>
+    <p class="attendance-summary">
+      <?php $svZeichen = ['yes' => '✔', 'maybe' => '?', 'no' => '✘']; ?>
+      <?php foreach ($songVoters as $svU): ?>
+        <?php $svS = $svGesagt[(int) $svU['id']] ?? ''; ?>
+        <span class="att att-<?= $svS !== '' ? e($svS) : 'open' ?>"><?= $svS !== '' ? $svZeichen[$svS] : '☐' ?> <?= e($svU['name']) ?></span>
+      <?php endforeach; ?>
+    </p>
+    <?php if ($song['status'] === 'abgestimmt'): ?>
+      <p class="muted small"><?= e(t('song_vote_decide')) ?></p>
+    <?php endif; ?>
+  </section>
+<?php endif; ?>
+
 <?php // Was an diesem Lied noch offen ist (#336) — auf dem Notenständer die
       // Nächste Frage nach Tonart und Tempo. ?>
 <?php if (!empty($songTasks)): ?>
