@@ -358,6 +358,43 @@ $pruefe('required_done bleibt unangetastet',
     (int) row('SELECT required_done FROM tasks WHERE id = ?', [$t16])['required_done'] === 3);
 $weg($t16);
 
+// ------------------- Wo etwas ansteht, je Bereich (#384)
+// Die Zahl am App-Symbol und die Marken im Menue kommen aus derselben
+// Funktion. Liefen sie auseinander, stuenden zwei verschiedene Zahlen
+// nebeneinander auf demselben Bildschirm - und dann glaubt man keiner mehr.
+foreach (rows('SELECT * FROM users ORDER BY id LIMIT 5') as $nU) {
+    $nKarte = open_items_by_path($nU);
+    $pruefe('Zahl am Symbol = Summe der Marken (' . mb_substr($nU['name'], 0, 12) . ')',
+        open_items_count($nU) === array_sum($nKarte));
+    $pruefe('keine Null in der Karte (' . mb_substr($nU['name'], 0, 12) . ')',
+        !array_filter($nKarte, static fn(int $n): bool => $n <= 0));
+}
+
+// Nur Pfade, die es auch gibt - eine Marke an einem Menuepunkt, den niemand
+// anklicken kann, waere genau die Zahl, die ins Leere zeigt (#387).
+$nAlle = [];
+foreach (rows('SELECT * FROM users') as $nU) {
+    foreach (array_keys(open_items_by_path($nU)) as $nP) $nAlle[$nP] = true;
+}
+$pruefe('nur bekannte Bereiche', !array_diff(array_keys($nAlle),
+    ['/intern/aufgaben', '/intern/termine', '/intern/themen']));
+
+// Wer einen Bereich nicht lesen darf, bekommt dafuer auch keine Marke.
+$nOhne = $darfNicht[0] ?? null;
+if ($nOhne) {
+    $nK = open_items_by_path($nOhne);
+    foreach (['/intern/termine' => 'termine', '/intern/themen' => 'themen'] as $nP => $nMod) {
+        if (!perm_allows($nOhne, $nMod)) {
+            $pruefe("ohne Recht auf $nMod keine Marke", !isset($nK[$nP]));
+        }
+    }
+    // Die eigene Aufgabe zaehlt trotzdem (#393) - sie steht auf der Uebersicht.
+    $nT = $aufgabe([$nOhne], 1);
+    $pruefe('die eigene Aufgabe steht in der Karte',
+        (open_items_by_path($nOhne)['/intern/aufgaben'] ?? 0) >= 1);
+    $weg($nT);
+}
+
 // ------------------- Die Darstellung der Zustaendigen
 // Sie stand an vier Stellen abgeschrieben, und als sie sich aenderte, zogen
 // nur zwei davon mit (#397). Jetzt gibt es eine Fassung - und diese Pruefung
