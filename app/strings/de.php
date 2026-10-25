@@ -1809,6 +1809,17 @@ Gitarre: vorne rechts",
   // Hinweis nach einer Absage (#401)
   // Geänderter Termin fragt neu (#402)
   'fl_answers_reset' => '%1 Antworten wurden verworfen — die Band wird noch einmal gefragt.',
+  // Versandprotokoll (#405)
+  'set_pushlog_title' => 'Was zuletzt hinausging',
+  'set_pushlog_hint' => 'Die letzten vierzig Mitteilungen — an wen, worüber und ob der Zustelldienst sie angenommen hat. In Klammern: wie viele Geräte sie genommen haben, von wie vielen. Der Wortlaut steht nicht dabei, und ob jemand hingesehen hat, steht hier auch nicht: Das bleibt zwischen ihm und seinem Telefon. Nach dreißig Tagen wird aufgeräumt.',
+  'set_pushlog_empty' => 'Es ist noch nichts hinausgegangen.',
+  'set_pushlog_what' => 'Worüber',
+  'set_pushlog_result' => 'Ergebnis',
+  'set_pushlog_gesendet' => 'angenommen',
+  'set_pushlog_aufgegeben' => 'nach vier Versuchen aufgegeben',
+  'set_pushlog_abgelaufen' => 'zu alt, verworfen',
+  'set_pushlog_kein-geraet' => 'kein Gerät angemeldet',
+  'when' => 'Wann',
   'sys_pushqueue' => 'Versand der Mitteilungen',
   'sys_pushqueue_stuck' => '%1 Mitteilungen liegen seit über 15 Minuten fest',
   'sys_pushqueue_hint' => 'Mitteilungen werden eingereiht und von einem Lauf im Minutentakt abgeholt. Bleibt die Schlange stehen, fehlt dieser Lauf. Einzutragen ist: * * * * * php /pfad/zur/app/bin/push-senden.php — bis dahin nimmt die Anwendung Mitteilungen an, verschickt aber keine.',

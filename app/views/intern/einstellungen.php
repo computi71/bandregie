@@ -169,6 +169,38 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       // Hand im Angebot steht. ?>
 <?php // Die Vertragsvorlage (#303). Sie gehört der Band; wir liefern nur eine
       // erste Fassung mit und sagen dazu, dass wir keine Rechtsberatung sind. ?>
+<?php // Was zuletzt hinausging (#405). Die Frage „bekommt der überhaupt
+      // Mitteilungen?“ ließ sich vorher nur erschließen — aus Zustellmarken,
+      // Protokollen und Überlegungen darüber, welcher Rundlauf welche Zeile
+      // geschrieben haben kann.
+      //
+      // Ohne Wortlaut: Ein Chat-Anriss hier wäre eine Abschrift von
+      // Gesprächen, um die niemand gebeten hat. Und keine Lesebestätigung —
+      // ob jemand hingesehen hat, bleibt zwischen ihm und seinem Telefon. ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_pushlog_title')) ?></summary>
+  <p class="muted small"><?= e(t('set_pushlog_hint')) ?></p>
+  <?php if (!$pushProtokoll): ?>
+    <p class="muted"><?= e(t('set_pushlog_empty')) ?></p>
+  <?php else: ?>
+    <table class="list">
+      <tr><th><?= e(t('when')) ?></th><th><?= e(t('name')) ?></th><th><?= e(t('set_pushlog_what')) ?></th><th><?= e(t('set_pushlog_result')) ?></th></tr>
+      <?php foreach ($pushProtokoll as $pl): ?>
+        <tr>
+          <td class="muted small"><?= e(fmt_date(substr((string) $pl['created_at'], 0, 10))) ?> <?= e(substr((string) $pl['created_at'], 11, 5)) ?></td>
+          <td><?= e($pl['name'] ?? '—') ?></td>
+          <td class="muted small"><?= e(t('push_topic_' . $pl['topic']) !== 'push_topic_' . $pl['topic'] ? t('push_topic_' . $pl['topic']) : $pl['topic']) ?><?php
+            if ((int) $pl['collapse_count'] > 1): ?> ×<?= (int) $pl['collapse_count'] ?><?php endif; ?></td>
+          <td class="small"><?php
+            $plK = 'set_pushlog_' . $pl['outcome'];
+            echo e(t($plK) !== $plK ? t($plK) : (string) $pl['outcome']);
+            if ((int) $pl['devices']): ?> <span class="muted">(<?= (int) $pl['accepted'] ?>/<?= (int) $pl['devices'] ?>)</span><?php endif; ?></td>
+        </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
+</details>
+
 <?php // Wer über Liedvorschläge abstimmt (#391). Dieselbe Auswahl entscheidet,
       // wen die Abstimmung fragt und wann sie vorbei ist. ?>
 <details class="card acc" name="setacc">

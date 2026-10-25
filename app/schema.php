@@ -619,6 +619,35 @@ $tables = [
    * collapse_key fasst Gleichartiges zusammen: Sechs Antworten zu einem Termin
    * sind eine Mitteilung und nicht sechs.
    */
+  /*
+   * Was verschickt wurde (#405).
+   *
+   * Die Frage „bekommt Sebastian eigentlich Mitteilungen?“ kostete einen
+   * Vormittag: Endpunkt-Hostnamen, Zustellmarken, Zugriffsprotokolle und die
+   * Überlegung, welcher Rundlauf welche Zeile geschrieben haben kann. Seit
+   * #383 geht ohnehin jede Mitteilung durch eine Tabelle — eine Zeile beim
+   * Hinausgehen zu schreiben, statt sie nur zu löschen, kostet fast nichts.
+   *
+   * KEIN Wortlaut. Ein Chat-Anriss im Protokoll wäre eine Abschrift von
+   * Gesprächen, um die niemand gebeten hat.
+   *
+   * Und keine Lesebestätigung: Ob jemand eine Mitteilung angesehen hat, bleibt
+   * zwischen ihm und seinem Telefon.
+   */
+  "CREATE TABLE IF NOT EXISTS push_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    topic VARCHAR(20) NOT NULL,
+    collapse_key VARCHAR(60) NOT NULL DEFAULT '',
+    collapse_count INT NOT NULL DEFAULT 1,
+    devices TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    accepted TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    outcome VARCHAR(12) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_wann (created_at),
+    INDEX idx_sammeln (collapse_key, created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS push_queue (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

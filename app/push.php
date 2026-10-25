@@ -401,11 +401,48 @@ function push_queue_add(string $topic, array $empfaenger, callable $build,
         continue;
       }
     }
-    $wann = $sammeln !== '' ? PUSH_QUEUE_COLLAPSE : 0;
+    // Die erste sofort, erst die folgenden sammeln (#404). Das Sammeln kostet
+    // sonst JEDE Antwort fuenf Minuten, auch die einzelne, auf die nie eine
+    // zweite folgt - und das ist der haeufige Fall. Ob gerade erst etwas
+    // hinausging, sagt das Versandprotokoll (#405); dafuer braucht es keine
+    // eigene Spalte.
+    $wann = ($sammeln !== '' && push_recently_sent($sammeln, PUSH_QUEUE_COLLAPSE))
+      ? PUSH_QUEUE_COLLAPSE : 0;
     q('INSERT INTO push_queue (user_id, topic, payload, collapse_key, collapse_count, send_after)
        VALUES (?,?,?,?,1, DATE_ADD(NOW(), INTERVAL ? SECOND))',
       [$uid, $topic, (string) json_encode($build($lang), JSON_UNESCAPED_UNICODE), $sammeln, $wann]);
   }
+}
+
+/** Wie lange das Versandprotokoll aufgehoben wird, in Tagen. */
+const PUSH_LOG_DAYS = 30;
+
+/**
+ * Eine Zeile ins Versandprotokoll (#405).
+ *
+ * Ohne Wortlaut: Ein Chat-Anriss im Protokoll wäre eine Abschrift von
+ * Gesprächen, um die niemand gebeten hat.
+ */
+function push_log(array $zeile, string $ausgang, int $geraete = 0, int $angenommen = 0): void {
+  q('INSERT INTO push_log (user_id, topic, collapse_key, collapse_count, devices, accepted, outcome)
+     VALUES (?,?,?,?,?,?,?)',
+    [(int) $zeile['user_id'], (string) $zeile['topic'], (string) $zeile['collapse_key'],
+     (int) $zeile['collapse_count'], $geraete, $angenommen, $ausgang]);
+}
+
+/**
+ * Ist zu diesem Sammelschlüssel gerade erst etwas hinausgegangen? (#404)
+ *
+ * Die eine Tatsache, die fehlte, um die erste Mitteilung sofort zu schicken
+ * und erst die folgenden zu sammeln. Sie steht jetzt im Protokoll, und
+ * deshalb braucht es dafür keine eigene Spalte.
+ */
+function push_recently_sent(string $sammeln, int $sekunden): bool {
+  if ($sammeln === '') return false;
+  return (bool) row("SELECT 1 FROM push_log
+                     WHERE collapse_key = ? AND outcome = 'gesendet'
+                       AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
+                    [$sammeln, $sekunden]);
 }
 
 /**
@@ -423,9 +460,17 @@ function push_queue_run(int $hoechstens = 200): array {
   $alt = rows('SELECT id FROM push_queue WHERE created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)',
               [PUSH_QUEUE_TTL_HOURS]);
   if ($alt) {
+    foreach (rows('SELECT * FROM push_queue WHERE id IN ('
+                  . implode(',', array_column($alt, 'id')) . ')') as $z) {
+      push_log($z, 'abgelaufen');
+    }
     q('DELETE FROM push_queue WHERE id IN (' . implode(',', array_column($alt, 'id')) . ')');
     $verworfen += count($alt);
   }
+  // Das Protokoll ist eine Auskunft und kein Archiv: Nach dreissig Tagen ist
+  // „hat es am Dienstag geklappt?“ beantwortet, und laenger aufzuheben, wer
+  // wann worueber benachrichtigt wurde, hat niemand verlangt.
+  q('DELETE FROM push_log WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)', [PUSH_LOG_DAYS]);
 
   $faellig = rows('SELECT * FROM push_queue
                    WHERE send_after <= NOW() AND attempts < ?
@@ -440,6 +485,7 @@ function push_queue_run(int $hoechstens = 200): array {
     $subs = array_values(array_filter($subs,
       static fn(array $s): bool => in_array((string) $zeile['topic'], push_topics($s), true)));
     if (!$subs) {
+      push_log($zeile, 'kein-geraet');
       q('DELETE FROM push_queue WHERE id = ?', [$nr]);
       $verworfen++;
       continue;
@@ -460,11 +506,12 @@ function push_queue_run(int $hoechstens = 200): array {
     $inhalt['zaehlt'] = (string) $zeile['topic'] !== 'events';
     $fertig = (string) json_encode($inhalt, JSON_UNESCAPED_UNICODE);
 
-    $ok = false;
+    $ok = 0;
     foreach ($subs as $sub) {
-      if (push_send_one($sub, $fertig)) $ok = true;
+      if (push_send_one($sub, $fertig)) $ok++;
     }
     if ($ok) {
+      push_log($zeile, 'gesendet', count($subs), $ok);
       q('DELETE FROM push_queue WHERE id = ?', [$nr]);
       $gesendet++;
       continue;
@@ -474,6 +521,7 @@ function push_queue_run(int $hoechstens = 200): array {
     // mehr. Ein totes Gerät hat push_send_one() schon selbst weggeräumt.
     $versuche = (int) $zeile['attempts'] + 1;
     if ($versuche >= PUSH_QUEUE_TRIES) {
+      push_log($zeile, 'aufgegeben', count($subs), 0);
       q('DELETE FROM push_queue WHERE id = ?', [$nr]);
       $verworfen++;
       continue;
