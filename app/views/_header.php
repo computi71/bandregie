@@ -260,8 +260,12 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
       //
       // Das Merkzeichen aus der Sitzung wird hier VERBRAUCHT — sonst poppte es
       // bei jedem weiteren Seitenaufruf wieder auf. ?>
-<?php $absageTipp = (int) ($_SESSION['absage_tipp'] ?? 0); unset($_SESSION['absage_tipp']); ?>
 <?php if ($isIntern): ?>
+  <?php // Verbraucht wird das Merkzeichen NUR hier drin (#407). Diese Datei
+        // zeichnet auch die oeffentlichen Seiten, und stand das Lesen davor,
+        // ass ein Aufruf der Startseite den Hinweis auf, ohne ihn zeigen zu
+        // koennen — einmal verbraucht ist es weg. ?>
+  <?php $absageTipp = (int) ($_SESSION['absage_tipp'] ?? 0); unset($_SESSION['absage_tipp']); ?>
   <dialog id="absage-dialog" class="eq-dialog" data-absage-auto="<?= $absageTipp ?>">
     <div class="eq-dialog-head">
       <strong><?= e(t('decline_title')) ?></strong>

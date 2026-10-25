@@ -391,9 +391,18 @@ function push_queue_add(string $topic, array $empfaenger, callable $build,
     // Liegt schon eine gleichartige Zeile und ist sie noch nicht los, wird
     // daraus eine gesammelte: „3 neue Antworten zu X" statt dreimal klingeln.
     if ($sammeln !== '' && $buildViele !== null) {
+      // JEDE noch liegende Zeile sammelt ein, auch eine, die schon faellig
+      // ist (#406). Vorher stand hier `send_after > NOW()` - und damit konnte
+      // ausgerechnet die erste Zeile nie Sammelziel sein, denn die ist nach
+      // #404 sofort faellig. Zwei Antworten vor dem ersten Versand ergaben so
+      // zwei Mitteilungen statt einer, und die Band antwortet nun einmal
+      // gemeinsam.
+      //
+      // Ihr Zeitpunkt bleibt, wie er war: Eine sofort faellige Zeile sammelt
+      // ein und geht trotzdem beim naechsten Lauf hinaus - nur eben mit dem,
+      // was in der Zwischenzeit dazukam.
       $alt = row('SELECT id, collapse_count FROM push_queue
-                  WHERE user_id = ? AND collapse_key = ? AND send_after > NOW()',
-                 [$uid, $sammeln]);
+                  WHERE user_id = ? AND collapse_key = ?', [$uid, $sammeln]);
       if ($alt) {
         $n = (int) $alt['collapse_count'] + 1;
         q('UPDATE push_queue SET collapse_count = ?, payload = ? WHERE id = ?',
@@ -457,8 +466,11 @@ function push_queue_run(int $hoechstens = 200): array {
 
   // Was zu alt ist, geht ungesehen weg — vor allem anderen, damit eine
   // abgelaufene Zeile nicht noch einen Versuch kostet.
-  $alt = rows('SELECT id FROM push_queue WHERE created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)',
-              [PUSH_QUEUE_TTL_HOURS]);
+  // Dieselbe Grenze wie beim Versand (#409): Faellt der Minutenlauf einen
+  // halben Tag aus, raeumt der erste Lauf danach nicht alles in einer
+  // einzigen Anweisung weg - er traegt es ueber ein paar Minuten ab.
+  $alt = rows('SELECT id FROM push_queue WHERE created_at < DATE_SUB(NOW(), INTERVAL ? HOUR)
+               ORDER BY id LIMIT ' . (int) $hoechstens, [PUSH_QUEUE_TTL_HOURS]);
   if ($alt) {
     foreach (rows('SELECT * FROM push_queue WHERE id IN ('
                   . implode(',', array_column($alt, 'id')) . ')') as $z) {
