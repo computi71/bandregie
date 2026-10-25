@@ -70,6 +70,50 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Die Seite meldet sich, wenn sich hinter ihrem Rücken etwas getan hat (#378).
+//
+// Sie fängt nichts selbst neu an: Wer eine Übersicht offen liegen hat, hat oft
+// ein Formular offen oder zielt gerade auf einen Knopf. Etwas, das sich unter
+// dem Finger bewegt, ist genau der Fehler aus #377. Deshalb erscheint nur ein
+// Balken, und geladen wird, wenn jemand darauf tippt.
+//
+// Gefragt wird nur nach der Zahl — derselbe billige Weg, den die Seite beim
+// Öffnen ohnehin geht. In großen Abständen und nur, solange das Fenster
+// wirklich sichtbar ist: Der Pool dahinter hält fünf Arbeiter, und jedes
+// offene Fenster, das nachfragt, kostet.
+(function () {
+  const ABSTAND = 120000;   // zwei Minuten
+  const balken = document.getElementById('neues-balken');
+  if (!balken) return;      // nur im Bandbereich, und ohne Balken kein Nachfragen
+
+  let stand = null;         // die Zahl, mit der diese Seite gebaut wurde
+  let timer = null;
+
+  const anhalten = () => { clearInterval(timer); timer = null; };
+
+  const nachsehen = async () => {
+    if (document.visibilityState !== 'visible') return;
+    try {
+      const r = await fetch('/intern/badge', { credentials: 'same-origin' });
+      if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return;
+      const daten = await r.json();
+      if (!daten || daten.angemeldet !== true) { anhalten(); return; }
+      const offen = Number(daten.offen) || 0;
+      if (stand === null) { stand = offen; return; }
+      if (offen === stand) return;
+      balken.hidden = false;
+      anhalten();           // gemeldet ist gemeldet; weiter zu fragen bringt nichts
+    } catch (e) { /* kein Netz: beim nächsten Mal wieder */ }
+  };
+
+  document.getElementById('neues-knopf')?.addEventListener('click', () => location.reload());
+  nachsehen();
+  timer = setInterval(nachsehen, ABSTAND);
+  // Aus dem Hintergrund zurück ist der beste Zeitpunkt zum Nachsehen: Dort hat
+  // der Browser die Zeitgeber ohnehin gedrosselt oder angehalten.
+  document.addEventListener('visibilitychange', () => { if (timer) nachsehen(); });
+})();
+
 // Ein Link auf einen Abschnitt der Hilfe soll ihn auch aufklappen (#305).
 // Die Abschnitte sind <details>, und ein Sprung auf ein zugeklapptes <details>
 // zeigt in vielen Browsern nichts als die Überschrift — der Leser landet dort

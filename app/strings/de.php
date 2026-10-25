@@ -1801,6 +1801,10 @@ Gitarre: vorne rechts",
   // Entwurf im Browser gemerkt (#381)
   'help_draft_title' => 'Angefangener Text',
   'help_draft' => 'Was du in ein großes Textfeld tippst, merkt sich der Browser nebenbei — Notizen, Liedtexte, der Rider, ein Vertragstext. Geht die Seite verloren, bevor du gespeichert hast, steht beim nächsten Öffnen ein Hinweis mit zwei Knöpfen: zurückholen oder verwerfen. Eingesetzt wird nichts von allein — sonst überschriebe ein alter Entwurf, was inzwischen jemand anders geändert hat. Der Entwurf liegt nur auf deinem Gerät, geht nach einer Woche von selbst weg und verschwindet, sobald du gespeichert hast.',
+  // Die Übersicht meldet, wenn sich etwas getan hat (#378)
+  'help_intro3' => 'Eine Seite, die länger offen liegt, bleibt nicht stumm: Tut sich etwas, erscheint oben ein Balken mit „Neu laden“. Von selbst lädt nichts nach — ein halb getippter Kommentar und ein Knopf, auf den du gerade zielst, sollen nicht weggezogen werden. Gefragt wird alle zwei Minuten und nur, solange das Fenster wirklich vor dir liegt.',
+  'refresh_new' => 'Seitdem hat sich etwas getan.',
+  'refresh_now' => 'Neu laden',
   'draft_found' => 'Hier lag noch etwas, das du getippt und nicht gespeichert hattest.',
   'draft_restore' => 'Zurückholen',
   'draft_drop' => 'Verwerfen',
