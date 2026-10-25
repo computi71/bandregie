@@ -1021,7 +1021,7 @@ if (str_starts_with($path, '/intern')) {
     // Nach Terminart filtern (#372). Eine unbekannte Art wird verworfen statt
     // als leere Liste beantwortet — sonst sieht ein Tippfehler in der Adresse
     // aus wie „keine Termine".
-    $evArt = array_key_exists($_GET['art'] ?? '', EVENT_TYPES) ? (string) $_GET['art'] : '';
+    $evArt = pick($_GET['art'] ?? null, EVENT_TYPES, '');
     $evArtWhere = $evArt !== '' ? ' AND type = ?' : '';
     $evArtParam = $evArt !== '' ? [$evArt] : [];
     // Der Zeitraum gilt fuer die Liste, die Zaehlung und die Artenauswahl
@@ -1271,7 +1271,7 @@ if (str_starts_with($path, '/intern')) {
     // eine gefilterte Liste weitergeben, der Zurueck-Knopf tut das Erwartete,
     // und ein Neuladen zeigt dasselbe.
     $suche = trim((string) ($_GET['q'] ?? ''));
-    $stand = array_key_exists($_GET['status'] ?? '', SONG_STATUS) ? (string) $_GET['status'] : '';
+    $stand = pick($_GET['status'] ?? null, SONG_STATUS, '');
     $filter = '';
     $filterWerte = [];
     if ($suche !== '') {
@@ -2550,7 +2550,7 @@ if (str_starts_with($path, '/intern')) {
   // Tagesmail einstellen (#332). Vier Werte, alle streng begrenzt: Was aus
   // einem Formular kommt, entscheidet hier ueber einen Versand nach draussen.
   if ($path === '/intern/profil/tagesmail' && $method === 'POST') {
-    $wie = array_key_exists($_POST['digest_freq'] ?? '', DIGEST_FREQ) ? $_POST['digest_freq'] : 'taeglich';
+    $wie = pick($_POST['digest_freq'] ?? null, DIGEST_FREQ, 'taeglich');
     $std = max(0, min(23, (int) ($_POST['digest_hour'] ?? 18)));
     q('UPDATE users SET digest_freq = ?, digest_hour = ?, digest_repeat = ? WHERE id = ?',
       [$wie, $std, isset($_POST['digest_repeat']) ? 1 : 0, $me['id']]);
@@ -2758,7 +2758,7 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/profil' && $method === 'POST') {
     if (display_name($_POST['first_name'] ?? '', $_POST['last_name'] ?? '', $me['name']) !== '' && ($_POST['email'] ?? '') !== '') {
       try {
-        $prefLang = array_key_exists($_POST['pref_lang'] ?? '', LANGS) ? $_POST['pref_lang'] : 'de';
+        $prefLang = pick($_POST['pref_lang'] ?? null, LANGS, 'de');
         // Am eigenen Profil darf in der Demo alles geändert werden — nur die
         // E-Mail nicht: mit ihr meldet man sich an, sie steht als Zugangsdatum
         // auf der Werbeseite, und eine Änderung sperrte den nächsten Besucher
@@ -2776,7 +2776,7 @@ if (str_starts_with($path, '/intern')) {
           mb_substr(trim((string) ($_POST['postcode'] ?? '')), 0, 20),
           mb_substr(trim((string) ($_POST['city'] ?? '')), 0, 190),
           // Nur eine der angebotenen Figuren; alles andere wird neutral.
-          array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? $_POST['stage_figure'] : '',
+          pick($_POST['stage_figure'] ?? null, STAGE_FIGURES, ''),
           isset($_POST['on_stage']) ? 1 : 0,
           $me['id'],
         ]);
@@ -2830,7 +2830,7 @@ if (str_starts_with($path, '/intern')) {
       }
       if (!empty($stageErsetzt)) items_replaced('stageitem', (int) $me['id']);
     } elseif ($m[1] === 'add') {
-      $neuArt = array_key_exists($_POST['kind'] ?? '', STAGE_KINDS) ? $_POST['kind'] : 'sonstiges';
+      $neuArt = pick($_POST['kind'] ?? null, STAGE_KINDS, 'sonstiges');
       $neuWer = ((int) ($_POST['user_id'] ?? 0)) ?: null;
       q('INSERT INTO stage_items (kind, label, x, y, note, position, width_cm, depth_cm, user_id) VALUES (?,?,?,?,?,?,?,?,?)', [
         $neuArt,
@@ -3735,7 +3735,7 @@ if (str_starts_with($path, '/intern')) {
         // gebracht statt übernommen.
         // Der Leerschlüssel ist in STAGE_FIGURES ein gültiger Wert („nicht
         // gewählt") — ohne das Feld im Formular griff der Zweig sonst ins Leere.
-        $figur = array_key_exists($_POST['stage_figure'] ?? '', STAGE_FIGURES) ? (string) ($_POST['stage_figure'] ?? '') : '';
+        $figur = pick($_POST['stage_figure'] ?? null, STAGE_FIGURES, '');
         q('UPDATE users SET name=?, stage_name=?, instrument=?, email=?,
                             first_name=?, last_name=?, phone=?, mobile=?, street=?, postcode=?, city=?,
                             substitute_for=?, substitute_rank=?, profit_share=?, stage_figure=?, on_stage=? WHERE id=?', [
@@ -3913,14 +3913,20 @@ if (str_starts_with($path, '/intern')) {
   // ---------- Übersetzungen ----------
   if ($path === '/intern/uebersetzungen' && $method === 'GET') {
     require_admin();
-    $editLang = array_key_exists($_GET['sprache'] ?? '', LANGS) && ($_GET['sprache'] ?? '') !== 'de' ? $_GET['sprache'] : 'en';
+    // Deutsch ist die Quelle und wird nicht übersetzt — wer es anfragt,
+    // bekommt Englisch.
+    $editLang = pick($_GET['sprache'] ?? null, LANGS, 'en');
+    if ($editLang === 'de') $editLang = 'en';
     $existing = [];
     foreach (rows('SELECT tkey, value FROM translations WHERE lang = ?', [$editLang]) as $r) $existing[$r['tkey']] = $r['value'];
     view('intern/uebersetzungen', ['title' => t('tr_title'), 'editLang' => $editLang, 'existing' => $existing]);
   }
   if ($path === '/intern/uebersetzungen' && $method === 'POST') {
     require_admin();
-    $editLang = array_key_exists($_POST['sprache'] ?? '', LANGS) && ($_POST['sprache'] ?? '') !== 'de' ? $_POST['sprache'] : null;
+    // Leer heißt hier „nichts zu tun“: Deutsch ist die Quelle, und ein
+    // unbekannter Wert ist ohnehin keiner. Die Prüfung darunter fängt beides.
+    $editLang = pick($_POST['sprache'] ?? null, LANGS);
+    if ($editLang === 'de') $editLang = '';
     if ($editLang) {
       foreach (array_keys(UI_STRINGS) as $key) {
         if (!isset($_POST['t_' . $key])) continue;
@@ -4016,7 +4022,7 @@ if (str_starts_with($path, '/intern')) {
       for ($i = 1; $i <= $count; $i++) {
         q('INSERT INTO equipment (name, category, owner_id, location, is_standard, notes, parent_id, slot, purchased_on, price_cents, afa_years, acquired_as, article_no, invoice_id, quantity) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
           $count > 1 ? $name . ' #' . $i : $name,
-          array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+          pick($_POST['category'] ?? null, EQ_CATEGORIES, 'sonstiges'),
           $ownerId,
           $location,
           isset($_POST['is_standard']) ? 1 : 0,
@@ -4026,7 +4032,7 @@ if (str_starts_with($path, '/intern')) {
           trim($_POST['purchased_on'] ?? '') ?: null,
           price_to_cents((string) ($_POST['price'] ?? '')),
           tax_afa_years_input($_POST['afa_years'] ?? null),
-          array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '',
+          pick($_POST['acquired_as'] ?? null, EQ_ACQUIRED, ''),
           trim((string) ($_POST['article_no'] ?? '')),
           // Nur ein Beleg, den dieser Mensch auch sehen darf — sonst haengte
           // sich ein Geraet an eine fremde Privatrechnung.
@@ -4228,7 +4234,7 @@ if (str_starts_with($path, '/intern')) {
       [$ownerId, $location] = equipment_inherit($parentId, $postedOwner, trim($_POST['location'] ?? ''));
       q('UPDATE equipment SET name=?, category=?, owner_id=?, location=?, is_standard=?, notes=?, parent_id=?, slot=?, purchased_on=?, price_cents=?, afa_years=?, acquired_as=?, article_no=?, invoice_id=?, quantity=? WHERE id=?', [
         trim($_POST['name']),
-        array_key_exists($_POST['category'] ?? '', EQ_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+        pick($_POST['category'] ?? null, EQ_CATEGORIES, 'sonstiges'),
         $ownerId,
         $location,
         isset($_POST['is_standard']) ? 1 : 0,
@@ -4243,7 +4249,7 @@ if (str_starts_with($path, '/intern')) {
         // Ebenso der Anschaffungszustand: Er steht im Formular hinter derselben
         // Schranke, also darf ihn ein fremder Absender auch nicht überschreiben.
         $mayOwn
-          ? (array_key_exists($_POST['acquired_as'] ?? '', EQ_ACQUIRED) ? $_POST['acquired_as'] : '')
+          ? (pick($_POST['acquired_as'] ?? null, EQ_ACQUIRED, ''))
           : (string) $eqBefore['acquired_as'],
         $mayOwn ? trim((string) ($_POST['article_no'] ?? '')) : (string) $eqBefore['article_no'],
         $mayOwn ? eq_invoice_input($_POST['invoice_id'] ?? null, $me) : ($eqBefore['invoice_id'] !== null ? (int) $eqBefore['invoice_id'] : null),
@@ -4575,7 +4581,7 @@ if (str_starts_with($path, '/intern')) {
     // denselben Schaltern (#372). Wer die Liste auf Gigs stellt und dann auf
     // Herunterladen drueckt, will die Gigs und nicht alles.
     [$expWhere, $expParams] = visible_clause(visible_event_ids($me), 'e.id');
-    $expArt = array_key_exists($_GET['art'] ?? '', EVENT_TYPES) ? (string) $_GET['art'] : '';
+    $expArt = pick($_GET['art'] ?? null, EVENT_TYPES, '');
     $expArtWhere = $expArt !== '' ? ' AND e.type = ?' : '';
     $expArtParam = $expArt !== '' ? [$expArt] : [];
     // Vergangenes und Abgesagtes sind in der Liste ausgeblendet, nicht
@@ -4681,7 +4687,7 @@ if (str_starts_with($path, '/intern')) {
         $date,
         ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
         $amount,
-        array_key_exists($_POST['category'] ?? '', FIN_CATEGORIES) ? $_POST['category'] : 'sonstiges',
+        pick($_POST['category'] ?? null, FIN_CATEGORIES, 'sonstiges'),
         $desc,
         (int) ($_POST['event_id'] ?? 0) ?: null,
         (int) ($_POST['member_id'] ?? 0) ?: null,
@@ -5194,7 +5200,7 @@ if (str_starts_with($path, '/intern')) {
       // Die Standardsprache ist die Rückfallebene und damit immer aktiv —
       // ihr Häkchen ist gesperrt und wird deshalb gar nicht erst gesendet.
       // Eine neu gewählte Standardsprache schaltet sich selbst ein.
-      $newDefault = array_key_exists($_POST['default_lang'] ?? '', LANGS) ? $_POST['default_lang'] : default_lang();
+      $newDefault = pick($_POST['default_lang'] ?? null, LANGS, default_lang());
       if (!in_array($newDefault, $chosen, true)) array_unshift($chosen, $newDefault);
       set_setting('default_lang', $newDefault);
       set_setting('enabled_langs', implode(',', $chosen));
@@ -5254,9 +5260,9 @@ if (str_starts_with($path, '/intern')) {
         $scope === 'einzahlung' || ($_POST['type'] ?? '') === 'einnahme' ? 'einnahme' : 'ausgabe',
         $cents,
         $scope === 'einzahlung' ? 'einlage'
-          : (array_key_exists($_POST['category'] ?? '', FIN_CATEGORIES) ? $_POST['category'] : 'sonstiges'),
+          : (pick($_POST['category'] ?? null, FIN_CATEGORIES, 'sonstiges')),
         trim($_POST['description']),
-        array_key_exists($_POST['interval_kind'] ?? '', ORDER_INTERVALS) ? $_POST['interval_kind'] : 'monthly',
+        pick($_POST['interval_kind'] ?? null, ORDER_INTERVALS, 'monthly'),
         $start, trim($_POST['end_date'] ?? '') ?: null, $start, $me['id'],
       ]);
       orders_run();
@@ -5341,7 +5347,7 @@ if (str_starts_with($path, '/intern')) {
   if ($path === '/intern/einstellungen/backup' && $method === 'POST') {
     require_admin();
     set_setting('backup_enabled', isset($_POST['backup_enabled']) ? '1' : '0');
-    set_setting('backup_interval', array_key_exists($_POST['backup_interval'] ?? '', BACKUP_INTERVALS) ? $_POST['backup_interval'] : 'daily');
+    set_setting('backup_interval', pick($_POST['backup_interval'] ?? null, BACKUP_INTERVALS, 'daily'));
     set_setting('backup_keep', (string) max(1, min(365, (int) ($_POST['backup_keep'] ?? 7))));
     flash(t('fl_bk_saved'));
     redirect('/intern/einstellungen');
@@ -5660,7 +5666,7 @@ function save_event_gear(int $eventId): void {
   // Nur Terminarten, die eine Packliste haben, bekommen auch eine. Ein
   // ausgeblendetes Feld wird vom Browser trotzdem mitgeschickt — ohne diese
   // Prüfung hinge an einem freien Tag plötzlich die PA.
-  $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
+  $type = pick($_POST['type'] ?? null, EVENT_TYPES, 'sonstiges');
   if (!in_array('gear', EVENT_TYPE_FIELDS[$type] ?? [], true)) return;
   foreach ((array) ($_POST['equipment'] ?? []) as $eqId) {
     if ((int) $eqId > 0) {
@@ -5681,7 +5687,7 @@ function save_event_gear(int $eventId): void {
  * eine Liederliste neben der Setlist, und niemand wüsste, welche gilt.
  */
 function save_event_songs(int $eventId): void {
-  $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
+  $type = pick($_POST['type'] ?? null, EVENT_TYPES, 'sonstiges');
   if (!in_array('songs', EVENT_TYPE_FIELDS[$type] ?? [], true)) return;
   q('DELETE FROM event_songs WHERE event_id = ?', [$eventId]);
   foreach ((array) ($_POST['songs'] ?? []) as $songId) {
@@ -5695,8 +5701,8 @@ function save_event_songs(int $eventId): void {
 }
 
 function event_values(): array {
-  $status = array_key_exists($_POST['status'] ?? '', EVENT_STATUS) ? $_POST['status'] : 'bestaetigt';
-  $type = array_key_exists($_POST['type'] ?? '', EVENT_TYPES) ? $_POST['type'] : 'sonstiges';
+  $status = pick($_POST['status'] ?? null, EVENT_STATUS, 'bestaetigt');
+  $type = pick($_POST['type'] ?? null, EVENT_TYPES, 'sonstiges');
   return [
     $type,
     $_POST['title'] ?? '', $_POST['date'] ?? '', $_POST['time'] ?? '',
@@ -5708,15 +5714,15 @@ function event_values(): array {
     $_POST['fee'] ?? '', $_POST['invoice_no'] ?? '',
     $_POST['public_title'] ?? '', $_POST['public_link'] ?? '', $_POST['public_info'] ?? '',
     ($_POST['venue_id'] ?? '') !== '' ? $_POST['venue_id'] : null,
-    array_key_exists($_POST['pa_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['pa_source'] : '',
-    array_key_exists($_POST['light_source'] ?? '', PRODUCTION_SOURCES) ? $_POST['light_source'] : '',
+    pick($_POST['pa_source'] ?? null, PRODUCTION_SOURCES, ''),
+    pick($_POST['light_source'] ?? null, PRODUCTION_SOURCES, ''),
     mb_substr(trim((string) ($_POST['support_act'] ?? '')), 0, 255),
   ];
 }
 function song_values(): array {
   $parts = explode(':', $_POST['duration'] ?? '');
   $sec = count($parts) === 2 ? ((int) $parts[0]) * 60 + (int) $parts[1] : (int) ($parts[0] ?? 0) * 60;
-  $status = array_key_exists($_POST['status'] ?? '', SONG_STATUS) ? $_POST['status'] : 'vorschlag';
+  $status = pick($_POST['status'] ?? null, SONG_STATUS, 'vorschlag');
   // Der Liedtext kommt so an, wie er eingetippt wurde — Zeilenumbrüche sind
   // in einem Liedtext die halbe Information.
   // Ein Jahr oder nichts — 0 wäre eine Behauptung, und „1885" ein Tippfehler,
