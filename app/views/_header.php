@@ -40,6 +40,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <script src="<?= e(asset('/assets/accordion.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/seen.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/entwurf.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/absage.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/zusage.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/markers.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/geo.js')) ?>" defer></script>
@@ -220,6 +221,25 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
 <?php // Hier meldet sich die Seite, wenn sich hinter ihrem Rücken etwas getan
       // hat (#378). Leer und verborgen im Seitentext, damit das Skript nur
       // einblenden muss — und ohne Skript nie etwas erscheint. ?>
+<?php // Wer absagt, bekommt einen Hinweis (#401). Dasselbe Muster wie beim
+      // Versionsfenster: ein <dialog>, das ohne Skript gar nicht erscheint.
+      //
+      // Das Merkzeichen aus der Sitzung wird hier VERBRAUCHT — sonst poppte es
+      // bei jedem weiteren Seitenaufruf wieder auf. ?>
+<?php $absageTipp = (int) ($_SESSION['absage_tipp'] ?? 0); unset($_SESSION['absage_tipp']); ?>
+<?php if ($isIntern): ?>
+  <dialog id="absage-dialog" class="eq-dialog" data-absage-auto="<?= $absageTipp ?>">
+    <div class="eq-dialog-head">
+      <strong><?= e(t('decline_title')) ?></strong>
+      <button type="button" class="btn btn-tiny" data-absage-close aria-label="<?= e(t('close')) ?>">✕</button>
+    </div>
+    <p><?= e(t('decline_hint')) ?></p>
+    <div class="row-buttons">
+      <a class="btn btn-primary btn-small" data-absage-link href="/intern/termine"><?= e(t('decline_add')) ?> →</a>
+      <button type="button" class="btn btn-small btn-ghost" data-absage-close><?= e(t('decline_later')) ?></button>
+    </div>
+  </dialog>
+<?php endif; ?>
 <?php if ($isIntern): ?>
   <div class="flash" id="neues-balken" hidden>
     <?= e(t('refresh_new')) ?>

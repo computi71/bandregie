@@ -141,7 +141,9 @@
                 // sprang die naechste Zeile unter den Finger, und der zweite
                 // Tipp traf einen anderen Termin. Ohne Skript bleibt es das
                 // gewoehnliche Formular. ?>
-          <form class="inline attendance" data-vote action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
+          <?php // Ob eine Absage hier nach einer Alternative fragen soll, hängt
+                // an der Terminart (#401) — und die weiß nur der Server. ?>
+          <form class="inline attendance" data-vote data-own-date="<?= in_array($ov['type'], EVENT_TYPES_OWN_DATE, true) ? '1' : '0' ?>" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
             <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
             <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
