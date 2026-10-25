@@ -69,8 +69,7 @@
           <?php // Auch hier der Haken am Namen (#376) - wer von der Terminkarte
                 // aus sieht, dass noch jemand fehlt, muss die Aufgabe nicht
                 // erst oeffnen, um zu wissen, wen er fragt. ?>
-          <a class="badge" href="<?= e(item_url('task', (int) $ta['id'])) ?>"><?= e($ta['title']) ?><?php
-            foreach ($ta['assignees'] as $i => $taW): ?><?= $i ? ',' : ' ·' ?> <?= $taW['done_at'] !== null ? '✔' : '☐' ?> <?= e($taW['name']) ?><?php endforeach; ?></a>
+          <a class="badge" href="<?= e(item_url('task', (int) $ta['id'])) ?>"><?= e($ta['title']) ?><?= task_assignee_text($ta['assignees']) ?></a>
         <?php endforeach; ?>
       </p>
     <?php endif; ?>

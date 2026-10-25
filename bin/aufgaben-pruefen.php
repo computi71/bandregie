@@ -335,5 +335,35 @@ $pruefe('required_done bleibt unangetastet',
     (int) row('SELECT required_done FROM tasks WHERE id = ?', [$t16])['required_done'] === 3);
 $weg($t16);
 
+// ------------------- Die Darstellung der Zustaendigen
+// Sie stand an vier Stellen abgeschrieben, und als sie sich aenderte, zogen
+// nur zwei davon mit (#397). Jetzt gibt es eine Fassung - und diese Pruefung
+// passt darauf auf, dass es dabei bleibt.
+$zChips = task_assignee_chips([
+    ['name' => 'Fertig', 'done_at' => '2026-10-25 12:00:00'],
+    ['name' => 'Offen',  'done_at' => null],
+]);
+$pruefe('fertig bekommt den Haken', str_contains($zChips, '✔ Fertig'));
+$pruefe('offen bekommt das Kaestchen', str_contains($zChips, '☐ Offen'));
+$pruefe('und je eine eigene Marke', substr_count($zChips, '<span class="att att-') === 2);
+$pruefe('Namen werden maskiert',
+    str_contains(task_assignee_chips([['name' => '<b>x</b>', 'done_at' => null]]), '&lt;b&gt;'));
+$pruefe('ohne Zustaendige bleibt beides leer',
+    task_assignee_chips([]) === '' && task_assignee_text([]) === '');
+
+// Keine Ansicht darf die Zeichen wieder selbst hinschreiben: Genau dieses
+// Abschreiben war der Fehler, und ein Helfer allein verhindert es nicht.
+$selbstgemalt = [];
+foreach (glob($basis . '/app/views/intern/*.php') ?: [] as $datei) {
+    $inhalt = (string) file_get_contents($datei);
+    if (preg_match('~✔.{0,8}☐~u', $inhalt)
+        || preg_match('~array_column\(\$\w*[Ww]er, .name.\)~', $inhalt)
+        || preg_match('~array_column\(\$ta\[.assignees.\], .name.\)~', $inhalt)) {
+        $selbstgemalt[] = basename($datei);
+    }
+}
+$pruefe('keine Ansicht malt die Zustaendigen selbst'
+    . ($selbstgemalt ? ' (' . implode(', ', $selbstgemalt) . ')' : ''), !$selbstgemalt);
+
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

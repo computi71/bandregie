@@ -154,7 +154,7 @@
           <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
           <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
           <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
-          <?php if ($dashWer): ?><span class="muted">→ <?= e(implode(', ', array_column($dashWer, 'name'))) ?></span><?php endif; ?>
+          <?= task_assignee_chips($dashWer) ?>
           <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
         </li>
       <?php endforeach; ?>
