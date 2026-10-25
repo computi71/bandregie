@@ -4664,8 +4664,12 @@ const EVENT_TIME_SHIFT_MAX_MINUTES = 180;
 /** Wie lange ein unbestätigter Vorschlag stehen bleibt, in Stunden. */
 const EVENT_TIME_PROPOSAL_HOURS = 24;
 
-/** Die drei Zeiten eines Termins, in der Reihenfolge, in der sie zusammengehören. */
-const EVENT_TIME_FIELDS = ['time', 'time_meet', 'time_end'];
+/**
+ * Die drei Zeiten eines Termins — in der Reihenfolge, in der sie an dem Abend
+ * eintreten, nicht in der, in der sie in der Tabelle stehen. Daraus wird der
+ * Text "18:30/19:00/22:00" gebaut, und der liest sich nur so.
+ */
+const EVENT_TIME_FIELDS = ['time_meet', 'time', 'time_end'];
 
 /** "19:30" als Minuten seit Mitternacht; null, wenn da nichts Lesbares steht. */
 function event_time_minutes(string $hhmm): ?int {

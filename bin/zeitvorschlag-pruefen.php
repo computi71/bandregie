@@ -108,7 +108,7 @@ $offen = event_time_propose($e1, $neueZeiten, $chef);
 $pruefe('zwei müssen bestätigen (die Zusagenden ohne den Vorschlagenden)', $offen === 2);
 $pruefe('im Kalender steht weiter die alte Zeit', $zeitVon($e1) === '18:30/19:00/22:00');
 $pruefe('der Vorschlag steht daneben',
-    event_time_label(event_time_proposal($e1) ?? [], '_proposed') === '20:00/19:30/23:00');
+    event_time_label(event_time_proposal($e1) ?? [], '_proposed') === '19:30/20:00/23:00');
 $pruefe('wer abgesagt hat, muss nichts bestätigen',
     !$c || !event_time_awaits($e1, $c));
 $pruefe('die Zusagen stehen alle noch',
