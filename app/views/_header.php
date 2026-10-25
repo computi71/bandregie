@@ -217,4 +217,13 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <?php endif; ?>
 </header>
 <?php if ($flashMsg): ?><div class="flash"><?= e($flashMsg) ?></div><?php endif; ?>
+<?php // Hier meldet sich die Seite, wenn sich hinter ihrem Rücken etwas getan
+      // hat (#378). Leer und verborgen im Seitentext, damit das Skript nur
+      // einblenden muss — und ohne Skript nie etwas erscheint. ?>
+<?php if ($isIntern): ?>
+  <div class="flash" id="neues-balken" hidden>
+    <?= e(t('refresh_new')) ?>
+    <button type="button" class="btn btn-tiny" id="neues-knopf"><?= e(t('refresh_now')) ?></button>
+  </div>
+<?php endif; ?>
 <main class="container <?= $isIntern ? 'wide' : '' ?>">
