@@ -192,26 +192,20 @@ if ($host !== '') {
     $pruefe('Route: stattdessen steht ein Vorschlag', event_time_proposal($e4) !== null);
     $pruefe('Route: und einer muss ihn bestätigen', count(event_time_waiting($e4)) === 1);
 
-    // Die Bestätigung über ihre eigene Route, als der, der gefragt ist.
-    session_start();
-    $_SESSION['uid'] = $a;
-    $sidA = session_id();
-    $tokenA = csrf_token();
-    session_write_close();
-    $postA = static function (string $pfad) use ($host, $sidA, $tokenA): string {
-        return (string) shell_exec(sprintf(
-            'curl -sk -o /dev/null -w "%%{http_code}" --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -d %s https://%s%s',
-            escapeshellarg($host), escapeshellarg($sidA), escapeshellarg('_token=' . $tokenA),
-            escapeshellarg($host), $pfad));
-    };
-    $pruefe('Route: bestätigen geht durch', $postA("/intern/termine/$e4/zeit-ok") === '302');
+    // Die Bestätigung über ihre eigene Route — mit DERSELBEN Sitzung. Ein
+    // zweites session_start() ginge hier nicht mehr: Die Prüfzeilen oben sind
+    // schon ausgegeben. Also wird der Vorschlag diesmal von $a gemacht, damit
+    // der Chef derjenige ist, der bestätigen muss.
+    event_time_clear($e4);
+    $sagt($e4, $chef, 'yes');
+    event_time_propose($e4, $neueZeiten, $a);
+    $pruefe('Route: der Chef ist diesmal der Gefragte', event_time_awaits($e4, $chef));
+    $pruefe('Route: bestätigen geht durch', $post("/intern/termine/$e4/zeit-ok", ['_token' => $token]) === '302');
     $pruefe('Route: jetzt steht die neue Zeit im Kalender',
         $zeitVon($e4) === '19:30/20:00/23:00');
 
-    // Und ein großer Sprung räumt einen offenen Vorschlag weg.
-    session_start();
-    $_SESSION['uid'] = $chef;
-    session_write_close();
+    // Und ein großer Sprung räumt einen offenen Vorschlag weg. Die Sitzung
+    // des Chefs liegt noch, die Route schreibt also weiter als er.
     $sagt($e4, $a, 'yes');
     event_time_propose($e4, ['time' => '21:00', 'time_meet' => '20:30', 'time_end' => '23:30'], $chef);
     $post("/intern/termine/$e4/update",
