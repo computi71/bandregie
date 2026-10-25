@@ -395,10 +395,15 @@ TXT,
     'title' => 'Send the tech rider to the promoter', 'notes' => '',
     'due_date' => $d('+10 days'), 'status' => 'offen', 'required_done' => 0,
   ]);
+  // Nicht ueber demo_insert: Diese beiden Tabellen haben keinen eigenen
+  // Schluessel, sondern einen zusammengesetzten. demo_insert merkte sich die
+  // Nummer 0, und demo_remove loeschte dann „WHERE id = 0“ - eine Spalte, die
+  // es dort nicht gibt. Aufgeraeumt werden sie weiter unten ueber die Aufgabe,
+  // an der sie haengen.
   foreach ([$members[0], $members[1]] as $wer) {
-    demo_insert('task_assignees', ['task_id' => $auf1, 'user_id' => $wer]);
+    q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$auf1, $wer]);
   }
-  demo_insert('task_links', ['task_id' => $auf1, 'kind' => 'event', 'item_id' => $evNext]);
+  q("INSERT INTO task_links (task_id, kind, item_id) VALUES (?, 'event', ?)", [$auf1, $evNext]);
 
   // Eine, bei der einer von dreien reicht - und einer hat schon abgehakt.
   // Daran zeigt sich "1 von 3" und der Haken mit Namen.
@@ -407,8 +412,8 @@ TXT,
     'notes' => 'Preferably from the summer festival.',
     'due_date' => $d('+3 weeks'), 'status' => 'offen', 'required_done' => 1,
   ]);
-  foreach ([$members[1], $members[2], $members[3]] as $i => $wer) {
-    demo_insert('task_assignees', ['task_id' => $auf2, 'user_id' => $wer]);
+  foreach ([$members[1], $members[2], $members[3]] as $wer) {
+    q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$auf2, $wer]);
   }
 
   // Eine am Lied: Der Vorschlag braucht noch einen Text.
@@ -416,16 +421,16 @@ TXT,
     'title' => 'Write a second verse', 'notes' => '',
     'due_date' => $d('+2 weeks'), 'status' => 'offen', 'required_done' => 0,
   ]);
-  demo_insert('task_assignees', ['task_id' => $auf3, 'user_id' => $members[0]]);
-  demo_insert('task_links', ['task_id' => $auf3, 'kind' => 'song', 'item_id' => $songs[9]]);
+  q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$auf3, $members[0]]);
+  q("INSERT INTO task_links (task_id, kind, item_id) VALUES (?, 'song', ?)", [$auf3, $songs[9]]);
 
   // Und eine erledigte, damit der Unterschied zu sehen ist.
   $auf4 = demo_insert('tasks', [
     'title' => 'Book the trailer in for its test', 'notes' => '',
     'due_date' => $d('-1 week'), 'status' => 'erledigt', 'required_done' => 0,
   ]);
-  demo_insert('task_assignees',
-    ['task_id' => $auf4, 'user_id' => $members[3], 'done_at' => date('Y-m-d H:i:s', strtotime('-8 days'))]);
+  q('INSERT INTO task_assignees (task_id, user_id, done_at) VALUES (?,?,?)',
+    [$auf4, $members[3], date('Y-m-d H:i:s', strtotime('-8 days'))]);
 
   // --- Abwesenheit (erzeugt die Warnung beim Termin, falls sie zusammenfällt)
   demo_insert('absences', ['user_id' => $members[3], 'date_from' => $d('+13 days'),
@@ -1221,6 +1226,13 @@ function demo_remove(): void {
             'post_replies', 'post_messages',
             'media_links', 'invoices', 'mail_log', 'files',
             'absences', 'events', 'setlists', 'songs', 'venues', 'equipment', 'users'];
+  // Zustaendige und Verknuepfungen haengen an einer Aufgabe und haben keinen
+  // eigenen Schluessel (#366). Sie gehen ueber die Aufgabe weg, vor ihr - sonst
+  // zeigen sie auf eine Nummer, die neu vergeben wird.
+  foreach ($byTable['tasks'] ?? [] as $taskId) {
+    q('DELETE FROM task_assignees WHERE task_id = ?', [$taskId]);
+    q('DELETE FROM task_links WHERE task_id = ?', [$taskId]);
+  }
   foreach (array_unique([...$order, ...array_keys($byTable)]) as $table) {
     foreach ($byTable[$table] ?? [] as $id) {
       // Sicherheitsnetz: der letzte Admin darf niemals gelöscht werden
