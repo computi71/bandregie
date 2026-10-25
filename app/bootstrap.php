@@ -5105,26 +5105,55 @@ function song_vote_start(int $songId, int $durch): void {
   item_new('task', $nr, $durch);
 }
 
-function open_items_count(array $user): int {
+/**
+ * Was offen ist, je Bereich — Pfad => Anzahl (#384).
+ *
+ * Die eine Quelle für zwei Leser: die Zahl am App-Symbol und die Marken im
+ * Menü. Zwei Zählungen nebeneinander liefen früher oder später auseinander,
+ * und dann widerspräche das Menü der Zahl, die danebensteht.
+ *
+ * Gezählt wird nur, was etwas von einem WILL. Die „neu“- und „neu“-Marken
+ * an den Zeilen bleiben draußen: Ein geänderter Termin trägt eine Marke,
+ * verlangt aber nichts — und eine Zahl, die beides mischt, lässt sich nicht
+ * abarbeiten.
+ *
+ * Bereiche ohne Offenes stehen gar nicht erst drin; eine Null ist keine
+ * Auskunft, sondern Grundrauschen.
+ *
+ * @return array<string, int>
+ */
+function open_items_by_path(array $user): array {
+  $karte = [];
   // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
   // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
   // es gibt keinen persönlichen Reststand, der davon abweichen könnte.
   //
-  // Jeder Teil fragt nach seinem Recht (#387): Vorher zählten Aufgaben und
-  // Zusagen auch für jemanden, der den Bereich gar nicht sehen darf. Dann stand
-  // am Symbol eine Zahl, und wer darauf tippte, fand nichts — genau die Sorte
-  // Zahl, die das Symbol unglaubwürdig macht.
-  // Ohne Rechtepruefung, seit die eigene Aufgabe auch ohne Bereichsrecht zu
+  // Ohne Rechteprüfung, seit die eigene Aufgabe auch ohne Bereichsrecht zu
   // sehen und abzuhaken ist (#393). Der Grundsatz aus #387 bleibt derselbe -
-  // gezaehlt wird nur, was man auch oeffnen kann -, nur ist die Antwort fuer
-  // die eigenen Aufgaben seitdem "immer".
+  // gezählt wird nur, was man auch öffnen kann -, nur ist die Antwort für
+  // die eigenen Aufgaben seitdem „immer“.
   $offen = (int) row("SELECT COUNT(*) c FROM tasks t
                       JOIN task_assignees ta ON ta.task_id = t.id
                       WHERE ta.user_id = ? AND t.status = 'offen'",
                      [(int) $user['id']])['c'];
-  $zusagen = perm_allows($user, 'termine') ? count(open_votes($user)) : 0;
-  $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
-  return $offen + $zusagen + $chat;
+  if ($offen) $karte['/intern/aufgaben'] = $offen;
+
+  // Jeder Teil fragt nach seinem Recht (#387): Vorher zählten auch Bereiche
+  // mit, die jemand gar nicht sehen darf. Dann stand am Symbol eine Zahl, und
+  // wer darauf tippte, fand nichts.
+  if (perm_allows($user, 'termine')) {
+    $zusagen = count(open_votes($user));
+    if ($zusagen) $karte['/intern/termine'] = $zusagen;
+  }
+  if (perm_allows($user, 'themen')) {
+    $chat = array_sum(topic_unread($user));
+    if ($chat) $karte['/intern/themen'] = (int) $chat;
+  }
+  return $karte;
+}
+
+function open_items_count(array $user): int {
+  return array_sum(open_items_by_path($user));
 }
 
 /**
