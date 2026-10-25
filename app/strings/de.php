@@ -392,7 +392,8 @@ const UI_STRINGS = [
   'evstatus_reserviert' => 'Reserviert', 'evstatus_blockiert' => 'Blockiert – offen f. Anfragen',
   'evstatus_abgesagt' => 'Abgesagt',
   // Song-Status
-  'songstatus_vorschlag' => 'Vorschlag', 'songstatus_demo' => 'Demo',
+  'songstatus_vorschlag' => 'Vorschlag', 'songstatus_abgestimmt' => 'Abgestimmt',
+  'songstatus_demo' => 'Demo',
   'songstatus_in_arbeit' => 'In Vorbereitung',
   'songstatus_aktiv' => 'Aktives Repertoire', 'songstatus_abgewiesen' => 'Abgewiesen',
   'songstatus_archiv' => 'Aussortiert',
