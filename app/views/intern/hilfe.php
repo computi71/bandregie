@@ -67,6 +67,7 @@ require_once BASE_DIR . '/app/help.php';
 <p class="muted"><?= e(t('help_intro')) ?></p>
 <p class="muted"><?= e(t('help_intro2')) ?></p>
 <p class="muted"><?= e(t('help_intro3')) ?></p>
+<p class="muted"><?= e(t('help_intro4')) ?></p>
 
 <?php // „Ich möchte …" — Einstieg über das Vorhaben statt über den Bereichsnamen. ?>
 <h2><?= e(t('help_tasks_title')) ?></h2>

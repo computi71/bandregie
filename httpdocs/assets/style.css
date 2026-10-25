@@ -166,6 +166,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dark
 
 .login-box { max-width: 400px; margin: 3rem auto; }
 .error { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.8rem; }
+/* Wo etwas ansteht (#384). Eine Zahl und kein Punkt: „3“ sagt, ob es sich
+   lohnt, jetzt hinzugehen — ein Punkt sagt nur, dass irgendwas ist. */
+.nav-count {
+  margin-left: auto;
+  min-width: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 99px;
+  background: var(--accent-dark);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1.35rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.nav-group > summary .nav-count { margin-right: 0.4rem; }
+
 .flash { background: rgba(245, 158, 11, 0.15); border-bottom: 1px solid var(--accent-dark); padding: 0.5rem 1.4rem; }
 
 /* ---------- Events ---------- */

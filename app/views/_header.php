@@ -162,26 +162,60 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
           ])],
         ];
       ?>
-      <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><span class="nav-icon">🏠</span><?= e(t('inav_uebersicht')) ?></a>
-      <?php foreach ($navGroups as [$groupIcon, $groupLabel, $groupItems]): ?>
-        <?php
-          // Was jemand nicht sehen darf, steht auch nicht im Menü — sonst
-          // führt jeder zweite Eintrag nur auf eine Absage.
-          $groupItems = array_filter($groupItems, function ($itemPath) use ($user) {
+      <?php // Wo etwas ansteht (#384). Dieselbe Quelle wie die Zahl am
+            // App-Symbol — zwei Zählungen nebeneinander würden irgendwann
+            // verschiedene Zahlen nennen, und dann glaubt man keiner mehr.
+            //
+            // $navRest sammelt, was zu keinem sichtbaren Menüpunkt gehört: Wer
+            // Aufgaben nicht sehen darf, hat seit #393 trotzdem eigene — nur
+            // stehen die auf der Übersicht und nicht in einer Liste. Dann
+            // gehört die Zahl auch dorthin. ?>
+      <?php
+        $navOffen = open_items_by_path($user);
+        // Erst aussieben, dann zeichnen: Die Übersicht steht ganz oben und
+        // muss schon wissen, was unter ihr KEINEN Menüpunkt hat.
+        //
+        // Was jemand nicht sehen darf, steht auch nicht im Menü — sonst führt
+        // jeder zweite Eintrag nur auf eine Absage.
+        $navSichtbar = [];
+        $navRest = $navOffen;
+        foreach ($navGroups as [$gIcon, $gLabel, $gItems]) {
+          $gItems = array_filter($gItems, static function ($itemPath) use ($user) {
             $mod = perm_module_for($itemPath);
             return $mod === null || perm_allows($user, $mod, 'read');
           }, ARRAY_FILTER_USE_KEY);
-          if (!$groupItems) continue;
+          if (!$gItems) continue;
+          foreach (array_keys($gItems) as $gPath) unset($navRest[$gPath]);
+          $navSichtbar[] = [$gIcon, $gLabel, $gItems];
+        }
+      ?>
+      <a href="/intern" class="<?= $path === '/intern' ? 'active' : '' ?>"><span class="nav-icon">🏠</span><?= e(t('inav_uebersicht')) ?><?php
+        // Was zu keinem sichtbaren Menüpunkt gehört, steht hier: Wer Aufgaben
+        // nicht sehen darf, hat seit #393 trotzdem eigene — die stehen auf der
+        // Übersicht, also gehört die Zahl auch dorthin.
+        if (array_sum($navRest)): ?><span class="nav-count"><?= (int) array_sum($navRest) ?></span><?php endif; ?></a>
+      <?php foreach ($navSichtbar as [$groupIcon, $groupLabel, $groupItems]): ?>
+        <?php
           // Die Gruppe der aktuellen Seite steht offen, die übrigen bleiben zu
           $groupActive = false;
           foreach (array_keys($groupItems) as $groupPath) {
             if (str_starts_with($path, $groupPath)) $groupActive = true;
           }
         ?>
+        <?php // Die Gruppe trägt die Summe ihrer Einträge: Zugeklappt sieht man
+              // sonst nicht, dass darin etwas wartet. ?>
+        <?php
+          $groupOffen = 0;
+          foreach (array_keys($groupItems) as $groupPath) {
+            $groupOffen += $navOffen[$groupPath] ?? 0;
+          }
+        ?>
         <details class="nav-group <?= $groupActive ? 'has-active' : '' ?>" <?= $groupActive ? 'open' : '' ?>>
-          <summary><span class="nav-icon"><?= $groupIcon ?></span><?= e($groupLabel) ?></summary>
+          <summary><span class="nav-icon"><?= $groupIcon ?></span><?= e($groupLabel) ?><?php
+            if ($groupOffen): ?><span class="nav-count"><?= (int) $groupOffen ?></span><?php endif; ?></summary>
           <?php foreach ($groupItems as $itemPath => [$itemIcon, $itemLabel]): ?>
-            <a href="<?= e($itemPath) ?>" class="<?= str_starts_with($path, $itemPath) ? 'active' : '' ?>"><span class="nav-icon"><?= $itemIcon ?></span><?= e($itemLabel) ?></a>
+            <a href="<?= e($itemPath) ?>" class="<?= str_starts_with($path, $itemPath) ? 'active' : '' ?>"><span class="nav-icon"><?= $itemIcon ?></span><?= e($itemLabel) ?><?php
+              if (!empty($navOffen[$itemPath])): ?><span class="nav-count"><?= (int) $navOffen[$itemPath] ?></span><?php endif; ?></a>
           <?php endforeach; ?>
         </details>
       <?php endforeach; ?>
