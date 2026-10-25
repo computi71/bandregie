@@ -2658,14 +2658,37 @@ if (str_starts_with($path, '/intern')) {
     back('/intern');
   }
   if ($path === '/intern/gesehen' && $method === 'POST') {
-    $gArt = (string) ($_POST['art'] ?? '');
-    $gNr = (int) ($_POST['nr'] ?? 0);
     header('Content-Type: application/json');
+    // Mehrere auf einmal (#400): Eine Terminliste brachte es auf sechsundzwanzig
+    // Anfragen in derselben Sekunde, eine je aufgeklappter Karte — in einen
+    // Pool mit fuenf Arbeitern. Dieselbe Form wie #374, nur mit billigen statt
+    // langsamen Anfragen, deshalb hat es noch nicht weh getan.
+    //
+    // Die einzelne Form bleibt: Ein Browser haelt seine Skripte zwischen, und
+    // nach dem Update schickt eine alte seen.js noch eine Weile das alte
+    // Paerchen. Die soll nicht ins Leere laufen.
+    $gPosten = [];
+    foreach ((array) ($_POST['posten'] ?? []) as $gRoh) {
+      if (!is_string($gRoh)) continue;
+      [$gA, $gN] = array_pad(explode(':', $gRoh, 2), 2, '');
+      if ($gA !== '' && (int) $gN > 0) $gPosten[] = [$gA, (int) $gN];
+    }
+    if (!$gPosten) {
+      $gPosten[] = [(string) ($_POST['art'] ?? ''), (int) ($_POST['nr'] ?? 0)];
+    }
+    // Eine Grenze, weil die Liste von aussen kommt: Mehr Karten als das hat
+    // keine Seite, und ohne sie liesse sich mit einer Anfrage beliebig viel
+    // Arbeit bestellen.
+    $gPosten = array_slice($gPosten, 0, 100);
+
     // Eine unbekannte Sorte wird abgelehnt statt still geschluckt: Welche
     // Sorten es gibt, ist kein Geheimnis — geheim ist nur, welche Nummern
     // jemand sehen darf. Ein stilles „ok" kostete den Nächsten, der data-seen
     // benutzt, einen Tag.
-    if (!isset(ITEM_KINDS[$gArt]) || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
+    foreach ($gPosten as [$gArt, $gNr]) {
+      if (!isset(ITEM_KINDS[$gArt]) || !$gNr) { http_response_code(400); exit(json_encode(['ok' => false])); }
+    }
+    foreach ($gPosten as [$gArt, $gNr]) {
     if (item_visible($me, $gArt, $gNr)) {
       item_mark_seen($me, $gArt, $gNr);
       // Kommentare gehören zum Termin: Wer die Karte aufklappt, liest sie mit.
@@ -2683,6 +2706,7 @@ if (str_starts_with($path, '/intern')) {
         items_mark_seen($me, 'equipment',
           eq_descendants($gNr, rows('SELECT id, parent_id FROM equipment')));
       }
+    }
     }
     exit(json_encode(['ok' => true]));
   }
