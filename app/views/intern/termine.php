@@ -78,6 +78,12 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
 <details id="ev-neu" class="card collapsible" <?= $events && !$vorlage ? '' : 'open' ?>>
   <summary>➕ <?= e(t('ev_new')) ?></summary>
   <form method="post" action="/intern/termine" class="form-grid" data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'><?= csrf_field() ?>
+    <?php // Die Nummer des abgesagten Termins reist mit (#403): Nur so lässt
+          // sich später sagen, ob wirklich eine Alternative eingetragen wurde
+          // — und nur dann ist eine Erinnerung gerechtfertigt. Geraten wäre
+          // sie aus Art, Datum und Titel auch, aber eine geratene Antwort
+          // taugt nicht als Grund, jemandem aufs Telefon zu gehen. ?>
+    <?php if ($vorlage): ?><input type="hidden" name="vorlage" value="<?= (int) $vorlage['id'] ?>"><?php endif; ?>
     <label><?= e(t('ev_type')) ?>
       <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($vorlage['type'] ?? '') === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
     </label>

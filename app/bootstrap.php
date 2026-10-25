@@ -537,7 +537,8 @@ const DIGEST_FREQ = ['aus' => 0, 'taeglich' => 1, '2tage' => 2, 'woche' => 7];
 
 // 'vollzaehlig' ist abschaltbar wie jedes andere (#382): Eine Mitteilung, die
 // sich nicht abstellen laesst, ist der Grund, warum Leute alle abstellen.
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'photos', 'post', 'topics'];
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'erinnerung',
+                     'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
 /**

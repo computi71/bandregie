@@ -534,6 +534,97 @@ function push_queue_run(int $hoechstens = 200): array {
 }
 
 /**
+ * Wie lange nach einer Absage erinnert wird, in Stunden.
+ *
+ * Ein Tag: nah genug, dass der Abend noch zu retten ist, weit genug weg, dass
+ * es nicht nach Drängeln aussieht.
+ */
+const PUSH_REMIND_AFTER_HOURS = 24;
+
+/**
+ * Wie oft überhaupt nachgesehen wird, ob Erinnerungen fällig sind.
+ *
+ * Stündlich. Der Minutenlauf, der die Schlange leert, bringt das nebenbei mit
+ * — ein zweiter cron-Eintrag wäre eine zweite Sache, die jemand vergessen
+ * kann, und bei einer selbst betriebenen Anlage ist das die wahrscheinlichste
+ * Fehlerquelle überhaupt.
+ */
+const PUSH_REMIND_EVERY_MINUTES = 60;
+
+/**
+ * Wer abgesagt und danach nichts vorgeschlagen hat, bekommt eine Erinnerung
+ * (#403).
+ *
+ * #401 stellt das Fenster auf den Bildschirm, im Augenblick der Absage. Das
+ * erreicht, wer hinsieht. Es erreicht nicht, wer in der Straßenbahn auf ✘
+ * tippt, das Telefon einsteckt und es vergisst — und genau dort ist eine
+ * Mitteilung richtig: Der Augenblick ist vorbei, die Person ist woanders.
+ *
+ * Erinnert wird nur, wo die Band ihr Datum selbst setzt. Beim Gig gäbe es
+ * nichts zu verschieben.
+ *
+ * Dass eine Alternative existiert, wird NICHT geraten: Sie trägt seit #403 die
+ * Nummer des abgesagten Termins. Eine geratene Antwort taugt nicht als Grund,
+ * jemandem aufs Telefon zu gehen.
+ *
+ * Ein zweites Mal erinnert wird nie. Das sagt das Versandprotokoll (#405) —
+ * dafür braucht es keine eigene Spalte.
+ *
+ * @return int Wie viele Erinnerungen eingereiht wurden
+ */
+function push_reminders_run(): int {
+  $arten = implode(',', array_fill(0, count(EVENT_TYPES_OWN_DATE), '?'));
+  $offen = rows("SELECT a.user_id, e.id AS event_id, e.title, e.date, e.status
+                 FROM attendance a
+                 JOIN events e ON e.id = a.event_id
+                 WHERE a.status = 'no'
+                   AND e.date >= CURDATE()
+                   AND e.status NOT IN ('abgesagt', 'blockiert')
+                   AND e.type IN ($arten)
+                   AND COALESCE(a.updated_at, a.created_at) < DATE_SUB(NOW(), INTERVAL ? HOUR)
+                   AND NOT EXISTS (SELECT 1 FROM events x WHERE x.alternative_for = e.id)",
+                [...EVENT_TYPES_OWN_DATE, PUSH_REMIND_AFTER_HOURS]);
+  $wie_viele = 0;
+  foreach ($offen as $z) {
+    $marke = 'erinnerung:' . (int) $z['event_id'] . ':' . (int) $z['user_id'];
+    // Einmal und nicht wieder. Das Protokoll hält dreißig Tage, und so lange
+    // reicht die Erinnerung an die Erinnerung.
+    if (push_recently_sent($marke, PUSH_LOG_DAYS * 24 * 3600)) continue;
+    $u = row('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id = ?',
+             [(int) $z['user_id']]);
+    if (!$u) continue;
+    $titel = (string) $z['title'];
+    $datum = (string) $z['date'];
+    $url = '/intern/termine?vorlage=' . (int) $z['event_id'] . '#ev-neu';
+    // Der Sammelschlüssel trägt hier keine Sammlung, sondern die Erinnerung
+    // an sich selbst: Er landet im Protokoll und beantwortet beim nächsten
+    // Lauf die Frage „schon geschehen?".
+    push_queue_add('erinnerung', [$u],
+      static fn(string $lang): array => [
+        'title' => push_t($lang, 'push_remind_alt'),
+        'body'  => str_replace(['%1', '%2'], [$titel, fmt_date_lang($datum, $lang)],
+                               push_t($lang, 'push_remind_alt_body')),
+        'url'   => $url,
+      ], $marke);
+    $wie_viele++;
+  }
+  return $wie_viele;
+}
+
+/**
+ * Stündlich nachsehen, ob Erinnerungen fällig sind — gerufen vom Minutenlauf.
+ *
+ * Die Marke in den Einstellungen verhindert, dass jede Minute die ganze
+ * Abfrage läuft.
+ */
+function push_reminders_hourly(): int {
+  $zuletzt = (int) setting('push_remind_last', '0');
+  if ($zuletzt > time() - PUSH_REMIND_EVERY_MINUTES * 60) return 0;
+  set_setting('push_remind_last', (string) time());
+  return push_reminders_run();
+}
+
+/**
  * Eine Mitteilung an genau eine Person (#382).
  *
  * push_notify() ist eine Rundsendung: alle Abonnenten eines Themas, minus
