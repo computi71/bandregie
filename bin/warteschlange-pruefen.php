@@ -49,8 +49,16 @@ $bau = static fn(string $lang): array
     => ['title' => ZZQ . ' ' . $lang, 'body' => '', 'url' => '/intern'];
 
 // ------------------------------------------------ 1. Einreihen
+// Gezaehlt wird gegen die, die das Thema auch wollen: Ein Konto, das alles
+// abgewaehlt hat, bekommt keine Zeile - und genau das soll hier mitgeprueft
+// werden, statt es als Fehler zu lesen.
+$wollen = array_values(array_filter($wer,
+    static fn(array $u): bool => in_array('events', push_topics($u), true)));
 push_queue_add('events', $wer, $bau);
-$pruefe('eine Zeile je Empfaenger', $zahl() === count($wer));
+$pruefe('eine Zeile je Empfaenger, der das Thema will',
+    $zahl() === count($wollen) && count($wollen) > 0);
+$pruefe('und keine fuer die uebrigen', count($wollen) < count($wer)
+    ? $zahl() < count($wer) : true);
 $erste = row("SELECT * FROM push_queue WHERE payload LIKE ? ORDER BY id LIMIT 1", ['%' . ZZQ . '%']);
 $pruefe('der Wortlaut steht fertig drin',
     str_contains((string) $erste['payload'], ZZQ));
