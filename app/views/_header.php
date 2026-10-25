@@ -39,6 +39,7 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
   <script src="<?= e(asset('/assets/nav.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/accordion.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/seen.js')) ?>" defer></script>
+  <script src="<?= e(asset('/assets/entwurf.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/zusage.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/markers.js')) ?>" defer></script>
   <script src="<?= e(asset('/assets/geo.js')) ?>" defer></script>
@@ -64,7 +65,10 @@ $hideNav = in_array($path, ['/login', '/passwort-vergessen'], true)
 </head>
 <?php // Die Vorlage für den Hinweis auf einen alten Stand reist mit der Seite in
       // den Zwischenspeicher — nur so kennt sie dort die Sprache. ?>
-<body data-staletpl="<?= e(t('off_stale')) ?>" data-offlineusetpl="<?= e(t('off_use')) ?>" data-navi-pick="<?= e(t('navi_pick')) ?>" data-navi-pick-hint="<?= e(t('navi_pick_hint')) ?>" data-date-pick="<?= e(t('date_pick')) ?>">
+<body data-staletpl="<?= e(t('off_stale')) ?>" data-offlineusetpl="<?= e(t('off_use')) ?>" data-navi-pick="<?= e(t('navi_pick')) ?>" data-navi-pick-hint="<?= e(t('navi_pick_hint')) ?>" data-date-pick="<?= e(t('date_pick')) ?>"
+      data-entwurf-found="<?= e(t('draft_found')) ?>"
+      data-entwurf-restore="<?= e(t('draft_restore')) ?>"
+      data-entwurf-drop="<?= e(t('draft_drop')) ?>">
 <header class="site-header">
   <a class="brand" href="/">
     <?php if (!empty($settings['logo_file'])): ?>

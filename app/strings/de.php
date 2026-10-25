@@ -1798,6 +1798,10 @@ Gitarre: vorne rechts",
   'topic_first_post' => 'Dein erster Beitrag', 'topic_open' => 'Öffnen',
   'topic_posts' => 'Beiträge', 'topic_last' => 'zuletzt', 'topic_none' => 'Noch keine Themen — fang eins an.',
   // Rückfrage vor dem Abschicken (#380)
+  // Entwurf im Browser gemerkt (#381)
+  'draft_found' => 'Hier lag noch etwas, das du getippt und nicht gespeichert hattest.',
+  'draft_restore' => 'Zurückholen',
+  'draft_drop' => 'Verwerfen',
   'topic_send_many' => 'Abschicken? %1 Leute können diesen Beitrag lesen. Wer Mitteilungen eingeschaltet hat, bekommt das hier aufs Telefon:',
   'topic_send_one' => 'Abschicken? Eine andere Person kann diesen Beitrag lesen. Hat sie Mitteilungen eingeschaltet, bekommt sie das hier aufs Telefon:',
   'topic_send_none' => 'Abschicken? Außer dir kann diesen Beitrag gerade niemand lesen.',
