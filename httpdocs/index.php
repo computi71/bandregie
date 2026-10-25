@@ -1122,6 +1122,10 @@ if (str_starts_with($path, '/intern')) {
     }
     if ($action === 'update') {
       $evStandVorher = (string) (row('SELECT status FROM events WHERE id = ?', [$id])['status'] ?? '');
+      // Datum, Zeiten und Ort von vorher (#402): Aendert sich eines davon,
+      // beantworten die vorhandenen Zusagen eine Frage, die es nicht mehr
+      // gibt. Auch das muss VOR dem Schreiben geholt werden.
+      $evAbdruckVorher = event_answer_fingerprint((int) $id);
       // Lesen, schreiben, vergleichen an einer Stelle (#321): Die Zeile von
       // vorher muss vor dem Schreiben geholt werden, und genau das vergisst man.
       item_update('event', (int) $id, function () use ($id): void {
@@ -1145,6 +1149,16 @@ if (str_starts_with($path, '/intern')) {
         if ($evBraucht) {
           $evVertragR = row('SELECT id FROM contracts WHERE event_id = ? ORDER BY id DESC LIMIT 1', [$id]);
           if ($evVertragR) invoice_from_contract((int) $evVertragR['id'], (int) $me['id']);
+        }
+      }
+      // Hat sich die Frage geändert, gelten die Antworten nicht mehr (#402).
+      // Steht vor der Standmitteilung: Wer beides zugleich ändert, soll zuerst
+      // hören, dass neu gefragt wird — das ist die Nachricht, die etwas von
+      // ihm will.
+      if (event_answer_fingerprint((int) $id) !== $evAbdruckVorher) {
+        $evVerworfen = event_answers_reset((int) $id, (int) $me['id']);
+        if ($evVerworfen) {
+          flash(str_replace('%1', (string) $evVerworfen, t('fl_answers_reset')));
         }
       }
       // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und

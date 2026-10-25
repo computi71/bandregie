@@ -1805,6 +1805,10 @@ Gitarre: vorne rechts",
   // Die Übersicht meldet, wenn sich etwas getan hat (#378)
   'help_intro3' => 'Eine Seite, die länger offen liegt, bleibt nicht stumm: Tut sich etwas, erscheint oben ein Balken mit „Neu laden“. Von selbst lädt nichts nach — ein halb getippter Kommentar und ein Knopf, auf den du gerade zielst, sollen nicht weggezogen werden. Gefragt wird alle zwei Minuten und nur, solange das Fenster wirklich vor dir liegt.',
   // Hinweis nach einer Absage (#401)
+  // Geänderter Termin fragt neu (#402)
+  'fl_answers_reset' => '%1 Antworten wurden verworfen — die Band wird noch einmal gefragt.',
+  'push_ev_again' => 'Termin verschoben — bitte noch einmal antworten',
+  'ev_reset_confirm' => 'Datum, Zeit oder Ort haben sich geändert. Das verwirft die bisherigen %1 Antworten und fragt die Band noch einmal. Speichern?',
   'decline_title' => 'Schade, dass du nicht kannst',
   'decline_hint' => 'Du weißt am besten, warum es nicht geht — also auch, wann es ginge. Stell doch gleich einen Ersatztermin ein; Titel und Ort sind dann schon ausgefüllt, du musst nur noch das Datum setzen.',
   'decline_add' => 'Alternative eintragen',

@@ -45,6 +45,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Vor dem Speichern sagen, was eine Verschiebung kostet (#402).
+  //
+  // Nur, wenn sich wirklich eines der Felder geändert hat, die eine Zusage
+  // ungueltig machen. Wer den Titel berichtigt, soll nicht gefragt werden —
+  // eine Rückfrage, die immer kommt, liest nach dem dritten Mal niemand mehr.
+  //
+  // Welche Felder das sind, sagt der Server (data-reset-fields), und die Zahl
+  // der Antworten steht fertig im Satz. Das Skript vergleicht nur Werte.
+  document.querySelectorAll('form[data-reset-fields]').forEach(form => {
+    let felder;
+    try { felder = JSON.parse(form.dataset.resetFields); } catch (e) { return; }
+    if (!Array.isArray(felder)) return;
+    // Der Stand beim Laden: Das ist die Frage, die die Band beantwortet hat.
+    const vorher = {};
+    felder.forEach(name => {
+      const el = form.elements[name];
+      if (el) vorher[name] = el.value;
+    });
+    form.addEventListener('submit', event => {
+      const geaendert = felder.some(name => {
+        const el = form.elements[name];
+        return el && el.value !== vorher[name];
+      });
+      if (!geaendert) return;
+      if (!confirm(form.dataset.resetConfirm)) event.preventDefault();
+    });
+  });
+
   document.querySelectorAll('[data-print]').forEach(button => {
     button.addEventListener('click', () => window.print());
   });
