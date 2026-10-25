@@ -2247,6 +2247,18 @@ if (setting('tax_help_limits') !== '1') {
      ('help_tax_what','help_tax_counts','help_tax_over','help_tax_next_year')");
   set_setting('tax_help_limits', '1');
 }
+// Ein Fehlschlag aus einem verlorenen Wettlauf (#416). Zwei Anfragen spielen
+// nach einer neuen Fassung gleichzeitig alle Seeds ein; eine stolpert ueber
+// die andere und schreibt ihren Dateinamen - unter Umstaenden NACH dem
+// Durchlauf, der fertig geworden ist und ihn geloescht hat. Zurueck bleibt
+// eine rote Meldung ueber eine Datei, die vollstaendig drin ist, und sie geht
+// nie wieder weg: Der Stempel stimmt jetzt, der Block unten laeuft nicht mehr.
+//
+// Steht der Stempel, ist dieser Satz Seeds eingespielt. Dann ist ein
+// zurueckgebliebener Dateiname eine Falschmeldung und gehoert weg.
+if (setting('translations_seed') === $seedStamp && setting('seed_fehler') !== '') {
+  set_setting('seed_fehler', '');
+}
 if (setting('translations_seed') !== $seedStamp) {
   // Kein $schemaLueckenhaft hier: Das hielte das Tor bei jedem Aufruf offen,
   // sobald irgendeine Sprache je einen fehlerhaften Seed hatte — schlimmer
