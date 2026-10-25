@@ -20,6 +20,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Vor dem Abschicken eines Chatbeitrags zeigen, was ankommt (#380).
+  //
+  // Der Satz davor steht fertig im Attribut — Ein- und Mehrzahl gehören in die
+  // Sprache. Hier kommt nur dazu, was ohne den getippten Text nicht zu wissen
+  // ist: der Anriss, genau so geschnitten wie beim Versand.
+  //
+  // Ohne JavaScript entfällt die Rückfrage und der Beitrag geht wie bisher
+  // raus. Das ist richtig so: Eine Seite, die ohne Skript gar nichts mehr
+  // abschickt, wäre schlimmer dran als eine ohne Rückfrage.
+  document.querySelectorAll('form[data-confirm-send]').forEach(form => {
+    form.addEventListener('submit', event => {
+      const feld = form.querySelector('textarea[name="text"]');
+      const text = (feld ? feld.value : '').trim();
+      if (!text) return;   // leer: dafür ist das required-Attribut da
+      // Zeichen zählen, nicht Bytes und nicht UTF-16-Einheiten: Nur so steht
+      // hier derselbe Schnitt wie in topic_teaser() auf dem Server.
+      const zeichen = Array.from(text);
+      const anriss = zeichen.length > 120
+        ? zeichen.slice(0, 119).join('') + '…' : text;
+      const wer = form.dataset.confirmWho || '';
+      const vorschau = wer ? wer + ': ' + anriss : anriss;
+      if (!confirm(form.dataset.confirmSend + '\n\n' + vorschau)) event.preventDefault();
+    });
+  });
+
   document.querySelectorAll('[data-print]').forEach(button => {
     button.addEventListener('click', () => window.print());
   });

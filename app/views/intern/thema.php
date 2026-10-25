@@ -39,7 +39,22 @@
   <?php if ($topic['closed']): ?>
     <p class="warn small"><?= e(t('topic_closed_hint')) ?></p>
   <?php else: ?>
-    <form method="post" action="/intern/themen/<?= $topic['id'] ?>/antwort" class="stack"><?= csrf_field() ?>
+    <?php // Vor dem Abschicken fragen (#380). Ein Beitrag geht auf einen Klick
+          // an die ganze Band, und die ersten 120 Zeichen landen als Mitteilung
+          // auf den Telefonen — also zeigt die Rückfrage genau das: an wie
+          // viele, und was dort ankommt. Immer, nicht nach einer Regel, die
+          // niemand sieht.
+          //
+          // Der Satz entsteht hier und nicht im Skript: Ein-, Mehr- und
+          // Keinzahl gehören in die Sprache, nicht in JavaScript. ?>
+    <?php
+      $leser = topic_readers_count((int) $topic['id'], $user);
+      $leserSatz = $leser === 0 ? t('topic_send_none')
+        : ($leser === 1 ? t('topic_send_one')
+        : str_replace('%1', (string) $leser, t('topic_send_many')));
+    ?>
+    <form method="post" action="/intern/themen/<?= $topic['id'] ?>/antwort" class="stack"
+          data-confirm-send="<?= e($leserSatz) ?>" data-confirm-who="<?= e($user['name']) ?>"><?= csrf_field() ?>
       <textarea name="text" rows="3" required placeholder="<?= e(t('topic_reply_ph')) ?>"></textarea>
       <button class="btn btn-primary"><?= e(t('topic_reply')) ?></button>
     </form>
