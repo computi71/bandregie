@@ -1249,6 +1249,10 @@ if (str_starts_with($path, '/intern')) {
     // Zusage: Wer Termine nur lesen darf, darf trotzdem sagen, dass ihm die
     // neue Zeit passt - er ist ja gerade der, den es angeht.
     if ($action === 'zeit-ok') {
+      // Eine Aushilfe bestätigt nichts an einem Termin, zu dem sie nicht
+      // gebeten wurde. Dass sie dafür erst zugesagt haben müsste, reicht als
+      // Begründung nicht: Die Route soll selbst nein sagen können.
+      if (!may_see_event($me, (int) $id)) { flash(t('fl_no_permission')); back('/intern/termine'); }
       if (!event_time_confirm((int) $id, (int) $me['id'])) {
         // Schon bestaetigt, gar nicht gefragt, oder der Vorschlag ist
         // inzwischen durch: alles kein Fehler, nur nichts mehr zu tun.
@@ -1260,7 +1264,10 @@ if (str_starts_with($path, '/intern')) {
     }
     // Und zuruecknehmen darf, wer den Termin auch aendern darf.
     if ($action === 'zeit-weg') {
-      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back('/intern/termine'); }
+      if (!perm_allows($me, 'termine', 'write') || !may_see_event($me, (int) $id)) {
+        flash(t('fl_no_permission'));
+        back('/intern/termine');
+      }
       event_time_clear((int) $id);
       flash(t('fl_time_withdrawn'));
       back('/intern/termine');
