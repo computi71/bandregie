@@ -4486,6 +4486,41 @@ function task_assignees_map(array $taskIds): array {
 }
 
 /**
+ * Der Stand eines Zuständigen: ✔, wenn er fertig ist, sonst ☐ (#376).
+ *
+ * Die beiden Zeichen stehen genau hier und sonst nirgends. Vorher stand die
+ * Darstellung an vier Stellen abgeschrieben, und als sie sich änderte, zogen
+ * nur zwei davon mit — dieselbe Aufgabe las sich auf zwei Bildschirmen
+ * verschieden (#397).
+ */
+function task_mark(array $zustaendiger): string {
+  return $zustaendiger['done_at'] !== null ? '✔' : '☐';
+}
+
+/**
+ * Die Zuständigen als freistehende Marken — Aufgabenliste und Übersicht.
+ */
+function task_assignee_chips(array $wer): string {
+  $html = '';
+  foreach ($wer as $a) {
+    $html .= '<span class="att att-' . ($a['done_at'] !== null ? 'yes' : 'open') . '">'
+           . task_mark($a) . ' ' . e($a['name']) . '</span>';
+  }
+  return $html;
+}
+
+/**
+ * Dieselbe Auskunft als Text — für die Stellen, an denen die Aufgabe selbst
+ * schon eine Marke ist. Eine Marke in einer Marke wäre keine mehr.
+ */
+function task_assignee_text(array $wer): string {
+  if (!$wer) return '';
+  $teile = [];
+  foreach ($wer as $a) $teile[] = task_mark($a) . ' ' . e($a['name']);
+  return ' · ' . implode(', ', $teile);
+}
+
+/**
  * Wie ein Eintrag heißt, wenn man ihn in einer Liste nennen will (#335).
  *
  * Leerer Rückgabewert heißt "gibt es nicht mehr". Verknüpfungen werden
