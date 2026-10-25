@@ -124,6 +124,13 @@ require_once BASE_DIR . '/app/help.php';
   <p class="muted"><?= e(t('help_tagesmail_3')) ?></p>
 </details>
 
+<?php // Angefangener Text (#381) — betrifft jede Ansicht mit einem Textfeld
+      // und damit keinen einzelnen Rechtebereich. ?>
+<details id="hilfe-entwurf" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
+  <summary>📝 <?= e(t('help_draft_title')) ?></summary>
+  <p class="help-lead"><?= e(t('help_draft')) ?></p>
+</details>
+
 <details id="hilfe-wichtig" class="card acc" <?= $druck ? '' : 'name="helpacc"' ?> <?= $druck ? 'open' : '' ?>>
   <summary>❗ <?= e(t('set_wichtig')) ?></summary>
   <p class="help-lead"><?= e(t('help_wichtig')) ?></p>

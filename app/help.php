@@ -58,6 +58,8 @@ function help_sections(array $user): array {
       $abschnitte['kleinunternehmer'] = ['⚖', t('help_tax_title')];
     }
   }
+  // Haengt an keinem Rechtebereich: Ein Textfeld gibt es ueberall (#381).
+  $abschnitte['entwurf'] = ['📝', t('help_draft_title')];
   if (push_available()) $abschnitte['push'] = ['🔕', t('help_push_trouble_title')];
   if (totp_available() || totp_active((int) $user['id'])) $abschnitte['totp'] = ['🔑', t('help_totp_title')];
   if (passkey_available()) $abschnitte['passkey'] = ['🔐', t('help_passkey_title')];
