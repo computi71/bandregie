@@ -5232,7 +5232,13 @@ if (str_starts_with($path, '/intern')) {
     foreach (rows("SELECT lang, tkey, value FROM translations WHERE tkey LIKE 'content_%'") as $r) {
       $contentAll[$r['lang']][$r['tkey']] = $r['value'];
     }
+    // Was zuletzt hinausging (#405). Nur die letzten Zeilen — wer weiter
+    // zurueckschauen will, fragt die Tabelle; hier geht es um „ist es raus?“.
+    $pushProtokoll = rows("SELECT l.*, u.name FROM push_log l
+                           LEFT JOIN users u ON u.id = l.user_id
+                           ORDER BY l.id DESC LIMIT 40");
     view('intern/einstellungen', [
+      'pushProtokoll' => $pushProtokoll,
       'title' => t('inav_einstellungen'),
       'ical_url' => absolute_url('/kalender/' . ical_token_for((int) $me['id']) . '.ics'),
       'contentAll' => $contentAll,
