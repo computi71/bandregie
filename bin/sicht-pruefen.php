@@ -21,6 +21,11 @@
 //
 //   sudo -u www-data php bin/sicht-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten
 //
+// Mit einem Hostnamen als drittem Wort werden auch die Routen gerufen — und
+// erst dort zeigt sich, ob die Prüfung wirklich vor ihnen steht (#414):
+//
+//   ... --schreibt-testdaten staging.beatcuisine.de
+//
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);
 
@@ -137,6 +142,49 @@ printf("  event_view_data(): %d Abfragen bei einem Termin und %d Liedern%s",
 // je Lied läge bei über sechzig und fällt sofort auf. Wer die Zahl anhebt,
 // soll dabei hinsehen, warum.
 $pruefe('event_view_data() bleibt unter fünfundvierzig Abfragen', $kostenTermine < 45);
+
+// ------------------- 4. Die Routen (nur mit Hostnamen)
+// Eine Aushilfe darf an einem Termin, zu dem sie nicht gebeten wurde, nichts
+// tun — auch nicht mit geratener Nummer im Formular. Lesen konnte sie ihn
+// ohnehin nie, die Listen filtern; schreiben aber schon, bis #414.
+$host = $argv[3] ?? '';
+if ($host !== '') {
+    $_SESSION['uid'] = (int) $aushilfe['id'];
+    $sid = session_id();
+    $token = csrf_token();
+    session_write_close();
+    $post = static function (string $pfad, array $felder) use ($host, $sid, $token): string {
+        $teile = ['-d ' . escapeshellarg('_token=' . $token)];
+        foreach ($felder as $k => $v) $teile[] = '-d ' . escapeshellarg($k . '=' . $v);
+        return (string) shell_exec(sprintf(
+            'curl -sk -o /dev/null -w "%%{http_code}" --resolve %s:443:127.0.0.1 -b PHPSESSID=%s %s https://%s%s',
+            escapeshellarg($host), escapeshellarg($sid), implode(' ', $teile),
+            escapeshellarg($host), $pfad));
+    };
+    $zusagenZu = static fn(int $ev): int
+        => (int) row('SELECT COUNT(*) n FROM attendance WHERE event_id = ? AND user_id = ?',
+                     [$ev, (int) $aushilfe['id']])['n'];
+    $kommentareZu = static fn(int $ev): int
+        => (int) row('SELECT COUNT(*) n FROM comments WHERE event_id = ?', [$ev])['n'];
+
+    $kommentareVorher = $kommentareZu($nichtGefragt);
+    $post("/intern/termine/$nichtGefragt/zusage", ['status' => 'yes']);
+    $pruefe('Zusage zu einem fremden Termin: nicht eingetragen',
+        $zusagenZu($nichtGefragt) === 0);
+    $post("/intern/termine/$nichtGefragt/kommentar", ['text' => 'ZZSICHT fremd']);
+    $pruefe('Kommentar an einem fremden Termin: nicht geschrieben',
+        $kommentareZu($nichtGefragt) === $kommentareVorher);
+
+    // Die Gegenprobe: An dem Termin, zu dem sie gebeten wurde, geht es. Ohne
+    // sie prüfte das hier nur, dass zwei Aufrufe nichts tun.
+    $post("/intern/termine/$gefragt/zusage", ['status' => 'yes']);
+    $pruefe('Zusage zum eigenen Termin: eingetragen', $zusagenZu($gefragt) === 1);
+    q('DELETE FROM attendance WHERE event_id = ? AND user_id = ?',
+      [$gefragt, (int) $aushilfe['id']]);
+    q("DELETE FROM comments WHERE text LIKE 'ZZSICHT%'");
+} else {
+    echo "  (ohne Hostnamen: die Routen selbst wurden nicht gerufen)" . PHP_EOL;
+}
 
 $aufraeumen();
 $pruefe('Testkonto wieder weg',

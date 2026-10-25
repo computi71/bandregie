@@ -1125,6 +1125,22 @@ if (str_starts_with($path, '/intern')) {
 
   if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
+    // Einmal fuer alle Handlungen an einem Termin (#414): Darf dieses Konto
+    // ihn ueberhaupt sehen?
+    //
+    // Die zentrale Wache beantwortet die Bereichsfrage - darf jemand an
+    // Termine. Fuer alle ausser Aushilfen ist das dieselbe Frage; eine
+    // Aushilfe sieht nur, wozu sie gebeten wurde, und eine geratene Nummer
+    // im Formular war bis hierher nicht abgewiesen. Lesen konnte sie nichts,
+    // die Listen filtern - aber sich in einen fremden Termin eintragen oder
+    // ihn kommentieren schon.
+    //
+    // #57 hat diese Frage seinerzeit fuer die Leseseiten nachgetragen -
+    // Druck, Export, Anhang. Die Schreibrouten standen nicht auf der Liste.
+    if (!may_see_event($me, (int) $id)) {
+      flash(t('fl_no_permission'));
+      redirect('/intern/termine');
+    }
     if (in_array($action, ['update', 'delete'], true) && event_locked((int) $id)) {
       flash(t('fl_locked_event'));
       redirect('/intern/termine?alle=1');
@@ -1251,10 +1267,6 @@ if (str_starts_with($path, '/intern')) {
     // Zusage: Wer Termine nur lesen darf, darf trotzdem sagen, dass ihm die
     // neue Zeit passt - er ist ja gerade der, den es angeht.
     if ($action === 'zeit-ok') {
-      // Eine Aushilfe bestätigt nichts an einem Termin, zu dem sie nicht
-      // gebeten wurde. Dass sie dafür erst zugesagt haben müsste, reicht als
-      // Begründung nicht: Die Route soll selbst nein sagen können.
-      if (!may_see_event($me, (int) $id)) { flash(t('fl_no_permission')); back('/intern/termine'); }
       if (!event_time_confirm((int) $id, (int) $me['id'])) {
         // Schon bestaetigt, gar nicht gefragt, oder der Vorschlag ist
         // inzwischen durch: alles kein Fehler, nur nichts mehr zu tun.
@@ -1266,10 +1278,7 @@ if (str_starts_with($path, '/intern')) {
     }
     // Und zuruecknehmen darf, wer den Termin auch aendern darf.
     if ($action === 'zeit-weg') {
-      if (!perm_allows($me, 'termine', 'write') || !may_see_event($me, (int) $id)) {
-        flash(t('fl_no_permission'));
-        back('/intern/termine');
-      }
+      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back('/intern/termine'); }
       event_time_clear((int) $id);
       flash(t('fl_time_withdrawn'));
       back('/intern/termine');
