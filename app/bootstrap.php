@@ -5336,25 +5336,30 @@ function event_view_data(array $events, array $me): array {
   // Die Nebendaten eines verdeckten Termins sind genauso vertraulich wie er
   // selbst: ein Kommentar, eine Zusage, ein Dateiname verraten dasselbe.
   $ohne = static fn(array $karte): array => $verdeckt ? array_diff_key($karte, array_flip($verdeckt)) : $karte;
+  // Die Lieder, die dieses Konto sehen darf — einmal gebaut, zweimal gebraucht
+  // (#398). Vorher stand dieselbe Abfrage samt Filter zweimal nebeneinander:
+  // für die Auswahl am Termin und für die am kleinen Aufgabenformular. Zwei
+  // Kopien heißt zwei Stellen, die beim nächsten Mal gleichzeitig stimmen
+  // müssten.
+  //
+  // may_see_song() je Lied und nicht als eine Abfrage: Für alle außer einer
+  // Aushilfe antwortet es ohne jede Abfrage, und für eine Aushilfe sind es
+  // wenige Lieder. Gemessen 1 ms bei elf Stücken.
+  $sichtbareLieder = perm_allows($me, 'songs')
+    ? array_values(array_filter(
+        rows('SELECT id, title FROM songs ORDER BY title'),
+        static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
+    : [];
   return [
     'events' => $events,
     'members' => rows('SELECT id, name FROM users ORDER BY name'),
-    // Lieder fuer das kleine Aufgabenformular an der Karte (#390). Nur wenn
-    // jemand Aufgaben anlegen UND Lieder sehen darf - sonst stuende dort eine
-    // Auswahl, die er weder braucht noch fuellen duerfte.
-    'taskSongs' => perm_allows($me, 'aufgaben', 'write') && perm_allows($me, 'songs')
-      ? array_values(array_filter(
-          rows('SELECT id, title FROM songs ORDER BY title'),
-          static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
-      : [],
-    // Die Lieder einer Probe (#390) — und die Auswahl dafür. Beides nur mit
-    // Leserecht auf Lieder; sonst stünde dort eine Liste, die niemand sehen darf.
+    // Lieder für das kleine Aufgabenformular an der Karte (#390). Nur wenn
+    // jemand Aufgaben anlegen darf — sonst stünde dort eine Auswahl, die er
+    // gar nicht füllen dürfte.
+    'taskSongs' => perm_allows($me, 'aufgaben', 'write') ? $sichtbareLieder : [],
+    // Die Lieder einer Probe (#390) und die Auswahl dafür.
     'songsByEvent' => $ohne(event_songs_map($ids)),
-    'eventSongPick' => perm_allows($me, 'songs')
-      ? array_values(array_filter(
-          rows('SELECT id, title FROM songs ORDER BY title'),
-          static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
-      : [],
+    'eventSongPick' => $sichtbareLieder,
     'setlists' => rows('SELECT id, name FROM setlists ORDER BY name'),
     'venues' => $venues,
     'venueMap' => array_column($venues, null, 'id'),
