@@ -1093,6 +1093,13 @@ if (str_starts_with($path, '/intern')) {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [$me['id'], ...event_values()]);
       $newEventId = (int) $db->lastInsertId();
       item_new('event', $newEventId, (int) $me['id']);
+      // Als Ersatz fuer welchen Termin? (#403) Die Nummer wird geprueft wie
+      // jede andere: Was man nicht sehen darf, kann man auch nicht als Vorlage
+      // angeben.
+      $evVorlage = (int) ($_POST['vorlage'] ?? 0);
+      if ($evVorlage && may_see_event($me, $evVorlage)) {
+        q('UPDATE events SET alternative_for = ? WHERE id = ?', [$evVorlage, $newEventId]);
+      }
       save_event_gear($newEventId);
       save_event_songs($newEventId);
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
