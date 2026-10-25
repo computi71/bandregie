@@ -76,5 +76,43 @@ foreach ($pfade as $pfad) {
     printf("%-34s %d %s%s", $pfad, $code,
         $gut ? 'ok' : ($code === 200 ? 'FEHLER (Seite bricht ab)' : 'FEHLER'), PHP_EOL);
 }
+
+// ---------------- Listenfelder, die als Array ankommen (#396)
+//
+// Ein Feld aus einer Anfrage kann immer ein Array sein; das entscheidet der
+// Absender und nicht das Formular. Wer den rohen Wert als Array-Schluessel
+// benutzt, bekommt dann keinen abgelehnten Wert, sondern einen TypeError:
+// /intern/termine?art[]=1 antwortete mit 500 und einer leeren Seite.
+//
+// Geprueft wird beides - dass die Seiten es aushalten, und dass die
+// gefaehrliche Schreibweise nicht zurueckkommt.
+$mitArray = [
+    '/intern/termine?art[]=1',
+    '/intern/termine/export?art[]=1',
+    '/intern/songs?status[]=1',
+    '/intern/uebersetzungen?sprache[]=1',
+];
+foreach ($mitArray as $pfad) {
+    $befehl = sprintf(
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -o /dev/null -w "%%{http_code}" %s',
+        escapeshellarg($host), escapeshellarg($sid),
+        escapeshellarg('https://' . $host . $pfad));
+    $code = (int) shell_exec($befehl);
+    $gut = $code !== 500;
+    if (!$gut) $fehler++;
+    printf("%-38s %d %s%s", $pfad, $code, $gut ? 'ok' : 'FEHLER (bricht ab)', PHP_EOL);
+}
+
+$roh = 0;
+foreach ([$basis . '/httpdocs/index.php', $basis . '/app/bootstrap.php'] as $datei) {
+    $inhalt = (string) file_get_contents($datei);
+    // pick() selbst darf es, sonst niemand.
+    $inhalt = str_replace('is_string($wert) && array_key_exists($wert, $erlaubt)', '', $inhalt);
+    $roh += preg_match_all('~array_key_exists\(\s*\$_(GET|POST|REQUEST|COOKIE)~', $inhalt);
+}
+if ($roh) $fehler++;
+printf("%-38s %s%s", 'rohe Weissliste auf Anfragewerten',
+    $roh ? "FEHLER ($roh Stellen)" : 'ok', PHP_EOL);
+
 printf('%s%d Seiten, %d Fehler%s', PHP_EOL, count($pfade), $fehler, PHP_EOL);
 exit($fehler ? 1 : 0);

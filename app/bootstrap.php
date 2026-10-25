@@ -1479,6 +1479,24 @@ function flash(string $msg): void { $_SESSION['flash'] = $msg; }
 
 function e(mixed $s): string { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 
+/**
+ * Einen Wert aus einer Weißliste nehmen, sonst den Ersatzwert (#396).
+ *
+ * Es gibt diese Funktion wegen einer Falle, in die das Projekt
+ * sechsundzwanzigmal getreten ist: Wer den rohen Anfragewert direkt als
+ * Array-Schlüssel benutzt, bekommt bei `?art[]=1` keinen abgelehnten Wert,
+ * sondern einen TypeError — die Seite bricht mit 500 ab, bevor die Weißliste
+ * überhaupt gefragt wurde. Ob ein Feld als Zeichenkette oder als Array
+ * ankommt, entscheidet der Absender und nicht das Formular.
+ *
+ * Deshalb steht die Prüfung auf Zeichenkette VOR der Weißliste. Alles andere
+ * ist kein erlaubter Wert, egal was es ist.
+ */
+function pick(mixed $wert, array $erlaubt, string $ersatz = ''): string {
+  return is_string($wert) && array_key_exists($wert, $erlaubt) ? $wert : $ersatz;
+}
+
+
 /** Anzeigename aus Vor- und Nachname; bleibt der alte, wenn beide leer sind. */
 function display_name(string $first, string $last, string $fallback = ''): string {
   $name = trim(trim($first) . ' ' . trim($last));
