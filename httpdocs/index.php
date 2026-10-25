@@ -1253,17 +1253,17 @@ if (str_starts_with($path, '/intern')) {
         // Schon bestaetigt, gar nicht gefragt, oder der Vorschlag ist
         // inzwischen durch: alles kein Fehler, nur nichts mehr zu tun.
         flash(t('fl_time_nothing'));
-        back();
+        back('/intern/termine');
       }
       flash(event_time_proposal((int) $id) ? t('fl_time_confirmed') : t('fl_time_applied'));
-      back();
+      back('/intern/termine');
     }
     // Und zuruecknehmen darf, wer den Termin auch aendern darf.
     if ($action === 'zeit-weg') {
-      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back(); }
+      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back('/intern/termine'); }
       event_time_clear((int) $id);
       flash(t('fl_time_withdrawn'));
-      back();
+      back('/intern/termine');
     }
     if ($action === 'zusage') {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
