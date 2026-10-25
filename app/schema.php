@@ -1833,11 +1833,31 @@ if (setting('migr_bausteine_doppelt') === '') {
     $bdBenutzt = array_map('intval', array_column(
       rows('SELECT DISTINCT block_id FROM contract_block_use'), 'block_id'));
 
+    // Der Wortlaut, wie der Seeder ihn hingestellt hat - zum Vergleich mit dem,
+    // was jetzt in der Datenbank steht.
+    $bdSoll = [];
+    foreach (contract_block_seed_set($bdSprache) as $bdS) {
+      $bdSoll[(string) $bdS['bkey']] = [(string) ($bdS['label'] ?? ''), (string) ($bdS['body'] ?? '')];
+    }
+
     // Beide Saetze da? Dann ist der zweite der, den der Fehler gebracht hat.
     if (array_intersect($bdDeutsch, $bdVorhanden) && array_intersect($bdFremd, $bdVorhanden)) {
-      foreach (rows('SELECT id, bkey FROM contract_blocks') as $bdZeile) {
-        if (!in_array((string) $bdZeile['bkey'], $bdFremd, true)) continue;
+      foreach (rows('SELECT id, bkey, label, body FROM contract_blocks') as $bdZeile) {
+        $bdKey = (string) $bdZeile['bkey'];
+        if (!in_array($bdKey, $bdFremd, true)) continue;
         if (in_array((int) $bdZeile['id'], $bdBenutzt, true)) continue;
+        // Angefasst heisst behalten (#399): Wer den Wortlaut ueberarbeitet hat,
+        // hat ihn fuer etwas gebraucht - auch wenn noch kein Vertrag daran
+        // haengt. Geloescht wird nur, was Wort fuer Wort so dasteht, wie der
+        // Seeder es hingestellt hat.
+        //
+        // Hat sich der Saatgut-Satz seither geaendert, sieht auch ein
+        // unberuehrter Baustein bearbeitet aus und bleibt stehen. Genau in
+        // diese Richtung soll ein Irrtum hier fallen: ein Satz zu viel in der
+        // Liste ist zu sehen und wegzuklicken, ein geloeschter nicht.
+        if (!isset($bdSoll[$bdKey])) continue;
+        if ((string) $bdZeile['label'] !== $bdSoll[$bdKey][0]
+            || (string) $bdZeile['body'] !== $bdSoll[$bdKey][1]) continue;
         q('DELETE FROM contract_blocks WHERE id = ?', [$bdZeile['id']]);
       }
       set_setting('contract_blocks_lang', 'de');
