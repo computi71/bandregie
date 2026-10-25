@@ -169,6 +169,23 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       // Hand im Angebot steht. ?>
 <?php // Die Vertragsvorlage (#303). Sie gehört der Band; wir liefern nur eine
       // erste Fassung mit und sagen dazu, dass wir keine Rechtsberatung sind. ?>
+<?php // Wer über Liedvorschläge abstimmt (#391). Dieselbe Auswahl entscheidet,
+      // wen die Abstimmung fragt und wann sie vorbei ist. ?>
+<details class="card acc" name="setacc">
+  <summary><?= e(t('set_songvote_title')) ?></summary>
+  <form method="post" action="/intern/einstellungen/abstimmung" class="form-grid"><?= csrf_field() ?>
+    <label class="span2"><?= e(t('set_songvote_scope')) ?>
+      <select name="song_vote_scope">
+        <?php foreach (['mitglieder' => 'set_songvote_members', 'alle' => 'set_songvote_all',
+                        'leitung' => 'set_songvote_leads'] as $svWert => $svKey): ?>
+          <option value="<?= e($svWert) ?>" <?= setting('song_vote_scope', 'mitglieder') === $svWert ? 'selected' : '' ?>><?= e(t($svKey)) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <span class="muted small"><?= e(t('set_songvote_hint')) ?></span></label>
+    <button class="btn btn-primary span2"><?= e(t('save')) ?></button>
+  </form>
+</details>
+
 <?php // Wie viel ein Bookingagent vom Kalender sieht (#309). ?>
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_booking_title')) ?></summary>

@@ -493,9 +493,17 @@ const EQ_ACQUIRED = ['neu' => 'Neu', 'bware' => 'B-Ware', 'gebraucht' => 'Gebrau
 
 // Song-Lebenszyklus
 const SONG_STATUS = [
-  'vorschlag' => 'Vorschlag', 'demo' => 'Demo', 'in_arbeit' => 'In Vorbereitung',
+  // 'abgestimmt' sitzt zwischen dem Vorschlag und dem, was aus ihm wird (#391):
+  // Die Band hat gesprochen, jemand muss noch entscheiden. Es behauptet nichts
+  // ueber den Ausgang - deshalb steht es neben 'abgewiesen' und nicht an
+  // dessen Stelle.
+  'vorschlag' => 'Vorschlag', 'abgestimmt' => 'Abgestimmt',
+  'demo' => 'Demo', 'in_arbeit' => 'In Vorbereitung',
   'aktiv' => 'Aktives Repertoire', 'abgewiesen' => 'Abgewiesen', 'archiv' => 'Aussortiert',
 ];
+
+/** Wer ueber Liedvorschlaege abstimmt. Voreinstellung: Mitglieder, keine Aushilfen. */
+const SONG_VOTE_SCOPES = ['mitglieder', 'alle', 'leitung'];
 
 // Werte, die zur Laufzeit gebraucht werden und bisher zwischen den Migrationen
 // standen (#328). Dort waren sie nur historisch: Sobald das Schema hinter ein
@@ -1375,6 +1383,11 @@ const SELF_SERVICE_PATHS = [
   // Und derselbe Gedanke rückwärts (#379): Wer sagen darf, dass er seinen
   // Teil getan hat, darf auch sagen, dass die Aufgabe nicht seine ist.
   '~^/intern/aufgaben/\d+/verlassen$~',
+  // Die eigene Stimme ueber einen Liedvorschlag (#391) - derselbe Gedanke wie
+  // beim Haken an der Aufgabe: Wer ein Lied nur lesen darf, darf trotzdem
+  // sagen, was er davon haelt. Die Route fasst nur die eigene Zeile an und
+  // prueft selbst, ob dieses Konto ueberhaupt gefragt ist.
+  '~^/intern/songs/\d+/abstimmung$~',
   '~^/intern/kasse/dauerauftrag$~',
   '~^/intern/kasse/dauerauftrag/\d+/(pause|delete)$~',
   '~^/intern/kasse/\d+/delete$~',
@@ -4725,6 +4738,131 @@ function tasks_for_item(string $kind, array $itemIds): array {
     $karte[(int) $z['item_id']][] = $z;
   }
   return $karte;
+}
+
+// ---------- Abstimmung über Liedvorschläge (#391) ----------
+//
+// Ein Vorschlag blieb ein Vorschlag, bis jemand ihn von Hand umstellte. Beide
+// Bands hatten zusammen sieben davon und keine einzige Bewertung dazu — sie
+// entscheiden im Proberaum, und die Anwendung erfuhr es nie. Jetzt fragt sie.
+
+/**
+ * Wer über einen Vorschlag abstimmt.
+ *
+ * Diese eine Funktion beantwortet beides: wen die Abstimmung fragt und wann
+ * sie vorbei ist. Zwei Stellen dafür würden auseinanderlaufen, und dann wartet
+ * eine Abstimmung auf jemanden, der gar nicht gefragt war.
+ *
+ * @return array<int, array> Zeilen aus users
+ */
+function song_vote_voters(): array {
+  $umfang = setting('song_vote_scope', 'mitglieder');
+  if (!in_array($umfang, SONG_VOTE_SCOPES, true)) $umfang = 'mitglieder';
+  if ($umfang === 'leitung') {
+    return rows("SELECT * FROM users WHERE role = 'admin' ORDER BY name");
+  }
+  if ($umfang === 'alle') {
+    // „Alle" heißt: alle, die Lieder überhaupt sehen. Wer den Bereich nicht
+    // lesen darf, kann über ein Lied nicht urteilen.
+    return array_values(array_filter(rows('SELECT * FROM users ORDER BY name'),
+      static fn(array $u): bool => perm_allows($u, 'songs')));
+  }
+  return rows("SELECT * FROM users WHERE role IN ('admin', 'member') ORDER BY name");
+}
+
+/** Darf dieses Konto über Vorschläge abstimmen? */
+function song_may_vote(array $user, int $songId): bool {
+  if (!may_see_song($user, $songId)) return false;
+  foreach (song_vote_voters() as $u) if ((int) $u['id'] === (int) $user['id']) return true;
+  return false;
+}
+
+/**
+ * Die Stimmen zu einem Lied, in derselben Gestalt wie attendance_map() sie für
+ * einen Termin liefert — damit die Ansicht dieselbe Zusammenfassung zeichnen
+ * kann.
+ */
+function song_votes(int $songId): array {
+  return rows('SELECT v.user_id, v.status, u.name FROM song_votes v
+               JOIN users u ON u.id = v.user_id
+               WHERE v.song_id = ? ORDER BY u.name', [$songId]);
+}
+
+/**
+ * Ist die Abstimmung vorbei, und wenn ja, das Lied weiterstellen.
+ *
+ * Zwei Wege hinaus, und der zweite ist freiwillig: Alle Gefragten haben
+ * geantwortet, oder die Frist der Abstimmungsaufgabe ist um. Ein Vorschlag,
+ * über den die Hälfte geschwiegen hat, ist auch ein Bild — nur ein dünneres,
+ * und man sieht ihm an, dass es dünn ist.
+ *
+ * Wer dazukommt oder wegfällt, darf eine Abstimmung nicht ewig bei „4 von 5"
+ * hängen lassen: Gezählt wird gegen die Gefragten von HEUTE, nie gegen eine
+ * Zahl, die beim Anlegen festgeschrieben wurde. Dieselbe Lehre wie #334.
+ */
+function song_vote_apply(int $songId): void {
+  $lied = row('SELECT id, status FROM songs WHERE id = ?', [$songId]);
+  if (!$lied || $lied['status'] !== 'vorschlag') return;
+
+  $gefragt = array_map(static fn(array $u): int => (int) $u['id'], song_vote_voters());
+  $da = array_map(static fn(array $v): int => (int) $v['user_id'], song_votes($songId));
+  $vollzaehlig = $gefragt && !array_diff($gefragt, $da);
+
+  $frist = song_vote_deadline($songId);
+  $abgelaufen = $frist !== '' && $frist < date('Y-m-d');
+
+  if (!$vollzaehlig && !$abgelaufen) return;
+  q("UPDATE songs SET status = 'abgestimmt' WHERE id = ?", [$songId]);
+  // Die Aufgabe hat ihren Zweck erfüllt; sie offen zu lassen hieße, jemanden
+  // nach etwas zu fragen, das schon beantwortet ist.
+  foreach (song_vote_tasks($songId) as $nr) {
+    q("UPDATE tasks SET status = 'erledigt' WHERE id = ?", [$nr]);
+    item_forget('task', $nr);
+  }
+}
+
+/** Die Abstimmungsaufgaben eines Liedes (normalerweise genau eine). */
+function song_vote_tasks(int $songId): array {
+  return array_map('intval', array_column(rows(
+    "SELECT t.id FROM tasks t JOIN task_links tl ON tl.task_id = t.id
+     WHERE tl.kind = 'song' AND tl.item_id = ? AND t.is_song_vote = 1", [$songId]), 'id'));
+}
+
+/** Die Frist, die an der Abstimmungsaufgabe hängt; leer heißt „keine". */
+function song_vote_deadline(int $songId): string {
+  foreach (song_vote_tasks($songId) as $nr) {
+    $f = (string) (row('SELECT due_date FROM tasks WHERE id = ?', [$nr])['due_date'] ?? '');
+    if ($f !== '') return $f;
+  }
+  return '';
+}
+
+/**
+ * Aus einem Vorschlag eine Abstimmung machen.
+ *
+ * Gerufen wird das, wenn ein Lied zum Vorschlag WIRD — beim Anlegen, und beim
+ * Ändern nur dann, wenn es vorher keiner war. Nicht, wenn es schon einer ist:
+ * Sonst bekämen am Tag der Umstellung die sieben Vorschläge, die beide Bands
+ * mit sich herumtragen, je eine Aufgabe an alle Mitglieder — obwohl sie längst
+ * entschieden sind, im Proberaum, Monate vorher. Wer einen davon bewusst neu
+ * zur Abstimmung stellen will, setzt ihn weg und wieder zurück.
+ *
+ * Gibt es schon eine Aufgabe, bleibt sie stehen — ein zweimal abgeschicktes
+ * Formular soll keine zweite Abstimmung erzeugen.
+ */
+function song_vote_start(int $songId, int $durch): void {
+  if (song_vote_tasks($songId)) return;
+  $lied = row('SELECT title FROM songs WHERE id = ?', [$songId]);
+  if (!$lied) return;
+  q("INSERT INTO tasks (title, notes, due_date, status, created_by, required_done, is_song_vote)
+     VALUES (?, '', '', 'offen', ?, 0, 1)",
+    [str_replace('%1', (string) $lied['title'], t('song_vote_task')), $durch]);
+  $nr = (int) $GLOBALS['db']->lastInsertId();
+  q("INSERT INTO task_links (task_id, kind, item_id) VALUES (?, 'song', ?)", [$nr, $songId]);
+  foreach (song_vote_voters() as $u) {
+    q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$nr, (int) $u['id']]);
+  }
+  item_new('task', $nr, $durch);
 }
 
 function open_items_count(array $user): int {
