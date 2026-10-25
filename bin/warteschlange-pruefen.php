@@ -250,6 +250,118 @@ $pruefe('und ohne Sammelschluessel ist nie etwas "frisch"',
 q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
 q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
 
+// ------------------- 11. Erinnerung nach einer Absage (#403)
+// Eine Erinnerung, die zu oft kommt, ist schlimmer als keine: Sie geht aufs
+// Telefon, der Empfaenger hat nichts falsch gemacht, und abstellen laesst sie
+// sich nur, indem man alle abstellt. Deshalb steht hier vor allem, wann sie
+// NICHT kommen darf.
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+q("DELETE FROM push_log WHERE topic = 'erinnerung'");
+q("DELETE FROM events WHERE title LIKE 'ZZER%'");
+
+$absage = static function (string $art, string $datum, int $wer, string $wann): int {
+    q('INSERT INTO events (type, title, date, status, created_by) VALUES (?,?,?,?,1)',
+      [$art, 'ZZER ' . $art, $datum, 'bestaetigt']);
+    $nr = (int) $GLOBALS['db']->lastInsertId();
+    q('INSERT INTO attendance (event_id, user_id, status, created_at) VALUES (?,?,?,?)',
+      [$nr, $wer, 'no', $wann]);
+    return $nr;
+};
+$lange_her = date('Y-m-d H:i:s', time() - (PUSH_REMIND_AFTER_HOURS + 2) * 3600);
+$gerade = date('Y-m-d H:i:s');
+$inDerSchlange = static fn(): int
+    => (int) row("SELECT COUNT(*) n FROM push_queue WHERE topic = 'erinnerung'")['n'];
+
+// Eine Probe, vor zwei Tagen abgesagt, ohne Alternative: Das ist der Fall.
+$e1 = $absage('probe', '2027-12-20', (int) $einer['id'], $lange_her);
+push_reminders_run();
+$pruefe('Probe, lange abgesagt, ohne Alternative: erinnert', $inDerSchlange() === 1);
+
+// Ein zweites Mal wird nicht erinnert.
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+q("INSERT INTO push_log (user_id, topic, collapse_key, outcome)
+   VALUES (?, 'erinnerung', ?, 'gesendet')",
+  [(int) $einer['id'], 'erinnerung:' . $e1 . ':' . (int) $einer['id']]);
+push_reminders_run();
+$pruefe('und kein zweites Mal', $inDerSchlange() === 0);
+q("DELETE FROM push_log WHERE topic = 'erinnerung'");
+q('DELETE FROM events WHERE id = ?', [$e1]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e1]);
+
+// Gerade erst abgesagt: Das Fenster aus #401 steht ja noch auf dem Schirm.
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+$e2 = $absage('probe', '2027-12-21', (int) $einer['id'], $gerade);
+push_reminders_run();
+$pruefe('gerade erst abgesagt: noch nicht', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id = ?', [$e2]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e2]);
+
+// Ein Gig: Dessen Datum macht der Veranstalter.
+$e3 = $absage('gig', '2027-12-22', (int) $einer['id'], $lange_her);
+push_reminders_run();
+$pruefe('beim Gig gibt es nichts zu verschieben', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id = ?', [$e3]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e3]);
+
+// Mit Alternative: erledigt.
+$e4 = $absage('probe', '2027-12-23', (int) $einer['id'], $lange_her);
+q("INSERT INTO events (type, title, date, status, created_by, alternative_for)
+   VALUES ('probe', 'ZZER Ersatz', '2027-12-24', 'bestaetigt', 1, ?)", [$e4]);
+$e4b = (int) $GLOBALS['db']->lastInsertId();
+push_reminders_run();
+$pruefe('mit eingetragener Alternative: erledigt', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id IN (?,?)', [$e4, $e4b]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e4]);
+
+// Ein Termin in der Vergangenheit: da ist nichts mehr zu retten.
+$e5 = $absage('probe', date('Y-m-d', strtotime('-3 days')), (int) $einer['id'], $lange_her);
+push_reminders_run();
+$pruefe('ein vergangener Termin erinnert nicht', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id = ?', [$e5]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e5]);
+
+// Ein abgesagter Termin: niemand muss eine Alternative dafuer suchen.
+$e6 = $absage('probe', '2027-12-25', (int) $einer['id'], $lange_her);
+q("UPDATE events SET status = 'abgesagt' WHERE id = ?", [$e6]);
+push_reminders_run();
+$pruefe('ein abgesagter Termin erinnert nicht', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id = ?', [$e6]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e6]);
+
+// Wer zugesagt hat, wird nicht erinnert.
+$e7 = $absage('probe', '2027-12-26', (int) $einer['id'], $lange_her);
+q("UPDATE attendance SET status = 'yes' WHERE event_id = ?", [$e7]);
+push_reminders_run();
+$pruefe('wer zugesagt hat, wird nicht erinnert', $inDerSchlange() === 0);
+q('DELETE FROM events WHERE id = ?', [$e7]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e7]);
+
+// Das Thema laesst sich abstellen.
+$pruefe("'erinnerung' steht in PUSH_TOPICS", in_array('erinnerung', PUSH_TOPICS, true));
+$pruefe('und hat eine Beschriftung', t('push_topic_erinnerung') !== 'push_topic_erinnerung');
+$pruefe('und ist abwaehlbar',
+    !in_array('erinnerung', push_topics(['push_topics' => 'erinnerung']), true));
+
+// Der Stundentakt: zweimal hintereinander laeuft die Abfrage nur einmal.
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+$merkMarke = (string) setting('push_remind_last', '0');
+set_setting('push_remind_last', '0');
+$e8 = $absage('probe', '2027-12-27', (int) $einer['id'], $lange_her);
+push_reminders_hourly();
+$nach_erstem = $inDerSchlange();
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+push_reminders_hourly();
+$pruefe('stuendlich: der erste Lauf erinnert', $nach_erstem === 1);
+$pruefe('der zweite Lauf gleich danach nicht', $inDerSchlange() === 0);
+set_setting('push_remind_last', $merkMarke);
+q('DELETE FROM events WHERE id = ?', [$e8]);
+q('DELETE FROM attendance WHERE event_id = ?', [$e8]);
+
+q("DELETE FROM push_queue WHERE topic = 'erinnerung'");
+q("DELETE FROM push_log WHERE topic = 'erinnerung'");
+$pruefe('keine ZZER-Termine zurueckgelassen',
+    (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZER%'")['n'] === 0);
+
 $pruefe('nichts stehen gelassen', $zahl() === 0);
 
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);

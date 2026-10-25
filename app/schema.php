@@ -1988,6 +1988,17 @@ if (!column_exists('events', 'answers_complete')) {
                                                  WHERE a.event_id = e.id AND a.user_id = u.id))");
 }
 
+// Welcher Termin als Ersatz fuer welchen gedacht ist (#403).
+//
+// Festgehalten und nicht erraten: Ob jemand nach einer Absage eine Alternative
+// eingetragen hat, liesse sich aus Art, Datum und Titel auch zusammenreimen -
+// aber eine geratene Antwort taugt nicht als Grundlage fuer eine Erinnerung,
+// die jemandem aufs Telefon geht. Der Knopf aus #401 traegt die Nummer
+// ohnehin mit.
+if (!column_exists('events', 'alternative_for')) {
+  $db->exec("ALTER TABLE events ADD COLUMN alternative_for INT NULL");
+}
+
 // Abstimmung ueber Liedvorschlaege (#391).
 if (!column_exists('tasks', 'is_song_vote')) {
   $db->exec("ALTER TABLE tasks ADD COLUMN is_song_vote TINYINT(1) NOT NULL DEFAULT 0");

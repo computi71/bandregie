@@ -48,10 +48,18 @@ if (!push_available()) {
     exit(0);
 }
 
+// Einmal die Stunde nachsehen, ob jemand nach einer Absage erinnert werden
+// will (#403). Das hängt hier mit dran und hat keinen eigenen cron-Eintrag:
+// Ein zweiter Eintrag wäre eine zweite Sache, die jemand vergessen kann — und
+// bei einer selbst betriebenen Anlage ist genau das die wahrscheinlichste
+// Fehlerquelle. Die Marke in den Einstellungen sorgt dafür, dass nicht jede
+// Minute die ganze Abfrage läuft.
+$erinnert = push_reminders_hourly();
+
 $stand = push_queue_run();
 if ($laut) {
-    printf("gesendet %d, verworfen %d, später noch einmal %d%s",
-        $stand['gesendet'], $stand['verworfen'], $stand['spaeter'], PHP_EOL);
+    printf("erinnert %d, gesendet %d, verworfen %d, später noch einmal %d%s",
+        $erinnert, $stand['gesendet'], $stand['verworfen'], $stand['spaeter'], PHP_EOL);
 }
 // Die Sperre fällt mit dem Prozess; explizit, damit es jeder sieht.
 flock($sperre, LOCK_UN);
