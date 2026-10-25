@@ -1918,6 +1918,20 @@ if (!column_exists('events', 'needs_invoice')) {
   $db->exec("ALTER TABLE events ADD COLUMN needs_invoice TINYINT(1) NOT NULL DEFAULT 0");
 }
 
+// Eine Meldung, wenn alle geantwortet haben (#382). Die Marke steht am Termin
+// und nicht im Gedaechtnis des Versands: Ohne sie kaeme die Meldung bei jedem
+// Umentscheiden erneut, denn vollzaehlig bleibt vollzaehlig.
+if (!column_exists('events', 'answers_complete')) {
+  $db->exec("ALTER TABLE events ADD COLUMN answers_complete TINYINT(1) NOT NULL DEFAULT 0");
+  // Was heute schon vollzaehlig ist, gilt als gemeldet. Sonst ginge beim
+  // ersten Klick nach dem Update eine Welle alter Termine hinaus.
+  $db->exec("UPDATE events e SET answers_complete = 1
+             WHERE NOT EXISTS (SELECT 1 FROM users u
+                               WHERE u.role IN ('admin','member')
+                                 AND NOT EXISTS (SELECT 1 FROM attendance a
+                                                 WHERE a.event_id = e.id AND a.user_id = u.id))");
+}
+
 // Abstimmung ueber Liedvorschlaege (#391).
 if (!column_exists('tasks', 'is_song_vote')) {
   $db->exec("ALTER TABLE tasks ADD COLUMN is_song_vote TINYINT(1) NOT NULL DEFAULT 0");
