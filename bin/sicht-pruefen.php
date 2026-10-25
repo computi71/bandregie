@@ -131,10 +131,12 @@ event_view_data($sichtbareTermine, $aushilfe);
 $kostenTermine = $abfragen() - $vorher;
 printf("  event_view_data(): %d Abfragen bei einem Termin und %d Liedern%s",
     $kostenTermine, count($lieder), PHP_EOL);
-// Ein Termin, elf Lieder: Ohne #410 wären allein für die Lieder 33 Abfragen
-// dabei. Die Schranke liegt bewusst darunter, damit ein Rückfall auffällt.
-$pruefe('event_view_data() wächst nicht mit der Zahl der Lieder',
-    $kostenTermine < 20 + count($lieder));
+// Eine feste Schranke und KEINE, die mit der Zahl der Lieder mitwächst: Eine
+// mitwachsende Schranke hätte genau das durchgelassen, was hier gesucht wird.
+// Gemessen 31 bei einem Termin und elf Liedern; ein wieder eingebauter Aufruf
+// je Lied läge bei über sechzig und fällt sofort auf. Wer die Zahl anhebt,
+// soll dabei hinsehen, warum.
+$pruefe('event_view_data() bleibt unter fünfundvierzig Abfragen', $kostenTermine < 45);
 
 $aufraeumen();
 $pruefe('Testkonto wieder weg',
