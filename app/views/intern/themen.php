@@ -3,7 +3,18 @@
 
 <details class="card collapsible" <?= $topics ? '' : 'open' ?>>
   <summary>➕ <?= e(t('topic_new')) ?></summary>
-  <form method="post" action="/intern/themen" class="form-grid"><?= csrf_field() ?>
+  <?php // Auch der erste Beitrag geht gleich an alle (#380). Das Thema gibt es
+        // noch nicht, also wird gegen die Nummer 0 gefragt — may_see_topic()
+        // beantwortet das von selbst richtig: drinnen, wer den Chat lesen darf,
+        // draußen jedes Konto von außen, dem noch nichts geteilt wurde. ?>
+  <?php
+    $neuLeser = topic_readers_count(0, $user);
+    $neuSatz = $neuLeser === 0 ? t('topic_send_none')
+      : ($neuLeser === 1 ? t('topic_send_one')
+      : str_replace('%1', (string) $neuLeser, t('topic_send_many')));
+  ?>
+  <form method="post" action="/intern/themen" class="form-grid"
+        data-confirm-send="<?= e($neuSatz) ?>" data-confirm-who="<?= e($user['name']) ?>"><?= csrf_field() ?>
     <label class="span2"><?= e(t('title_lbl')) ?><input name="title" required placeholder="<?= e(t('topic_title_ph')) ?>"></label>
     <label class="span2"><?= e(t('topic_first_post')) ?><textarea name="text" rows="3"></textarea></label>
     <button class="btn btn-primary span2"><?= e(t('create')) ?></button>
