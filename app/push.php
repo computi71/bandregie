@@ -485,7 +485,7 @@ function push_queue_run(int $hoechstens = 200): array {
     $subs = array_values(array_filter($subs,
       static fn(array $s): bool => in_array((string) $zeile['topic'], push_topics($s), true)));
     if (!$subs) {
-      push_log($zeile, 'kein-geraet');
+      push_log($zeile, 'ohne_geraet');
       q('DELETE FROM push_queue WHERE id = ?', [$nr]);
       $verworfen++;
       continue;
