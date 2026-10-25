@@ -154,6 +154,65 @@ $pruefe('wer nichts eingestellt hat, hat es an',
     in_array('vollzaehlig', push_topics(['push_topics' => '']), true));
 $pruefe('push_to_user gibt es', function_exists('push_to_user'));
 
+// ------------- 7. Ein geaenderter Termin fragt neu (#402)
+// Die Liste EVENT_FIELDS_INVALIDATE ist der ganze Unterschied zwischen
+// "sechs Antworten weg" und "Tippfehler berichtigt". Laeuft sie weg, merkt es
+// niemand: Im einen Fall bleiben Antworten auf eine Frage stehen, die es
+// nicht mehr gibt, im anderen weckt eine berichtigte Gage sechs Telefone.
+$e5 = $termin('ZZVZ Verschoben');
+foreach (event_answerers($e5) as $u) $antwortet($e5, $u, 'yes');
+event_completion_notify($e5);
+$pruefe('vollzaehlig und gemeldet', $marke($e5) === 1);
+
+$abdruck = event_answer_fingerprint($e5);
+q('UPDATE events SET title = ?, fee = ?, notes = ? WHERE id = ?',
+  ['ZZVZ Anders benannt', '250', 'Hinweis', $e5]);
+$pruefe('Titel, Gage, Notiz: dieselbe Frage',
+    event_answer_fingerprint($e5) === $abdruck);
+
+q('UPDATE events SET date = ? WHERE id = ?', ['2027-11-21', $e5]);
+$pruefe('anderes Datum: andere Frage', event_answer_fingerprint($e5) !== $abdruck);
+$abdruck = event_answer_fingerprint($e5);
+q('UPDATE events SET time = ? WHERE id = ?', ['21:30', $e5]);
+$pruefe('andere Uhrzeit: andere Frage', event_answer_fingerprint($e5) !== $abdruck);
+$abdruck = event_answer_fingerprint($e5);
+q('UPDATE events SET location = ? WHERE id = ?', ['Eine Stunde weiter', $e5]);
+$pruefe('anderer Ort: andere Frage', event_answer_fingerprint($e5) !== $abdruck);
+
+$wieViele = count(event_answerers($e5));
+$verworfen = event_answers_reset($e5, 1);
+$pruefe('alle Antworten verworfen', $verworfen === $wieViele);
+$pruefe('und keine ist uebrig',
+    (int) row('SELECT COUNT(*) n FROM attendance WHERE event_id = ?', [$e5])['n'] === 0);
+$pruefe('die Marke faellt zurueck', $marke($e5) === 0);
+$pruefe('keine verwaiste Antwortmarke', (int) row(
+    "SELECT COUNT(*) n FROM seen_marks s WHERE s.kind = 'attendance'
+     AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.id = s.item_id)")['n'] === 0);
+$pruefe('und der Termin steht bei allen wieder offen', count(array_filter(
+    event_answerers($e5),
+    static fn(array $u): bool => in_array($e5, array_map(
+        static fn(array $o): int => (int) $o['id'], open_votes($u)), true))) === $wieViele);
+
+// Eine Ersatzanfrage ueberlebt: Wer gebeten wurde, ist weiter gebeten.
+if ($aushilfe) {
+    q('INSERT IGNORE INTO substitute_requests (event_id, user_id) VALUES (?,?)',
+      [$e5, (int) $aushilfe['id']]);
+    $antwortet($e5, $aushilfe, 'yes');
+    event_answers_reset($e5, 1);
+    $pruefe('die Ersatzanfrage bleibt stehen', (bool) row(
+        'SELECT 1 FROM substitute_requests WHERE event_id = ? AND user_id = ?',
+        [$e5, (int) $aushilfe['id']]));
+    $pruefe('nur ihre Antwort ist weg', !row(
+        'SELECT 1 FROM attendance WHERE event_id = ? AND user_id = ?',
+        [$e5, (int) $aushilfe['id']]));
+}
+
+// Ohne Antworten darf es nicht stolpern.
+$e6 = $termin('ZZVZ Unbeantwortet');
+$pruefe('ohne Antworten verwirft es nichts', event_answers_reset($e6, 1) === 0);
+$weg($e6);
+$weg($e5);
+
 // Nichts stehen lassen.
 $reste = (int) row('SELECT COUNT(*) n FROM events WHERE title LIKE ?', ['ZZVZ%'])['n'];
 $pruefe('keine Testdaten zurueckgelassen', $reste === 0);

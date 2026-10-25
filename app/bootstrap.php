@@ -4531,6 +4531,72 @@ function open_votes(array $user): array {
 }
 
 /**
+ * Felder, deren Änderung eine Zusage ungültig macht (#402).
+ *
+ * Wer zu Samstag ja gesagt hat, hat nicht zu Sonntag ja gesagt — und eine
+ * Stunde Fahrt weiter ist dieselbe Frage nicht mehr, auch am selben Abend.
+ *
+ * Alles andere steht bewusst nicht hier. Ein Tippfehler im Titel, eine
+ * nachgetragene Gage, eine geänderte Setlist: Das darf keine sechs Antworten
+ * löschen und sechs Telefone wecken. Der Stand hat seit #324 seine eigene
+ * Mitteilung und behält sie.
+ */
+const EVENT_FIELDS_INVALIDATE = ['date', 'time', 'time_meet', 'time_end', 'venue_id', 'location'];
+
+/** Die Werte, an denen sich entscheidet, ob neu gefragt werden muss. */
+function event_answer_fingerprint(int $eventId): string {
+  $ev = row('SELECT ' . implode(', ', EVENT_FIELDS_INVALIDATE) . ' FROM events WHERE id = ?', [$eventId]);
+  if (!$ev) return '';
+  $teile = [];
+  foreach (EVENT_FIELDS_INVALIDATE as $feld) $teile[] = (string) ($ev[$feld] ?? '');
+  return implode('|', $teile);
+}
+
+/**
+ * Die Antworten verwerfen und die Band noch einmal fragen (#402).
+ *
+ * Die Marken gehen mit: Eine Marke auf eine vergebene Nummer gilt beim
+ * nächsten Eintrag mit derselben Nummer als längst gesehen, und der taucht
+ * dann bei niemandem als neu auf. Derselbe Grund wie beim Löschen eines
+ * Termins, und dieselbe Reihenfolge.
+ *
+ * Die Ersatzanfragen bleiben stehen: Wer als Aushilfe gebeten wurde, ist es
+ * weiter — nur seine Antwort gilt nicht mehr, und die liegt ohnehin in
+ * attendance.
+ *
+ * answers_complete wird hier zurückgesetzt und nicht event_completion_notify()
+ * überlassen: Die Runde ist in diesem Augenblick leer, und die Marke soll das
+ * sagen, bevor irgendjemand wieder antwortet.
+ *
+ * @return int Wie viele Antworten verworfen wurden
+ */
+function event_answers_reset(int $eventId, int $durch): int {
+  $zeilen = rows('SELECT id FROM attendance WHERE event_id = ?', [$eventId]);
+  if (!$zeilen) {
+    q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
+    return 0;
+  }
+  foreach ($zeilen as $z) item_forget('attendance', (int) $z['id']);
+  q('DELETE FROM attendance WHERE event_id = ?', [$eventId]);
+  q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
+
+  // Und sagen, dass neu gefragt wird. Ohne diese Mitteilung merkt es niemand:
+  // Die Zusage verschwindet still, und wer nicht zufällig auf die Übersicht
+  // sieht, hält sich den Abend weiter frei — oder eben nicht mehr.
+  $ev = row('SELECT id, title, date, status FROM events WHERE id = ?', [$eventId]);
+  if (!$ev) return count($zeilen);
+  $titel = (string) $ev['title'];
+  $datum = (string) $ev['date'];
+  $url = event_url($ev);
+  push_notify('events', $durch, fn(string $lang): array => [
+    'title' => push_t($lang, 'push_ev_again'),
+    'body'  => $titel . ' \u00b7 ' . fmt_date_lang($datum, $lang),
+    'url'   => $url,
+  ], $eventId);
+  return count($zeilen);
+}
+
+/**
  * Wer bei diesem Termin antworten soll (#382).
  *
  * Dieselbe Frage, die open_votes() je Person stellt — nur andersherum. Beide

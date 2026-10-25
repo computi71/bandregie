@@ -227,7 +227,18 @@
     <?php else: ?>
     <details class="subsection">
       <summary>✏️ <?= e(t('edit')) ?></summary>
-      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid" data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'><?= csrf_field() ?>
+      <?php // Wer Datum, Zeit oder Ort ändert, verwirft damit alle Antworten
+            // (#402). Das sagt die Anwendung vorher — wer nur den Titel
+            // berichtigt, bekommt keine Rückfrage. Welche Felder es sind, sagt
+            // der Server; das Skript vergleicht nur ihre Werte.
+            //
+            // Die Zahl steht hier und nicht im Skript: Eine Zahl, die der
+            // Browser selbst zählt, wäre eine zweite Wahrheit. ?>
+      <?php $evAntworten = count($attendance[$ev['id']] ?? []); ?>
+      <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid"
+            data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'
+            <?php if ($evAntworten): ?>data-reset-fields='<?= e(json_encode(EVENT_FIELDS_INVALIDATE)) ?>'
+            data-reset-confirm="<?= e(str_replace('%1', (string) $evAntworten, t('ev_reset_confirm'))) ?>"<?php endif; ?>><?= csrf_field() ?>
         <label><?= e(t('ev_type')) ?>
           <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['type'] === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
         </label>
