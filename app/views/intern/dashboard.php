@@ -96,7 +96,10 @@
       // sehen durfte, bekam seine offenen Zusagen nie zu Gesicht — waehrend die
       // Zahl am Symbol sie mitzaehlte (#387). Jetzt entscheidet jeder Teil fuer
       // sich, und die Ueberschrift sagt, was tatsaechlich drinsteht. ?>
-<?php $dashAufgaben = perm_allows($user, 'aufgaben'); ?>
+<?php // Der Bereich — oder, ohne ihn, die eigenen zugewiesenen Aufgaben: Wer
+      // zuständig gemacht wurde, sieht genau die und kann sie abhaken (#393). ?>
+<?php $dashAufgabenBereich = perm_allows($user, 'aufgaben'); ?>
+<?php $dashAufgaben = $dashAufgabenBereich || $tasks; ?>
 <?php $dashTermine  = perm_allows($user, 'termine'); ?>
 <?php if ($dashAufgaben || $dashTermine): ?>
 <section class="card">
@@ -152,14 +155,22 @@
       <?php foreach ($tasks as $task): ?>
         <li>
           <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
-          <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
+          <?php // Ohne Bereichsrecht führt der Verweis auf eine Seite, die sich
+                // nicht öffnen lässt — dann steht der Titel eben ohne Verweis da. ?>
+          <?php if ($dashAufgabenBereich): ?>
+            <a href="<?= e(item_url('task', (int) $task['id'])) ?>"><strong><?= e($task['title']) ?></strong></a>
+          <?php else: ?>
+            <strong><?= e($task['title']) ?></strong>
+          <?php endif; ?>
           <?php $dashWer = $taskAssignees[(int) $task['id']] ?? []; ?>
           <?= task_assignee_chips($dashWer) ?>
           <?php if ($task['due_date']): ?><span class="muted"><?= e(t('due_until')) ?> <?= fmt_date($task['due_date']) ?></span><?php endif; ?>
         </li>
       <?php endforeach; ?>
     </ul>
-    <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
+    <?php if ($dashAufgabenBereich): ?>
+      <a class="btn" href="/intern/aufgaben"><?= e(t('dash_all_tasks')) ?></a>
+    <?php endif; ?>
   <?php else: ?>
     <?php // Ohne Aufgabenrecht fuehrt der Knopf zu den Terminen: Dort gibt es
           // alles, was hier nur in Auszuegen steht. ?>

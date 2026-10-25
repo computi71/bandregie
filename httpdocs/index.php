@@ -792,7 +792,12 @@ if (str_starts_with($path, '/intern')) {
   // ebenfalls das Leserecht; diese Routen prüfen selbst weiter.
   if ($permModule = perm_module_for($path)) {
     $permNeed = $method === 'GET' || is_self_service($path) ? 'read' : 'write';
-    if (!perm_allows($me, $permModule, $permNeed)) {
+    // Eine Ausnahme, und sie ist so eng wie moeglich: Wer an einer Aufgabe
+    // ausdruecklich zustaendig gemacht wurde, darf genau diese abhaken oder
+    // verlassen, auch ohne Recht auf den Bereich (#393). Alles andere dort
+    // bleibt zu.
+    if (!perm_allows($me, $permModule, $permNeed)
+        && !task_grant_for_assignee($path, $me)) {
       flash(t('fl_no_permission'));
       redirect('/intern');
     }
@@ -979,10 +984,12 @@ if (str_starts_with($path, '/intern')) {
     // Die offenen Aufgaben einmal holen, damit die Zuständigen dazu passen
     // (#334). Der Überblick zeigt sie ungefiltert - er ist die Liste der
     // Band, nicht die persönliche; die Zahl am Symbol zählt nur die eigenen.
+    // Ohne Bereichsrecht nur die eigenen (#393): Die Zuweisung macht genau
+    // diese eine Aufgabe sichtbar, nicht die Liste der Band.
     $dashTasks = perm_allows($me, 'aufgaben')
       ? rows("SELECT t.* FROM tasks t WHERE t.status='offen'
               ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date LIMIT 8")
-      : [];
+      : tasks_mine($me);
     view('intern/dashboard', $kartenDaten + [
       'title' => t('inav_intern'),
       'welcome' => dashboard_welcome(),

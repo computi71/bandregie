@@ -1393,6 +1393,43 @@ const SELF_SERVICE_PATHS = [
   '~^/intern/kasse/\d+/delete$~',
 ];
 
+/**
+ * Ist dieses Konto an dieser Aufgabe zuständig? (#393)
+ *
+ * Zuständig zu sein ist eine Zuweisung von Hand: Jemand hat ausdrücklich
+ * gesagt, dass diese Person das tun soll. Dann muss sie es auch sehen und
+ * abhaken können — vorher konnte eine Aushilfe als Zuständige eingetragen
+ * werden und die Aufgabe nirgends finden, während „2 von 3“ für immer auf
+ * sie wartete.
+ */
+function task_is_assignee(int $taskId, array $user): bool {
+  return (bool) row('SELECT 1 FROM task_assignees WHERE task_id = ? AND user_id = ?',
+                    [$taskId, (int) $user['id']]);
+}
+
+/**
+ * Die eigenen offenen Aufgaben — das, was ein Konto ohne Aufgabenrecht
+ * trotzdem zu sehen bekommt (#393).
+ */
+function tasks_mine(array $user, int $limit = 8): array {
+  return rows("SELECT t.* FROM tasks t JOIN task_assignees ta ON ta.task_id = t.id
+               WHERE ta.user_id = ? AND t.status = 'offen'
+               ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date
+               LIMIT $limit", [(int) $user['id']]);
+}
+
+/**
+ * Darf dieses Konto diesen Pfad trotz fehlendem Bereichsrecht gehen? (#393)
+ *
+ * Genau zwei Wege, und beide fassen nur die eigene Zeile an einer Aufgabe an,
+ * an der dieses Konto zuständig ist. Nichts sonst aus dem Bereich wird damit
+ * offen — die Liste bleibt zu, das Ändern bleibt zu.
+ */
+function task_grant_for_assignee(string $path, array $user): bool {
+  if (!preg_match('~^/intern/aufgaben/(\d+)/(toggle|verlassen)$~', $path, $m)) return false;
+  return task_is_assignee((int) $m[1], $user);
+}
+
 function is_self_service(string $path): bool {
   foreach (SELF_SERVICE_PATHS as $pattern) {
     if (preg_match($pattern, $path)) return true;
@@ -4874,12 +4911,14 @@ function open_items_count(array $user): int {
   // Zusagen auch für jemanden, der den Bereich gar nicht sehen darf. Dann stand
   // am Symbol eine Zahl, und wer darauf tippte, fand nichts — genau die Sorte
   // Zahl, die das Symbol unglaubwürdig macht.
-  $offen = perm_allows($user, 'aufgaben')
-    ? (int) row("SELECT COUNT(*) c FROM tasks t
-                 JOIN task_assignees ta ON ta.task_id = t.id
-                 WHERE ta.user_id = ? AND t.status = 'offen'",
-                [(int) $user['id']])['c']
-    : 0;
+  // Ohne Rechtepruefung, seit die eigene Aufgabe auch ohne Bereichsrecht zu
+  // sehen und abzuhaken ist (#393). Der Grundsatz aus #387 bleibt derselbe -
+  // gezaehlt wird nur, was man auch oeffnen kann -, nur ist die Antwort fuer
+  // die eigenen Aufgaben seitdem "immer".
+  $offen = (int) row("SELECT COUNT(*) c FROM tasks t
+                      JOIN task_assignees ta ON ta.task_id = t.id
+                      WHERE ta.user_id = ? AND t.status = 'offen'",
+                     [(int) $user['id']])['c'];
   $zusagen = perm_allows($user, 'termine') ? count(open_votes($user)) : 0;
   $chat = perm_allows($user, 'themen') ? array_sum(topic_unread($user)) : 0;
   return $offen + $zusagen + $chat;
