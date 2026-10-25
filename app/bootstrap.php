@@ -526,7 +526,9 @@ const OFFLINE_AREAS = ['termine', 'setlists', 'songs', 'noten', 'rider', 'kanael
  */
 const DIGEST_FREQ = ['aus' => 0, 'taeglich' => 1, '2tage' => 2, 'woche' => 7];
 
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'photos', 'post', 'topics'];
+// 'vollzaehlig' ist abschaltbar wie jedes andere (#382): Eine Mitteilung, die
+// sich nicht abstellen laesst, ist der Grund, warum Leute alle abstellen.
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
 /**
@@ -4517,6 +4519,102 @@ function open_votes(array $user): array {
                  AND NOT EXISTS (SELECT 1 FROM attendance a
                                  WHERE a.event_id = e.id AND a.user_id = ?)"
               . $nurDiese . ' ORDER BY e.date, e.time', $werte);
+}
+
+/**
+ * Wer bei diesem Termin antworten soll (#382).
+ *
+ * Dieselbe Frage, die open_votes() je Person stellt — nur andersherum. Beide
+ * müssen dieselbe Antwort geben, sonst wartet die Meldung auf jemanden, der
+ * den Termin gar nicht auf seiner Liste hat.
+ *
+ * Draußen bleiben: Gäste und Bookingagenten (sie antworten nicht), wer Termine
+ * nicht lesen darf, und eine Aushilfe, die für genau diesen Termin nicht
+ * angefragt wurde.
+ *
+ * @return array<int, array> Zeilen aus users
+ */
+function event_answerers(int $eventId): array {
+  $leute = [];
+  foreach (rows('SELECT * FROM users') as $u) {
+    if (is_outsider($u)) continue;
+    if (!perm_allows($u, 'termine')) continue;
+    $erlaubt = events_to_answer($u);
+    if ($erlaubt !== null && !in_array($eventId, $erlaubt, true)) continue;
+    if (!may_see_event($u, $eventId)) continue;
+    $leute[] = $u;
+  }
+  return $leute;
+}
+
+/** Haben alle geantwortet, die antworten sollen? */
+function event_answers_complete(int $eventId): bool {
+  $leute = event_answerers($eventId);
+  if (!$leute) return false;
+  $da = array_map('intval', array_column(
+    rows('SELECT user_id FROM attendance WHERE event_id = ?', [$eventId]), 'user_id'));
+  foreach ($leute as $u) {
+    if (!in_array((int) $u['id'], $da, true)) return false;
+  }
+  return true;
+}
+
+/**
+ * Eine Meldung an den, der den Termin eingetragen hat, sobald alle geantwortet
+ * haben (#382).
+ *
+ * EINE Meldung, egal wie es ausgeht. „Alle sechs dabei" und „fünf dabei, Andi
+ * nicht" sind beide eine Auskunft; nur bei lauter Zusagen zu melden hieße,
+ * ausgerechnet den Termin zu verschweigen, der platzt.
+ *
+ * Die Marke am Termin verhindert die zweite Meldung: Wer von „ja" auf „nein"
+ * und zurück wechselt, lässt die Runde vollzählig — eine Antwort bleibt eine
+ * Antwort. Erst wenn jemand dazukommt, wird sie wieder unvollständig, und dann
+ * ist die nächste Vollzähligkeit eine echte Neuigkeit und darf melden.
+ *
+ * Auch an den, der selbst zuletzt geantwortet hat. In einer kleinen Band ist
+ * das der Normalfall, und die Meldung trägt ja mehr als „fertig": Sie bringt
+ * das Ergebnis mit, das man sonst selbst zusammenzählen müsste.
+ */
+function event_completion_notify(int $eventId): void {
+  $ev = row('SELECT id, title, date, status, created_by, answers_complete
+             FROM events WHERE id = ?', [$eventId]);
+  if (!$ev) return;
+
+  if (!event_answers_complete($eventId)) {
+    if ((int) $ev['answers_complete'] === 1) {
+      q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
+    }
+    return;
+  }
+  if ((int) $ev['answers_complete'] === 1) return;   // schon gemeldet
+  q('UPDATE events SET answers_complete = 1 WHERE id = ?', [$eventId]);
+
+  $wer = (int) ($ev['created_by'] ?? 0);
+  if (!$wer) return;                                  // Termin ohne Eintrager
+
+  $stand = ['yes' => 0, 'maybe' => 0, 'no' => 0];
+  $abgesagt = [];
+  foreach (rows('SELECT a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id
+                 WHERE a.event_id = ? ORDER BY u.name', [$eventId]) as $z) {
+    if (isset($stand[$z['status']])) $stand[$z['status']]++;
+    if ($z['status'] === 'no') $abgesagt[] = (string) $z['name'];
+  }
+  $titel = (string) $ev['title'];
+  $url = event_url($ev);
+  push_to_user($wer, 'vollzaehlig', function (string $lang) use ($titel, $stand, $abgesagt, $url): array {
+    $text = str_replace(['%1', '%2', '%3'],
+      [(string) $stand['yes'], (string) $stand['maybe'], (string) $stand['no']],
+      push_t($lang, 'push_ev_complete_body'));
+    // Wer abgesagt hat, steht mit Namen da: Das ist die Zeile, wegen der man
+    // die Meldung überhaupt aufmacht.
+    if ($abgesagt) $text .= ' — ' . implode(', ', $abgesagt);
+    return [
+      'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
+      'body'  => $text,
+      'url'   => $url,
+    ];
+  });
 }
 
 /**

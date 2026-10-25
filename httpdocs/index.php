@@ -1208,6 +1208,10 @@ if (str_starts_with($path, '/intern')) {
         'body' => '',
         'url' => $pushUrl,
       ], (int) $id);
+      // Sind damit alle durch, bekommt der Eintrager eine Meldung (#382) —
+      // eine einzige, mit dem Ergebnis darin. Steht hier hinter dem Schreiben,
+      // denn gezählt wird, was in der Datenbank steht.
+      event_completion_notify((int) $id);
       // Sagt jemand ab, rückt der nächste Ersatz nach — sofern die Band das so
       // eingestellt hat. Sagt ein Ersatz ab, geht die Anfrage an den nächsten
       // für dieselbe Lücke weiter.
