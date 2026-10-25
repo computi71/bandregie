@@ -337,6 +337,41 @@ function push_t(string $lang, string $key): string {
  * Gesendet wird erst NACH der Antwort (fastcgi_finish_request): niemand wartet
  * beim Speichern eines Kommentars auf die Push-Dienste von Google und Apple.
  */
+/**
+ * Eine Mitteilung an genau eine Person (#382).
+ *
+ * push_notify() ist eine Rundsendung: alle Abonnenten eines Themas, minus
+ * einen. Eine Antwort auf die eigene Frage hat eine andere Gestalt und braucht
+ * deshalb einen eigenen Weg — nicht „alle außer dir", sondern „nur du".
+ *
+ * Das Thema wird trotzdem geachtet: Wer es abgewählt hat, bekommt nichts. Eine
+ * Mitteilung, die sich nicht abstellen lässt, ist genau der Grund, warum Leute
+ * irgendwann alle abstellen.
+ *
+ * @param callable(string): array $build Sprache => ['title','body','url']
+ */
+function push_to_user(int $userId, string $topic, callable $build): void {
+  if (!push_available()) return;
+  $subs = rows("SELECT s.id AS sub_id, s.endpoint, s.p256dh, s.auth,
+                       u.id, u.role, u.substitute_for, u.pref_lang, u.push_topics
+                FROM push_subscriptions s JOIN users u ON u.id = s.user_id
+                WHERE u.id = ?", [$userId]);
+  $subs = array_values(array_filter($subs,
+    fn(array $s): bool => in_array($topic, push_topics($s), true)));
+  if (!$subs) return;
+  register_shutdown_function(function () use ($subs, $build): void {
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    // Dieselbe Falle wie in push_notify() (#374): PHP haelt die Sitzungsdatei
+    // bis zum Skriptende gesperrt, und ohne diese Zeile stellt sich jede
+    // weitere Anfrage desselben Browsers hinter den Versand.
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    $lang = array_key_exists($subs[0]['pref_lang'] ?? '', LANGS) ? $subs[0]['pref_lang'] : 'de';
+    $inhalt = $build($lang);
+    $json = json_encode($inhalt, JSON_UNESCAPED_UNICODE);
+    foreach ($subs as $sub) push_send_one($sub, (string) $json);
+  });
+}
+
 function push_notify(string $topic, int $exceptUserId, callable $build, int $eventId = 0,
                      int $topicId = 0): void {
   if (!push_available()) return;
