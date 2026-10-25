@@ -1,0 +1,10 @@
+-- Wer zuständig gemacht wird, sieht genau diese Aufgabe (#393).
+SET NAMES utf8mb4;
+
+INSERT INTO translations (lang, tkey, value) VALUES
+('en','help_aufgaben_7','Anybody can be made responsible — including a substitute who otherwise never sees the tasks area. They then find their task on the overview and can tick it off there; the rest of the area stays closed to them, so they see neither the list nor anyone else''s tasks. That way you can give somebody a job — “bring the cable drum” — without opening everything to them.'),
+('nl','help_aufgaben_7','Verantwoordelijk maken kun je iedereen — ook een invaller die het takengedeelte verder helemaal niet ziet. Hij vindt zijn taak dan op het overzicht en kan hem daar afvinken; de rest van het gedeelte blijft voor hem dicht, hij ziet dus noch de lijst noch andermans taken. Zo kun je iemand iets opdragen — „haspel meenemen” — zonder hem meteen alles te openen.'),
+('fr','help_aufgaben_7','N’importe qui peut être rendu responsable — y compris un remplaçant qui ne voit sinon pas du tout la partie tâches. Il trouve alors sa tâche sur l’aperçu et peut l’y cocher ; le reste de la partie lui reste fermé, il ne voit donc ni la liste ni les tâches des autres. On peut ainsi confier quelque chose à quelqu’un — « apporter l’enrouleur » — sans tout lui ouvrir.'),
+('es','help_aufgaben_7','Responsable se puede hacer a cualquiera — también a un sustituto que por lo demás no ve el área de tareas. Entonces encuentra su tarea en el resumen y puede marcarla allí; el resto del área le sigue cerrado, así que no ve ni la lista ni las tareas ajenas. De ese modo se le puede encargar algo — «traer el enrollacables» — sin abrirle todo.'),
+('it','help_aufgaben_7','Responsabile si può rendere chiunque — anche un sostituto che altrimenti non vede affatto l’area dei compiti. Trova allora il suo compito nel riepilogo e può spuntarlo lì; il resto dell’area gli resta chiuso, quindi non vede né l’elenco né i compiti altrui. Così si può affidare qualcosa a qualcuno — «portare l’avvolgicavo» — senza aprirgli tutto.')
+ON DUPLICATE KEY UPDATE value = value;
