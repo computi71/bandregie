@@ -174,11 +174,34 @@ if (count($darf) >= 2) {
 }
 
 if ($darfNicht) {
+    // Seit #393 zaehlt die eigene Aufgabe auch ohne Bereichsrecht mit - denn
+    // seitdem ist sie auch ohne Bereichsrecht zu sehen und abzuhaken. Der
+    // Grundsatz aus #387 ist derselbe geblieben: Gezaehlt wird, was man
+    // oeffnen kann. Nur die Antwort darauf hat sich geaendert.
     $ohne    = $darfNicht[0];
     $vorOhne = open_items_count($ohne);
     $t9b     = $aufgabe([$ohne], 1);
-    $pruefe('ohne Recht auf Aufgaben zaehlt die eigene Aufgabe nicht',
-        open_items_count($ohne) === $vorOhne);
+    $pruefe('ohne Bereichsrecht zaehlt die eigene Aufgabe mit',
+        open_items_count($ohne) === $vorOhne + 1);
+    $pruefe('und sie ist auch zustaendig daran', task_is_assignee($t9b, $ohne));
+    $pruefe('tasks_mine liefert sie', in_array($t9b,
+        array_map(static fn(array $t): int => (int) $t['id'], tasks_mine($ohne)), true));
+    $pruefe('abhaken ist ihr erlaubt',
+        task_grant_for_assignee("/intern/aufgaben/$t9b/toggle", $ohne));
+    $pruefe('verlassen auch',
+        task_grant_for_assignee("/intern/aufgaben/$t9b/verlassen", $ohne));
+    $pruefe('aendern aber nicht',
+        !task_grant_for_assignee("/intern/aufgaben/$t9b/update", $ohne));
+    $pruefe('und loeschen schon gar nicht',
+        !task_grant_for_assignee("/intern/aufgaben/$t9b/delete", $ohne));
+
+    // Eine Aufgabe, an der sie NICHT zustaendig ist, bleibt ihr verschlossen.
+    $t9c = $aufgabe([$A], 1);
+    $pruefe('eine fremde Aufgabe darf sie nicht abhaken',
+        !task_grant_for_assignee("/intern/aufgaben/$t9c/toggle", $ohne));
+    $pruefe('und tasks_mine nennt sie nicht', !in_array($t9c,
+        array_map(static fn(array $t): int => (int) $t['id'], tasks_mine($ohne)), true));
+    $weg($t9c);
     $weg($t9b);
 } else {
     echo 'kein Konto ohne Recht auf Aufgaben - Gegenprobe uebersprungen', PHP_EOL;
