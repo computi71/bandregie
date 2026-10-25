@@ -1469,6 +1469,18 @@ if (str_starts_with($path, '/intern')) {
       if ($played) {
         flash(t('fl_song_played'));
       } else {
+        // Die Abstimmung geht mit (#391). Eine verwaiste Verknuepfung wird
+        // beim Lesen uebersprungen und waere harmlos - eine OFFENE Aufgabe an
+        // allen Mitgliedern ist das nicht: Sie steht in jeder Uebersicht, sie
+        // zaehlt an der Zahl am Symbol mit, und erledigen laesst sie sich
+        // nicht, weil es nichts mehr gibt, worueber man abstimmen koennte.
+        foreach (song_vote_tasks((int) $m[1]) as $svTask) {
+          q('DELETE FROM task_links WHERE task_id = ?', [$svTask]);
+          q('DELETE FROM task_assignees WHERE task_id = ?', [$svTask]);
+          q('DELETE FROM tasks WHERE id = ?', [$svTask]);
+          item_forget('task', $svTask);
+        }
+        q('DELETE FROM song_votes WHERE song_id = ?', [$m[1]]);
         q('DELETE FROM songs WHERE id = ?', [$m[1]]);
         item_forget('song', (int) $m[1]);
         q('DELETE FROM setlist_songs WHERE song_id = ?', [$m[1]]);

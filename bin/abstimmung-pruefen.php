@@ -180,6 +180,23 @@ $pruefe('es steht hinter dem Vorschlag',
     array_search('abgestimmt', array_keys(SONG_STATUS), true)
     === array_search('vorschlag', array_keys(SONG_STATUS), true) + 1);
 
+// ------------- 9. Ein geloeschtes Lied laesst nichts Offenes zurueck
+// Das ist genau einmal passiert, beim Bauen: Lied weg, Aufgabe blieb - offen,
+// an allen acht Mitgliedern, zeigend auf nichts. Erledigen liess sie sich
+// nicht, denn es gab nichts mehr, worueber man abstimmen konnte.
+$v7 = $vorschlag('ZZAB Zu loeschen');
+$a7 = song_vote_tasks($v7)[0];
+$weg($v7);
+$pruefe('mit dem Lied geht die Abstimmungsaufgabe',
+    !row('SELECT id FROM tasks WHERE id = ?', [$a7]));
+$pruefe('und ihre Zustaendigen',
+    (int) row('SELECT COUNT(*) n FROM task_assignees WHERE task_id = ?', [$a7])['n'] === 0);
+$pruefe('keine Abstimmungsaufgabe ohne Lied',
+    (int) row("SELECT COUNT(*) n FROM tasks t
+               WHERE t.is_song_vote = 1 AND NOT EXISTS (
+                 SELECT 1 FROM task_links tl JOIN songs s ON s.id = tl.item_id
+                 WHERE tl.task_id = t.id AND tl.kind = 'song')")['n'] === 0);
+
 // Nichts stehen lassen.
 set_setting('song_vote_scope', $merkUmfang);
 $reste = (int) row('SELECT COUNT(*) n FROM songs WHERE title LIKE ?', ['ZZAB%'])['n'];
