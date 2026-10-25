@@ -45,19 +45,14 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ON DUPLICATE KEY UPDATE value = value;
 
 INSERT INTO translations (lang, tkey, value) VALUES
-('en','about_settings_hint','Version, license, source code and who is behind it.'),('en','about_open','Open'),
 ('en','set_copyright','Copyright line in the footer'),
 ('en','set_copyright_hint','Leave empty for "© year band name" — the year is filled in automatically.'),
-('nl','about_settings_hint','Versie, licentie, broncode en wie erachter zit.'),('nl','about_open','Openen'),
 ('nl','set_copyright','Copyrightregel in de voettekst'),
 ('nl','set_copyright_hint','Leeg laten voor "© jaar bandnaam" — het jaar wordt automatisch ingevuld.'),
-('fr','about_settings_hint','Version, licence, code source et qui est derrière.'),('fr','about_open','Ouvrir'),
 ('fr','set_copyright','Ligne de copyright dans le pied de page'),
 ('fr','set_copyright_hint','Laisser vide pour « © année nom du groupe » — l''année est ajoutée automatiquement.'),
-('es','about_settings_hint','Versión, licencia, código fuente y quién está detrás.'),('es','about_open','Abrir'),
 ('es','set_copyright','Línea de copyright en el pie'),
 ('es','set_copyright_hint','Déjalo vacío para "© año nombre de la banda" — el año se rellena solo.'),
-('it','about_settings_hint','Versione, licenza, codice sorgente e chi c''è dietro.'),('it','about_open','Apri'),
 ('it','set_copyright','Riga di copyright nel piè di pagina'),
 ('it','set_copyright_hint','Lascia vuoto per "© anno nome della band" — l''anno viene inserito automaticamente.')
 ON DUPLICATE KEY UPDATE value = value;

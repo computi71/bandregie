@@ -39,7 +39,6 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('en','song_chords_more','Other musicians have chords — switch via the dropdown in the teleprompter.'),
 ('en','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nText of the first line …'),
 ('en','song_chords_hint','For chords and notes, the way you would jot them down by hand. Fixed character width: what lines up stays lined up. Sections in square brackets, as in the lyrics.'),
-('en','song_chords_none','No cheat sheet exists for this song.'),
 ('nl','stage_open','Podium'),
 ('nl','stage_play','Start / pauze'),
 ('nl','stage_slower','Langzamer'),
@@ -72,7 +71,6 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('nl','song_chords_more','Andere muzikanten hebben akkoorden — in de teleprompter te wisselen via het menu.'),
 ('nl','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nTekst van de eerste regel …'),
 ('nl','song_chords_hint','Voor akkoorden en notities zoals je ze met de hand zou opschrijven. Vaste tekenbreedte: wat onder elkaar staat, blijft onder elkaar. Secties tussen rechte haken, net als bij de tekst.'),
-('nl','song_chords_none','Voor dit nummer is geen spiekbriefje aangemaakt.'),
 ('fr','stage_open','Scène'),
 ('fr','stage_play','Lecture / pause'),
 ('fr','stage_slower','Plus lent'),
@@ -105,7 +103,6 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('fr','song_chords_more','D''autres musiciens ont des accords — à changer dans le téléprompteur via le menu.'),
 ('fr','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nTexte de la première ligne …'),
 ('fr','song_chords_hint','Pour les accords et les notes, comme on les écrirait à la main. Largeur fixe : ce qui est aligné reste aligné. Sections entre crochets, comme pour les paroles.'),
-('fr','song_chords_none','Aucun pense-bête pour cette chanson.'),
 ('es','stage_open','Escenario'),
 ('es','stage_play','Inicio / pausa'),
 ('es','stage_slower','Más lento'),
@@ -138,7 +135,6 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('es','song_chords_more','Otros músicos tienen acordes — se cambia en el teleprompter con el menú.'),
 ('es','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nTexto de la primera línea …'),
 ('es','song_chords_hint','Para acordes y notas, como se apuntarían a mano. Ancho fijo: lo que está alineado se mantiene alineado. Secciones entre corchetes, igual que en la letra.'),
-('es','song_chords_none','Esta canción no tiene chuleta.'),
 ('it','stage_open','Palco'),
 ('it','stage_play','Avvia / pausa'),
 ('it','stage_slower','Più lento'),
@@ -170,5 +166,4 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('it','song_chords_copy','Copia nel mio'),
 ('it','song_chords_more','Altri musicisti hanno accordi — nel teleprompter si cambia dal menu.'),
 ('it','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nTesto della prima riga …'),
-('it','song_chords_hint','Per accordi e appunti, come si scriverebbero a mano. Larghezza fissa: ciò che è allineato resta allineato. Sezioni tra parentesi quadre, come nel testo.'),
-('it','song_chords_none','Per questo brano non esiste un foglietto.');
+('it','song_chords_hint','Per accordi e appunti, come si scriverebbero a mano. Larghezza fissa: ciò che è allineato resta allineato. Sezioni tra parentesi quadre, come nel testo.')
