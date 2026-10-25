@@ -168,6 +168,70 @@ $quelle = (string) file_get_contents($basis . '/app/push.php');
 $pruefe('push.php haelt keinen Arbeiter mehr fest',
     !str_contains($quelle, 'register_shutdown_function'));
 
+// ------------------- 9. Das Versandprotokoll (#405)
+// Die Frage "bekommt der ueberhaupt Mitteilungen?" kostete einen Vormittag
+// Erschliessungsarbeit. Jetzt steht sie in einer Tabelle - und diese Pruefung
+// passt darauf auf, dass auch wirklich jeder Ausgang dort landet.
+q("DELETE FROM push_log WHERE topic = 'events' AND collapse_key LIKE 'zzq%'");
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+$protokoll = static fn(): array
+    => rows("SELECT * FROM push_log WHERE collapse_key LIKE 'zzq%' ORDER BY id");
+
+// Ohne Geraet: muss als solcher vermerkt werden und nicht spurlos verschwinden.
+if ($ohneGeraet) {
+    push_queue_add('events', [$ohneGeraet], $bau, 'zzq:log1', $viele);
+    q("UPDATE push_queue SET send_after = NOW() WHERE collapse_key = 'zzq:log1'");
+    push_queue_run();
+    $zeilen = $protokoll();
+    $pruefe('ohne Geraet steht im Protokoll', count($zeilen) === 1);
+    $pruefe('und zwar als "ohne_geraet"',
+        ($zeilen[0]['outcome'] ?? '') === 'ohne_geraet');
+    $pruefe('mit Empfaenger und Thema',
+        (int) ($zeilen[0]['user_id'] ?? 0) === (int) $ohneGeraet['id']
+        && ($zeilen[0]['topic'] ?? '') === 'events');
+    $pruefe('aber ohne Wortlaut', !array_key_exists('payload', $zeilen[0] ?? []));
+}
+
+// Zu alt: ebenfalls vermerkt.
+q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
+push_queue_add('events', [$einer], $bau, 'zzq:log2', $viele);
+q("UPDATE push_queue SET created_at = DATE_SUB(NOW(), INTERVAL ? HOUR) WHERE collapse_key = 'zzq:log2'",
+  [PUSH_QUEUE_TTL_HOURS + 1]);
+push_queue_run();
+$zeilen = $protokoll();
+$pruefe('eine abgelaufene Zeile wird vermerkt',
+    count($zeilen) === 1 && ($zeilen[0]['outcome'] ?? '') === 'abgelaufen');
+
+// ------------------- 10. Erste sofort, der Rest gesammelt (#404)
+// Das Sammeln kostete sonst JEDE Antwort fuenf Minuten, auch die einzelne.
+q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+push_queue_add('events', [$einer], $bau, 'zzq:sofort', $viele);
+$erste = row("SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:sofort'");
+$pruefe('ohne frischen Versand geht die erste sofort',
+    strtotime((string) $erste['send_after']) <= time() + 2);
+
+// Jetzt so tun, als waere gerade eine hinausgegangen.
+q("DELETE FROM push_queue WHERE collapse_key = 'zzq:sofort'");
+q("INSERT INTO push_log (user_id, topic, collapse_key, outcome)
+   VALUES (?, 'events', 'zzq:sofort', 'gesendet')", [(int) $einer['id']]);
+$pruefe('push_recently_sent erkennt das',
+    push_recently_sent('zzq:sofort', PUSH_QUEUE_COLLAPSE));
+push_queue_add('events', [$einer], $bau, 'zzq:sofort', $viele);
+$zweite = row("SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:sofort'");
+$pruefe('die naechste wartet dann die Sammelfrist ab',
+    strtotime((string) $zweite['send_after']) > time() + 60);
+
+// Ein alter Versand zaehlt nicht mehr.
+q("UPDATE push_log SET created_at = DATE_SUB(NOW(), INTERVAL 1 HOUR) WHERE collapse_key = 'zzq:sofort'");
+$pruefe('ein alter Versand zaehlt nicht mehr',
+    !push_recently_sent('zzq:sofort', PUSH_QUEUE_COLLAPSE));
+$pruefe('und ohne Sammelschluessel ist nie etwas "frisch"',
+    !push_recently_sent('', PUSH_QUEUE_COLLAPSE));
+
+q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+
 $pruefe('nichts stehen gelassen', $zahl() === 0);
 
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
