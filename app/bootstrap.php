@@ -2081,12 +2081,31 @@ function may_see_topic(?array $user, int $topicId): bool {
  * Der Verfasser zählt nicht mit. Er weiß, was er schreibt.
  */
 function topic_readers_count(int $topicId, array $autor): int {
-  $n = 0;
-  foreach (rows('SELECT * FROM users') as $u) {
-    if ((int) $u['id'] === (int) $autor['id']) continue;
-    if (may_see_topic($u, $topicId)) $n++;
+  // Dieselbe Regel wie may_see_topic(), nur andersherum gelesen (#408): Wer
+  // den Bereich lesen darf und nicht von aussen kommt, sieht jedes Thema; ein
+  // Konto von aussen nur das, was ihm geteilt wurde oder was es selbst
+  // angelegt hat.
+  //
+  // Die Schleife ueber die Konten bleibt - das Recht haengt an einer Vorlage
+  // UND an Rechtezeilen, und das in SQL nachzubauen hiesse, dieselbe Regel ein
+  // zweites Mal zu pflegen. Weg faellt der teure Teil: may_see_topic() rief je
+  // Konto visible_topic_ids() mit zwei weiteren Abfragen auf. perm_of() haelt
+  // seinen Stand je Prozess, es bleibt also eine Abfrage je Konto, einmal pro
+  // Seitenaufruf. Bei dreissig Konten sind das dreissig statt neunzig.
+  $ich = (int) $autor['id'];
+  $drinnen = 0;
+  foreach (rows('SELECT id, role FROM users') as $u) {
+    if ((int) $u['id'] === $ich) continue;
+    if (is_outsider($u)) continue;
+    if (perm_allows($u, 'themen')) $drinnen++;
   }
-  return $n;
+  $draussen = (int) row(
+    'SELECT COUNT(DISTINCT u.id) n FROM users u
+     WHERE u.id <> ? AND u.role = ?
+       AND (EXISTS (SELECT 1 FROM topic_access a WHERE a.topic_id = ? AND a.user_id = u.id)
+            OR EXISTS (SELECT 1 FROM topics t WHERE t.id = ? AND t.created_by = u.id))',
+    [$ich, 'booking', $topicId, $topicId])['n'];
+  return $drinnen + $draussen;
 }
 
 /**
