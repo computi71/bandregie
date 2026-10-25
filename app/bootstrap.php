@@ -1357,6 +1357,25 @@ function visible_clause(?array $ids, string $column = 'id'): array {
   return [" AND $column IN (" . implode(',', array_fill(0, count($ids), '?')) . ')', $ids];
 }
 
+/**
+ * Aus einer gelesenen Liste die Zeilen behalten, die dieses Konto sehen darf.
+ *
+ * Dasselbe Ergebnis wie may_see_*() je Zeile — nur wird die Liste der
+ * sichtbaren Nummern einmal gebaut statt einmal je Zeile (#410). Für
+ * Mitglieder und Verwaltung kostet beides nichts, weil visible_*_ids() dort
+ * ohne Abfrage null liefert. Für eine Aushilfe waren es drei Abfragen je
+ * Zeile: bei neunundfünfzig Liedern also hundertsiebenundsiebzig statt drei.
+ *
+ * Absichtlich kein stiller Zwischenspeicher in may_see_*(): Wer eine Schleife
+ * schreibt, sieht seine Schleife; einen Zwischenspeicher sieht niemand. Genau
+ * das hat bei #398 eine Messung zum Lügen gebracht.
+ */
+function visible_rows(array $rows, ?array $ids, string $column = 'id'): array {
+  if ($ids === null) return $rows;
+  return array_values(array_filter($rows,
+    static fn(array $r): bool => in_array((int) $r[$column], $ids, true)));
+}
+
 /** Zu welchem Bereich gehört ein Pfad? null heißt: für alle Angemeldeten offen. */
 function perm_module_for(string $path): ?string {
   // Dateianhänge folgen dem Bereich der Sache, an der sie hängen — sonst
@@ -4955,21 +4974,23 @@ function task_links_map(array $taskIds, ?array $user): array {
  */
 function task_linkable(?array $user): array {
   $gruppen = [];
+  // Je Bereich eine Sichtbarkeitsfrage, nicht eine je Zeile (#410): Bei
+  // hundert Terminen waren das hundert Abfragen für eine Aushilfe.
   if (perm_allows($user, 'termine')) {
-    foreach (rows('SELECT id, title, date FROM events ORDER BY date DESC LIMIT 100') as $e) {
-      if (!may_see_event($user, (int) $e['id'])) continue;
+    foreach (visible_rows(rows('SELECT id, title, date FROM events ORDER BY date DESC LIMIT 100'),
+                          visible_event_ids($user)) as $e) {
       $gruppen['event'][] = ['id' => (int) $e['id'], 'label' => $e['title'] . ' - ' . fmt_date($e['date'])];
     }
   }
   if (perm_allows($user, 'songs')) {
-    foreach (rows('SELECT id, title FROM songs ORDER BY title') as $so) {
-      if (!may_see_song($user, (int) $so['id'])) continue;
+    foreach (visible_rows(rows('SELECT id, title FROM songs ORDER BY title'),
+                          visible_song_ids($user)) as $so) {
       $gruppen['song'][] = ['id' => (int) $so['id'], 'label' => $so['title']];
     }
   }
   if (perm_allows($user, 'setlists')) {
-    foreach (rows('SELECT id, name FROM setlists ORDER BY name') as $sl) {
-      if (!may_see_setlist($user, (int) $sl['id'])) continue;
+    foreach (visible_rows(rows('SELECT id, name FROM setlists ORDER BY name'),
+                          visible_setlist_ids($user)) as $sl) {
       $gruppen['setlist'][] = ['id' => (int) $sl['id'], 'label' => $sl['name']];
     }
   }
@@ -5795,13 +5816,11 @@ function event_view_data(array $events, array $me): array {
   // Kopien heißt zwei Stellen, die beim nächsten Mal gleichzeitig stimmen
   // müssten.
   //
-  // may_see_song() je Lied und nicht als eine Abfrage: Für alle außer einer
-  // Aushilfe antwortet es ohne jede Abfrage, und für eine Aushilfe sind es
-  // wenige Lieder. Gemessen 1 ms bei elf Stücken.
+  // Die Frage nach den sichtbaren Liedern einmal stellen, nicht je Lied
+  // (#410). Vorher stand hier may_see_song() in einem Filter — das sieht
+  // billig aus, baut aber je Lied die Liste neu aus der Datenbank.
   $sichtbareLieder = perm_allows($me, 'songs')
-    ? array_values(array_filter(
-        rows('SELECT id, title FROM songs ORDER BY title'),
-        static fn(array $s): bool => may_see_song($me, (int) $s['id'])))
+    ? visible_rows(rows('SELECT id, title FROM songs ORDER BY title'), visible_song_ids($me))
     : [];
   return [
     'events' => $events,

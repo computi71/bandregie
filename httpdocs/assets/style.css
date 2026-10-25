@@ -429,17 +429,6 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 /* Mehrere Fotos auf einen Termin: die Leiste über dem Raster. */
 .photo-mass { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
 /* Das Häkchen sitzt an der Kachel und bleibt sichtbar, ohne sie zu verdecken. */
-/* Serien-Abzeichen (#198). Unter dem Häkchen links, denn rechts oben sitzt schon
-   die Neu-Markierung (#195) — zwei Abzeichen auf derselben Ecke verdecken sich.
-   Es ist ein Link und darf deshalb nicht wie eine Beschriftung aussehen. */
-.photo-stack { position: absolute; top: 2.3rem; left: 0.4rem; z-index: 2;
-  background: rgba(0, 0, 0, 0.65); color: #fff; text-decoration: none;
-  font-size: 0.8rem; font-weight: 600; line-height: 1;
-  padding: 5px 8px; border-radius: 999px; }
-.photo-stack:hover, .photo-stack:focus { background: rgba(0, 0, 0, 0.85); }
-/* Das Titelbild einer Serie ist keine Schaltfläche, sieht aber wie eine aus,
-   damit die Reihe nicht springt. */
-.is-cover { cursor: default; opacity: 0.75; }
 
 /* Doppelte nebeneinander (#199): Die Entscheidung, welches bleibt, braucht den
    direkten Vergleich — untereinander sähe man immer nur eines. */
@@ -480,11 +469,6 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
    ein langer Pfad darf die Kachel nicht in die Breite ziehen. */
 .photo-source { display: block; font-size: 0.75rem; color: var(--muted);
   overflow-wrap: anywhere; opacity: 0.8; }
-
-/* Ordnerüberschrift über jedem Raster: klar abgesetzt, damit man beim Scrollen
-   sieht, wo ein Termin anfängt und der nächste aufhört. */
-.photo-folder { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
-  margin: 1.4rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
 
 /* Häkchen und Neu-Markierung liegen über dem Bild in seinen Ecken: Sie sollen
    die Kachel nicht höher machen, und in der Ecke verdecken sie am wenigsten. */

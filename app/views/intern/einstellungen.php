@@ -643,7 +643,15 @@ $privacyDefault = "Datenschutzerklärung\n\n"
     <p class="<?= $cryptTest['ok'] ? 'muted' : 'warn' ?> small">
       <?= e(sprintf(t('set_crypt_test'), $cryptTest['message'])) ?>
     </p>
-    <?php $sealCount = count(array_filter(glob(FILES_DIR . '/*') ?: [], fn($p) => is_file($p) && !crypt_is_sealed($p))); ?>
+    <?php
+      // Einmal hinsehen, beide Zahlen: wie viele Anhänge noch offen liegen und
+      // wie viele versiegelt sind. Zwei glob()-Läufe wären zwei Wahrheiten.
+      $sealCount = 0; $sealedCount = 0;
+      foreach (glob(FILES_DIR . '/*') ?: [] as $datei) {
+        if (!is_file($datei)) continue;
+        crypt_is_sealed($datei) ? $sealedCount++ : $sealCount++;
+      }
+    ?>
     <?php if ($sealCount > 0): ?>
       <p class="warn small"><?= e(sprintf(t('set_crypt_plain_files'), $sealCount)) ?></p>
       <form method="post" action="/intern/dateien/versiegeln" class="inline"><?= csrf_field() ?>
@@ -651,6 +659,13 @@ $privacyDefault = "Datenschutzerklärung\n\n"
       </form>
     <?php else: ?>
       <p class="muted small"><?= e(t('set_crypt_files_done')) ?></p>
+    <?php endif; ?>
+    <?php if ($sealedCount > 0): ?>
+      <p class="muted small"><?= e(t('set_crypt_unseal_hint')) ?></p>
+      <form method="post" action="/intern/dateien/entsiegeln" class="inline"
+            data-confirm="<?= e(t('set_crypt_unseal_confirm')) ?>"><?= csrf_field() ?>
+        <button class="btn btn-small btn-ghost">🔓 <?= e(sprintf(t('set_crypt_unseal_now'), $sealedCount)) ?></button>
+      </form>
     <?php endif; ?>
   <?php else: ?>
     <p class="muted small"><?= e(t('set_crypt_how')) ?></p>

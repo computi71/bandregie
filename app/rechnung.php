@@ -100,18 +100,6 @@ function invoice_from_contract(int $contractId, int $wer): int {
   return $id;
 }
 
-/** Steht zu diesem Termin schon eine Rechnung? */
-function invoice_by_event(array $eventIds): array {
-  if (!$eventIds) return [];
-  $marken = implode(',', array_fill(0, count($eventIds), '?'));
-  $karte = [];
-  foreach (rows("SELECT id, event_id, status, paid_cash FROM sales_invoices
-                 WHERE event_id IN ($marken) ORDER BY id", $eventIds) as $z) {
-    $karte[(int) $z['event_id']] = $z;
-  }
-  return $karte;
-}
-
 function invoice_status_label(string $status): string {
   return t('invstatus_' . $status) !== 'invstatus_' . $status ? t('invstatus_' . $status) : $status;
 }
