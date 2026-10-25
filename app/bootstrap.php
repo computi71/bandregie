@@ -4851,6 +4851,29 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
 }
 
 /**
+ * Zeitvorschläge, auf deren Bestätigung durch dieses Konto gewartet wird
+ * (#418).
+ *
+ * Nur kommende Termine und nur sichtbare: Eine Zahl am Symbol, hinter der
+ * nichts zu finden ist, ist schlimmer als keine (#387).
+ *
+ * @return array<int, array> Zeilen aus events
+ */
+function event_time_open(array $user): array {
+  $ids = visible_event_ids($user);
+  [$wo, $werte] = visible_clause($ids, 'e.id');
+  return rows("SELECT e.id, e.title, e.date, e.status, e.time, e.time_meet, e.time_end,
+                      e.time_proposed, e.time_meet_proposed, e.time_end_proposed
+               FROM event_time_confirms c
+               JOIN events e ON e.id = c.event_id
+               WHERE c.user_id = ? AND c.confirmed_at IS NULL
+                 AND e.time_proposed_at IS NOT NULL
+                 AND e.date >= CURDATE()
+                 AND e.status NOT IN ('abgesagt', 'blockiert')$wo
+               ORDER BY e.date", [(int) $user['id'], ...$werte]);
+}
+
+/**
  * Eine Bestätigung eintragen; steht danach keine mehr aus, gilt die Zeit.
  *
  * @return bool Ob dieses Konto überhaupt gefragt war
@@ -5446,7 +5469,12 @@ function open_items_by_path(array $user): array {
   // mit, die jemand gar nicht sehen darf. Dann stand am Symbol eine Zahl, und
   // wer darauf tippte, fand nichts.
   if (perm_allows($user, 'termine')) {
-    $zusagen = count(open_votes($user));
+    // Offene Rückmeldungen und wartende Zeitbestätigungen (#418) zusammen:
+    // Beides will etwas von genau dieser Person, und beides liegt hinter
+    // derselben Adresse. Ohne die zweite Zahl wäre die Bestätigung nur über
+    // die Mitteilung zu finden — und wer die abgestellt hat, erfährt nie,
+    // dass auf ihn gewartet wird, bis der Vorschlag nach einem Tag verfällt.
+    $zusagen = count(open_votes($user)) + count(event_time_open($user));
     if ($zusagen) $karte['/intern/termine'] = $zusagen;
   }
   if (perm_allows($user, 'themen')) {

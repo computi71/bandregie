@@ -1001,6 +1001,8 @@ if (str_starts_with($path, '/intern')) {
       // Symbol zählt sie, also muss man sie auch sehen und erledigen können.
       'phpLuecke' => $phpLuecke,
       'openVotes' => $offeneZusagen,
+      // Zeitvorschläge, auf die dieses Konto noch antworten soll (#418).
+      'openTimes' => perm_allows($me, 'termine') ? event_time_open($me) : [],
       // Der Stand der Band an der offenen Zeile (#377): Wer gefragt wird, will
       // sehen, wo die anderen stehen, ohne erst die Karte aufzuklappen.
       //

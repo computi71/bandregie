@@ -260,7 +260,14 @@
       <form method="post" action="/intern/termine/<?= $ev['id'] ?>/update" class="form-grid"
             data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'
             <?php if ($evAntworten): ?>data-reset-fields='<?= e(json_encode(EVENT_FIELDS_INVALIDATE)) ?>'
-            data-reset-confirm="<?= e(str_replace('%1', (string) $evAntworten, t('ev_reset_confirm'))) ?>"<?php endif; ?>><?= csrf_field() ?>
+            data-reset-confirm="<?= e(str_replace('%1', (string) $evAntworten, t('ev_reset_confirm'))) ?>"
+            <?php // Und die andere Hälfte derselben Regel (#417): Welche Felder Zeiten
+                  // sind und wie weit eine Zeit wandern darf, ohne dass es eine neue
+                  // Frage wird. Beides kommt vom Server, damit die Schwelle an einer
+                  // Stelle steht — der Browser vergleicht nur Werte. ?>
+            data-time-fields='<?= e(json_encode(EVENT_TIME_FIELDS)) ?>'
+            data-shift-max="<?= EVENT_TIME_SHIFT_MAX_MINUTES ?>"
+            data-propose-confirm="<?= e(t('ev_propose_confirm')) ?>"<?php endif; ?>><?= csrf_field() ?>
         <label><?= e(t('ev_type')) ?>
           <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['type'] === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
         </label>

@@ -45,31 +45,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Vor dem Speichern sagen, was eine Verschiebung kostet (#402).
+  // Vor dem Speichern sagen, was eine Verschiebung kostet (#402) — und seit
+  // #417 das Richtige. Vorher drohte derselbe Satz mit fünf verlorenen
+  // Antworten, wenn jemand eine Probe um eine Stunde schob; seit #413 kostet
+  // das gar nichts, und wer der Warnung glaubte, nahm eine harmlose Änderung
+  // zurück. Ein Hinweis, der eine Folge ERFINDET, ist schlimmer als keiner.
   //
-  // Nur, wenn sich wirklich eines der Felder geändert hat, die eine Zusage
-  // ungueltig machen. Wer den Titel berichtigt, soll nicht gefragt werden —
-  // eine Rückfrage, die immer kommt, liest nach dem dritten Mal niemand mehr.
-  //
-  // Welche Felder das sind, sagt der Server (data-reset-fields), und die Zahl
-  // der Antworten steht fertig im Satz. Das Skript vergleicht nur Werte.
+  // Die Regel kommt vom Server (data-reset-fields, data-time-fields,
+  // data-shift-max), damit die drei Stunden an einer Stelle stehen. Hier wird
+  // nur verglichen.
   document.querySelectorAll('form[data-reset-fields]').forEach(form => {
-    let felder;
-    try { felder = JSON.parse(form.dataset.resetFields); } catch (e) { return; }
+    let felder, zeitFelder;
+    try {
+      felder = JSON.parse(form.dataset.resetFields);
+      zeitFelder = JSON.parse(form.dataset.timeFields || '[]');
+    } catch (e) { return; }
     if (!Array.isArray(felder)) return;
+    const grenze = parseInt(form.dataset.shiftMax, 10);
+
+    // „19:30" als Minuten seit Mitternacht; null, wenn da nichts Lesbares
+    // steht. Dieselbe Regel wie event_time_minutes() auf dem Server.
+    const minuten = wert => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec((wert || '').trim());
+      if (!m) return null;
+      const h = parseInt(m[1], 10);
+      const i = parseInt(m[2], 10);
+      return (h > 23 || i > 59) ? null : h * 60 + i;
+    };
+
     // Der Stand beim Laden: Das ist die Frage, die die Band beantwortet hat.
     const vorher = {};
     felder.forEach(name => {
       const el = form.elements[name];
       if (el) vorher[name] = el.value;
     });
+
     form.addEventListener('submit', event => {
-      const geaendert = felder.some(name => {
+      const geaendert = felder.filter(name => {
         const el = form.elements[name];
         return el && el.value !== vorher[name];
       });
-      if (!geaendert) return;
-      if (!confirm(form.dataset.resetConfirm)) event.preventDefault();
+      if (!geaendert.length) return;
+
+      // Ein kleiner Zeitsprung: nur Zeitfelder, jedes lesbar vorher wie
+      // nachher, keines weiter als die Grenze. Dieselben drei Bedingungen wie
+      // event_time_small_shift(); eine Zeit, die dazukommt oder wegfällt, ist
+      // keine Verschiebung, sondern neue Auskunft.
+      const klein = Number.isFinite(grenze) && geaendert.every(name => {
+        if (!zeitFelder.includes(name)) return false;
+        const alt = minuten(vorher[name]);
+        const neu = minuten(form.elements[name].value);
+        return alt !== null && neu !== null && Math.abs(neu - alt) <= grenze;
+      });
+
+      const satz = klein ? form.dataset.proposeConfirm : form.dataset.resetConfirm;
+      if (satz && !confirm(satz)) event.preventDefault();
     });
   });
 
