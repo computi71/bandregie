@@ -34,20 +34,26 @@ $pruefe = static function (string $was, bool $erfuellt) use (&$ok, &$fehler): vo
     $erfuellt ? $ok++ : $fehler++;
 };
 
-// Vorher aufräumen, damit die Zahlen nur von diesem Lauf stammen.
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
-$zahl = static fn(): int => (int) row("SELECT COUNT(*) n FROM push_queue WHERE topic LIKE 'zzq%'")['n'];
+// Echte Themen, denn push_topics() kennt nur die aus PUSH_TOPICS — ein
+// erfundenes Thema landete nie in der Schlange, und dann waere diese ganze
+// Datei ein Pruefer, der nichts prueft. Erkannt werden die Testzeilen am
+// Wortlaut, nicht am Thema.
+const ZZQ = 'ZZQ-Pruefung';
+q("DELETE FROM push_queue WHERE payload LIKE '%" . ZZQ . "%'");
+$zahl = static fn(): int
+    => (int) row("SELECT COUNT(*) n FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%'])['n'];
 
 $wer = rows('SELECT id, role, substitute_for, pref_lang, push_topics FROM users ORDER BY id LIMIT 3');
 if (!$wer) { fwrite(STDERR, "Keine Konten\n"); exit(2); }
-$bau = static fn(string $lang): array => ['title' => 'Titel ' . $lang, 'body' => '', 'url' => '/intern'];
+$bau = static fn(string $lang): array
+    => ['title' => ZZQ . ' ' . $lang, 'body' => '', 'url' => '/intern'];
 
 // ------------------------------------------------ 1. Einreihen
-push_queue_add('zzqa', $wer, $bau);
+push_queue_add('events', $wer, $bau);
 $pruefe('eine Zeile je Empfaenger', $zahl() === count($wer));
-$erste = row("SELECT * FROM push_queue WHERE topic = 'zzqa' ORDER BY id LIMIT 1");
+$erste = row("SELECT * FROM push_queue WHERE payload LIKE ? ORDER BY id LIMIT 1", ['%' . ZZQ . '%']);
 $pruefe('der Wortlaut steht fertig drin',
-    str_contains((string) $erste['payload'], 'Titel'));
+    str_contains((string) $erste['payload'], ZZQ));
 $pruefe('und ist sofort faellig', strtotime((string) $erste['send_after']) <= time() + 1);
 $pruefe('noch kein Versuch', (int) $erste['attempts'] === 0);
 
@@ -56,48 +62,48 @@ $einer = $wer[0];
 q('UPDATE users SET pref_lang = ? WHERE id = ?', ['fr', (int) $einer['id']]);
 $einerNeu = row('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id = ?',
                 [(int) $einer['id']]);
-push_queue_add('zzqb', [$einerNeu], $bau);
-$pruefe('gerendert in der Sprache des Empfaengers', str_contains(
-    (string) row("SELECT payload FROM push_queue WHERE topic = 'zzqb'")['payload'], 'Titel fr'));
+push_queue_add('events', [$einerNeu], $bau);
+$pruefe('gerendert in der Sprache des Empfaengers', (bool) row(
+    "SELECT id FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . ' fr%']));
 q('UPDATE users SET pref_lang = ? WHERE id = ?', [(string) $einer['pref_lang'], (int) $einer['id']]);
 
 // ------------------------------------------------ 2. Abgewaehlt
 $merk = (string) $einer['push_topics'];
-q('UPDATE users SET push_topics = ? WHERE id = ?', ['zzqc', (int) $einer['id']]);
+q('UPDATE users SET push_topics = ? WHERE id = ?', ['events', (int) $einer['id']]);
 $ohne = row('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id = ?',
             [(int) $einer['id']]);
-push_queue_add('zzqc', [$ohne], $bau);
-$pruefe('ein abgewaehltes Thema kommt nicht in die Schlange',
-    (int) row("SELECT COUNT(*) n FROM push_queue WHERE topic = 'zzqc'")['n'] === 0);
+$vorAbwahl = $zahl();
+push_queue_add('events', [$ohne], $bau);
+$pruefe('ein abgewaehltes Thema kommt nicht in die Schlange', $zahl() === $vorAbwahl);
 q('UPDATE users SET push_topics = ? WHERE id = ?', [$merk, (int) $einer['id']]);
 
 // ------------------------------------------------ 3. Sammeln
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
 $viele = static fn(int $n, string $lang): array
-    => ['title' => $n . ' Antworten', 'body' => '', 'url' => '/intern'];
-push_queue_add('zzqd', [$einer], $bau, 'zzq:7', $viele);
+    => ['title' => ZZQ . ' ' . $n . ' Antworten', 'body' => '', 'url' => '/intern'];
+push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
 $pruefe('erste gesammelte Zeile angelegt', $zahl() === 1);
-$pruefe('und wartet auf Nachzuegler', strtotime(
-    (string) row("SELECT send_after FROM push_queue WHERE topic='zzqd'")['send_after']) > time() + 60);
-push_queue_add('zzqd', [$einer], $bau, 'zzq:7', $viele);
-push_queue_add('zzqd', [$einer], $bau, 'zzq:7', $viele);
+$pruefe('und wartet auf Nachzuegler', strtotime((string) row(
+    "SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:7'")['send_after']) > time() + 60);
+push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
+push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
 $pruefe('drei Antworten bleiben eine Zeile', $zahl() === 1);
-$gesammelt = row("SELECT * FROM push_queue WHERE topic = 'zzqd'");
+$gesammelt = row("SELECT * FROM push_queue WHERE collapse_key = 'zzq:7'");
 $pruefe('die Zeile zaehlt mit', (int) $gesammelt['collapse_count'] === 3);
 $pruefe('und sagt es im Wortlaut', str_contains((string) $gesammelt['payload'], '3 Antworten'));
 
 // Ein anderer Schluessel ist eine andere Sache.
-push_queue_add('zzqd', [$einer], $bau, 'zzq:8', $viele);
+push_queue_add('events', [$einer], $bau, 'zzq:8', $viele);
 $pruefe('ein anderer Termin ist eine eigene Zeile', $zahl() === 2);
 
 // Was schon faellig ist, wird nicht mehr eingesammelt - sonst waechst eine
 // Zeile ewig weiter und geht nie hinaus.
 q("UPDATE push_queue SET send_after = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE collapse_key = 'zzq:7'");
-push_queue_add('zzqd', [$einer], $bau, 'zzq:7', $viele);
+push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
 $pruefe('eine faellige Zeile sammelt nicht mehr ein', $zahl() === 3);
 
 // ------------------------------------------------ 4. Abholen
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
 // Ein Konto ohne Geraet: Die Zeile wird beim Abholen verworfen, nicht gesendet.
 $ohneGeraet = null;
 foreach ($wer as $u) {
@@ -107,7 +113,7 @@ foreach ($wer as $u) {
     }
 }
 if ($ohneGeraet) {
-    push_queue_add('zzqe', [$ohneGeraet], $bau);
+    push_queue_add('events', [$ohneGeraet], $bau);
     $vorher = $zahl();
     $stand = push_queue_run();
     $pruefe('ohne Geraet wird die Zeile verworfen', $zahl() === $vorher - 1);
@@ -117,22 +123,22 @@ if ($ohneGeraet) {
 }
 
 // ------------------------------------------------ 5. Zu alt
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
-push_queue_add('zzqf', [$einer], $bau);
-q("UPDATE push_queue SET created_at = DATE_SUB(NOW(), INTERVAL ? HOUR) WHERE topic = 'zzqf'",
-  [PUSH_QUEUE_TTL_HOURS + 1]);
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+push_queue_add('events', [$einer], $bau);
+q("UPDATE push_queue SET created_at = DATE_SUB(NOW(), INTERVAL ? HOUR) WHERE payload LIKE ?",
+  [PUSH_QUEUE_TTL_HOURS + 1, '%' . ZZQ . '%']);
 $stand = push_queue_run();
 $pruefe('was zu alt ist, geht ungesehen weg', $zahl() === 0);
 
 // ------------------------------------------------ 6. Aufgeben
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
-push_queue_add('zzqg', [$einer], $bau);
-q("UPDATE push_queue SET attempts = ? WHERE topic = 'zzqg'", [PUSH_QUEUE_TRIES]);
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+push_queue_add('events', [$einer], $bau);
+q("UPDATE push_queue SET attempts = ? WHERE payload LIKE ?", [PUSH_QUEUE_TRIES, '%' . ZZQ . '%']);
 $faellig = rows('SELECT * FROM push_queue WHERE send_after <= NOW() AND attempts < ?',
                 [PUSH_QUEUE_TRIES]);
 $pruefe('eine ausgereizte Zeile wird nicht mehr geholt', !array_filter($faellig,
-    static fn(array $z): bool => (string) $z['topic'] === 'zzqg'));
-q("DELETE FROM push_queue WHERE topic LIKE 'zzq%'");
+    static fn(array $z): bool => str_contains((string) $z['payload'], ZZQ)));
+q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
 
 // ------------------------------------------------ 7. Die Sperre
 // Zwei Laeufe duerfen nicht gleichzeitig nach denselben Zeilen greifen. Das
