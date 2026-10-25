@@ -114,6 +114,15 @@ const EVENT_TYPES = [
   'fotoshooting' => 'Fotoshooting', 'besprechung' => 'Besprechung', 'aufbau' => 'Auf-/Abbau',
   'reise' => 'Reise', 'dayoff' => 'Day off', 'sonstiges' => 'Sonstiges',
 ];
+/**
+ * Terminarten, bei denen die Band das Datum selbst setzt (#401).
+ *
+ * Nur dort ist „stell doch eine Alternative ein“ ein brauchbarer Rat. Das
+ * Datum eines Gigs gehört dem Veranstalter, und Auf-/Abbau und Reise hängen
+ * an einem Gig — wer dort absagt, kann nichts verschieben.
+ */
+const EVENT_TYPES_OWN_DATE = ['probe', 'aufnahme', 'fotoshooting', 'besprechung'];
+
 const EVENT_STATUS = [
   'bestaetigt' => 'Findet statt', 'angefragt' => 'Angefragt', 'reserviert' => 'Reserviert',
   'blockiert' => 'Blockiert – offen f. Anfragen', 'abgesagt' => 'Abgesagt',

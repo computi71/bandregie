@@ -85,6 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const daten = new FormData(form);
       daten.append('status', knopf.value);
+      // Die Route soll ihr Merkzeichen für den Absage-Hinweis NICHT setzen
+      // (#401): Hier lädt nichts neu, also öffnet das Fenster sich gleich
+      // selbst. Ohne diese Zeile sähe man es zweimal — jetzt und beim
+      // nächsten Seitenaufruf.
+      daten.append('ajax', '1');
       markiere(form, knopf.value);
 
       fetch(form.action, { method: 'POST', body: daten, credentials: 'same-origin' })
@@ -93,6 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
           gleicheTermine(form, knopf.value);
           const zeile = form.closest('li');
           setTimeout(() => (zeile ? schliesse(zeile) : null), ZEIGEN);
+          // Abgesagt: nach einer Alternative fragen (#401). Erst nachdem die
+          // Zeile zugeklappt ist — ein Fenster, das aufgeht, während darunter
+          // etwas wegklappt, nimmt der Bewegung die Aussage.
+          if (knopf.value === 'no' && typeof window.absageHinweis === 'function'
+              && form.dataset.ownDate === '1') {
+            const nr = (form.getAttribute('action') || '').match(/termine\/(\d+)\//);
+            if (nr) setTimeout(() => window.absageHinweis(Number(nr[1])), ZEIGEN + 400);
+          }
         })
         .catch(() => {
           // Nicht angekommen: den gewöhnlichen Weg gehen, damit die Antwort

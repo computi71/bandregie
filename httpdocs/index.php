@@ -1066,6 +1066,16 @@ if (str_starts_with($path, '/intern')) {
       'showCancelled' => $showCancelled,
       'evArt' => $evArt,
       'evArten' => $evArten,
+      // Vorlage fuer einen Ersatztermin (#401). Nur die Nummer kommt aus der
+      // Adresse; Titel, Art und Ort liest der Server aus seinen eigenen
+      // Tabellen, hinter seiner eigenen Sichtbarkeitspruefung. So steht nichts
+      // aus der Adresse im Formular, und niemand bekommt per Link einen Ort zu
+      // sehen, den er sonst nicht sehen duerfte.
+      'vorlage' => (static function () use ($me): ?array {
+        $nr = (int) ($_GET['vorlage'] ?? 0);
+        if (!$nr || !may_see_event($me, $nr)) return null;
+        return row('SELECT id, type, title, venue_id, location FROM events WHERE id = ?', [$nr]);
+      })(),
       'cancelledCount' => $cancelledCount,
       // Nur Angefragtes zählen, was auch angezeigt wird — sonst behauptet die
       // Zeile etwas über Zeilen, die niemand sieht.
@@ -1208,6 +1218,19 @@ if (str_starts_with($path, '/intern')) {
         'body' => '',
         'url' => $pushUrl,
       ], (int) $id);
+      // Wer absagt, ist der Einzige, der weiß warum — und damit der, der am
+      // ehesten einen anderen Termin vorschlagen kann (#401). Der Hinweis
+      // kommt als Fenster und nicht als Mitteilung: Die Person hat gerade
+      // getippt und schaut hin.
+      //
+      // Das Merkzeichen setzt nur der gewöhnliche Weg über die Terminkarte, bei
+      // dem die Seite neu lädt. Von der Übersicht aus schickt zusage.js im
+      // Hintergrund (#377) und öffnet das Fenster selbst; ohne diese
+      // Unterscheidung sähe man es zweimal.
+      if ($status === 'no' && ($_POST['ajax'] ?? '') !== '1') {
+        $evArt = (string) (row('SELECT type FROM events WHERE id = ?', [$id])['type'] ?? '');
+        if (in_array($evArt, EVENT_TYPES_OWN_DATE, true)) $_SESSION['absage_tipp'] = (int) $id;
+      }
       // Sind damit alle durch, bekommt der Eintrager eine Meldung (#382) —
       // eine einzige, mit dem Ergebnis darin. Steht hier hinter dem Schreiben,
       // denn gezählt wird, was in der Datenbank steht.

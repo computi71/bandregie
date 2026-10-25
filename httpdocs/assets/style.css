@@ -641,6 +641,31 @@ ol.sortable li.dragging { opacity: 0.45; background: rgba(255,255,255,0.05); }
   padding: 1.1rem 1.2rem 1.3rem;
 }
 .eq-dialog::backdrop { background: rgba(0, 0, 0, 0.62); }
+
+/* Der Absage-Hinweis (#401). Am Rechner eine Box in der Mitte wie jedes andere
+   Fenster; auf dem Telefon fährt er von oben ein und sieht aus wie eine
+   Mitteilung — dort ist das die Gestalt, die jeder kennt und sofort einordnet.
+
+   Wer schnelle Bewegung nicht sehen will, bekommt ihn ruhig stehend. */
+@media (max-width: 640px) {
+  #absage-dialog {
+    margin: 0 auto;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0 0 14px 14px;
+    border-top: 0;
+    padding-top: calc(0.9rem + env(safe-area-inset-top, 0px));
+    animation: absage-rein 220ms ease-out 1;
+  }
+}
+@keyframes absage-rein {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #absage-dialog { animation: none; }
+}
 .eq-dialog-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; margin-bottom: 0.9rem;

@@ -71,13 +71,17 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
   <?php endif; ?>
 </div>
 
-<details class="card collapsible" <?= $events ? '' : 'open' ?>>
+<?php // Mit einer Vorlage steht das Formular offen und gefüllt da (#401): Wer
+      // gerade abgesagt und auf „Alternative eintragen“ getippt hat, soll nicht
+      // erst suchen, wo er das einträgt. Das Datum bleibt leer — das ist ja
+      // genau die Frage. ?>
+<details id="ev-neu" class="card collapsible" <?= $events && !$vorlage ? '' : 'open' ?>>
   <summary>➕ <?= e(t('ev_new')) ?></summary>
   <form method="post" action="/intern/termine" class="form-grid" data-eventfields='<?= e(json_encode(EVENT_TYPE_FIELDS)) ?>'><?= csrf_field() ?>
     <label><?= e(t('ev_type')) ?>
-      <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
+      <select name="type"><?php foreach (EVENT_TYPES as $val => $lbl): ?><option value="<?= $val ?>" <?= ($vorlage['type'] ?? '') === $val ? 'selected' : '' ?>><?= e(event_type_label($val)) ?></option><?php endforeach; ?></select>
     </label>
-    <label><?= e(t('name')) ?><input name="title" required placeholder="<?= e(t('ev_name_ph')) ?>"></label>
+    <label><?= e(t('name')) ?><input name="title" required placeholder="<?= e(t('ev_name_ph')) ?>" value="<?= e($vorlage['title'] ?? '') ?>"></label>
     <label><?= e(t('date')) ?><input type="date" name="date" required></label>
     <label><?= e(t('status')) ?>
       <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
@@ -86,9 +90,9 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
     <label data-eventfield="times"><?= e(t('ev_start')) ?><input type="time" name="time"></label>
     <label data-eventfield="times"><?= e(t('ev_end')) ?><input type="time" name="time_end"></label>
     <label data-eventfield="venue"><?= e(t('ev_venue')) ?>
-      <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>"><?= e($v['name']) ?><?= $v['city'] ? ' (' . e($v['city']) . ')' : '' ?></option><?php endforeach; ?></select>
+      <select name="venue_id"><option value="">–</option><?php foreach ($venues as $v): ?><option value="<?= $v['id'] ?>" <?= (int) ($vorlage['venue_id'] ?? 0) === (int) $v['id'] ? 'selected' : '' ?>><?= e($v['name']) ?><?= $v['city'] ? ' (' . e($v['city']) . ')' : '' ?></option><?php endforeach; ?></select>
     </label>
-    <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" placeholder="<?= e(t('ev_location_free_ph')) ?>"></label>
+    <label data-eventfield="venue"><?= e(t('ev_location_free')) ?><input name="location" placeholder="<?= e(t('ev_location_free_ph')) ?>" value="<?= e($vorlage['location'] ?? '') ?>"></label>
     <?php // Die Lieder einer Probe (#390). Dieselbe Stelle wie die Setlist,
           // denn es ist dieselbe Frage — nur die Antwort einer Probe ist ein
           // Schwerpunkt und kein Ablauf. eventfields.js blendet je nach
