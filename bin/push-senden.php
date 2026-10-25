@@ -43,6 +43,13 @@ if (!flock($sperre, LOCK_EX | LOCK_NB)) {
 require $basis . '/app/bootstrap.php';
 require_once $basis . '/app/push.php';
 
+// Verfallene Zeitvorschläge (#413) — VOR dem Tor unten, und mit Absicht: Das
+// ist kein Versand, sondern ein Zustand. Eine Band ohne Mitteilungen soll
+// nicht auf Vorschlägen sitzen bleiben, die nie wieder weggehen. Die
+// Nachricht an den, der ihn gemacht hat, fällt dann eben aus; der Vorschlag
+// verschwindet trotzdem, und im Kalender steht weiter die alte Zeit.
+$verfallen = event_time_proposals_expire();
+
 if (!push_available()) {
     if ($laut) echo "Keine Schlüssel hinterlegt — nichts zu tun.\n";
     exit(0);
@@ -58,8 +65,9 @@ $erinnert = push_reminders_hourly();
 
 $stand = push_queue_run();
 if ($laut) {
-    printf("erinnert %d, gesendet %d, verworfen %d, später noch einmal %d%s",
-        $erinnert, $stand['gesendet'], $stand['verworfen'], $stand['spaeter'], PHP_EOL);
+    printf("verfallen %d, erinnert %d, gesendet %d, verworfen %d, später noch einmal %d%s",
+        $verfallen, $erinnert, $stand['gesendet'], $stand['verworfen'],
+        $stand['spaeter'], PHP_EOL);
 }
 // Die Sperre fällt mit dem Prozess; explizit, damit es jeder sieht.
 flock($sperre, LOCK_UN);

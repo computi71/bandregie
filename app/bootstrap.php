@@ -1405,6 +1405,10 @@ function perm_module_for(string $path): ?string {
  */
 const SELF_SERVICE_PATHS = [
   '~^/intern/termine/\d+/zusage$~',
+  // Die Bestaetigung einer vorgeschlagenen Zeit (#413): derselbe Gedanke.
+  // Die Route fasst nur die eigene Zeile an und prueft selbst, ob dieses
+  // Konto ueberhaupt gefragt war.
+  '~^/intern/termine/\d+/zeit-ok$~',
   // Das Häkchen an einer Aufgabe ist seit #334 persönlich: Die Route fasst
   // nur die eigene Zeile an. Ohne diese Ausnahme könnte jemand zuständig
   // sein und sein eigenes Häkchen nicht setzen, weil er Aufgaben nur lesen
@@ -4645,6 +4649,251 @@ function event_answers_reset(int $eventId, int $durch): int {
   return count($zeilen);
 }
 
+// ------------------------------------------------------------------
+// Eine kleine Zeitverschiebung ist ein Vorschlag (#413)
+
+/**
+ * Bis zu wie vielen Minuten Verschiebung eine Zeitänderung noch dieselbe
+ * Frage stellt.
+ *
+ * Drei Stunden. Weiter, und wer den Abend freigehalten hat, hat ihn für
+ * etwas anderes freigehalten; dann gilt wieder #402 und es wird neu gefragt.
+ */
+const EVENT_TIME_SHIFT_MAX_MINUTES = 180;
+
+/** Wie lange ein unbestätigter Vorschlag stehen bleibt, in Stunden. */
+const EVENT_TIME_PROPOSAL_HOURS = 24;
+
+/** Die drei Zeiten eines Termins, in der Reihenfolge, in der sie zusammengehören. */
+const EVENT_TIME_FIELDS = ['time', 'time_meet', 'time_end'];
+
+/** "19:30" als Minuten seit Mitternacht; null, wenn da nichts Lesbares steht. */
+function event_time_minutes(string $hhmm): ?int {
+  if (!preg_match('~^(\d{1,2}):(\d{2})$~', trim($hhmm), $m)) return null;
+  $h = (int) $m[1];
+  $i = (int) $m[2];
+  if ($h > 23 || $i > 59) return null;
+  return $h * 60 + $i;
+}
+
+/**
+ * Ist das eine kleine Verschiebung — dieselbe Frage, nur etwas später?
+ *
+ * Alle drei Zeiten müssen mitgehen und keine weiter als drei Stunden: Wer
+ * 19–22 Uhr auf 20–23 Uhr schiebt, fragt dasselbe; wer das Ende von 22 auf
+ * 2 Uhr zieht, fragt etwas anderes.
+ *
+ * Eine Zeit, die neu dazukommt oder wegfällt, ist keine Verschiebung,
+ * sondern neue Auskunft — dafür gibt es keinen Abstand zu messen.
+ *
+ * Alles außer den Zeiten muss gleich bleiben. Ein anderer Tag oder ein
+ * anderer Ort ist eine andere Frage, da hilft kein Hinweis.
+ *
+ * @param array $alt Die Zeile, wie sie in der Datenbank steht
+ * @param array $neu Die Werte aus dem Formular
+ */
+function event_time_small_shift(array $alt, array $neu): bool {
+  foreach (EVENT_FIELDS_INVALIDATE as $feld) {
+    if (in_array($feld, EVENT_TIME_FIELDS, true)) continue;
+    if ((string) ($alt[$feld] ?? '') !== (string) ($neu[$feld] ?? '')) return false;
+  }
+  $bewegt = false;
+  foreach (EVENT_TIME_FIELDS as $feld) {
+    $a = (string) ($alt[$feld] ?? '');
+    $n = (string) ($neu[$feld] ?? '');
+    if ($a === $n) continue;
+    $am = event_time_minutes($a);
+    $nm = event_time_minutes($n);
+    // Eine der beiden ist leer oder unlesbar: kein Abstand, keine Verschiebung.
+    if ($am === null || $nm === null) return false;
+    if (abs($nm - $am) > EVENT_TIME_SHIFT_MAX_MINUTES) return false;
+    $bewegt = true;
+  }
+  return $bewegt;
+}
+
+/** Steht an diesem Termin ein Vorschlag? Gibt die Zeile zurück oder null. */
+function event_time_proposal(int $eventId): ?array {
+  $ev = row('SELECT id, title, date, status, time, time_meet, time_end,
+                    time_proposed, time_meet_proposed, time_end_proposed,
+                    time_proposed_by, time_proposed_at
+             FROM events WHERE id = ?', [$eventId]);
+  if (!$ev || ($ev['time_proposed_at'] ?? null) === null) return null;
+  return $ev;
+}
+
+/** Wer noch bestätigen muss — Zeilen aus users, in Namensreihenfolge. */
+function event_time_waiting(int $eventId): array {
+  return rows('SELECT u.id, u.name FROM event_time_confirms c
+               JOIN users u ON u.id = c.user_id
+               WHERE c.event_id = ? AND c.confirmed_at IS NULL
+               ORDER BY u.name', [$eventId]);
+}
+
+/** Muss dieses Konto hier noch tippen? */
+function event_time_awaits(int $eventId, int $userId): bool {
+  return row('SELECT 1 AS da FROM event_time_confirms
+              WHERE event_id = ? AND user_id = ? AND confirmed_at IS NULL',
+             [$eventId, $userId]) !== null;
+}
+
+/** Die Zeiten eines Termins als Text — "20:00", oder "18:30/20:00/23:00". */
+function event_time_label(array $ev, string $suffix = ''): string {
+  $teile = [];
+  foreach (EVENT_TIME_FIELDS as $feld) {
+    $w = (string) ($ev[$feld . $suffix] ?? '');
+    if ($w !== '') $teile[] = $w;
+  }
+  return implode('/', $teile);
+}
+
+/**
+ * Den Vorschlag wegräumen — ohne Mitteilung, ohne Urteil.
+ *
+ * Eine Stelle für alle drei Enden: angenommen, zurückgenommen, verfallen.
+ */
+function event_time_clear(int $eventId): void {
+  q('DELETE FROM event_time_confirms WHERE event_id = ?', [$eventId]);
+  q("UPDATE events SET time_proposed = '', time_meet_proposed = '', time_end_proposed = '',
+                       time_proposed_by = NULL, time_proposed_at = NULL
+     WHERE id = ?", [$eventId]);
+}
+
+/**
+ * Den Vorschlag zur echten Zeit machen und es allen sagen.
+ *
+ * Die Zusagen bleiben stehen — genau dafür ist der ganze Umweg da: Wer
+ * zugesagt hatte, hat bestätigt, und wer nicht zugesagt hatte, hatte nichts
+ * zu verlieren.
+ */
+function event_time_apply(int $eventId): void {
+  $ev = event_time_proposal($eventId);
+  if (!$ev) return;
+  q('UPDATE events SET time = ?, time_meet = ?, time_end = ? WHERE id = ?',
+    [(string) $ev['time_proposed'], (string) $ev['time_meet_proposed'],
+     (string) $ev['time_end_proposed'], $eventId]);
+  event_time_clear($eventId);
+
+  $titel = (string) $ev['title'];
+  $datum = (string) $ev['date'];
+  $zeit = event_time_label($ev, '_proposed');
+  $url = event_url($ev);
+  push_queue_add('events', event_answerers($eventId),
+    static fn(string $lang): array => [
+      'title' => push_t($lang, 'push_ev_time_now'),
+      'body'  => str_replace(['%1', '%2', '%3'], [$titel, fmt_date_lang($datum, $lang), $zeit],
+                             push_t($lang, 'push_ev_time_now_body')),
+      'url'   => $url,
+    ]);
+}
+
+/**
+ * Eine Zeitverschiebung vorschlagen (#413).
+ *
+ * Die neuen Zeiten landen NEBEN den alten. Im Kalender steht weiter, was
+ * dort stand — eine Zeit, die vielleicht gilt, ist keine Zeit, nach der man
+ * sich richten kann.
+ *
+ * Bestätigen müssen die, die schon zugesagt hatten. Die Liste wird hier
+ * eingefroren und nicht später neu berechnet: Wer während eines offenen
+ * Vorschlags zusagt, sagt zur angezeigten alten Zeit zu und soll nichts
+ * blockieren.
+ *
+ * Hatte niemand zugesagt, gibt es nichts zu schützen, und die Zeit gilt
+ * sofort.
+ *
+ * @return int Wie viele noch bestätigen müssen; 0 heißt "gilt schon"
+ */
+function event_time_propose(int $eventId, array $zeiten, int $durch): int {
+  $ev = row('SELECT id, title, date, status, time, time_meet, time_end FROM events WHERE id = ?',
+            [$eventId]);
+  if (!$ev) return 0;
+  event_time_clear($eventId);
+  q('UPDATE events SET time_proposed = ?, time_meet_proposed = ?, time_end_proposed = ?,
+                       time_proposed_by = ?, time_proposed_at = NOW()
+     WHERE id = ?',
+    [(string) ($zeiten['time'] ?? ''), (string) ($zeiten['time_meet'] ?? ''),
+     (string) ($zeiten['time_end'] ?? ''), $durch, $eventId]);
+
+  // Wer sich den Abend schon freigehalten hat. Der Vorschlagende zählt nicht
+  // mit: Er hat gerade selbst verschoben, das ist seine Bestätigung.
+  foreach (rows("SELECT user_id FROM attendance
+                 WHERE event_id = ? AND status = 'yes' AND user_id <> ?", [$eventId, $durch]) as $z) {
+    q('INSERT IGNORE INTO event_time_confirms (event_id, user_id) VALUES (?,?)',
+      [$eventId, (int) $z['user_id']]);
+  }
+  $offen = count(event_time_waiting($eventId));
+  if ($offen === 0) {
+    event_time_apply($eventId);
+    return 0;
+  }
+
+  $titel = (string) $ev['title'];
+  $datum = (string) $ev['date'];
+  $alt = event_time_label($ev);
+  $neu = event_time_label($zeiten);
+  $url = event_url($ev);
+  $empfaenger = array_values(array_filter(event_answerers($eventId),
+    static fn(array $u): bool => (int) $u['id'] !== $durch));
+  push_queue_add('events', $empfaenger,
+    static fn(string $lang): array => [
+      'title' => push_t($lang, 'push_ev_time_ask'),
+      'body'  => str_replace(['%1', '%2', '%3', '%4'],
+                             [$titel, fmt_date_lang($datum, $lang), $neu, $alt],
+                             push_t($lang, 'push_ev_time_ask_body')),
+      'url'   => $url,
+    ]);
+  return $offen;
+}
+
+/**
+ * Eine Bestätigung eintragen; steht danach keine mehr aus, gilt die Zeit.
+ *
+ * @return bool Ob dieses Konto überhaupt gefragt war
+ */
+function event_time_confirm(int $eventId, int $userId): bool {
+  if (!event_time_awaits($eventId, $userId)) return false;
+  q('UPDATE event_time_confirms SET confirmed_at = NOW()
+     WHERE event_id = ? AND user_id = ?', [$eventId, $userId]);
+  if (!event_time_waiting($eventId)) event_time_apply($eventId);
+  return true;
+}
+
+/**
+ * Vorschläge, die niemand bestätigt hat, nach vierundzwanzig Stunden
+ * wegräumen — und dem sagen, der sie gemacht hat.
+ *
+ * Ohne diese Nachricht verschwände der Vorschlag still, und die Band säße
+ * zur alten Zeit da, während einer von ihnen die neue im Kopf hat.
+ * Gerufen vom Minutenlauf, zusammen mit den Erinnerungen.
+ *
+ * @return int Wie viele verfallen sind
+ */
+function event_time_proposals_expire(): int {
+  $alt = rows('SELECT id, title, date, status, time, time_meet, time_end, time_proposed_by
+               FROM events
+               WHERE time_proposed_at IS NOT NULL
+                 AND time_proposed_at < DATE_SUB(NOW(), INTERVAL ? HOUR)',
+              [EVENT_TIME_PROPOSAL_HOURS]);
+  foreach ($alt as $ev) {
+    $eventId = (int) $ev['id'];
+    event_time_clear($eventId);
+    $wer = (int) ($ev['time_proposed_by'] ?? 0);
+    if (!$wer) continue;
+    $titel = (string) $ev['title'];
+    $datum = (string) $ev['date'];
+    $zeit = event_time_label($ev);
+    $url = event_url($ev);
+    push_to_user($wer, 'events', static fn(string $lang): array => [
+      'title' => push_t($lang, 'push_ev_time_lapsed'),
+      'body'  => str_replace(['%1', '%2', '%3'], [$titel, fmt_date_lang($datum, $lang), $zeit],
+                             push_t($lang, 'push_ev_time_lapsed_body')),
+      'url'   => $url,
+    ]);
+  }
+  return count($alt);
+}
+
 /**
  * Wer bei diesem Termin antworten soll (#382).
  *
@@ -5347,6 +5596,44 @@ function event_songs_map(array $eventIds): array {
   return $karte;
 }
 
+/**
+ * Offene Zeitvorschläge zu diesen Terminen (#413), mit allem, was die Karte
+ * dafür braucht.
+ *
+ * Zwei Abfragen für alle Termine zusammen und nicht zwei je Karte: Eine
+ * Abfrage in der Schleife ist genau das, was #410 abgestellt hat, und eine
+ * Terminliste ist der Ort, an dem es sich am schnellsten summiert.
+ *
+ * @return array<int, array{alt: string, neu: string, fehlen: array, ich: bool}>
+ */
+function event_time_proposal_map(array $eventIds, int $meId): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_map('intval', $eventIds));
+  $karte = [];
+  foreach (rows("SELECT id, time, time_meet, time_end,
+                        time_proposed, time_meet_proposed, time_end_proposed
+                 FROM events
+                 WHERE id IN ($in) AND time_proposed_at IS NOT NULL") as $ev) {
+    $karte[(int) $ev['id']] = [
+      'alt'    => event_time_label($ev),
+      'neu'    => event_time_label($ev, '_proposed'),
+      'fehlen' => [],
+      'ich'    => false,
+    ];
+  }
+  if (!$karte) return [];
+  $offen = implode(',', array_map('intval', array_keys($karte)));
+  foreach (rows("SELECT c.event_id, c.user_id, u.name FROM event_time_confirms c
+                 JOIN users u ON u.id = c.user_id
+                 WHERE c.event_id IN ($offen) AND c.confirmed_at IS NULL
+                 ORDER BY u.name") as $z) {
+    $nr = (int) $z['event_id'];
+    $karte[$nr]['fehlen'][] = (string) $z['name'];
+    if ((int) $z['user_id'] === $meId) $karte[$nr]['ich'] = true;
+  }
+  return $karte;
+}
+
 function event_offline_urls(array $ev): array {
   $urls = OFFLINE_BASE_PAGES;
   $songIds = [];
@@ -5843,6 +6130,9 @@ function event_view_data(array $events, array $me): array {
     'filesByEvent' => $ohne(files_map('event', $ids)),
     'comments' => $ohne($comments),
     'attendance' => $ohne(attendance_map($ids)),
+    // Offene Zeitvorschlaege (#413). Nicht geschwaerzt: Ein Vorschlag steht
+    // ueber der Zeit, und die Zeit steht ohnehin auf der Karte.
+    'timeProposals' => event_time_proposal_map($ids, (int) $me['id']),
     'mine' => $ohne(my_attendance($ids, (int) $me['id'])),
     'substitutes' => rows('SELECT id, name, substitute_for FROM users WHERE substitute_for IS NOT NULL'),
     'subRequests' => $ohne(substitute_requests_map($ids)),

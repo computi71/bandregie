@@ -536,6 +536,19 @@ $tables = [
   // Wer für einen Termin als Ersatz angefragt wurde. Ohne Eintrag hier sieht
   // der Ersatz den Termin nicht — angefragt wird ausdrücklich, nicht daraus
   // abgeleitet, dass jemand abgesagt hat.
+  // Wer einen Zeitvorschlag noch bestaetigen muss (#413). Die Zeilen entstehen
+  // im Augenblick des Vorschlags fuer alle, die zu diesem Zeitpunkt zugesagt
+  // hatten - eingefroren und nicht laufend neu berechnet, sonst waere das Ziel
+  // ein bewegliches: Wer waehrend eines offenen Vorschlags zusagt, sagt zur
+  // angezeigten alten Zeit zu und soll nichts blockieren.
+  "CREATE TABLE IF NOT EXISTS event_time_confirms (
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    confirmed_at DATETIME NULL,
+    PRIMARY KEY (event_id, user_id),
+    INDEX idx_user (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
   "CREATE TABLE IF NOT EXISTS substitute_requests (
     event_id INT NOT NULL,
     user_id INT NOT NULL,
@@ -2019,6 +2032,21 @@ if (setting('migr_platzhalter_leer') === '') {
 // ohnehin mit.
 if (!column_exists('events', 'alternative_for')) {
   $db->exec("ALTER TABLE events ADD COLUMN alternative_for INT NULL");
+}
+
+// Eine kleine Zeitverschiebung ist ein Vorschlag (#413). Die vorgeschlagenen
+// Zeiten stehen NEBEN den echten und nicht an ihrer Stelle: Solange nicht
+// bestaetigt ist, gilt im Kalender die alte Zeit, und genau das ist der Punkt.
+// Alle drei Zeiten zusammen, weil wer den Beginn verschiebt fast immer auch
+// Treffen und Ende verschiebt - eine Spalte allein waere die Haelfte eines
+// Vorschlags.
+if (!column_exists('events', 'time_proposed')) {
+  $db->exec("ALTER TABLE events
+    ADD COLUMN time_proposed VARCHAR(5) NOT NULL DEFAULT '',
+    ADD COLUMN time_meet_proposed VARCHAR(5) NOT NULL DEFAULT '',
+    ADD COLUMN time_end_proposed VARCHAR(5) NOT NULL DEFAULT '',
+    ADD COLUMN time_proposed_by INT NULL,
+    ADD COLUMN time_proposed_at DATETIME NULL");
 }
 
 // Abstimmung ueber Liedvorschlaege (#391).

@@ -43,6 +43,28 @@
     <?php endif; ?>
     <?php if ($ev['notes']): ?><p class="prewrap muted"><?= e($ev['notes']) ?></p><?php endif; ?>
 
+    <?php // Eine vorgeschlagene Zeit (#413). Steht über den Zusage-Knöpfen, weil
+          // sie genau die betrifft: Die alte Zeit gilt, bis bestätigt ist, und
+          // wer hier tippt, sagt nicht ab, sondern hält seine Zusage. ?>
+    <?php $evZeit = $timeProposals[$ev['id']] ?? null; ?>
+    <?php if ($evZeit): ?>
+      <p class="warn">⏰
+        <?= e(str_replace(['%1', '%2'], [$evZeit['neu'], $evZeit['alt']], t('ev_time_proposed'))) ?>
+      </p>
+      <?php if ($evZeit['ich']): ?>
+        <form class="inline" action="/intern/termine/<?= $ev['id'] ?>/zeit-ok" method="post"><?= csrf_field() ?>
+          <button class="btn btn-small">✓ <?= e(t('ev_time_ok')) ?></button>
+        </form>
+      <?php endif; ?>
+      <p class="muted small"><?= e(str_replace('%1', implode(', ', $evZeit['fehlen']),
+                                               t('ev_time_waiting'))) ?></p>
+      <?php if (perm_allows($me, 'termine', 'write')): ?>
+        <form class="inline" action="/intern/termine/<?= $ev['id'] ?>/zeit-weg" method="post"
+              data-confirm="<?= e(t('ev_time_withdraw_confirm')) ?>"><?= csrf_field() ?>
+          <button class="btn btn-small btn-ghost"><?= e(t('ev_time_withdraw')) ?></button>
+        </form>
+      <?php endif; ?>
+    <?php endif; ?>
     <form class="inline attendance" action="/intern/termine/<?= $ev['id'] ?>/zusage" method="post"><?= csrf_field() ?>
       <button name="status" value="yes" class="chip <?= ($mine[$ev['id']] ?? '') === 'yes' ? 'chip-yes' : '' ?>"><?= e(t('att_yes')) ?></button>
       <button name="status" value="maybe" class="chip <?= ($mine[$ev['id']] ?? '') === 'maybe' ? 'chip-maybe' : '' ?>"><?= e(t('att_maybe')) ?></button>

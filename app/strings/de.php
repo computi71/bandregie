@@ -1810,6 +1810,25 @@ Gitarre: vorne rechts",
   'help_intro3' => 'Eine Seite, die länger offen liegt, bleibt nicht stumm: Tut sich etwas, erscheint oben ein Balken mit „Neu laden“. Von selbst lädt nichts nach — ein halb getippter Kommentar und ein Knopf, auf den du gerade zielst, sollen nicht weggezogen werden. Gefragt wird alle zwei Minuten und nur, solange das Fenster wirklich vor dir liegt.',
   // Hinweis nach einer Absage (#401)
   // Geänderter Termin fragt neu (#402)
+  // Eine kleine Zeitverschiebung ist ein Vorschlag (#413). Der Wortlaut sagt
+  // zweimal dasselbe und mit Absicht: Was vorgeschlagen ist UND was bis dahin
+  // gilt. Wer nur die neue Zeit liest, merkt sich die falsche.
+  'ev_time_proposed' => '%1 vorgeschlagen — bis das bestätigt ist, bleibt es bei %2.',
+  'ev_time_ok' => 'Passt',
+  'ev_time_waiting' => 'Es fehlen noch: %1',
+  'ev_time_withdraw' => 'Vorschlag zurücknehmen',
+  'ev_time_withdraw_confirm' => 'Der Vorschlag verschwindet, die bisherige Zeit bleibt stehen. Fortfahren?',
+  'fl_time_proposed' => 'Vorgeschlagen. Die neue Zeit gilt, sobald %1 bestätigt haben — bis dahin steht %2.',
+  'fl_time_applied' => 'Die neue Zeit gilt.',
+  'fl_time_confirmed' => 'Notiert. Es fehlen noch andere.',
+  'fl_time_withdrawn' => 'Vorschlag zurückgenommen.',
+  'fl_time_nothing' => 'Da ist nichts mehr zu bestätigen.',
+  'push_ev_time_ask' => 'Zeit verschoben?',
+  'push_ev_time_ask_body' => '%1 · %2: %3 statt %4. Passt das? Erst dann gilt die neue Zeit.',
+  'push_ev_time_now' => 'Neue Zeit gilt',
+  'push_ev_time_now_body' => '%1 · %2: %3',
+  'push_ev_time_lapsed' => 'Vorschlag verfallen',
+  'push_ev_time_lapsed_body' => '%1 · %2: Niemand hat bestätigt, es bleibt bei %3.',
   'fl_answers_reset' => '%1 Antworten wurden verworfen — die Band wird noch einmal gefragt.',
   // Versandprotokoll (#405)
   'set_pushlog_title' => 'Was zuletzt hinausging',
