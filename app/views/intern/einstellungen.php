@@ -405,15 +405,18 @@ $privacyDefault = "Datenschutzerklärung\n\n"
 <details class="card acc" name="setacc">
   <summary><?= e(t('set_texts')) ?></summary>
   <p class="muted small"><?= e(t('set_texts_hint')) ?></p>
+  <?php // Leer heisst nicht leer: Dann steht der Standardsatz da, und zwar in
+        // der Sprache des Lesers (#371). ?>
+  <p class="muted small"><?= e(t('set_texts_default')) ?></p>
   <form method="post" action="/intern/einstellungen" class="stack"><?= csrf_field() ?>
     <input type="hidden" name="_texts_form" value="1">
     <?php foreach ($activeLangs as $lang): ?>
       <details class="subsection lang-block" <?= $lang === 'de' ? 'open' : '' ?>>
         <summary><?= flag_svg($lang) ?> <strong><?= LANGS[$lang] ?></strong><?= $lang === 'de' ? ' <span class="muted small">(Standard / Fallback)</span>' : '' ?></summary>
         <div class="form-grid">
-          <label><?= e(t('set_tagline')) ?><input name="txt[<?= $lang ?>][tagline]" value="<?= e($txtVal($lang, 'tagline')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['tagline']) . '"' : '' ?>></label>
-          <label><?= e(t('set_booking')) ?><input name="txt[<?= $lang ?>][booking_text]" value="<?= e($txtVal($lang, 'booking_text')) ?>" <?= $lang !== 'de' ? 'placeholder="' . e($settings['booking_text']) . '"' : '' ?>></label>
-          <label class="span2"><?= e(t('set_about')) ?><textarea name="txt[<?= $lang ?>][bio]" rows="5" <?= $lang !== 'de' ? 'placeholder="' . e(mb_substr($settings['bio'], 0, 120)) . ' …"' : '' ?>><?= e($txtVal($lang, 'bio')) ?></textarea></label>
+          <label><?= e(t('set_tagline')) ?><input name="txt[<?= $lang ?>][tagline]" value="<?= e($txtVal($lang, 'tagline')) ?>" placeholder="<?= e(with_lang($lang, fn(): string => t('default_tagline'))) ?>"></label>
+          <label><?= e(t('set_booking')) ?><input name="txt[<?= $lang ?>][booking_text]" value="<?= e($txtVal($lang, 'booking_text')) ?>" placeholder="<?= e(with_lang($lang, fn(): string => t('default_booking_text'))) ?>"></label>
+          <label class="span2"><?= e(t('set_about')) ?><textarea name="txt[<?= $lang ?>][bio]" rows="5" placeholder="<?= e(with_lang($lang, fn(): string => t('default_bio'))) ?>"><?= e($txtVal($lang, 'bio')) ?></textarea></label>
         </div>
       </details>
     <?php endforeach; ?>
