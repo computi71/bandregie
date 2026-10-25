@@ -86,29 +86,47 @@ $pruefe('ein abgewaehltes Thema kommt nicht in die Schlange', $zahl() === $vorAb
 q('UPDATE users SET push_topics = ? WHERE id = ?', [$merk, (int) $einer['id']]);
 
 // ------------------------------------------------ 3. Sammeln
+// Seit #404: Die ERSTE geht sofort, erst die folgenden werden gesammelt. Das
+// Sammeln kostete sonst jede Antwort fuenf Minuten, auch die einzelne, auf
+// die nie eine zweite folgt - und das ist der haeufige Fall.
 q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
+q("DELETE FROM push_log WHERE collapse_key = 'zzq:7'");
 $viele = static fn(int $n, string $lang): array
     => ['title' => ZZQ . ' ' . $n . ' Antworten', 'body' => '', 'url' => '/intern'];
+
 push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
-$pruefe('erste gesammelte Zeile angelegt', $zahl() === 1);
-$pruefe('und wartet auf Nachzuegler', strtotime((string) row(
+$pruefe('die erste Zeile ist sofort faellig', strtotime((string) row(
+    "SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:7'")['send_after']) <= time() + 2);
+
+// So tun, als waere sie hinausgegangen - das ist der Zustand, in dem gesammelt
+// werden soll.
+q("DELETE FROM push_queue WHERE collapse_key = 'zzq:7'");
+q("INSERT INTO push_log (user_id, topic, collapse_key, outcome)
+   VALUES (?, 'events', 'zzq:7', 'gesendet')", [(int) $einer['id']]);
+
+push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
+$pruefe('die naechste wartet auf Nachzuegler', strtotime((string) row(
     "SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:7'")['send_after']) > time() + 60);
 push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
 push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
-$pruefe('drei Antworten bleiben eine Zeile', $zahl() === 1);
+$pruefe('drei weitere bleiben eine Zeile', $zahl() === 1);
 $gesammelt = row("SELECT * FROM push_queue WHERE collapse_key = 'zzq:7'");
 $pruefe('die Zeile zaehlt mit', (int) $gesammelt['collapse_count'] === 3);
 $pruefe('und sagt es im Wortlaut', str_contains((string) $gesammelt['payload'], '3 Antworten'));
 
-// Ein anderer Schluessel ist eine andere Sache.
+// Ein anderer Schluessel ist eine andere Sache - und dessen erste geht wieder
+// sofort, weil zu ihm noch nichts hinausging.
 push_queue_add('events', [$einer], $bau, 'zzq:8', $viele);
 $pruefe('ein anderer Termin ist eine eigene Zeile', $zahl() === 2);
+$pruefe('und dessen erste geht wieder sofort', strtotime((string) row(
+    "SELECT send_after FROM push_queue WHERE collapse_key = 'zzq:8'")['send_after']) <= time() + 2);
 
 // Was schon faellig ist, wird nicht mehr eingesammelt - sonst waechst eine
 // Zeile ewig weiter und geht nie hinaus.
 q("UPDATE push_queue SET send_after = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE collapse_key = 'zzq:7'");
 push_queue_add('events', [$einer], $bau, 'zzq:7', $viele);
 $pruefe('eine faellige Zeile sammelt nicht mehr ein', $zahl() === 3);
+q("DELETE FROM push_log WHERE collapse_key LIKE 'zzq%'");
 
 // ------------------------------------------------ 4. Abholen
 q("DELETE FROM push_queue WHERE payload LIKE ?", ['%' . ZZQ . '%']);
