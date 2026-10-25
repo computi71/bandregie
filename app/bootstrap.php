@@ -2136,6 +2136,16 @@ function topic_post_add(int $topicId, array $author, string $text): void {
 function topic_unread(?array $user): array {
   $uid = (int) ($user['id'] ?? 0);
   if (!$uid) return [];
+  // Wer den Chat nicht lesen darf, hat dort auch nichts Ungelesenes. Die
+  // Prüfung stand an may_see_topic() und nicht hier — und genau davor warnt
+  // deren eigener Kommentar: „damit Liste, Zahl und Mitteilung nicht wieder
+  // auseinanderlaufen“. Die Zahl war ausgeschert.
+  //
+  // Aufgefallen an einer frisch eingespielten Aushilfe: drei ungelesene
+  // Beiträge in einem Thema, das sie gar nicht öffnen kann. Am App-Symbol fiel
+  // es nicht auf, weil open_items_by_path() dort nochmals prüft — aber jede
+  // andere Stelle, die hier fragt, bekäme eine Zahl, die auf nichts zeigt.
+  if (!perm_allows($user, 'themen')) return [];
   $sichtbar = visible_topic_ids($user);
   if ($sichtbar === []) return [];
   $nurDiese = '';
