@@ -78,7 +78,7 @@ function speichern(start, aenderung) {
 let fehler = 0;
 const p = (was, ok) => {
   if (!ok) fehler++;
-  console.log('  ' + was.padEnd(56) + (ok ? 'ok' : 'FEHLER'));
+  console.log('  ' + was.padEnd(58) + (ok ? 'ok' : 'FEHLER'));
 };
 
 const PROBE = { date: '2027-11-05', time: '19:00', time_meet: '18:30',
@@ -87,8 +87,8 @@ const PROBE = { date: '2027-11-05', time: '19:00', time_meet: '18:30',
 // ------------------------------- 1. Was gar nichts kostet, fragt auch nicht
 p('nichts geaendert: keine Rueckfrage',
   speichern(PROBE, {}).satz === null);
-p('nur ein Feld ausserhalb der Liste: keine Rueckfrage',
-  speichern(PROBE, { }).satz === null);
+p('derselbe Wert neu getippt: keine Rueckfrage',
+  speichern(PROBE, { time: '19:00' }).satz === null);
 
 // ------------------------------- 2. Der kleine Sprung: der neue Satz
 p('eine Stunde spaeter: der Vorschlags-Satz',
