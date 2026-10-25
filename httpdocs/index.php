@@ -1121,7 +1121,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/termine');
   }
 
-  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     if (in_array($action, ['update', 'delete'], true) && event_locked((int) $id)) {
       flash(t('fl_locked_event'));
@@ -1133,6 +1133,27 @@ if (str_starts_with($path, '/intern')) {
       // beantworten die vorhandenen Zusagen eine Frage, die es nicht mehr
       // gibt. Auch das muss VOR dem Schreiben geholt werden.
       $evAbdruckVorher = event_answer_fingerprint((int) $id);
+      // Eine kleine Verschiebung ist ein Vorschlag und keine neue Frage (#413).
+      // Entschieden wird VOR dem Schreiben, weil danach nicht mehr zu sehen
+      // waere, was sich bewegt hat.
+      //
+      // Die alten Zeiten gehen zurueck in $_POST: event_values() liest von
+      // dort, und so bleibt es bei einer Schreibanweisung. Im Kalender steht
+      // damit weiter die alte Zeit - eine Zeit, die vielleicht gilt, ist
+      // keine, nach der sich jemand richten kann.
+      $evAlt = row('SELECT ' . implode(', ', EVENT_FIELDS_INVALIDATE) . ' FROM events WHERE id = ?',
+                   [(int) $id]);
+      $evNeueZeiten = [];
+      if ($evAlt) {
+        $evGepostet = [];
+        foreach (EVENT_FIELDS_INVALIDATE as $evF) $evGepostet[$evF] = (string) ($_POST[$evF] ?? '');
+        if (event_time_small_shift($evAlt, $evGepostet)) {
+          foreach (EVENT_TIME_FIELDS as $evF) {
+            $evNeueZeiten[$evF] = (string) ($_POST[$evF] ?? '');
+            $_POST[$evF] = (string) ($evAlt[$evF] ?? '');
+          }
+        }
+      }
       // Lesen, schreiben, vergleichen an einer Stelle (#321): Die Zeile von
       // vorher muss vor dem Schreiben geholt werden, und genau das vergisst man.
       item_update('event', (int) $id, function () use ($id): void {
@@ -1162,7 +1183,18 @@ if (str_starts_with($path, '/intern')) {
       // Steht vor der Standmitteilung: Wer beides zugleich ändert, soll zuerst
       // hören, dass neu gefragt wird — das ist die Nachricht, die etwas von
       // ihm will.
-      if (event_answer_fingerprint((int) $id) !== $evAbdruckVorher) {
+      if ($evNeueZeiten) {
+        // Kleine Verschiebung: Der Abdruck hat sich nicht geruehrt, denn die
+        // alten Zeiten stehen noch. Jetzt der Vorschlag.
+        $evOffen = event_time_propose((int) $id, $evNeueZeiten, (int) $me['id']);
+        flash($evOffen === 0
+          ? t('fl_time_applied')
+          : str_replace(['%1', '%2'], [(string) $evOffen, event_time_label($evAlt)],
+                        t('fl_time_proposed')));
+      } elseif (event_answer_fingerprint((int) $id) !== $evAbdruckVorher) {
+        // Ein anderer Tag, ein anderer Ort, ein weiter Sprung: Darauf passt
+        // kein offener Vorschlag mehr, der ging ja von dieser Frage aus.
+        event_time_clear((int) $id);
         $evVerworfen = event_answers_reset((int) $id, (int) $me['id']);
         if ($evVerworfen) {
           flash(str_replace('%1', (string) $evVerworfen, t('fl_answers_reset')));
@@ -1212,6 +1244,33 @@ if (str_starts_with($path, '/intern')) {
       // den es nicht mehr gibt.
       q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
       redirect('/intern/termine');
+    }
+    // Eine vorgeschlagene Zeit bestaetigen (#413). Selbstbedienung wie die
+    // Zusage: Wer Termine nur lesen darf, darf trotzdem sagen, dass ihm die
+    // neue Zeit passt - er ist ja gerade der, den es angeht.
+    if ($action === 'zeit-ok') {
+      // Eine Aushilfe bestätigt nichts an einem Termin, zu dem sie nicht
+      // gebeten wurde. Dass sie dafür erst zugesagt haben müsste, reicht als
+      // Begründung nicht: Die Route soll selbst nein sagen können.
+      if (!may_see_event($me, (int) $id)) { flash(t('fl_no_permission')); back('/intern/termine'); }
+      if (!event_time_confirm((int) $id, (int) $me['id'])) {
+        // Schon bestaetigt, gar nicht gefragt, oder der Vorschlag ist
+        // inzwischen durch: alles kein Fehler, nur nichts mehr zu tun.
+        flash(t('fl_time_nothing'));
+        back('/intern/termine');
+      }
+      flash(event_time_proposal((int) $id) ? t('fl_time_confirmed') : t('fl_time_applied'));
+      back('/intern/termine');
+    }
+    // Und zuruecknehmen darf, wer den Termin auch aendern darf.
+    if ($action === 'zeit-weg') {
+      if (!perm_allows($me, 'termine', 'write') || !may_see_event($me, (int) $id)) {
+        flash(t('fl_no_permission'));
+        back('/intern/termine');
+      }
+      event_time_clear((int) $id);
+      flash(t('fl_time_withdrawn'));
+      back('/intern/termine');
     }
     if ($action === 'zusage') {
       $status = in_array($_POST['status'] ?? '', ['yes', 'no', 'maybe'], true) ? $_POST['status'] : 'maybe';
