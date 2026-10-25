@@ -101,7 +101,7 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
                 // schon benutzt (#376). Vorher standen hier zwei Listen — alle
                 // Namen, und daneben die fertigen — und wer wissen wollte, wen er
                 // noch fragen muss, zog sie im Kopf voneinander ab. ?>
-          <?php foreach ($wer as $a): ?><span class="att att-<?= $a['done_at'] !== null ? 'yes' : 'open' ?>"><?= $a['done_at'] !== null ? '✔' : '☐' ?> <?= e($a['name']) ?></span><?php endforeach; ?>
+          <?= task_assignee_chips($wer) ?>
           <?php // Die Zahl nur bei mehreren: Bei einem sagt „1 von 1" nichts,
                 // was das Häkchen daneben nicht schon sagt. ?>
           <?php if (count($wer) > 1): ?>
