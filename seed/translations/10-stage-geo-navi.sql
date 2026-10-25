@@ -167,3 +167,4 @@ INSERT IGNORE INTO translations (lang, tkey, value) VALUES
 ('it','song_chords_more','Altri musicisti hanno accordi — nel teleprompter si cambia dal menu.'),
 ('it','song_chords_ph','[Intro]\nAm  F  C  G\n\n[Strophe]\nC              G\nTesto della prima riga …'),
 ('it','song_chords_hint','Per accordi e appunti, come si scriverebbero a mano. Larghezza fissa: ciò che è allineato resta allineato. Sezioni tra parentesi quadre, come nel testo.')
+;

@@ -4,6 +4,7 @@ SET NAMES utf8mb4;
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','bk_targets','Where backups go'),('en','bk_target_local','This server'),
 ('en','bk_target_local_hint','Always on. The archive is stored outside the web root and can be downloaded here.'),
+('en','bk_ftp_enabled','Also put them on an FTP server'),
 ('en','bk_ftp_host','Server'),('en','bk_ftp_port','Port'),('en','bk_ftp_user','User'),
 ('en','bk_ftp_pass','Password'),('en','bk_ftp_pass_set','saved — enter a new one to change it'),
 ('en','bk_ftp_dir','Directory'),('en','bk_ftp_tls','Encrypted (FTPS)'),
@@ -13,9 +14,9 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','bk_ftp_pending','The credentials are stored and can be tested already — the upload itself comes in the next step.'),
 ('en','bk_onedrive_pending','Needs a Microsoft sign-in. Once the connection for files and photos is there, the backup can use it too.'),
 ('en','fl_bk_targets_saved','Targets saved.'),
-
 ('fr','bk_targets','Où vont les sauvegardes'),('fr','bk_target_local','Ce serveur'),
 ('fr','bk_target_local_hint','Toujours actif. L''archive est hors du répertoire web et se télécharge ici.'),
+('fr','bk_ftp_enabled','Les déposer aussi sur un serveur FTP'),
 ('fr','bk_ftp_host','Serveur'),('fr','bk_ftp_port','Port'),('fr','bk_ftp_user','Utilisateur'),
 ('fr','bk_ftp_pass','Mot de passe'),('fr','bk_ftp_pass_set','enregistré — saisir un nouveau pour le changer'),
 ('fr','bk_ftp_dir','Répertoire'),('fr','bk_ftp_tls','Chiffré (FTPS)'),
@@ -25,9 +26,9 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','bk_ftp_pending','Les identifiants sont déjà enregistrés et testables — l''envoi lui-même arrive à l''étape suivante.'),
 ('fr','bk_onedrive_pending','Nécessite une connexion Microsoft. Dès que la liaison pour les fichiers et photos existe, la sauvegarde pourra s''en servir.'),
 ('fr','fl_bk_targets_saved','Destinations enregistrées.'),
-
 ('es','bk_targets','Dónde van las copias'),('es','bk_target_local','Este servidor'),
 ('es','bk_target_local_hint','Siempre activo. El archivo se guarda fuera del directorio web y se puede descargar aquí.'),
+('es','bk_ftp_enabled','Guardarlas también en un servidor FTP'),
 ('es','bk_ftp_host','Servidor'),('es','bk_ftp_port','Puerto'),('es','bk_ftp_user','Usuario'),
 ('es','bk_ftp_pass','Contraseña'),('es','bk_ftp_pass_set','guardada — escribe una nueva para cambiarla'),
 ('es','bk_ftp_dir','Directorio'),('es','bk_ftp_tls','Cifrado (FTPS)'),
@@ -37,9 +38,9 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','bk_ftp_pending','Los datos de acceso ya se guardan y se pueden probar — la subida en sí llega en el siguiente paso.'),
 ('es','bk_onedrive_pending','Necesita iniciar sesión en Microsoft. En cuanto exista la conexión para archivos y fotos, la copia podrá usarla.'),
 ('es','fl_bk_targets_saved','Destinos guardados.'),
-
 ('nl','bk_targets','Waar back-ups heen gaan'),('nl','bk_target_local','Deze server'),
 ('nl','bk_target_local_hint','Altijd aan. Het archief staat buiten de webmap en is hier te downloaden.'),
+('nl','bk_ftp_enabled','Ook op een FTP-server zetten'),
 ('nl','bk_ftp_host','Server'),('nl','bk_ftp_port','Poort'),('nl','bk_ftp_user','Gebruiker'),
 ('nl','bk_ftp_pass','Wachtwoord'),('nl','bk_ftp_pass_set','opgeslagen — voer een nieuw in om te wijzigen'),
 ('nl','bk_ftp_dir','Map'),('nl','bk_ftp_tls','Versleuteld (FTPS)'),
@@ -49,9 +50,9 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','bk_ftp_pending','De gegevens worden al opgeslagen en zijn te testen — het uploaden zelf komt in de volgende stap.'),
 ('nl','bk_onedrive_pending','Vereist aanmelden bij Microsoft. Zodra de koppeling voor bestanden en foto''s er is, kan de back-up die meegebruiken.'),
 ('nl','fl_bk_targets_saved','Bestemmingen opgeslagen.'),
-
 ('it','bk_targets','Dove finiscono i backup'),('it','bk_target_local','Questo server'),
 ('it','bk_target_local_hint','Sempre attivo. L''archivio sta fuori dalla cartella web e si scarica da qui.'),
+('it','bk_ftp_enabled','Metterli anche su un server FTP'),
 ('it','bk_ftp_host','Server'),('it','bk_ftp_port','Porta'),('it','bk_ftp_user','Utente'),
 ('it','bk_ftp_pass','Password'),('it','bk_ftp_pass_set','salvata — inseriscine una nuova per cambiarla'),
 ('it','bk_ftp_dir','Cartella'),('it','bk_ftp_tls','Cifrato (FTPS)'),
