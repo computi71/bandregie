@@ -5578,7 +5578,21 @@ function content(string $key): string {
       if ($v && trim($v['value']) !== '') return $v['value'];
     }
   }
-  return setting($key);
+  // Leer heisst: Die Band hat nie etwas hingeschrieben. Dann steht hier ein
+  // Satz in IHRER Sprache und nicht in meiner (#371).
+  //
+  // Frueher stand der deutsche Satz als Wert in der Datenbank, einmal beim
+  // Einrichten hineingeschrieben. Wer Bandregie auf Englisch benutzte, hatte
+  // deutschen Text unter jeder Seite - und zwar so lange, bis jemand die
+  // Einstellung fand und ueberschrieb. Ein eingefrorener Wert kann einer
+  // Einstellung nicht folgen, die sich spaeter aendert; dieselbe Lehre wie bei
+  // den Migrationen.
+  //
+  // Sobald die Band etwas eintraegt, tritt der Rueckfall beiseite.
+  $wert = setting($key);
+  if (trim($wert) !== '') return $wert;
+  $ersatz = t('default_' . $key);
+  return $ersatz !== 'default_' . $key ? $ersatz : '';
 }
 /**
  * Vollständige Adresse für Links in E-Mails und Kalenderdateien.

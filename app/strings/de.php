@@ -672,6 +672,14 @@ const UI_STRINGS = [
   'set_bandprofile' => 'Bandprofil', 'set_bandname' => 'Bandname', 'set_contact_email' => 'Kontakt-E-Mail',
   'set_texts' => 'Texte (alle Sprachen)',
   'set_texts_hint' => 'Alle Sprachen in einer Box. Leere Felder fallen automatisch zurück: gewählte Sprache → Englisch → Deutsch.',
+  // Was dasteht, solange die Band nichts eigenes hingeschrieben hat (#371).
+  // Nicht als Wert in der Datenbank, sondern als Text — so liest jede Band
+  // ihre eigene Sprache, und zwar auch dann noch, wenn sie sie später wechselt.
+  'set_texts_default' => 'Lässt du ein Feld leer, steht dort der mitgelieferte Satz — und zwar in der Sprache dessen, der die Seite ansieht. Sobald du etwas hineinschreibst, gilt deins.',
+  'default_band_name' => 'Meine Band',
+  'default_tagline' => 'Bandname, Logo und Hintergrund in den Einstellungen anpassen',
+  'default_bio' => 'Hier steht bald die Bandbeschreibung.',
+  'default_booking_text' => 'Ihr wollt uns buchen? Schreibt uns!',
   'set_about' => 'Über uns', 'set_tagline' => 'Slogan', 'set_booking' => 'Booking-Text',
   'set_public' => 'Öffentliche Seite', 'set_pm' => 'Modus der öffentlichen Seite',
   'set_pm_website' => 'Volle Website (Start, Termine, Musik, Fotos, Kontakt)',
