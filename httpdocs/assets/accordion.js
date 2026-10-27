@@ -42,10 +42,15 @@ window.addEventListener('hashchange', accOeffneAnker);
 document.addEventListener('DOMContentLoaded', () => {
   if ('name' in document.createElement('details')) return;
 
-  document.querySelectorAll('details.acc[name]').forEach(item => {
+  // Der Name allein entscheidet, nicht die Klasse (#422). Vorher brauchte eine
+  // Gruppe beides — und wer das eine setzte und das andere vergaß, hatte auf
+  // genau dieser Seite stillschweigend kein Akkordeon. Die Klasse „acc" ist
+  // ein Aussehen; gruppiert wird über den Namen, so wie der Browser es auch
+  // selbst tut.
+  document.querySelectorAll('details[name]').forEach(item => {
     item.addEventListener('toggle', () => {
       if (!item.open) return;
-      document.querySelectorAll(`details.acc[name="${item.getAttribute('name')}"]`)
+      document.querySelectorAll(`details[name="${item.getAttribute('name')}"]`)
         .forEach(other => { if (other !== item) other.open = false; });
     });
   });
