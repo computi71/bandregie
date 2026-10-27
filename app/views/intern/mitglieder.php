@@ -184,6 +184,10 @@
             <span class="muted small"><?= e(t('stage_figure_hint')) ?></span>
           </label>
           <label class="checkbox"><input type="checkbox" name="on_stage" value="1" <?= (int) ($mFull['on_stage'] ?? 1) === 1 ? 'checked' : '' ?>> 🎭 <?= e(t('prof_on_stage')) ?></label>
+          <?php // Derselbe Satz wie im Profil (#420): Der Haken bestimmt seit
+                // dort mehr als den Bühnenplan, und wer ihn hier für jemand
+                // anderen setzt, muss wissen, was er damit abschaltet. ?>
+          <p class="muted small"><?= e(t('prof_on_stage_hint')) ?></p>
           <label><?= e(t('mem_substitute_for')) ?>
             <select name="substitute_for">
               <option value=""><?= e(t('mem_substitute_none')) ?></option>

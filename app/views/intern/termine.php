@@ -147,10 +147,17 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
     <?php $evMonat = fmt_month($ev['date']); ?>
     <h2 class="event-month"><?= e($evMonat) ?></h2>
   <?php endif; ?>
-  <?php // In der Liste steht jede Karte offen — und lässt sich jetzt auch
-        // zuklappen, wenn man sie gerade nicht braucht. Keine Gruppe: Hier
-        // dürfen beliebig viele offen sein (#325). ?>
-  <?php $evGruppe = ''; $evOpen = true; ?>
+  <?php // Zugeklappt wie in der Übersicht (#419). Offen war die Liste so lang,
+        // dass ein Datum zu finden hieß, an allem davor vorbeizuscrollen — und
+        // schlimmer: Das Aufklappen meldet den Termin als gesehen (#321), also
+        // löschte das bloße Laden der Seite jede Marke, auch an den Terminen,
+        // die niemand angesehen hat.
+        //
+        // Keine Gruppe: Hier dürfen beliebig viele offen sein (#325) — anders
+        // als in der Übersicht, die in einen Blick passen soll. Der Anker
+        // klappt die Karte auf, auf die er zeigt (#322), also führen
+        // Mitteilungen und Verweise weiter genau dorthin. ?>
+  <?php $evGruppe = ''; $evOpen = false; ?>
   <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>

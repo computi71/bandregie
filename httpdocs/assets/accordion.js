@@ -18,11 +18,23 @@ function accOeffneAnker() {
   const ziel = document.getElementById(id);
   if (!ziel) return;
   const karte = ziel.tagName === 'DETAILS' ? ziel : ziel.closest('details');
-  if (!karte) return;
-  karte.open = true;
-  // Nach dem Aufklappen noch einmal hinspringen: Die Karte ist jetzt höher,
-  // und der Browser hat vorher auf die geschlossene Fassung gezielt.
-  karte.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  if (karte) {
+    karte.open = true;
+    // Nach dem Aufklappen noch einmal hinspringen: Die Karte ist jetzt höher,
+    // und der Browser hat vorher auf die geschlossene Fassung gezielt.
+    karte.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return;
+  }
+  // Keine Faltkarte, sondern eine Zeile — so sieht die Übersicht aus (#421).
+  // Hinspringen reicht da nicht: Wer aus einer Mitteilung kommt, landet in
+  // einer Liste von neun und weiß nicht, welche gemeint war. Die Zeile sagt
+  // es deshalb kurz selbst und hört dann wieder auf — eine Hervorhebung, die
+  // bleibt, ist beim zweiten Hinsehen nur noch Farbe.
+  ziel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  ziel.classList.remove('angesprungen');
+  // Erzwingt den Neuanfang der Animation, wenn derselbe Anker zweimal kommt.
+  void ziel.offsetWidth;
+  ziel.classList.add('angesprungen');
 }
 document.addEventListener('DOMContentLoaded', accOeffneAnker);
 window.addEventListener('hashchange', accOeffneAnker);

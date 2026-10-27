@@ -110,7 +110,11 @@ function digest_collect(array $user): array {
   // Offene Aufgaben und fehlende Rückmeldungen: dasselbe, was die Zahl am
   // App-Symbol zählt (open_items_count). Zwei Begriffe von „offen" wären
   // schlimmer als die fehlende Mail.
-  if (perm_allows($user, 'aufgaben')) {
+  // Ohne Rechtepruefung (#421), aus demselben Grund wie in open_items_by_path():
+  // Die eigene Aufgabe ist seit #393 auch ohne Bereichsrecht zu sehen und
+  // abzuhaken. Vorher fehlte der Abschnitt ausgerechnet bei dem, der die
+  // Aufgabe hat und sonst nirgends davon erfaehrt.
+  {
     $eintraege = [];
     foreach (rows("SELECT t.id, t.title, t.due_date FROM tasks t
                    JOIN task_assignees ta ON ta.task_id = t.id
@@ -119,7 +123,7 @@ function digest_collect(array $user): array {
                   [(int) $user['id']]) as $a) {
       $eintraege[] = ['kopf' => $a['title'],
                       'wer' => $a['due_date'] ? push_t($lang, 'due_until') . ' ' . fmt_date_lang($a['due_date'], $lang) : '',
-                      'url' => '/intern/aufgaben'];
+                      'url' => answer_url('aufgabe', (int) $a['id'])];
     }
     if ($eintraege) $abschnitte[] = ['titel' => push_t($lang, 'digest_tasks'), 'eintraege' => $eintraege];
   }

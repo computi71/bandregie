@@ -113,8 +113,11 @@
         // gleich daneben (#236). ?>
   <?php if ($openVotes): ?>
     <ul class="task-list">
+      <?php // Der Anker, auf den eine Mitteilung zeigt (#421). Nicht ev<Nr> —
+            // den trägt die Terminkarte weiter unten, und zwei gleiche Anker
+            // auf einer Seite führen den Browser auf den ersten. ?>
       <?php foreach ($openVotes as $ov): ?>
-        <li>
+        <li id="offen-ev<?= (int) $ov['id'] ?>">
           <span class="badge"><?= e(t('dash_vote_missing')) ?></span>
           <span class="event-date"><?= fmt_date($ov['date']) ?></span>
           <?php // Zusagen, ohne den Abend ansehen zu können, ist eine Zumutung
@@ -160,7 +163,7 @@
   <?php if ($openTimes): ?>
     <ul class="task-list">
       <?php foreach ($openTimes as $ot): ?>
-        <li>
+        <li id="offen-zeit<?= (int) $ot['id'] ?>">
           <span class="badge">⏰</span>
           <span class="event-date"><?= fmt_date($ot['date']) ?></span>
           <a href="<?= e(event_url($ot)) ?>"><strong><?= e($ot['title']) ?></strong></a>
@@ -177,7 +180,7 @@
   <?php if ($dashAufgaben): ?>
     <ul class="task-list">
       <?php foreach ($tasks as $task): ?>
-        <li>
+        <li id="offen-aufgabe<?= (int) $task['id'] ?>">
           <form class="inline" action="/intern/aufgaben/<?= $task['id'] ?>/toggle" method="post"><?= csrf_field() ?><button class="check" title="OK">☐</button></form>
           <?php // Ohne Bereichsrecht führt der Verweis auf eine Seite, die sich
                 // nicht öffnen lässt — dann steht der Titel eben ohne Verweis da. ?>

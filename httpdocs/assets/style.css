@@ -389,6 +389,23 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .task-list { list-style: none; padding: 0; margin: 0; }
 .task-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.7rem; padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
 .task-list li:last-child { border-bottom: 0; }
+/* Die Zeile, auf die eine Mitteilung gezeigt hat (#421). Sie leuchtet kurz
+   auf und hört wieder auf: Wer aus einer Mitteilung kommt, soll sehen, welche
+   der neun Zeilen gemeint war — und zwei Minuten später nicht mehr daran
+   erinnert werden. Der Rahmen trägt die Aussage, nicht die Farbe allein. */
+.task-list li.angesprungen {
+  animation: angesprungen 3s ease-out 1;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+@keyframes angesprungen {
+  from { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  to   { background: transparent; }
+}
+/* Wer Bewegung abbestellt hat, bekommt den Rahmen und kein Blinken. */
+@media (prefers-reduced-motion: reduce) {
+  .task-list li.angesprungen { animation: none; }
+}
 .task-list li.done strong { text-decoration: line-through; color: var(--muted); }
 /* Abhaken passiert oft im Stehen, mit dem Daumen: die Flaeche muss zu
    treffen sein, auch wenn das Zeichen darin klein bleibt. */

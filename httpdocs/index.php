@@ -1108,7 +1108,9 @@ if (str_starts_with($path, '/intern')) {
       // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
       $pushDate = (string) $_POST['date'];
-      $pushUrl = event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$newEventId]));
+      // In die Übersicht (#421): Ein neuer Termin will eine Antwort, und die
+      // gibt man dort mit einem Tipp — ohne die Terminliste zu öffnen.
+      $pushUrl = answer_url('ev', $newEventId);
       // Das Datum in der Sprache des Empfaengers, nicht des Absenders (#349):
       // $lang kommt je Abo herein, fmt_date() haette die Browsersprache dessen
       // genommen, der den Termin gerade angelegt hat.
@@ -1958,6 +1960,7 @@ if (str_starts_with($path, '/intern')) {
       }
       $taskLinks($taskNeu);
       item_new('task', $taskNeu, (int) $me['id']);
+      task_assigned_notify($taskNeu, $wer, (int) $me['id']);
     }
     // Zurueck, woher der Absender kam (#390): Das Formular steht jetzt
     // auch an der Terminkarte, und wer dort eine Aufgabe anlegt, will
@@ -1970,6 +1973,10 @@ if (str_starts_with($path, '/intern')) {
     if (!perm_allows($me, 'aufgaben', 'write')) { flash(t('fl_no_permission')); redirect('/intern/aufgaben'); }
     $taskNr = (int) $m[1];
     $wer = $taskWer();
+    // Wer vorher schon zustaendig war, bekommt keine zweite Mitteilung (#421).
+    // Die Liste muss VOR dem Schreiben geholt werden.
+    $taskVorher = array_map('intval', array_column(
+      rows('SELECT user_id FROM task_assignees WHERE task_id = ?', [$taskNr]), 'user_id'));
     item_update('task', $taskNr, static function () use ($taskNr, $wer, $taskVerlangt): void {
       q('UPDATE tasks SET title = ?, notes = ?, due_date = ?, required_done = ? WHERE id = ?',
         [trim((string) ($_POST['title'] ?? '')), $_POST['notes'] ?? '', $_POST['due_date'] ?? '',
@@ -1982,6 +1989,7 @@ if (str_starts_with($path, '/intern')) {
       }
     }, (int) $me['id']);
     $taskLinks($taskNr);
+    task_assigned_notify($taskNr, array_values(array_diff($wer, $taskVorher)), (int) $me['id']);
     // Ohne Erlaubnis zum Öffnen: Eine erledigte Aufgabe geht nicht wieder auf,
     // nur weil jemand die Zuständigenliste angefasst hat.
     task_status_apply($taskNr);

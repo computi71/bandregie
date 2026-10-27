@@ -1411,6 +1411,11 @@ Zeile zwei
   'push_topic_attendance' => 'Zusagen und Absagen',
   'push_topic_erinnerung' => 'Erinnerung, wenn ich nach einer Absage nichts vorgeschlagen habe',
   'push_topic_vollzaehlig' => 'Wenn alle auf meinen Termin geantwortet haben',
+  // Mitteilung, wenn jemand für eine Aufgabe zuständig gemacht wird (#421).
+  // Vorher erfuhr das niemand: Die Aufgabe stand in der Übersicht, aber nur
+  // für den, der hinsah.
+  'push_topic_aufgaben' => 'Wenn ich für eine Aufgabe zuständig werde',
+  'push_task_new' => 'Neue Aufgabe für dich',
   'push_topic_photos' => 'Neue Bilder',
   'push_topic_post' => 'Neue Post',
   'push_topic_topics' => 'Neue Beiträge im Chat',
@@ -1766,7 +1771,7 @@ Zeile zwei
   'stage_stagebox_power' => 'Strom an der Stagebox',
   'stage_podest_modules' => 'aus 3 Modulen 2 × 1 m',
   'prof_on_stage' => 'Ich stehe auf der Bühne',
-  'prof_on_stage_hint' => 'Nur für den Bühnenplan. Wer die Band begleitet, ohne zu spielen — Technik, Fahrdienst, Management —, hakt das aus und wird von der Vorlage nicht mehr aufgestellt.',
+  'prof_on_stage_hint' => 'Wer die Band begleitet, ohne zu spielen — Technik, Fahrdienst, Management —, hakt das aus. Zweierlei hängt daran: Die Bühnenvorlage stellt ihn nicht mehr auf, und bei Probe, Aufnahme und Fotoshooting wartet die Band nicht auf seine Antwort. Eingeladen ist er trotzdem und kann jederzeit zusagen — er hält nur nichts auf. Beim Auftritt und bei der Besprechung zählt seine Antwort wie jede andere.',
   'fl_stage_saved' => 'Bühnenplan gespeichert.', 'fl_stage_deleted' => 'Vom Plan genommen.',
   'rider_positions_lbl' => 'Bühnenaufstellung (Text)',
   'rider_positions_ph' => "z. B.
