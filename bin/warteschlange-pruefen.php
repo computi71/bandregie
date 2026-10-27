@@ -403,7 +403,7 @@ $zielAufgabe = (int) $GLOBALS['db']->lastInsertId();
 // Entwicklungsanlage eines mit abbestellten Themen, und dann prüfte das hier
 // nur, dass eine Abbestellung wirkt.
 $zielKonto = null;
-foreach (rows('SELECT id, role, substitute_for, pref_lang, push_topics FROM users') as $zu) {
+foreach (rows('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id <> 1') as $zu) {
     if (in_array('aufgaben', push_topics($zu), true)) { $zielKonto = $zu; break; }
 }
 $pruefe('ein Konto gefunden, das Aufgaben-Mitteilungen will', $zielKonto !== null);
