@@ -434,9 +434,14 @@ q("DELETE FROM push_queue WHERE topic = 'aufgaben'");
 
 // Und die Gegenrichtung: Ein Zeitvorschlag will eine Antwort, die neue Zeit
 // unterrichtet nur.
+//
+// Ein Gig und keine Probe: Hier geht es um die Adresse, nicht um #420. Bei
+// einer Probe muesste ein Konto ohne Buehnenhaken gar nicht bestaetigen, die
+// Zeit gaelte sofort — und die Mitteilung, um die es hier geht, entstuende
+// nie.
 q("DELETE FROM events WHERE title LIKE 'ZZZIEL%'");
 q("INSERT INTO events (type, title, date, time, time_meet, time_end, status, created_by)
-   VALUES ('probe', 'ZZZIEL Termin', DATE_ADD(CURDATE(), INTERVAL 25 DAY), '19:00', '18:30', '22:00', 'bestaetigt', 1)");
+   VALUES ('gig', 'ZZZIEL Termin', DATE_ADD(CURDATE(), INTERVAL 25 DAY), '19:00', '18:30', '22:00', 'bestaetigt', 1)");
 $zielEv = (int) $GLOBALS['db']->lastInsertId();
 q("INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,'yes')", [$zielEv, $zielWer]);
 q("DELETE FROM push_queue WHERE topic = 'events'");
