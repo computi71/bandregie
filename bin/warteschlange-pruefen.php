@@ -399,7 +399,15 @@ $pruefe('item_url() zeigt weiter auf die Sache selbst',
 q("DELETE FROM tasks WHERE title LIKE 'ZZZIEL%'");
 q("INSERT INTO tasks (title, status, created_by, required_done) VALUES ('ZZZIEL Aufgabe', 'offen', 1, 0)");
 $zielAufgabe = (int) $GLOBALS['db']->lastInsertId();
-$zielWer = (int) ($wer[1]['id'] ?? $wer[0]['id']);
+// Ein Konto, das Mitteilungen überhaupt will: $wer[1] war auf der
+// Entwicklungsanlage eines mit abbestellten Themen, und dann prüfte das hier
+// nur, dass eine Abbestellung wirkt.
+$zielKonto = null;
+foreach (rows('SELECT id, role, substitute_for, pref_lang, push_topics FROM users') as $zu) {
+    if (in_array('aufgaben', push_topics($zu), true)) { $zielKonto = $zu; break; }
+}
+$pruefe('ein Konto gefunden, das Aufgaben-Mitteilungen will', $zielKonto !== null);
+$zielWer = (int) ($zielKonto['id'] ?? 0);
 q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$zielAufgabe, $zielWer]);
 q("DELETE FROM push_queue WHERE topic = 'aufgaben'");
 task_assigned_notify($zielAufgabe, [$zielWer], 1);
