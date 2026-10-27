@@ -99,6 +99,19 @@ $raeumAuf = static function (int $ev): void {
 };
 $neueZeiten = ['time' => '20:00', 'time_meet' => '19:30', 'time_end' => '23:00'];
 
+// Die Testkonten stehen für diesen Lauf auf der Bühne. Ohne das hängt die
+// Prueffung davon ab, welche Häkchen auf der Entwicklungsanlage gerade stehen:
+// Wer nicht auf der Bühne steht, muss bei einer Probe seit #420 nicht
+// bestätigen — richtig so, aber hier wird etwas anderes geprüft.
+$buehneVorher = [];
+foreach ([$chef, $a, $b] as $zzU) {
+    $buehneVorher[$zzU] = (int) row('SELECT on_stage FROM users WHERE id = ?', [$zzU])['on_stage'];
+    q('UPDATE users SET on_stage = 1 WHERE id = ?', [$zzU]);
+}
+$buehneZurueck = static function () use ($buehneVorher): void {
+    foreach ($buehneVorher as $zzU => $zzW) q('UPDATE users SET on_stage = ? WHERE id = ?', [$zzW, $zzU]);
+};
+
 // ------------------- 2. Vorschlagen, bestätigen, gilt
 $e1 = $neuerTermin('ZZZV Vorschlag');
 $sagt($e1, $a, 'yes');
@@ -161,6 +174,24 @@ $pruefe('ein frischer Vorschlag verfällt nicht mit',
     })());
 $raeumAuf($e3);
 
+// ------------------- 4b. Wer nicht auf der Bühne steht, hält nichts auf (#420)
+$e9 = $neuerTermin('ZZZV Technik');
+$sagt($e9, $a, 'yes');
+q('UPDATE users SET on_stage = 0 WHERE id = ?', [$a]);
+$pruefe('bei der Probe muss die Technik nicht bestätigen',
+    event_time_propose($e9, $neueZeiten, $chef) === 0);
+$pruefe('und die Zeit gilt damit sofort', $zeitVon($e9) === '19:30/20:00/23:00');
+$raeumAuf($e9);
+
+// Beim Gig zählt sie wie jeder andere.
+$e10 = $neuerTermin('ZZZV Technik Gig');
+q("UPDATE events SET type = 'gig' WHERE id = ?", [$e10]);
+$sagt($e10, $a, 'yes');
+$pruefe('beim Gig muss sie bestätigen', event_time_propose($e10, $neueZeiten, $chef) === 1);
+$pruefe('und die alte Zeit steht solange', $zeitVon($e10) === '18:30/19:00/22:00');
+$raeumAuf($e10);
+q('UPDATE users SET on_stage = 1 WHERE id = ?', [$a]);
+
 // ------------------- 5. Die Route (nur mit Hostnamen)
 $host = $argv[3] ?? '';
 if ($host !== '') {
@@ -221,6 +252,7 @@ if ($host !== '') {
 }
 
 // ------------------- 6. Nichts liegengelassen
+$buehneZurueck();
 $pruefe('keine ZZZV-Termine zurückgelassen',
     (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZZV%'")['n'] === 0);
 $pruefe('keine verwaisten Bestätigungszeilen',

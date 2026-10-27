@@ -538,7 +538,7 @@ const DIGEST_FREQ = ['aus' => 0, 'taeglich' => 1, '2tage' => 2, 'woche' => 7];
 // 'vollzaehlig' ist abschaltbar wie jedes andere (#382): Eine Mitteilung, die
 // sich nicht abstellen laesst, ist der Grund, warum Leute alle abstellen.
 const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'erinnerung',
-                     'photos', 'post', 'topics'];
+                     'aufgaben', 'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
 /**
@@ -4526,6 +4526,36 @@ function is_substitute(?array $user): bool {
 }
 
 /**
+ * Sagen, dass jemand für eine Aufgabe zuständig gemacht wurde (#421).
+ *
+ * Bis dahin erfuhr das niemand: Die Aufgabe stand in der Übersicht und an
+ * der Zahl am App-Symbol, aber nur, wenn man hinsah. Wer zwischen zwei Proben
+ * eine Woche nicht hineinsieht, bekam eine Fälligkeit mit, nachdem sie
+ * vorbei war.
+ *
+ * Nur an die, die neu dazukommen, und nie an den, der zugewiesen hat.
+ *
+ * @param array<int, int> $userIds Wer neu zuständig ist
+ */
+function task_assigned_notify(int $taskId, array $userIds, int $durch): void {
+  $t = row('SELECT title, due_date FROM tasks WHERE id = ?', [$taskId]);
+  if (!$t) return;
+  $titel = (string) $t['title'];
+  $faellig = (string) ($t['due_date'] ?? '');
+  $url = answer_url('aufgabe', $taskId);
+  foreach ($userIds as $uid) {
+    if ((int) $uid === $durch) continue;
+    push_to_user((int) $uid, 'aufgaben', static fn(string $lang): array => [
+      'title' => push_t($lang, 'push_task_new'),
+      'body'  => $titel . ($faellig !== ''
+        ? ' · ' . push_t($lang, 'due_until') . ' ' . fmt_date_lang($faellig, $lang)
+        : ''),
+      'url'   => $url,
+    ]);
+  }
+}
+
+/**
  * Was für dieses Mitglied noch offen ist — die Zahl am App-Symbol.
  *
  * Zwei Dinge, die eine Handlung verlangen: eigene Aufgaben, die niemand
@@ -4640,7 +4670,9 @@ function event_answers_reset(int $eventId, int $durch): int {
   if (!$ev) return count($zeilen);
   $titel = (string) $ev['title'];
   $datum = (string) $ev['date'];
-  $url = event_url($ev);
+  // In die Übersicht (#421): Die Antworten sind gerade verworfen, also steht
+  // der Termin dort unter den offenen Rückmeldungen — mit den drei Knöpfen.
+  $url = answer_url('ev', $eventId);
   push_notify('events', $durch, fn(string $lang): array => [
     'title' => push_t($lang, 'push_ev_again'),
     'body'  => $titel . ' \u00b7 ' . fmt_date_lang($datum, $lang),
@@ -4782,7 +4814,7 @@ function event_time_apply(int $eventId): void {
   $datum = (string) $ev['date'];
   $zeit = event_time_label($ev, '_proposed');
   $url = event_url($ev);
-  push_queue_add('events', event_answerers($eventId),
+  push_queue_add('events', event_invited($eventId),
     static fn(string $lang): array => [
       'title' => push_t($lang, 'push_ev_time_now'),
       'body'  => str_replace(['%1', '%2', '%3'], [$titel, fmt_date_lang($datum, $lang), $zeit],
@@ -4809,8 +4841,8 @@ function event_time_apply(int $eventId): void {
  * @return int Wie viele noch bestätigen müssen; 0 heißt "gilt schon"
  */
 function event_time_propose(int $eventId, array $zeiten, int $durch): int {
-  $ev = row('SELECT id, title, date, status, time, time_meet, time_end FROM events WHERE id = ?',
-            [$eventId]);
+  $ev = row('SELECT id, type, title, date, status, time, time_meet, time_end
+             FROM events WHERE id = ?', [$eventId]);
   if (!$ev) return 0;
   event_time_clear($eventId);
   q('UPDATE events SET time_proposed = ?, time_meet_proposed = ?, time_end_proposed = ?,
@@ -4820,11 +4852,16 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
      (string) ($zeiten['time_end'] ?? ''), $durch, $eventId]);
 
   // Wer sich den Abend schon freigehalten hat. Der Vorschlagende zählt nicht
-  // mit: Er hat gerade selbst verschoben, das ist seine Bestätigung.
-  foreach (rows("SELECT user_id FROM attendance
-                 WHERE event_id = ? AND status = 'yes' AND user_id <> ?", [$eventId, $durch]) as $z) {
+  // mit: Er hat gerade selbst verschoben, das ist seine Bestätigung. Und wer
+  // bei dieser Art ohnehin nicht gebraucht wird (#420), hält auch keine
+  // Verschiebung auf — er erfährt davon, aber die Band wartet nicht auf ihn.
+  $art = (string) ($ev['type'] ?? '');
+  foreach (rows("SELECT u.* FROM attendance a JOIN users u ON u.id = a.user_id
+                 WHERE a.event_id = ? AND a.status = 'yes' AND a.user_id <> ?",
+                [$eventId, $durch]) as $u) {
+    if (event_optional_for($u, $art)) continue;
     q('INSERT IGNORE INTO event_time_confirms (event_id, user_id) VALUES (?,?)',
-      [$eventId, (int) $z['user_id']]);
+      [$eventId, (int) $u['id']]);
   }
   $offen = count(event_time_waiting($eventId));
   if ($offen === 0) {
@@ -4836,8 +4873,9 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
   $datum = (string) $ev['date'];
   $alt = event_time_label($ev);
   $neu = event_time_label($zeiten);
-  $url = event_url($ev);
-  $empfaenger = array_values(array_filter(event_answerers($eventId),
+  // In die Übersicht (#421): Dort steht seit #418 der Knopf „Passt".
+  $url = answer_url('zeit', $eventId);
+  $empfaenger = array_values(array_filter(event_invited($eventId),
     static fn(array $u): bool => (int) $u['id'] !== $durch));
   push_queue_add('events', $empfaenger,
     static fn(string $lang): array => [
@@ -4922,19 +4960,42 @@ function event_time_proposals_expire(): int {
 }
 
 /**
- * Wer bei diesem Termin antworten soll (#382).
+ * Terminarten, bei denen nur gebraucht wird, wer spielt (#420).
  *
- * Dieselbe Frage, die open_votes() je Person stellt — nur andersherum. Beide
- * müssen dieselbe Antwort geben, sonst wartet die Meldung auf jemanden, der
- * den Termin gar nicht auf seiner Liste hat.
+ * Probe, Aufnahme, Fotoshooting: Wer die Band begleitet, ohne zu spielen —
+ * Technik, Fahrdienst, Management — ist eingeladen und wird nicht gebraucht.
+ *
+ * Der Gig steht bewusst nicht hier: Dort fährt die Technik mit. Und die
+ * Besprechung erst recht nicht — das ist der Termin, bei dem das Management
+ * gerade gefragt ist.
+ */
+const EVENT_TYPES_STAGE_ONLY = ['probe', 'aufnahme', 'fotoshooting'];
+
+/**
+ * Ist dieses Konto bei dieser Terminart zwar eingeladen, aber nicht nötig?
+ *
+ * Hängt an dem Haken, den es schon gibt: „Ich stehe auf der Bühne". Er hat
+ * bis #420 nur den Bühnenplan bestimmt; seitdem sagt er auch, wessen Antwort
+ * die Band abwarten muss.
+ */
+function event_optional_for(array $user, string $type): bool {
+  return (int) ($user['on_stage'] ?? 1) === 0
+      && in_array($type, EVENT_TYPES_STAGE_ONLY, true);
+}
+
+/**
+ * Wer diesen Termin überhaupt angeht — die Eingeladenen (#420).
  *
  * Draußen bleiben: Gäste und Bookingagenten (sie antworten nicht), wer Termine
  * nicht lesen darf, und eine Aushilfe, die für genau diesen Termin nicht
  * angefragt wurde.
  *
+ * Das ist die Liste für Mitteilungen: Wer eingeladen ist, soll erfahren, dass
+ * sich etwas geändert hat, auch wenn niemand auf seine Antwort wartet.
+ *
  * @return array<int, array> Zeilen aus users
  */
-function event_answerers(int $eventId): array {
+function event_invited(int $eventId): array {
   $leute = [];
   foreach (rows('SELECT * FROM users') as $u) {
     if (is_outsider($u)) continue;
@@ -4945,6 +5006,24 @@ function event_answerers(int $eventId): array {
     $leute[] = $u;
   }
   return $leute;
+}
+
+/**
+ * Wer bei diesem Termin antworten soll (#382).
+ *
+ * Dieselbe Frage, die open_votes() je Person stellt — nur andersherum. Beide
+ * müssen dieselbe Antwort geben, sonst wartet die Meldung auf jemanden, der
+ * den Termin gar nicht auf seiner Liste hat.
+ *
+ * Die Eingeladenen ohne die, die nicht gebraucht werden (#420). Der
+ * Unterschied ist genau einer: Hier wartet die Band, dort wird eingeladen.
+ *
+ * @return array<int, array> Zeilen aus users
+ */
+function event_answerers(int $eventId): array {
+  $art = (string) (row('SELECT type FROM events WHERE id = ?', [$eventId])['type'] ?? '');
+  return array_values(array_filter(event_invited($eventId),
+    static fn(array $u): bool => !event_optional_for($u, $art)));
 }
 
 /** Haben alle geantwortet, die antworten sollen? */
@@ -5174,6 +5253,29 @@ function item_label(string $kind, int $id, ?string $lang = null): string {
  * Wohin ein Eintrag führt. Bereiche ohne Einzelseite führen auf ihre Liste -
  * dort steht der Eintrag vollständig, mehr gibt es nicht zu zeigen.
  */
+/**
+ * Wohin eine Mitteilung führt, die eine Antwort verlangt (#421).
+ *
+ * In die Übersicht und auf genau diesen Punkt — nicht auf die Bereichsseite.
+ * Zwei Gründe, und beide zählen:
+ *
+ * Dort stehen die Knöpfe. Die drei für die Rückmeldung, das Häkchen an der
+ * eigenen Aufgabe, seit #418 das „Passt" am Zeitvorschlag. Wer aus einer
+ * Mitteilung kommt, will antworten und nicht erst suchen.
+ *
+ * Und die Übersicht geht immer auf. Wer für eine Aufgabe zuständig gemacht
+ * wurde, ohne den Bereich zu haben, sieht sie nur dort (#393) — die
+ * Aufgabenseite hätte ihn abgewiesen, und die Mitteilung wäre ins Leere
+ * gegangen.
+ *
+ * Mitteilungen, die nur berichten, zeigen weiter auf die Sache selbst:
+ * item_url(). Der Unterschied ist nicht die Sorte, sondern ob jemand etwas
+ * tun soll.
+ */
+function answer_url(string $kind, int $id): string {
+  return '/intern#offen-' . $kind . $id;
+}
+
 function item_url(string $kind, int $id): string {
   // Kommentar und Zusage führen auf ihren Termin, nicht auf sich selbst: Sie
   // haben keine eigene Seite, sie stehen in der Terminkarte.
@@ -5430,6 +5532,8 @@ function song_vote_start(int $songId, int $durch): void {
     q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$nr, (int) $u['id']]);
   }
   item_new('task', $nr, $durch);
+  task_assigned_notify($nr,
+    array_map(static fn(array $u): int => (int) $u['id'], song_vote_voters()), $durch);
 }
 
 /**

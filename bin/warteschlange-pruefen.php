@@ -374,6 +374,93 @@ q("DELETE FROM push_log WHERE topic = 'erinnerung'");
 $pruefe('keine ZZER-Termine zurueckgelassen',
     (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZER%'")['n'] === 0);
 
+// ------------------- 12. Wohin eine Mitteilung führt (#421)
+//
+// Die Regel: Wer antworten soll, landet in der Übersicht auf seinem Punkt —
+// dort stehen die Knöpfe, und die Seite geht auch ohne Bereichsrecht auf. Wer
+// nur unterrichtet wird, landet bei der Sache selbst.
+//
+// Geprüft werden beide Hälften. Nur die erste wäre auch erfüllt, wenn jede
+// Mitteilung in die Übersicht führte — und dann fände niemand mehr den
+// Kommentar, über den er benachrichtigt wurde.
+q("DELETE FROM push_queue WHERE topic IN ('events', 'aufgaben')");
+$zielVon = static function (): string {
+    $z = row("SELECT payload FROM push_queue ORDER BY id DESC LIMIT 1");
+    $d = $z ? json_decode((string) $z['payload'], true) : null;
+    return (string) ($d['url'] ?? ($d['de']['url'] ?? ''));
+};
+
+$pruefe("answer_url() zeigt in die Übersicht",
+    answer_url('aufgabe', 17) === '/intern#offen-aufgabe17');
+$pruefe('item_url() zeigt weiter auf die Sache selbst',
+    str_starts_with(item_url('task', 17), '/intern/aufgaben'));
+
+// Eine Aufgabe, die jemandem zugewiesen wird.
+q("DELETE FROM tasks WHERE title LIKE 'ZZZIEL%'");
+q("INSERT INTO tasks (title, status, created_by, required_done) VALUES ('ZZZIEL Aufgabe', 'offen', 1, 0)");
+$zielAufgabe = (int) $GLOBALS['db']->lastInsertId();
+// Ein Konto, das Mitteilungen überhaupt will: $wer[1] war auf der
+// Entwicklungsanlage eines mit abbestellten Themen, und dann prüfte das hier
+// nur, dass eine Abbestellung wirkt.
+$zielKonto = null;
+foreach (rows('SELECT id, role, substitute_for, pref_lang, push_topics FROM users WHERE id <> 1') as $zu) {
+    if (in_array('aufgaben', push_topics($zu), true)) { $zielKonto = $zu; break; }
+}
+$pruefe('ein Konto gefunden, das Aufgaben-Mitteilungen will', $zielKonto !== null);
+$zielWer = (int) ($zielKonto['id'] ?? 0);
+q('INSERT INTO task_assignees (task_id, user_id) VALUES (?,?)', [$zielAufgabe, $zielWer]);
+q("DELETE FROM push_queue WHERE topic = 'aufgaben'");
+task_assigned_notify($zielAufgabe, [$zielWer], 1);
+$pruefe('eine zugewiesene Aufgabe meldet sich überhaupt',
+    (int) row("SELECT COUNT(*) n FROM push_queue WHERE topic = 'aufgaben'")['n'] === 1);
+$pruefe('und führt in die Übersicht auf die Zeile',
+    $zielVon() === '/intern#offen-aufgabe' . $zielAufgabe);
+
+// Wer selbst zuweist, bekommt keine Mitteilung von sich.
+q("DELETE FROM push_queue WHERE topic = 'aufgaben'");
+task_assigned_notify($zielAufgabe, [$zielWer], $zielWer);
+$pruefe('wer sich selbst zuständig macht, bekommt nichts',
+    (int) row("SELECT COUNT(*) n FROM push_queue WHERE topic = 'aufgaben'")['n'] === 0);
+
+// Abwählbar wie jedes andere Thema.
+$pruefe("'aufgaben' steht in PUSH_TOPICS", in_array('aufgaben', PUSH_TOPICS, true));
+$pruefe('und hat eine Beschriftung', t('push_topic_aufgaben') !== 'push_topic_aufgaben');
+$pruefe('und ist abwählbar',
+    !in_array('aufgaben', push_topics(['push_topics' => 'aufgaben']), true));
+
+q('DELETE FROM task_assignees WHERE task_id = ?', [$zielAufgabe]);
+q('DELETE FROM tasks WHERE id = ?', [$zielAufgabe]);
+q("DELETE FROM push_queue WHERE topic = 'aufgaben'");
+
+// Und die Gegenrichtung: Ein Zeitvorschlag will eine Antwort, die neue Zeit
+// unterrichtet nur.
+//
+// Ein Gig und keine Probe: Hier geht es um die Adresse, nicht um #420. Bei
+// einer Probe muesste ein Konto ohne Buehnenhaken gar nicht bestaetigen, die
+// Zeit gaelte sofort — und die Mitteilung, um die es hier geht, entstuende
+// nie.
+q("DELETE FROM events WHERE title LIKE 'ZZZIEL%'");
+q("INSERT INTO events (type, title, date, time, time_meet, time_end, status, created_by)
+   VALUES ('gig', 'ZZZIEL Termin', DATE_ADD(CURDATE(), INTERVAL 25 DAY), '19:00', '18:30', '22:00', 'bestaetigt', 1)");
+$zielEv = (int) $GLOBALS['db']->lastInsertId();
+q("INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,'yes')", [$zielEv, $zielWer]);
+q("DELETE FROM push_queue WHERE topic = 'events'");
+event_time_propose($zielEv, ['time' => '20:00', 'time_meet' => '19:30', 'time_end' => '23:00'], 1);
+$pruefe('der Zeitvorschlag führt in die Übersicht',
+    $zielVon() === '/intern#offen-zeit' . $zielEv);
+q("DELETE FROM push_queue WHERE topic = 'events'");
+event_time_apply($zielEv);
+$pruefe('die geltende neue Zeit führt zum Termin',
+    str_starts_with($zielVon(), '/intern/termine'));
+
+q("DELETE FROM push_queue WHERE topic = 'events'");
+q("DELETE FROM attendance WHERE event_id = ?", [$zielEv]);
+q("DELETE FROM event_time_confirms WHERE event_id = ?", [$zielEv]);
+q("DELETE FROM events WHERE id = ?", [$zielEv]);
+$pruefe('keine ZZZIEL-Daten zurückgelassen',
+    (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZZIEL%'")['n'] === 0
+    && (int) row("SELECT COUNT(*) n FROM tasks WHERE title LIKE 'ZZZIEL%'")['n'] === 0);
+
 $pruefe('nichts stehen gelassen', $zahl() === 0);
 
 printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);

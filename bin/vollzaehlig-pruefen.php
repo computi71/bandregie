@@ -213,6 +213,68 @@ $pruefe('ohne Antworten verwirft es nichts', event_answers_reset($e6, 1) === 0);
 $weg($e6);
 $weg($e5);
 
+// ------------------- Wer nicht auf der Bühne steht (#420)
+//
+// Eingeladen ja, gebraucht nein — und zwar nur bei den Arten, bei denen
+// gespielt oder abgelichtet wird. Geprüft wird beides zusammen: dass die Band
+// nicht auf ihn wartet UND dass er die Mitteilung trotzdem bekommt. Das erste
+// allein wäre auch erfüllt, wenn man ihn ganz aus dem Termin wirft.
+$zzBuehne = row("SELECT * FROM users WHERE email = 'zzbuehne@example.invalid'");
+if (!$zzBuehne) {
+    $zzMit = row("SELECT id FROM users WHERE role <> 'admin' AND substitute_for IS NULL LIMIT 1")
+        ?? row('SELECT id FROM users ORDER BY id LIMIT 1');
+    q("INSERT INTO users (name, email, password_hash, role, on_stage)
+       VALUES ('ZZ Technik', 'zzbuehne@example.invalid', '', 'member', 0)");
+    $zzBuehne = row("SELECT * FROM users WHERE email = 'zzbuehne@example.invalid'");
+}
+$zzNr = (int) $zzBuehne['id'];
+$artTermin = static function (string $art) use (&$zzNr): int {
+    q('INSERT INTO events (type, title, date, status, created_by) VALUES (?,?,?,?,1)',
+      [$art, 'ZZVZ ' . $art, '2027-11-21', 'bestaetigt']);
+    return (int) $GLOBALS['db']->lastInsertId();
+};
+$gefragtBei = static function (int $ev) use ($zzNr): bool {
+    return in_array($zzNr, array_map(static fn(array $u): int => (int) $u['id'],
+                                     event_answerers($ev)), true);
+};
+$eingeladenBei = static function (int $ev) use ($zzNr): bool {
+    return in_array($zzNr, array_map(static fn(array $u): int => (int) $u['id'],
+                                     event_invited($ev)), true);
+};
+
+foreach (['probe', 'aufnahme', 'fotoshooting'] as $art) {
+    $ea = $artTermin($art);
+    $pruefe("bei der Art $art wartet die Band nicht auf ihn", !$gefragtBei($ea));
+    $pruefe("bei der Art $art ist er trotzdem eingeladen", $eingeladenBei($ea));
+    $weg($ea);
+}
+foreach (['gig', 'besprechung'] as $art) {
+    $eb = $artTermin($art);
+    $pruefe("bei der Art $art zählt seine Antwort wie jede andere", $gefragtBei($eb));
+    $weg($eb);
+}
+
+// Und der Haken ist es wirklich, der das macht — nicht das Konto.
+q('UPDATE users SET on_stage = 1 WHERE id = ?', [$zzNr]);
+$ec = $artTermin('probe');
+$pruefe('mit gesetztem Haken wartet die Band auch bei der Probe', $gefragtBei($ec));
+$weg($ec);
+q('UPDATE users SET on_stage = 0 WHERE id = ?', [$zzNr]);
+
+// Vollzähligkeit: Seine fehlende Antwort hält die Probe nicht auf.
+$ed = $artTermin('probe');
+foreach (event_answerers($ed) as $u) {
+    q("INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,'yes')",
+      [$ed, (int) $u['id']]);
+}
+$pruefe('die Probe ist vollzählig, obwohl er nicht geantwortet hat',
+    event_answers_complete($ed));
+$weg($ed);
+
+q('DELETE FROM users WHERE id = ?', [$zzNr]);
+$pruefe('Testkonto wieder weg',
+    row("SELECT id FROM users WHERE email = 'zzbuehne@example.invalid'") === null);
+
 // Nichts stehen lassen.
 $reste = (int) row('SELECT COUNT(*) n FROM events WHERE title LIKE ?', ['ZZVZ%'])['n'];
 $pruefe('keine Testdaten zurueckgelassen', $reste === 0);

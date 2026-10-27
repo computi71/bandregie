@@ -4,7 +4,7 @@ SET NAMES utf8mb4;
 
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','prof_on_stage','I am on stage'),
-('en','prof_on_stage_hint','For the stage plot only. Whoever comes along without playing — sound, driving, management — unticks this and the template stops placing them.'),
+('en','prof_on_stage_hint','Whoever comes along without playing — sound, driving, management — unticks this. Two things follow: the stage template stops placing them, and at a rehearsal, a recording or a photo session the band does not wait for their answer. They are still invited and can say yes at any time — they just hold nothing up. At a gig and at a meeting their answer counts like everybody else''s.'),
 ('en','rider_contact_free','or enter a different one'),
 ('en','rider_contact_hint','A member is the better answer than typed text: when their number changes, the rider changes with it. Free text stays for engineers who come from outside and have no account here.'),
 ('en','rider_contact_member','Member'),
@@ -27,7 +27,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','stagekind_stagebox','Stagebox'),
 
 ('nl','prof_on_stage','Ik sta op het podium'),
-('nl','prof_on_stage_hint','Alleen voor het podiumplan. Wie meegaat zonder te spelen — techniek, rijden, management — vinkt dit uit en wordt door het sjabloon niet meer geplaatst.'),
+('nl','prof_on_stage_hint','Wie met de band meegaat zonder te spelen — techniek, rijdienst, management — vinkt dit uit. Twee dingen hängen eraan: de podiumsjabloon zet hem niet meer neer, en bij een repetitie, opname of fotoshoot wacht de band niet op zijn antwoord. Uitgenodigd is hij wel en hij kan altijd ja zeggen — hij houdt alleen niets tegen. Bij een optreden en bij een bespreking telt zijn antwoord als elk ander.'),
 ('nl','rider_contact_free','of een andere invullen'),
 ('nl','rider_contact_hint','Een lid is een beter antwoord dan getypte tekst: verandert zijn nummer, dan verandert de rider mee. Vrije tekst blijft voor technici die van buiten komen en hier geen account hebben.'),
 ('nl','rider_contact_member','Lid'),
@@ -50,7 +50,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','stagekind_stagebox','Stagebox'),
 
 ('fr','prof_on_stage','Je suis sur scène'),
-('fr','prof_on_stage_hint','Uniquement pour le plan de scène. Qui accompagne le groupe sans jouer — technique, conduite, management — décoche ceci et le modèle ne le place plus.'),
+('fr','prof_on_stage_hint','Qui accompagne le groupe sans jouer — technique, conduite, management — décoche ceci. Deux choses en découlent : le modèle de scène ne le place plus, et lors d’une répétition, d’un enregistrement ou d’une séance photo le groupe n’attend pas sa réponse. Il reste invité et peut accepter à tout moment — il ne bloque simplement rien. Pour un concert et une réunion, sa réponse compte comme toutes les autres.'),
 ('fr','rider_contact_free','ou en saisir un autre'),
 ('fr','rider_contact_hint','Un membre vaut mieux qu''un texte saisi : si son numéro change, la fiche technique change avec lui. Le texte libre reste pour les techniciens venus de l''extérieur, qui n''ont pas de compte ici.'),
 ('fr','rider_contact_member','Membre'),
@@ -73,7 +73,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','stagekind_stagebox','Boîtier de scène'),
 
 ('es','prof_on_stage','Estoy en el escenario'),
-('es','prof_on_stage_hint','Solo para el plano de escenario. Quien acompaña sin tocar —técnica, conducción, management— desmarca esto y la plantilla deja de colocarlo.'),
+('es','prof_on_stage_hint','Quien acompaña a la banda sin tocar — técnica, conducción, management — desmarca esto. De ello se siguen dos cosas: la plantilla del escenario deja de colocarlo, y en un ensayo, una grabación o una sesión de fotos la banda no espera su respuesta. Sigue invitado y puede decir que sí en cualquier momento — simplemente no detiene nada. En un bolo y en una reunión su respuesta cuenta como cualquier otra.'),
 ('es','rider_contact_free','o indicar otro'),
 ('es','rider_contact_hint','Un miembro es mejor respuesta que un texto escrito: si cambia su número, cambia el rider con él. El texto libre queda para los técnicos que vienen de fuera y no tienen cuenta aquí.'),
 ('es','rider_contact_member','Miembro'),
@@ -96,7 +96,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','stagekind_stagebox','Caja de escenario'),
 
 ('it','prof_on_stage','Sono sul palco'),
-('it','prof_on_stage_hint','Solo per la piantina del palco. Chi accompagna senza suonare — tecnica, guida, management — togli la spunta e il modello non lo posiziona più.'),
+('it','prof_on_stage_hint','Chi accompagna la band senza suonare — tecnica, trasporti, management — toglie questa spunta. Ne seguono due cose: il modello di palco non lo mette più, e a una prova, una registrazione o un servizio fotografico la band non aspetta la sua risposta. Resta invitato e può dire di sì in qualsiasi momento — semplicemente non blocca nulla. A un concerto e a una riunione la sua risposta conta come ogni altra.'),
 ('it','rider_contact_free','oppure inserirne un altro'),
 ('it','rider_contact_hint','Un membro è un''indicazione migliore di un testo digitato: se cambia il suo numero, cambia anche il rider. Il testo libero resta per i tecnici che arrivano da fuori e qui non hanno un account.'),
 ('it','rider_contact_member','Membro'),
