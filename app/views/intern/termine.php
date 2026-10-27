@@ -153,11 +153,14 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
         // löschte das bloße Laden der Seite jede Marke, auch an den Terminen,
         // die niemand angesehen hat.
         //
-        // Keine Gruppe: Hier dürfen beliebig viele offen sein (#325) — anders
-        // als in der Übersicht, die in einen Blick passen soll. Der Anker
-        // klappt die Karte auf, auf die er zeigt (#322), also führen
-        // Mitteilungen und Verweise weiter genau dorthin. ?>
-  <?php $evGruppe = ''; $evOpen = false; ?>
+        // Eine Gruppe wie in der Übersicht (#422): Wer eine Karte aufklappt,
+        // schließt die vorige. Die Liste behält damit ihre Länge, und man
+        // verliert seine Stelle darin nicht. #419 hatte sie absichtlich
+        // weggelassen — das war die eine Seite von dreien, die anders war.
+        //
+        // Der Anker klappt die Karte auf, auf die er zeigt (#322), also
+        // führen Mitteilungen und Verweise weiter genau dorthin. ?>
+  <?php $evGruppe = 'listev'; $evOpen = false; ?>
   <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>

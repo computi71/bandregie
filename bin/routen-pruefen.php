@@ -103,6 +103,39 @@ foreach ($mitArray as $pfad) {
     printf("%-38s %d %s%s", $pfad, $code, $gut ? 'ok' : 'FEHLER (bricht ab)', PHP_EOL);
 }
 
+// ---------------- Akkordeon: gruppiert oder nicht (#422)
+//
+// Drei Seiten zeigen Listen aus Faltkarten, und sie verhielten sich drei
+// verschiedene Weisen. Was sie gruppiert, ist das name-Attribut - der Browser
+// macht es selbst, accordion.js nur dort, wo er es nicht kann. Es wegzulassen
+// fällt nicht auf: Die Seite sieht richtig aus, es klappen nur beliebig viele
+// Karten auf einmal auf, und das merkt erst, wer eine lange Liste hat.
+$akkordeon = [
+    '/intern'          => ['listev' => 0, 'dashev' => 1],
+    '/intern/termine'  => ['listev' => 1, 'dashev' => 0],
+    '/intern/aufgaben' => ['taskedit' => 1],
+];
+foreach ($akkordeon as $pfad => $erwartet) {
+    $seite = (string) shell_exec(sprintf(
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s%s',
+        escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host), $pfad));
+    preg_match_all('~<details[^>]*>~s', $seite, $treffer);
+    $gefunden = [];
+    foreach ($treffer[0] as $d) {
+        if (preg_match('~\sname="([^"]+)"~', $d, $g)) {
+            $gefunden[$g[1]] = ($gefunden[$g[1]] ?? 0) + 1;
+        }
+    }
+    foreach ($erwartet as $gruppe => $mindestens) {
+        $da = $gefunden[$gruppe] ?? 0;
+        $gut = $mindestens > 0 ? $da >= $mindestens : $da === 0;
+        if (!$gut) $fehler++;
+        printf("%-30s %-9s %s%s", $pfad, $gruppe,
+            $gut ? "ok ($da)" : "FEHLER ($da, erwartet " . ($mindestens > 0 ? ">=1" : "0") . ")",
+            PHP_EOL);
+    }
+}
+
 $roh = 0;
 foreach ([$basis . '/httpdocs/index.php', $basis . '/app/bootstrap.php'] as $datei) {
     $inhalt = (string) file_get_contents($datei);

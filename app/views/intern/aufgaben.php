@@ -121,7 +121,13 @@ $taskFormular = static function (array $members, ?array $task, array $wer,
         <?php $wArt = 'task'; $wNr = (int) $task['id']; $wFlag = $wichtigByTask[$wNr] ?? null;
               require BASE_DIR . '/app/views/intern/_wichtig.php'; ?>
         <?php if (perm_allows($user, 'aufgaben', 'write')): ?>
-          <details class="subsection">
+          <?php // Eine Gruppe (#422): Beim Öffnen schließt sich das Formular der
+                // vorigen Aufgabe. Das hält die Liste kurz und verhindert, dass
+                // zwei halb ausgefüllte Formulare offen stehen und das falsche
+                // abgeschickt wird. Ohne die „acc"-Klasse: Die bringt ein
+                // Aussehen mit, das hier nicht hingehört — gruppiert wird seit
+                // #422 über den Namen allein. ?>
+          <details class="subsection" name="taskedit">
             <summary>✏️ <?= e(t('task_edit')) ?></summary>
             <form method="post" action="/intern/aufgaben/<?= (int) $task['id'] ?>/update" class="form-grid"><?= csrf_field() ?>
               <?php $taskFormular($members, $task, $wer, $linkable ?? [], $linksByTask[(int) $task['id']] ?? []); ?>
