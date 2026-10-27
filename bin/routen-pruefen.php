@@ -119,7 +119,7 @@ foreach ($akkordeon as $pfad => $erwartet) {
     $seite = (string) shell_exec(sprintf(
         'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s%s',
         escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host), $pfad));
-    preg_match_all('~<details[^>]*>~s', $seite, $treffer);
+    preg_match_all('~<details[^>]*>~s', $seite, $treffer);
     $gefunden = [];
     foreach ($treffer[0] as $d) {
         if (preg_match('~\sname="([^"]+)"~', $d, $g)) {
