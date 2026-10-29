@@ -2116,8 +2116,20 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/post/' . (int) $m[1]);
     }
     // Auch ein aus einer Anfrage übernommener Termin ist für die Band neu.
-    q('INSERT INTO events (type, title, date, time, time_end, location, fee, notes, status)
-       VALUES (?,?,?,?,?,?,?,?,?)', [
+    //
+    // created_by und responsible_id gehören dazu (#426): Ausgerechnet die
+    // Termine, die von außen hereinkommen, hatten vorher weder das eine noch
+    // das andere — und an genau denen fragt hinterher jemand, wer das
+    // eingetragen hat. item_new() schreibt nur updated_by, und das ist die
+    // Marke, nicht der Vermerk: Sie verschwindet, wenn die Band hingesehen
+    // hat.
+    //
+    // Wer die Anfrage übernimmt, ist verantwortlich — dieselbe
+    // Voreinstellung wie beim gewöhnlichen Anlegen (#424), und hier mit noch
+    // mehr Recht: Er hat gerade mit dem Veranstalter zu tun gehabt.
+    q('INSERT INTO events (type, title, date, time, time_end, location, fee, notes, status,
+                           created_by, responsible_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)', [
       in_array($_POST['type'] ?? '', ['gig', 'probe'], true) ? $_POST['type'] : 'gig',
       mb_substr($titel, 0, 255), $datum,
       preg_match('~^\d{2}:\d{2}$~', (string) ($_POST['time'] ?? '')) ? $_POST['time'] : '',
@@ -2128,6 +2140,8 @@ if (str_starts_with($path, '/intern')) {
       // zugesagt war, und dann steht es beim Termin.
       trim((string) ($_POST['notes'] ?? '')),
       'angefragt',
+      (int) $me['id'],
+      is_outsider($me) ? null : (int) $me['id'],
     ]);
     $neu = (int) $db->lastInsertId();
     item_new('event', $neu, (int) $me['id']);
