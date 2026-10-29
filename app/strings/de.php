@@ -421,6 +421,7 @@ const UI_STRINGS = [
   'ev_name_ph' => 'z. B. Stadtfest Mainstage', 'ev_meet' => 'Treffen', 'ev_start' => 'Spielbeginn',
   'ev_end' => 'Ende', 'ev_venue' => 'Veranstaltungsort', 'ev_location_free' => 'Ort (Freitext)',
   'ev_location_free_ph' => 'falls kein gespeicherter Ort passt', 'ev_setlist' => 'Setlist',
+  'ev_created_by' => 'Eingetragen von',
   'ev_responsible' => 'Zuständig', 'ev_fee' => 'Gage', 'ev_invoice' => 'Rechnungsnr.',
   'ev_support' => 'Supportact', 'ev_support_ph' => 'Vorband — oder der Hauptact, wenn ihr supportet',
   'ev_notes' => 'Beschreibung / Notizen', 'ev_notes_ph' => 'Backline, Anfahrt, Technik ...',

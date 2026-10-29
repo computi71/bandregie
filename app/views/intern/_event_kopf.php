@@ -21,6 +21,18 @@ if (!empty($ev['support_act'])) $zeiten[] = t('ev_support') . ': ' . $ev['suppor
 if ($ev['responsible_id'] && isset($memberNames[$ev['responsible_id']])) {
   $zeiten[] = t('ev_responsible') . ': ' . $memberNames[$ev['responsible_id']];
 }
+// Wer ihn eingetragen hat (#425) — aber nur, wenn das etwas hinzufügt.
+//
+// Seit #424 ist der Eintragende voreingestellt auch der Verantwortliche; bei
+// den meisten neuen Terminen stünden sonst zwei Plaketten mit demselben
+// Namen und sägten dasselbe zweimal. Gebraucht wird die Auskunft dort, wo
+// die Voreinstellung nicht greift: Ein Gig, den der Bookingagent eingetragen
+// hat, hat gar keinen Verantwortlichen — und dann stand nirgends, woher er
+// kommt.
+$evVon = (int) ($ev['created_by'] ?? 0);
+if ($evVon && isset($memberNames[$evVon]) && $evVon !== (int) $ev['responsible_id']) {
+  $zeiten[] = t('ev_created_by') . ': ' . $memberNames[$evVon];
+}
 if ($ev['fee']) $zeiten[] = t('ev_fee') . ': ' . $ev['fee'];
 if ($ev['invoice_no']) $zeiten[] = t('ev_invoice') . ': ' . $ev['invoice_no'];
 if (!empty($ev['pa_source'])) $zeiten[] = t('prod_pa') . ': ' . production_label($ev['pa_source']);
