@@ -21,17 +21,25 @@ if (!empty($ev['support_act'])) $zeiten[] = t('ev_support') . ': ' . $ev['suppor
 if ($ev['responsible_id'] && isset($memberNames[$ev['responsible_id']])) {
   $zeiten[] = t('ev_responsible') . ': ' . $memberNames[$ev['responsible_id']];
 }
-// Wer ihn eingetragen hat (#425) — aber nur, wenn das etwas hinzufügt.
+// Wer ihn eingetragen hat und wann (#425, #427).
 //
-// Seit #424 ist der Eintragende voreingestellt auch der Verantwortliche; bei
-// den meisten neuen Terminen stünden sonst zwei Plaketten mit demselben
-// Namen und sägten dasselbe zweimal. Gebraucht wird die Auskunft dort, wo
-// die Voreinstellung nicht greift: Ein Gig, den der Bookingagent eingetragen
-// hat, hat gar keinen Verantwortlichen — und dann stand nirgends, woher er
-// kommt.
+// Das ist ein Vermerk über eine Handlung, keine zweite Auskunft über die
+// Zuständigkeit: Er sagt, wer diesen Termin in den Kalender der Band gestellt
+// hat und an welchem Tag. Deshalb steht er auch dann da, wenn derselbe Mensch
+// verantwortlich ist — beim Booker ist „seit wann wissen wir davon?" eine
+// andere Frage als „wer kümmert sich?".
+//
+// Ohne bekannten Eintragenden bleibt die Zeile ganz weg: Bei der übernommenen
+// Historie ist created_at der Zeitpunkt der Einspielung, und ein Gig von 2023
+// stünde dann mit dem Tag der Umstellung da.
 $evVon = (int) ($ev['created_by'] ?? 0);
-if ($evVon && isset($memberNames[$evVon]) && $evVon !== (int) $ev['responsible_id']) {
-  $zeiten[] = t('ev_created_by') . ': ' . $memberNames[$evVon];
+if ($evVon && isset($memberNames[$evVon])) {
+  $evVermerk = t('ev_created_by') . ': ' . $memberNames[$evVon];
+  $evWann = substr((string) ($ev['created_at'] ?? ''), 0, 10);
+  if ($evWann !== '') {
+    $evVermerk .= ' ' . str_replace('%1', fmt_date($evWann), t('ev_created_on'));
+  }
+  $zeiten[] = $evVermerk;
 }
 if ($ev['fee']) $zeiten[] = t('ev_fee') . ': ' . $ev['fee'];
 if ($ev['invoice_no']) $zeiten[] = t('ev_invoice') . ': ' . $ev['invoice_no'];
