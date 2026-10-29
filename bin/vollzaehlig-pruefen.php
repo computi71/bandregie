@@ -332,7 +332,20 @@ if ($host !== '') {
     // wo es etwas hinzufügt. Zwei Plaketten mit demselben Namen wären
     // dasselbe zweimal — und ein Gig vom Bookingagenten, der gar keinen
     // Verantwortlichen hat, wäre ohne sie von niemandem.
-    $eigen = row('SELECT id, name FROM users WHERE id = 1');
+    //
+    // Eigene Termine und nicht die von oben: Deren Zuständigkeit wird beim
+    // Prüfen des Änderns absichtlich geleert, und ein Fall, den eine frühere
+    // Zeile unter der Hand verstellt, prüft nichts mehr.
+    $karte = static function (string $titel, ?int $zust) use ($anderer): int {
+        q("INSERT INTO events (type, title, date, status, created_by, responsible_id)
+           VALUES ('gig', ?, DATE_ADD(CURDATE(), INTERVAL 41 DAY), 'bestaetigt', 1, ?)",
+          [$titel, $zust]);
+        return (int) $GLOBALS['db']->lastInsertId();
+    };
+    $kOhne   = $karte('ZZVR K ohne', null);
+    $kGleich = $karte('ZZVR K gleich', 1);
+    $kAnders = $anderer ? $karte('ZZVR K anders', (int) $anderer['id']) : 0;
+
     $seite = (string) shell_exec(sprintf(
         'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s/intern/termine',
         escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host)));
@@ -341,22 +354,20 @@ if ($host !== '') {
         return $i === false ? '' : (string) preg_replace('~\s+~u', ' ',
             trim(strip_tags(substr($seite, $i, 600))));
     };
-    $ohneZust = $anlegen($grund + ['title' => 'ZZVR ohne', 'responsible_id' => '']);
-    q('UPDATE events SET responsible_id = NULL WHERE id = ?', [$ohneZust]);
-    $seite = (string) shell_exec(sprintf(
-        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s/intern/termine',
-        escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host)));
-    $ohneText = $stueckZu('ZZVR ohne');
+
+    $tOhne = $stueckZu('ZZVR K ohne');
+    $pruefe('der Termin steht überhaupt auf der Seite', $tOhne !== '');
     $pruefe('ohne Verantwortlichen steht da, wer eingetragen hat',
-        str_contains($ohneText, t('ev_created_by')));
-    $gleichText = $stueckZu('ZZVR leer');
-    $pruefe('ist er selbst verantwortlich, steht es nur einmal',
-        $gleichText !== '' && !str_contains($gleichText, t('ev_created_by')));
-    if (!empty($r2)) {
-        $andersText = $stueckZu('ZZVR gewaehlt');
+        str_contains($tOhne, t('ev_created_by')));
+    $tGleich = $stueckZu('ZZVR K gleich');
+    $pruefe('ist er selbst verantwortlich, steht der Name nur einmal',
+        $tGleich !== '' && str_contains($tGleich, t('ev_responsible'))
+        && !str_contains($tGleich, t('ev_created_by')));
+    if ($kAnders) {
+        $tAnders = $stueckZu('ZZVR K anders');
         $pruefe('bei jemand anderem stehen beide',
-            str_contains($andersText, t('ev_responsible'))
-            && str_contains($andersText, t('ev_created_by')));
+            str_contains($tAnders, t('ev_responsible'))
+            && str_contains($tAnders, t('ev_created_by')));
     }
 
     foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZVR%'") as $zz) $weg((int) $zz['id']);
