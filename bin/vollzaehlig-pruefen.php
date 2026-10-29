@@ -16,6 +16,12 @@
 //
 //   sudo -u www-data php bin/vollzaehlig-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten
 //
+// Mit einem Hostnamen als drittem Wort wird auch das Anlegen über die Route
+// geprüft — wer einträgt, ist voreingestellt verantwortlich (#424), und das
+// entscheidet sich dort und nirgends sonst:
+//
+//   ... --schreibt-testdaten staging.beatcuisine.de
+//
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);
 
@@ -274,6 +280,60 @@ $weg($ed);
 q('DELETE FROM users WHERE id = ?', [$zzNr]);
 $pruefe('Testkonto wieder weg',
     row("SELECT id FROM users WHERE email = 'zzbuehne@example.invalid'") === null);
+
+// ------------------- Wer einträgt, ist verantwortlich (#424)
+$host = $argv[3] ?? '';
+if ($host !== '') {
+    $_SESSION['uid'] = 1;
+    $sid = session_id();
+    $token = csrf_token();
+    session_write_close();
+    $anlegen = static function (array $felder) use ($host, $sid, $token): int {
+        $teile = ['-d ' . escapeshellarg('_token=' . $token)];
+        foreach ($felder as $k => $v) $teile[] = '-d ' . escapeshellarg($k . '=' . $v);
+        shell_exec(sprintf(
+            'curl -sk -o /dev/null --resolve %s:443:127.0.0.1 -b PHPSESSID=%s %s https://%s/intern/termine',
+            escapeshellarg($host), escapeshellarg($sid), implode(' ', $teile), escapeshellarg($host)));
+        $z = row("SELECT id FROM events WHERE title LIKE 'ZZVR%' ORDER BY id DESC LIMIT 1");
+        return $z ? (int) $z['id'] : 0;
+    };
+    $verantwortlich = static fn(int $ev): ?int
+        => ($r = row('SELECT responsible_id FROM events WHERE id = ?', [$ev]))
+            && $r['responsible_id'] !== null ? (int) $r['responsible_id'] : null;
+    $grund = ['type' => 'probe', 'date' => date('Y-m-d', strtotime('+40 days')), 'status' => 'bestaetigt'];
+
+    q("DELETE FROM events WHERE title LIKE 'ZZVR%'");
+    $r1 = $anlegen($grund + ['title' => 'ZZVR leer', 'responsible_id' => '']);
+    $pruefe('leer gelassen: der Eintragende steht drin', $r1 && $verantwortlich($r1) === 1);
+
+    // Und eine gewählte Person bleibt stehen — sonst prüfte das oben nur,
+    // dass irgendetwas in das Feld geschrieben wird.
+    $anderer = row('SELECT id FROM users WHERE id <> 1 ORDER BY id LIMIT 1');
+    if ($anderer) {
+        $r2 = $anlegen($grund + ['title' => 'ZZVR gewaehlt',
+                                 'responsible_id' => (string) $anderer['id']]);
+        $pruefe('jemand anderes gewählt: der bleibt stehen',
+            $r2 && $verantwortlich($r2) === (int) $anderer['id']);
+    }
+
+    // Beim Ändern greift es nicht: Ein Speichern darf die Verantwortung nicht
+    // stillschweigend auf den verschieben, der gerade etwas korrigiert hat.
+    if ($r1) {
+        q('UPDATE events SET responsible_id = NULL WHERE id = ?', [$r1]);
+        shell_exec(sprintf(
+            'curl -sk -o /dev/null --resolve %s:443:127.0.0.1 -b PHPSESSID=%s -d %s -d %s -d %s -d %s -d %s https://%s/intern/termine/%d/update',
+            escapeshellarg($host), escapeshellarg($sid),
+            escapeshellarg('_token=' . $token), escapeshellarg('title=ZZVR leer'),
+            escapeshellarg('date=' . $grund['date']), escapeshellarg('type=probe'),
+            escapeshellarg('status=bestaetigt'), escapeshellarg($host), $r1));
+        $pruefe('beim Ändern bleibt das Feld leer', $verantwortlich($r1) === null);
+    }
+    foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZVR%'") as $zz) $weg((int) $zz['id']);
+    $pruefe('keine ZZVR-Termine zurückgelassen',
+        (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZVR%'")['n'] === 0);
+} else {
+    echo '  (ohne Hostnamen: das Anlegen ueber die Route wurde nicht geprueft)' . PHP_EOL;
+}
 
 // Nichts stehen lassen.
 $reste = (int) row('SELECT COUNT(*) n FROM events WHERE title LIKE ?', ['ZZVZ%'])['n'];
