@@ -118,7 +118,10 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
     </label>
     <label data-eventfield="support"><?= e(t('ev_support')) ?><input name="support_act" maxlength="255" placeholder="<?= e(t('ev_support_ph')) ?>"></label>
     <label><?= e(t('ev_responsible')) ?>
-      <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>"><?= e($m['name']) ?></option><?php endforeach; ?></select>
+      <?php // Wer einträgt, steht schon drin (#424) — sichtbar und änderbar,
+            // nicht erst beim Speichern. Eine Voreinstellung, die man erst
+            // hinterher bemerkt, ist eine Überraschung. ?>
+      <select name="responsible_id"><option value="">–</option><?php foreach ($members as $m): ?><option value="<?= $m['id'] ?>" <?= (int) $m['id'] === (int) $user['id'] && !is_outsider($user) ? 'selected' : '' ?>><?= e($m['name']) ?></option><?php endforeach; ?></select>
     </label>
     <?php $prodEv = null; $gearSel = []; require BASE_DIR . '/app/views/intern/_event_production.php'; ?>
     <label data-eventfield="fee"><?= e(t('ev_fee')) ?><input name="fee" placeholder="<?= e(t('ev_fee_ph')) ?>"></label>

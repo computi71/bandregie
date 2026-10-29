@@ -169,6 +169,28 @@ if (count($darf) >= 2) {
     task_status_apply($t9);
     $pruefe('erledigte Aufgabe zaehlt nicht mehr', open_items_count($z2) === $vorher - 1);
     $weg($t9);
+    // Und der Fall, der in der Band aufgefallen ist (#423): Die Aufgabe
+    // bleibt OFFEN, weil noch jemand fehlt - aber wer schon abgehakt hat,
+    // darf sie nicht mehr an seiner Zahl tragen.
+    //
+    // Die Pruefung oben konnte das nicht sehen: Dort schloss das Quorum die
+    // Aufgabe mit dem zweiten Haken, und dann zaehlt sie ohnehin fuer
+    // niemanden mehr. Hier verlangt sie ALLE (required_done = 0), und nur
+    // einer hakt ab.
+    $t9c = $aufgabe([$z1, $z2], 0);
+    $vorZ1 = open_items_count($z1);
+    $vorZ2 = open_items_count($z2);
+    $hake($t9c, $z1);
+    task_status_apply($t9c);
+    $pruefe('die Aufgabe bleibt offen, solange einer fehlt', $stand($t9c) === 'offen');
+    $pruefe('wer abgehakt hat, traegt sie nicht mehr an seiner Zahl',
+        open_items_count($z1) === $vorZ1 - 1);
+    $pruefe('und steht auch nicht mehr in seiner Liste', !in_array($t9c,
+        array_map(static fn(array $t): int => (int) $t['id'], tasks_mine($z1)), true));
+    $pruefe('wer noch fehlt, traegt sie weiter', open_items_count($z2) === $vorZ2);
+    $pruefe('und sieht sie in seiner Liste', in_array($t9c,
+        array_map(static fn(array $t): int => (int) $t['id'], tasks_mine($z2)), true));
+    $weg($t9c);
 } else {
     echo 'weniger als zwei Konten mit Recht auf Aufgaben - Zaehlung uebersprungen', PHP_EOL;
 }

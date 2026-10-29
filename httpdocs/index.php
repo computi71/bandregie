@@ -1088,6 +1088,21 @@ if (str_starts_with($path, '/intern')) {
 
   if ($path === '/intern/termine' && $method === 'POST') {
     if (($_POST['title'] ?? '') && ($_POST['date'] ?? '')) {
+      // Wer den Termin einträgt, ist voreingestellt dafür verantwortlich
+      // (#424): Er hat gebucht, mit dem Veranstalter gesprochen, das Datum
+      // ausgesucht — fast immer ist er der, der davon weiß.
+      //
+      // Eine Voreinstellung und keine Regel: Wer jemand anderen wählt, behält
+      // ihn, und leer bleibt leer, wenn das Formular den Namen gar nicht
+      // anbietet. Deshalb hier und nicht in event_values() — dieselbe
+      // Funktion schreibt auch beim Ändern, und dort dürfte das Speichern
+      // die Verantwortung nicht stillschweigend verschieben.
+      //
+      // Nicht für Konten von außerhalb: Ein Bookingagent ist nicht in der
+      // Band und kann für nichts verantwortlich sein, was sie betrifft.
+      if (($_POST['responsible_id'] ?? '') === '' && !is_outsider($me)) {
+        $_POST['responsible_id'] = (string) $me['id'];
+      }
       q('INSERT INTO events (created_by, type, title, date, time, location, notes, is_public, setlist_id,
                              time_meet, time_end, status, responsible_id, fee, invoice_no,
                              public_title, public_link, public_info, venue_id,

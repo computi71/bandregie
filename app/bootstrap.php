@@ -1447,8 +1447,12 @@ function task_is_assignee(int $taskId, array $user): bool {
  * trotzdem zu sehen bekommt (#393).
  */
 function tasks_mine(array $user, int $limit = 8): array {
+  // ta.done_at IS NULL: Wer sein Häkchen gesetzt hat, ist fertig — auch wenn
+  // die Aufgabe noch offen ist, weil andere fehlen (#423). Ohne diese Zeile
+  // stand die erledigte Aufgabe weiter unter „offen“, und bei fünf
+  // Zuständigen wurden vier an Arbeit erinnert, die sie getan haben.
   return rows("SELECT t.* FROM tasks t JOIN task_assignees ta ON ta.task_id = t.id
-               WHERE ta.user_id = ? AND t.status = 'offen'
+               WHERE ta.user_id = ? AND t.status = 'offen' AND ta.done_at IS NULL
                ORDER BY CASE WHEN t.due_date='' THEN 1 ELSE 0 END, t.due_date
                LIMIT $limit", [(int) $user['id']]);
 }
@@ -5555,9 +5559,15 @@ function song_vote_start(int $songId, int $durch): void {
  */
 function open_items_by_path(array $user): array {
   $karte = [];
-  // Aufgaben, bei denen ich zuständig bin und die noch offen sind (#334).
-  // Weil das Quorum die Aufgabe für alle schließt, bleibt es eine Abfrage -
-  // es gibt keinen persönlichen Reststand, der davon abweichen könnte.
+  // Aufgaben, bei denen ich zuständig bin und meinen Haken noch nicht habe
+  // (#334, #423).
+  //
+  // Hier stand, es gebe „keinen persönlichen Reststand, der davon abweichen
+  // könnte“, weil das Quorum die Aufgabe für alle schließe. Das stimmte
+  // nicht mehr, seit es das Quorum gibt: Eine Aufgabe mit required_done = 0
+  // schließt erst, wenn ALLE abgehakt haben - und bis dahin trug jeder, der
+  // schon fertig war, sie weiter an der Zahl mit. Gemeldet aus der Band, mit
+  // zwei Aufgaben, die seit Tagen abgehakt waren.
   //
   // Ohne Rechteprüfung, seit die eigene Aufgabe auch ohne Bereichsrecht zu
   // sehen und abzuhaken ist (#393). Der Grundsatz aus #387 bleibt derselbe -
@@ -5565,7 +5575,7 @@ function open_items_by_path(array $user): array {
   // die eigenen Aufgaben seitdem „immer“.
   $offen = (int) row("SELECT COUNT(*) c FROM tasks t
                       JOIN task_assignees ta ON ta.task_id = t.id
-                      WHERE ta.user_id = ? AND t.status = 'offen'",
+                      WHERE ta.user_id = ? AND t.status = 'offen' AND ta.done_at IS NULL",
                      [(int) $user['id']])['c'];
   if ($offen) $karte['/intern/aufgaben'] = $offen;
 
