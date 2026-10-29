@@ -328,6 +328,37 @@ if ($host !== '') {
             escapeshellarg('status=bestaetigt'), escapeshellarg($host), $r1));
         $pruefe('beim Ändern bleibt das Feld leer', $verantwortlich($r1) === null);
     }
+    // Und was auf der Karte davon steht (#425): „Eingetragen von“ genau dort,
+    // wo es etwas hinzufügt. Zwei Plaketten mit demselben Namen wären
+    // dasselbe zweimal — und ein Gig vom Bookingagenten, der gar keinen
+    // Verantwortlichen hat, wäre ohne sie von niemandem.
+    $eigen = row('SELECT id, name FROM users WHERE id = 1');
+    $seite = (string) shell_exec(sprintf(
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s/intern/termine',
+        escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host)));
+    $stueckZu = static function (string $titel) use ($seite): string {
+        $i = strpos($seite, $titel);
+        return $i === false ? '' : (string) preg_replace('~\s+~u', ' ',
+            trim(strip_tags(substr($seite, $i, 600))));
+    };
+    $ohneZust = $anlegen($grund + ['title' => 'ZZVR ohne', 'responsible_id' => '']);
+    q('UPDATE events SET responsible_id = NULL WHERE id = ?', [$ohneZust]);
+    $seite = (string) shell_exec(sprintf(
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s/intern/termine',
+        escapeshellarg($host), escapeshellarg($sid), escapeshellarg($host)));
+    $ohneText = $stueckZu('ZZVR ohne');
+    $pruefe('ohne Verantwortlichen steht da, wer eingetragen hat',
+        str_contains($ohneText, t('ev_created_by')));
+    $gleichText = $stueckZu('ZZVR leer');
+    $pruefe('ist er selbst verantwortlich, steht es nur einmal',
+        $gleichText !== '' && !str_contains($gleichText, t('ev_created_by')));
+    if (!empty($r2)) {
+        $andersText = $stueckZu('ZZVR gewaehlt');
+        $pruefe('bei jemand anderem stehen beide',
+            str_contains($andersText, t('ev_responsible'))
+            && str_contains($andersText, t('ev_created_by')));
+    }
+
     foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZVR%'") as $zz) $weg((int) $zz['id']);
     $pruefe('keine ZZVR-Termine zurückgelassen',
         (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZVR%'")['n'] === 0);
