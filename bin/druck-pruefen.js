@@ -19,7 +19,12 @@
  * Banddaten.
  *
  * Aufruf:
- *   node --experimental-websocket bin/druck-pruefen.js <basis> <sitzung> <setliste>
+ *   node --experimental-websocket bin/druck-pruefen.js <basis> <sitzung> <setliste> [ip]
+ *
+ * Die [ip] ist für Installationen, deren Name nur im Server selbst steht —
+ * Staging heißt bandroadie.local und löst nirgends auf. curl bekommt das mit
+ * --resolve, Chromium über seine eigene Namensauflösung; ohne das landet der
+ * Lauf auf einer Fehlerseite und misst ein leeres Blatt.
  *
  * Rückgabewert 0, wenn alles stimmt, sonst 1.
  */
@@ -30,9 +35,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const [basis, sitzung, setliste] = process.argv.slice(2);
+const [basis, sitzung, setliste, ip] = process.argv.slice(2);
 if (!basis || !sitzung || !setliste) {
-  console.error('Aufruf: node --experimental-websocket bin/druck-pruefen.js <basis> <sitzung> <setliste>');
+  console.error('Aufruf: node --experimental-websocket bin/druck-pruefen.js <basis> <sitzung> <setliste> [ip]');
   process.exit(2);
 }
 
@@ -90,11 +95,13 @@ const MESSUNG = `(() => {
 
 async function hauptlauf() {
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'druckpruef-'));
-  const chromium = spawn('chromium', [
+  const argumente = [
     '--headless=new', '--remote-debugging-port=9334', '--no-sandbox',
     '--hide-scrollbars', '--ignore-certificate-errors',
-    '--user-data-dir=' + profil, 'about:blank',
-  ], { stdio: 'ignore' });
+    '--user-data-dir=' + profil,
+  ];
+  if (ip) argumente.push('--host-resolver-rules=MAP ' + new URL(basis).hostname + ' ' + ip);
+  const chromium = spawn('chromium', argumente.concat(['about:blank']), { stdio: 'ignore' });
 
   try {
     // Chromium meldet sich nicht; wir fragen so lange nach, bis es antwortet.
@@ -124,8 +131,16 @@ async function hauptlauf() {
     await an('Page.navigate', { url: basis + '/intern/setlists/' + setliste + '/druck' });
     await schlaf(2500);
 
-    pruefe('die Druckseite ist da', await werte("document.querySelectorAll('.sheet').length > 0"));
-    pruefe('sie zeigt Liedzeilen', await werte("document.querySelectorAll('.songline').length > 2"));
+    const blaetter = await werte("document.querySelectorAll('.sheet').length");
+    const zeilen = await werte("document.querySelectorAll('.songline').length");
+    pruefe('die Druckseite ist da', blaetter > 0);
+    pruefe('sie zeigt Liedzeilen', zeilen > 2);
+    // Ohne Blatt misst alles Weitere an nichts, und „keine umgebrochene Zeile"
+    // wäre dann wahr, weil es gar keine Zeile gibt. Eine Zusicherung, die am
+    // leeren Blatt gilt, sichert nichts zu.
+    if (blaetter === 0 || zeilen <= 2) {
+      throw new Error('Keine Druckseite geladen — stimmen Adresse, Sitzung und Setlistennummer?');
+    }
 
     // Alles anschalten: Der Umbruch entsteht erst mit den Zusatzfeldern.
     await werte(`(() => {
@@ -159,7 +174,9 @@ async function hauptlauf() {
     pruefe('und das Blatt bleibt heil', hart.every((b) => b.passt));
   } finally {
     chromium.kill();
-    fs.rmSync(profil, { recursive: true, force: true });
+    // Chromium räumt sein Profil noch auf, während wir es schon löschen wollen.
+    await schlaf(400);
+    fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 }
 
