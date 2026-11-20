@@ -108,6 +108,9 @@
   // Das Logo ist ein Bild: vor dem Laden ist der Kopf noch flach und der Platz
   // zu groß gemessen. Nach dem Laden nochmal.
   window.addEventListener('load', alle);
+  // Und wenn die mitgelieferte schmale Schrift da ist (#433): Vorher misst der
+  // Browser mit den Massen der Ersatzschrift, und die sind breiter.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(alle);
   window.addEventListener('resize', alle);
   // Wer Felder zu- oder abschaltet, ändert die Höhe der Zeilen — dann gilt die
   // gemessene Schrift nicht mehr (#255).
