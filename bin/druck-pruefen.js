@@ -100,6 +100,12 @@ const MESSUNG = `(() => {
     const zuHoch = [...liste.querySelectorAll('.songline .meta')]
       .filter(m => m.textContent.trim() !== '' && zeilenZahl(m) > 2)
       .map(m => ({ text: kurz(m), zeilen: zeilenZahl(m) }));
+    // Kein einzelner Punkt darf mitten durchbrechen (#432): Trennzeichen und
+    // Wert gehoeren zusammen, und ein Bandname wird nicht zerrissen. Eine
+    // inline-Spanne liefert je Textzeile ein Rechteck - zwei sind ein Bruch.
+    const zerrissen = [...liste.querySelectorAll('.songline .meta .feld, .songline .meta .note')]
+      .filter(e => getComputedStyle(e).display !== 'none' && e.getClientRects().length > 1)
+      .map(kurz);
     // Und zwei Zeilen Beiwerk duerfen zusammen nicht hoeher sein als eine
     // Zeile Titel (#431) - sonst waechst die Liedzeile, sobald etwas umbricht.
     const ueberTitel = [...liste.querySelectorAll('.songline')].filter(z => {
@@ -115,7 +121,7 @@ const MESSUNG = `(() => {
     const stil = getComputedStyle(b);
     const oben = liste.getBoundingClientRect().top - b.getBoundingClientRect().top;
     const frei = b.clientHeight - (parseFloat(stil.paddingBottom) || 0) - oben;
-    return { uebergelaufen, zuHoch, ueberTitel, schmal, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
+    return { uebergelaufen, zuHoch, ueberTitel, zerrissen, schmal, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
   });
 })()`;
 
@@ -187,12 +193,15 @@ async function hauptlauf() {
       const ueber = blaetter.flatMap((b) => b.uebergelaufen);
       const hoch = blaetter.flatMap((b) => b.zuHoch);
       const dicker = blaetter.flatMap((b) => b.ueberTitel);
+      const entzwei = blaetter.flatMap((b) => b.zerrissen);
       if (ueber.length) console.log('    übergelaufen: ' + ueber.join(' | '));
       if (hoch.length) console.log('    zu hoch: ' + hoch.map((h) => h.zeilen + ' Zeilen · ' + h.text).join(' | '));
       if (dicker.length) console.log('    höher als der Titel: ' + dicker.join(' | '));
       pruefe(wie + ': kein Titel läuft über', ueber.length === 0);
       pruefe(wie + ': das Beiwerk bleibt in zwei Zeilen', hoch.length === 0);
       pruefe(wie + ': und bleibt dabei so hoch wie eine Titelzeile', dicker.length === 0);
+      if (entzwei.length) console.log('    mittendrin umgebrochen: ' + entzwei.join(' | '));
+      pruefe(wie + ': kein einzelner Punkt bricht mittendrin', entzwei.length === 0);
       pruefe(wie + ': jedes Set passt auf sein Blatt', blaetter.every((b) => b.passt));
     };
 
