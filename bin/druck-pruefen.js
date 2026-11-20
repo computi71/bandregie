@@ -128,7 +128,7 @@ async function hauptlauf() {
     await an('Emulation.setDeviceMetricsOverride', { width: 1400, height: 1600, deviceScaleFactor: 1, mobile: false });
     await an('Network.setCookie', { name: 'PHPSESSID', value: sitzung, domain: new URL(basis).hostname, path: '/' });
 
-    await an('Page.navigate', { url: basis + '/intern/setlists/' + setliste + '/druck' });
+    await an('Page.navigate', { url: basis + '/intern/setlists/' + setliste + '/print' });
     await schlaf(2500);
 
     const blaetter = await werte("document.querySelectorAll('.sheet').length");
