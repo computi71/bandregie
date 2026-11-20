@@ -16,7 +16,7 @@
 // Beim Abmelden werden Seiten und Anhänge vergessen, damit auf einem geteilten
 // Gerät niemand die Termine und Noten des Vorgängers findet.
 
-const VERSION = 'bandregie-v80';
+const VERSION = 'bandregie-v81';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const FILE_CACHE = VERSION + '-files';
@@ -30,6 +30,11 @@ const STATE_CACHE = 'bandregie-state';
 
 const STATIC_FILES = [
   '/assets/style.css',
+  // Die schmale Schrift des Setlistenblatts (#433): Das Blatt wird auf der
+  // Buehne hochgehalten, oft ohne Netz. Ohne diese beiden Dateien faellt es
+  // dort auf die Systemschrift zurueck und sieht anders aus als gedruckt.
+  '/assets/fonts/saira-extracondensed-400.woff2',
+  '/assets/fonts/saira-extracondensed-700.woff2',
   '/assets/nav.js',
   '/assets/accordion.js',
   '/assets/buehne.js',

@@ -129,6 +129,21 @@ const MESSUNG = `(() => {
   });
 })()`;
 
+/**
+ * Welche Schrift der Browser fuer dieses Element wirklich genommen hat.
+ *
+ * getComputedStyle nennt nur die Wunschliste; ob die erste darin existiert,
+ * weiss allein der Browser. Genau daran haette sich #433 sonst vorbeimogeln
+ * koennen: Die Liste zu lesen und zu glauben, das sei die Schrift.
+ */
+async function platzschrift(an, wahl) {
+  const { root } = await an('DOM.getDocument', { depth: -1 });
+  const { nodeId } = await an('DOM.querySelector', { nodeId: root.nodeId, selector: wahl });
+  if (!nodeId) return '(Element nicht gefunden)';
+  const { fonts } = await an('CSS.getPlatformFontsForNode', { nodeId });
+  return fonts.map((f) => f.familyName).join(', ') || '(keine Angabe)';
+}
+
 async function hauptlauf() {
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'druckpruef-'));
   const argumente = [
@@ -159,6 +174,8 @@ async function hauptlauf() {
     await an('Page.enable');
     await an('Runtime.enable');
     await an('Network.enable');
+    await an('DOM.enable');
+    await an('CSS.enable');
     // Breit genug, dass nicht die Fensterbreite den Umbruch macht: Gemessen
     // werden soll das Blatt, nicht der Bildschirm, auf dem es gerade liegt.
     await an('Emulation.setDeviceMetricsOverride', { width: 1400, height: 1600, deviceScaleFactor: 1, mobile: false });
@@ -220,6 +237,13 @@ async function hauptlauf() {
       // Code — die beantwortet quelltext() an der Deklaration.
       pruefe('der Titel steht in einer anderen Schrift als das Beiwerk',
         mit[0].schmal.titel !== mit[0].schmal.meta);
+      // Und zwar in der mitgelieferten (#433), nicht in irgendeiner, die der
+      // Rechner zufällig hat. Welche Schrift wirklich gesetzt wurde, steht in
+      // keiner CSS-Eigenschaft — danach muss man den Browser selbst fragen.
+      const benutzt = await platzschrift(an, '.songline .meta .feld-interpret');
+      console.log('  gesetzt mit:     ' + benutzt);
+      pruefe('das Beiwerk steht in der mitgelieferten Schrift',
+        /Saira Extra ?Condensed/i.test(benutzt));
     }
     befund(mit, 'mit allen Feldern');
 
@@ -309,6 +333,19 @@ function quelltext() {
     /Arial Narrow/.test(blatt) && /Liberation Sans Narrow/.test(blatt) && /font-stretch:\s*condensed/.test(blatt));
   pruefe('und der Liedtitel nimmt sie zurück',
     /\.songline \.titel \{[^}]*font-family:/.test(blatt) && /\.songline \.titel \{[^}]*font-stretch:\s*normal/.test(blatt));
+
+  // Die Schrift liegt bei (#433) — sonst hängt das Aussehen des Blatts daran,
+  // was auf dem druckenden Gerät zufällig installiert ist.
+  const schriften = path.join(__dirname, '..', 'httpdocs', 'assets', 'fonts');
+  const dateien = ['saira-extracondensed-400.woff2', 'saira-extracondensed-700.woff2'];
+  pruefe('die schmale Schrift liegt im Verzeichnis',
+    dateien.every((f) => fs.existsSync(path.join(schriften, f))));
+  pruefe('mit ihrer Lizenz daneben', fs.existsSync(path.join(schriften, 'OFL.txt')));
+  pruefe('das Blatt bindet beide Schnitte ein',
+    dateien.every((f) => blatt.includes(f)) && (blatt.match(/@font-face/g) || []).length >= 2);
+  // Im Vorrat des Service Workers, sonst steht die Band offline ohne sie da.
+  const sw = fs.readFileSync(path.join(__dirname, '..', 'httpdocs', 'sw.js'), 'utf8');
+  pruefe('und der Offline-Vorrat kennt sie', dateien.every((f) => sw.includes(f)));
 }
 
 quelltext();

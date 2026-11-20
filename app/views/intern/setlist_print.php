@@ -113,14 +113,35 @@ $fontFor = function (array $set): int {
     /* Schmale Schrift auf dem ganzen Blatt — nur der Liedtitel nicht (#430).
        Der Titel ist das, was vom Notenpult aus gelesen wird; alles andere muss
        nur auffindbar sein. Schmal gesetzt passt es überhaupt erst daneben.
-       Arial Narrow liegt auf Windows und macOS, die Liberation- und
-       Nimbus-Schnitte auf Linux, Roboto Condensed auf Android; font-stretch
-       greift zusätzlich bei Schriften mit eigener schmaler Lage. Findet sich
-       nichts davon, steht am Ende dieselbe Schrift wie bisher — dann ist das
-       Blatt nicht schmaler, aber auch nicht kaputt. */
+
+       Mitgeliefert und nicht erbeten (#433): Windows und macOS haben Arial
+       Narrow, Linux Liberation Sans Narrow, Android sans-serif-condensed —
+       iOS keines davon, und dann druckte dieselbe Setliste je nach Gerät
+       anders. Saira Extra Condensed ist die schmalste der geprüften freien
+       Schriften: 64 % der Arial-Breite. Die Systemschnitte bleiben als
+       Rückfall dahinter stehen, falls die Datei einmal nicht ankommt.
+
+       font-display: block — lieber einen Wimpernschlag warten als das Blatt
+       in der falschen Schrift ausmessen; print-fit.js rechnet mit dem, was da
+       ist. Die Datei liegt lokal, das sind Millisekunden. */
+    @font-face {
+      font-family: 'Saira Extra Condensed';
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url('<?= e(asset('/assets/fonts/saira-extracondensed-400.woff2')) ?>') format('woff2');
+    }
+    @font-face {
+      font-family: 'Saira Extra Condensed';
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url('<?= e(asset('/assets/fonts/saira-extracondensed-700.woff2')) ?>') format('woff2');
+    }
     .sheet {
-      font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Nimbus Sans Narrow',
-                   'Roboto Condensed', sans-serif-condensed, Calibri, Arial, sans-serif;
+      font-family: 'Saira Extra Condensed', 'Arial Narrow', 'Liberation Sans Narrow',
+                   'Nimbus Sans Narrow', 'Roboto Condensed', sans-serif-condensed,
+                   Calibri, Arial, sans-serif;
       font-stretch: condensed;
     }
     .songline .titel { font-family: Calibri, Arial, Helvetica, sans-serif; font-stretch: normal; }
