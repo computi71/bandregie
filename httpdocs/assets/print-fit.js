@@ -19,6 +19,24 @@
     return blatt.clientHeight - unten - oben;
   }
 
+  // Steht jedes Lied auf EINER Zeile? (#428)
+  //
+  // Die Höhe allein verrät das nicht: Bricht eine Zeile um, wächst die Liste,
+  // die Suche verkleinert die Schrift, und am Ende passt alles aufs Blatt — mit
+  // einem Bandnamen, der allein unter seinem Lied hängt. Gemessen wird deshalb
+  // auch die Breite, und zwar dort, wo sie entsteht: getClientRects() gibt je
+  // Textzeile ein Rechteck, zwei Rechtecke sind ein Umbruch.
+  //
+  // Die lange Notiz zählt nicht mit; sie steht als eigener Block darunter und
+  // soll das auch.
+  function einzeilig(liste) {
+    var zeilen = liste.querySelectorAll('.songline');
+    for (var i = 0; i < zeilen.length; i++) {
+      if (zeilen[i].getClientRects().length > 1) return false;
+    }
+    return true;
+  }
+
   function anpassen(blatt) {
     var liste = blatt.querySelector('.songs');
     if (!liste) return;
@@ -31,7 +49,8 @@
       liste.style.fontSize = mitte.toFixed(2) + 'pt';
       // scrollHeight statt offsetHeight: die Liste darf über das Blatt
       // hinauswachsen, ohne dass overflow:hidden die Messung verfälscht.
-      if (liste.scrollHeight <= platz(blatt, liste)) klein = mitte; else gross = mitte;
+      if (liste.scrollHeight <= platz(blatt, liste) && einzeilig(liste)) klein = mitte;
+      else gross = mitte;
     }
     liste.style.fontSize = klein.toFixed(2) + 'pt';
   }

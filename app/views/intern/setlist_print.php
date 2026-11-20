@@ -244,14 +244,21 @@ $fontFor = function (array $set): int {
             <?php $zuruf = (string) $entry['item_note']; ?>
             <?php $notizKurz = song_note_cue((string) $entry['notes']); ?>
             <?php $notizLang = trim((string) $entry['notes']); ?>
+            <?php // Titel und Zusatzfelder stehen in einer eigenen Hülle (#428):
+                  // print-fit.js misst daran, ob die Zeile umgebrochen ist, und
+                  // verkleinert so lange, bis jedes Lied wieder auf einer Zeile
+                  // steht. Ein Bandname wie „Me First and the Gimme Gimmes“
+                  // schob die Zeile sonst über die Breite, und der Name stand
+                  // allein darunter. Die lange Notiz bleibt draußen — sie ist ein
+                  // eigener Block und soll eine eigene Zeile haben. ?>
             <div class="song">
-              <?= e($entry['title']) ?>
+              <span class="songline"><?= e($entry['title']) ?>
               <?php if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span><?php endif; ?>
               <?php if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span><?php endif; ?>
               <?php if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span><?php endif; ?>
               <?php if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span><?php endif; ?>
               <?php if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span><?php endif; ?>
-              <?php if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif; ?>
+              <?php if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif; ?></span>
               <?php if ($notizLang !== ''): ?><span class="notiz-lang"><?= e($notizLang) ?></span><?php endif; ?>
             </div>
           <?php endif; ?>
