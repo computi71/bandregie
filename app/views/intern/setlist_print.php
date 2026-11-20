@@ -152,7 +152,14 @@ $fontFor = function (array $set): int {
        Klassen am body eingeschaltet — so wirkt ein Haken sofort, ohne die Seite
        neu zu laden, und der Druck nimmt genau das mit, was zu sehen ist. */
     .feld { display: none; font-weight: 400; font-size: 50%; }
-    .feld::before { content: ' · '; }
+    /* Ein Punkt ist ein Ding und bleibt eins (#432): Trennzeichen und Wert
+       gehören zusammen, und ein Bandname wird nicht in der Mitte zerrissen.
+       Umgebrochen wird ZWISCHEN den Punkten — die Gelegenheit dazu ist das
+       Leerzeichen, das im HTML zwischen den Spannen steht. Deshalb trägt das
+       Trennzeichen hier keines mehr vorn: Es saß in der nicht trennbaren
+       Spanne und hätte den Abstand verdoppelt. */
+    .songline .meta .feld, .songline .meta .note { white-space: nowrap; }
+    .feld::before { content: '· '; }
     body.mit-interpret .feld-interpret,
     body.mit-jahr .feld-jahr,
     body.mit-bpm .feld-bpm,
@@ -295,12 +302,17 @@ $fontFor = function (array $set): int {
                   // allein darunter. Die lange Notiz bleibt draußen — sie ist ein
                   // eigener Block und soll eine eigene Zeile haben. ?>
             <div class="song">
+              <?php // Zwischen den Spannen steht je ein Leerzeichen, und das ist keine
+                    // Formatierung, sondern die einzige Stelle, an der das Beiwerk
+                    // umbrechen darf (#432). Ohne es hängen alle Punkte in einer
+                    // untrennbaren Reihe und die zweite Zeile aus #430 gäbe es
+                    // nicht mehr. ?>
               <span class="songline"><span class="titel"><?= e($entry['title']) ?></span><span class="meta"><?php
-                if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span><?php endif;
-                if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span><?php endif;
-                if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span><?php endif;
-                if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span><?php endif;
-                if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span><?php endif;
+                if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span> <?php endif;
+                if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span> <?php endif;
+                if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span> <?php endif;
+                if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span> <?php endif;
+                if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span> <?php endif;
                 if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif;
               ?></span></span>
               <?php if ($notizLang !== ''): ?><span class="notiz-lang"><?= e($notizLang) ?></span><?php endif; ?>

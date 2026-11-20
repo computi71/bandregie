@@ -100,6 +100,16 @@ const MESSUNG = `(() => {
     const zuHoch = [...liste.querySelectorAll('.songline .meta')]
       .filter(m => m.textContent.trim() !== '' && zeilenZahl(m) > 2)
       .map(m => ({ text: kurz(m), zeilen: zeilenZahl(m) }));
+    // Kein einzelner Punkt darf mitten durchbrechen (#432): Trennzeichen und
+    // Wert gehoeren zusammen, und ein Bandname wird nicht zerrissen. Eine
+    // inline-Spanne liefert je Textzeile ein Rechteck - zwei sind ein Bruch.
+    // Nicht die Zahl der Rechtecke: Das ::before mit dem Trennzeichen ist ein
+    // eigenes Kaestchen und liefert immer ein zweites. Gezaehlt wird, auf wie
+    // vielen ZEILEN sie liegen - gleiche Oberkante, gleiche Zeile.
+    const zeilenEiner = (e) => new Set([...e.getClientRects()].map(r => Math.round(r.top))).size;
+    const zerrissen = [...liste.querySelectorAll('.songline .meta .feld, .songline .meta .note')]
+      .filter(e => getComputedStyle(e).display !== 'none' && zeilenEiner(e) > 1)
+      .map(kurz);
     // Und zwei Zeilen Beiwerk duerfen zusammen nicht hoeher sein als eine
     // Zeile Titel (#431) - sonst waechst die Liedzeile, sobald etwas umbricht.
     const ueberTitel = [...liste.querySelectorAll('.songline')].filter(z => {
@@ -115,7 +125,7 @@ const MESSUNG = `(() => {
     const stil = getComputedStyle(b);
     const oben = liste.getBoundingClientRect().top - b.getBoundingClientRect().top;
     const frei = b.clientHeight - (parseFloat(stil.paddingBottom) || 0) - oben;
-    return { uebergelaufen, zuHoch, ueberTitel, schmal, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
+    return { uebergelaufen, zuHoch, ueberTitel, zerrissen, schmal, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
   });
 })()`;
 
@@ -187,12 +197,15 @@ async function hauptlauf() {
       const ueber = blaetter.flatMap((b) => b.uebergelaufen);
       const hoch = blaetter.flatMap((b) => b.zuHoch);
       const dicker = blaetter.flatMap((b) => b.ueberTitel);
+      const entzwei = blaetter.flatMap((b) => b.zerrissen);
       if (ueber.length) console.log('    übergelaufen: ' + ueber.join(' | '));
       if (hoch.length) console.log('    zu hoch: ' + hoch.map((h) => h.zeilen + ' Zeilen · ' + h.text).join(' | '));
       if (dicker.length) console.log('    höher als der Titel: ' + dicker.join(' | '));
       pruefe(wie + ': kein Titel läuft über', ueber.length === 0);
       pruefe(wie + ': das Beiwerk bleibt in zwei Zeilen', hoch.length === 0);
       pruefe(wie + ': und bleibt dabei so hoch wie eine Titelzeile', dicker.length === 0);
+      if (entzwei.length) console.log('    mittendrin umgebrochen: ' + entzwei.join(' | '));
+      pruefe(wie + ': kein einzelner Punkt bricht mittendrin', entzwei.length === 0);
       pruefe(wie + ': jedes Set passt auf sein Blatt', blaetter.every((b) => b.passt));
     };
 
@@ -209,6 +222,26 @@ async function hauptlauf() {
         mit[0].schmal.titel !== mit[0].schmal.meta);
     }
     befund(mit, 'mit allen Feldern');
+
+    // Kann das Beiwerk ueberhaupt noch umbrechen? (#432)
+    //
+    // Seit die einzelnen Punkte unzertrennlich sind, haengt die zweite Zeile
+    // aus #430 an genau einem Leerzeichen zwischen den Spannen. Faellt das
+    // weg, ist nichts kaputt - es meldet keine Pruefzeile etwas, die Band
+    // verliert nur stillschweigend Schriftgroesse, weil alles auf eine Zeile
+    // muss. Also wird die Gelegenheit selbst geprueft: den Kasten eng machen
+    // und nachsehen, ob er hoeher wird.
+    const kannUmbrechen = await werte(`(() => {
+      const m = document.querySelector('.songline .meta');
+      if (!m) return null;
+      const vorher = m.getBoundingClientRect().height;
+      const alt = m.style.maxWidth;
+      m.style.maxWidth = '6em';
+      const nachher = m.getBoundingClientRect().height;
+      m.style.maxWidth = alt;
+      return nachher > vorher + 1;
+    })()`);
+    pruefe('das Beiwerk kann zwischen den Punkten umbrechen', kannUmbrechen === true);
 
     // Härtefall: ein Bandname, länger als alles in dieser Installation. Er darf
     // jetzt in die zweite Zeile rutschen — nur über das Blatt hinaus nicht.
