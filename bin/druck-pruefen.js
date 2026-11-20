@@ -103,8 +103,12 @@ const MESSUNG = `(() => {
     // Kein einzelner Punkt darf mitten durchbrechen (#432): Trennzeichen und
     // Wert gehoeren zusammen, und ein Bandname wird nicht zerrissen. Eine
     // inline-Spanne liefert je Textzeile ein Rechteck - zwei sind ein Bruch.
+    // Nicht die Zahl der Rechtecke: Das ::before mit dem Trennzeichen ist ein
+    // eigenes Kaestchen und liefert immer ein zweites. Gezaehlt wird, auf wie
+    // vielen ZEILEN sie liegen - gleiche Oberkante, gleiche Zeile.
+    const zeilenEiner = (e) => new Set([...e.getClientRects()].map(r => Math.round(r.top))).size;
     const zerrissen = [...liste.querySelectorAll('.songline .meta .feld, .songline .meta .note')]
-      .filter(e => getComputedStyle(e).display !== 'none' && e.getClientRects().length > 1)
+      .filter(e => getComputedStyle(e).display !== 'none' && zeilenEiner(e) > 1)
       .map(kurz);
     // Und zwei Zeilen Beiwerk duerfen zusammen nicht hoeher sein als eine
     // Zeile Titel (#431) - sonst waechst die Liedzeile, sobald etwas umbricht.
