@@ -57,3 +57,16 @@
   <?php if (!empty($sprachwahl)): ?><?= print_lang_html() ?><?php endif; ?>
   <?php if (!empty($leisteExtra)): ?><span class="extra"><?= $leisteExtra ?></span><?php endif; ?>
 </div>
+<?php // Der Knopf bringt seinen Griff selbst mit (#429).
+      //
+      // Aus dem Knopf wird ein Druckbefehl erst durch actions.js. Die Ansichten,
+      // die diese Leiste einbinden, sind eigenstaendige Dokumente mit eigenem
+      // DOCTYPE — _header.php laeuft dort nie, und vier von ihnen luden die
+      // Datei auch sonst nirgends. Auf der druckbaren Hilfe stand damit ein
+      // Knopf, der nichts tat.
+      //
+      // Deshalb hier und nicht in jeder Ansicht: Wer die Leiste einbindet, hat
+      // einen Knopf, der druckt. Eine Ansicht, die actions.js zusaetzlich
+      // laedt, meldet den Griff zweimal an und druckt auf einen Klick zweimal
+      // — darum laedt ihn keine mehr selbst. ?>
+<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>

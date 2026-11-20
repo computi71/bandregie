@@ -127,6 +127,11 @@ async function hauptlauf() {
     // werden soll das Blatt, nicht der Bildschirm, auf dem es gerade liegt.
     await an('Emulation.setDeviceMetricsOverride', { width: 1400, height: 1600, deviceScaleFactor: 1, mobile: false });
     await an('Network.setCookie', { name: 'PHPSESSID', value: sitzung, domain: new URL(basis).hostname, path: '/' });
+    // window.print zählen statt drucken: Der Knopf soll den Befehl auslösen,
+    // und zwar genau einmal. Zweimal hieße, der Griff ist doppelt angemeldet.
+    await an('Page.addScriptToEvaluateOnNewDocument', {
+      source: 'window.__gedruckt = 0; window.print = function () { window.__gedruckt++; };',
+    });
 
     await an('Page.navigate', { url: basis + '/intern/setlists/' + setliste + '/print' });
     await schlaf(2500);
@@ -172,6 +177,21 @@ async function hauptlauf() {
     if (hartUm.length) console.log('    umgebrochen: ' + hartUm.join(' | '));
     pruefe('auch mit einem sehr langen Bandnamen', hartUm.length === 0);
     pruefe('und das Blatt bleibt heil', hart.every((b) => b.passt));
+
+    // Und der Knopf selbst (#429): Auf der Setliste lud die Ansicht actions.js
+    // früher selbst, auf der druckbaren Hilfe niemand. Beide müssen drucken,
+    // und beide genau einmal.
+    for (const seite of ['/intern/setlists/' + setliste + '/print', '/intern/hilfe/druck']) {
+      await an('Page.navigate', { url: basis + seite });
+      await schlaf(2000);
+      const knopf = await werte("!!document.querySelector('[data-print]')");
+      if (!knopf) throw new Error('Kein Drucken-Knopf auf ' + seite);
+      await werte("document.querySelector('[data-print]').click()");
+      await schlaf(300);
+      const wieOft = await werte('window.__gedruckt');
+      pruefe('der Knopf druckt auf ' + seite, wieOft === 1);
+      if (wieOft > 1) console.log('    ' + wieOft + ' Aufrufe — der Griff ist mehrfach angemeldet');
+    }
   } finally {
     chromium.kill();
     // Chromium räumt sein Profil noch auf, während wir es schon löschen wollen.
@@ -180,6 +200,32 @@ async function hauptlauf() {
   }
 }
 
+/**
+ * Dieselbe Regel an der Quelle (#429): Die Leiste bringt actions.js mit, und
+ * keine Ansicht bringt eine zweite Kopie.
+ *
+ * Der Browserlauf prüft zwei Seiten; diese Zeilen prüfen alle. Eine Ansicht,
+ * die morgen dazukommt und die Datei selbst lädt, druckt auf einen Klick
+ * zweimal — und das sieht man auf dem Papier, nicht im Code.
+ */
+function quelltext() {
+  const views = path.join(__dirname, '..', 'app', 'views', 'intern');
+  const bar = fs.readFileSync(path.join(views, '_printbar.php'), 'utf8');
+  pruefe('die Druckleiste bringt actions.js mit', bar.includes("asset('/assets/actions.js')"));
+
+  const doppelt = [];
+  for (const datei of fs.readdirSync(views)) {
+    if (!datei.endsWith('.php') || datei === '_printbar.php') continue;
+    const inhalt = fs.readFileSync(path.join(views, datei), 'utf8');
+    if (inhalt.includes('_printbar.php') && inhalt.includes("asset('/assets/actions.js')")) {
+      doppelt.push(datei);
+    }
+  }
+  if (doppelt.length) console.log('    zweite Kopie in: ' + doppelt.join(', '));
+  pruefe('keine Ansicht lädt actions.js ein zweites Mal', doppelt.length === 0);
+}
+
+quelltext();
 hauptlauf()
   .then(() => {
     console.log('\n' + (fehler === 0 ? 'Alles grün.' : fehler + ' Fehler'));

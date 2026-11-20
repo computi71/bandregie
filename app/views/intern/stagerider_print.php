@@ -110,6 +110,5 @@ $blocks = [
     </div>
   <?php endif; ?>
 </div>
-<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>
