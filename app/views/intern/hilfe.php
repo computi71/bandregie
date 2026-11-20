@@ -309,6 +309,7 @@ require_once BASE_DIR . '/app/help.php';
   <?php if (!$druck || $druckBilder) echo help_picture('app', t('app_install')); ?>
   <p class="help-lead"><?= e(t('app_install_hint')) ?></p>
   <p class="muted"><?= e(t('app_install_offline')) ?></p>
+  <p class="muted"><?= e(t('app_install_print')) ?></p>
   <p class="muted"><?= e(t('app_install_store')) ?></p>
   <p class="muted"><?= e(t('off_help')) ?></p>
   <?php // Mitteilungen nur erklären, wenn es sie hier auch gibt — sonst schickt
