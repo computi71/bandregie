@@ -223,6 +223,26 @@ async function hauptlauf() {
     }
     befund(mit, 'mit allen Feldern');
 
+    // Kann das Beiwerk ueberhaupt noch umbrechen? (#432)
+    //
+    // Seit die einzelnen Punkte unzertrennlich sind, haengt die zweite Zeile
+    // aus #430 an genau einem Leerzeichen zwischen den Spannen. Faellt das
+    // weg, ist nichts kaputt - es meldet keine Pruefzeile etwas, die Band
+    // verliert nur stillschweigend Schriftgroesse, weil alles auf eine Zeile
+    // muss. Also wird die Gelegenheit selbst geprueft: den Kasten eng machen
+    // und nachsehen, ob er hoeher wird.
+    const kannUmbrechen = await werte(`(() => {
+      const m = document.querySelector('.songline .meta');
+      if (!m) return null;
+      const vorher = m.getBoundingClientRect().height;
+      const alt = m.style.maxWidth;
+      m.style.maxWidth = '6em';
+      const nachher = m.getBoundingClientRect().height;
+      m.style.maxWidth = alt;
+      return nachher > vorher + 1;
+    })()`);
+    pruefe('das Beiwerk kann zwischen den Punkten umbrechen', kannUmbrechen === true);
+
     // Härtefall: ein Bandname, länger als alles in dieser Installation. Er darf
     // jetzt in die zweite Zeile rutschen — nur über das Blatt hinaus nicht.
     await werte('(() => {'
