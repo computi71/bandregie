@@ -19,20 +19,37 @@
     return blatt.clientHeight - unten - oben;
   }
 
-  // Steht jedes Lied auf EINER Zeile? (#428)
+  // Wie viele Zeilen füllt dieser Kasten? Seine Höhe geteilt durch die Höhe
+  // einer Zeile. Die Kinder darin sind kleiner gesetzt als er selbst, also
+  // bestimmt seine eigene Zeilenhöhe das Maß.
+  function zeilenZahl(kasten) {
+    var hoch = parseFloat(getComputedStyle(kasten).lineHeight);
+    if (!hoch) return 1;
+    return Math.round(kasten.getBoundingClientRect().height / hoch);
+  }
+
+  // Passt die Breite? (#428, #430)
   //
-  // Die Höhe allein verrät das nicht: Bricht eine Zeile um, wächst die Liste,
-  // die Suche verkleinert die Schrift, und am Ende passt alles aufs Blatt — mit
-  // einem Bandnamen, der allein unter seinem Lied hängt. Gemessen wird deshalb
-  // auch die Breite, und zwar dort, wo sie entsteht: getClientRects() gibt je
-  // Textzeile ein Rechteck, zwei Rechtecke sind ein Umbruch.
+  // Die Höhe allein verrät das nicht: Bricht etwas um, wächst die Liste, die
+  // Suche verkleinert die Schrift, und am Ende passt alles aufs Blatt — mit
+  // einem Bandnamen, der allein unter seinem Lied hängt.
+  //
+  // Zwei verschiedene Regeln, weil es zwei verschiedene Dinge sind. Der TITEL
+  // wird vom Notenpult aus gelesen und steht nie umgebrochen da; er ist auf
+  // nowrap gesetzt, läuft also bei zu wenig Platz seitlich über, und genau das
+  // zeigt der Unterschied zwischen scrollWidth und clientWidth. Interpret,
+  // Notiz, BPM und Länge daneben müssen nur auffindbar sein — sie dürfen zwei
+  // Zeilen füllen, bevor die Schrift dafür kleiner wird.
   //
   // Die lange Notiz zählt nicht mit; sie steht als eigener Block darunter und
   // soll das auch.
-  function einzeilig(liste) {
+  var META_ZEILEN = 2;
+  function breitePasst(liste) {
     var zeilen = liste.querySelectorAll('.songline');
     for (var i = 0; i < zeilen.length; i++) {
-      if (zeilen[i].getClientRects().length > 1) return false;
+      if (zeilen[i].scrollWidth > zeilen[i].clientWidth + 1) return false;
+      var meta = zeilen[i].querySelector('.meta');
+      if (meta && meta.textContent.trim() !== '' && zeilenZahl(meta) > META_ZEILEN) return false;
     }
     return true;
   }
@@ -49,7 +66,7 @@
       liste.style.fontSize = mitte.toFixed(2) + 'pt';
       // scrollHeight statt offsetHeight: die Liste darf über das Blatt
       // hinauswachsen, ohne dass overflow:hidden die Messung verfälscht.
-      if (liste.scrollHeight <= platz(blatt, liste) && einzeilig(liste)) klein = mitte;
+      if (liste.scrollHeight <= platz(blatt, liste) && breitePasst(liste)) klein = mitte;
       else gross = mitte;
     }
     liste.style.fontSize = klein.toFixed(2) + 'pt';

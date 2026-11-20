@@ -79,17 +79,35 @@ class Draht {
   }
 }
 
-/** Was auf jedem Blatt steht: umgebrochene Zeilen, Platz, Schriftgröße. */
+/**
+ * Was auf jedem Blatt steht: übergelaufene Titel, zu hohe Beiwerk-Kästen,
+ * Platz und Schriftgröße (#428, #430).
+ *
+ * Zwei verschiedene Maße, weil es zwei verschiedene Regeln sind: Der Titel
+ * steht nie umgebrochen da und läuft bei zu wenig Platz seitlich über;
+ * Interpret, Notiz, BPM und Länge daneben dürfen zwei Zeilen füllen.
+ */
 const MESSUNG = `(() => {
+  const zeilenZahl = (k) => {
+    const hoch = parseFloat(getComputedStyle(k).lineHeight);
+    return hoch ? Math.round(k.getBoundingClientRect().height / hoch) : 1;
+  };
   return [...document.querySelectorAll('.sheet')].map(b => {
     const liste = b.querySelector('.songs');
-    const umbrochen = [...liste.querySelectorAll('.songline')]
-      .filter(z => z.getClientRects().length > 1)
-      .map(z => z.textContent.trim().replace(/\\s+/g, ' ').slice(0, 44));
+    const kurz = (z) => z.textContent.trim().replace(/\\s+/g, ' ').slice(0, 44);
+    const uebergelaufen = [...liste.querySelectorAll('.songline')]
+      .filter(z => z.scrollWidth > z.clientWidth + 1).map(kurz);
+    const zuHoch = [...liste.querySelectorAll('.songline .meta')]
+      .filter(m => m.textContent.trim() !== '' && zeilenZahl(m) > 2)
+      .map(m => ({ text: kurz(m), zeilen: zeilenZahl(m) }));
+    const schmal = [...liste.querySelectorAll('.songline')].slice(0, 1).map(z => ({
+      titel: getComputedStyle(z.querySelector('.titel')).fontFamily,
+      meta: getComputedStyle(z.querySelector('.meta')).fontFamily,
+    }))[0] || null;
     const stil = getComputedStyle(b);
     const oben = liste.getBoundingClientRect().top - b.getBoundingClientRect().top;
     const frei = b.clientHeight - (parseFloat(stil.paddingBottom) || 0) - oben;
-    return { umbrochen, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
+    return { uebergelaufen, zuHoch, schmal, passt: liste.scrollHeight <= frei + 1, schrift: liste.style.fontSize };
   });
 })()`;
 
@@ -157,14 +175,32 @@ async function hauptlauf() {
     })()`);
     await schlaf(1500);
 
+    const befund = (blaetter, wie) => {
+      const ueber = blaetter.flatMap((b) => b.uebergelaufen);
+      const hoch = blaetter.flatMap((b) => b.zuHoch);
+      if (ueber.length) console.log('    übergelaufen: ' + ueber.join(' | '));
+      if (hoch.length) console.log('    zu hoch: ' + hoch.map((h) => h.zeilen + ' Zeilen · ' + h.text).join(' | '));
+      pruefe(wie + ': kein Titel läuft über', ueber.length === 0);
+      pruefe(wie + ': das Beiwerk bleibt in zwei Zeilen', hoch.length === 0);
+      pruefe(wie + ': jedes Set passt auf sein Blatt', blaetter.every((b) => b.passt));
+    };
+
     const mit = await werte(MESSUNG);
     console.log('  Schriftgrößen: ' + mit.map((b) => b.schrift).join(' / '));
-    const umbrueche = mit.flatMap((b) => b.umbrochen);
-    if (umbrueche.length) console.log('    umgebrochen: ' + umbrueche.join(' | '));
-    pruefe('mit allen Feldern steht jedes Lied auf einer Zeile', umbrueche.length === 0);
-    pruefe('und die Liste passt auf das Blatt', mit.every((b) => b.passt));
+    if (mit[0] && mit[0].schmal) {
+      console.log('  Schrift Titel:  ' + mit[0].schmal.titel);
+      console.log('  Schrift Beiwerk: ' + mit[0].schmal.meta);
+      // Dass die Ausnahme auf dem TITEL landet und nicht irgendwo, ist eine
+      // Frage ans gerenderte Dokument (#430). Ob die schmale Schrift auf
+      // diesem Rechner überhaupt installiert ist, ist keine Frage an unseren
+      // Code — die beantwortet quelltext() an der Deklaration.
+      pruefe('der Titel steht in einer anderen Schrift als das Beiwerk',
+        mit[0].schmal.titel !== mit[0].schmal.meta);
+    }
+    befund(mit, 'mit allen Feldern');
 
-    // Härtefall: ein Bandname, länger als alles in dieser Installation.
+    // Härtefall: ein Bandname, länger als alles in dieser Installation. Er darf
+    // jetzt in die zweite Zeile rutschen — nur über das Blatt hinaus nicht.
     await werte('(() => {'
       + '  const f = document.querySelector(".songline .feld-interpret");'
       + '  if (f) f.textContent = ' + JSON.stringify(LANGER_NAME) + ';'
@@ -172,11 +208,7 @@ async function hauptlauf() {
       + '  return true;'
       + '})()');
     await schlaf(1500);
-    const hart = await werte(MESSUNG);
-    const hartUm = hart.flatMap((b) => b.umbrochen);
-    if (hartUm.length) console.log('    umgebrochen: ' + hartUm.join(' | '));
-    pruefe('auch mit einem sehr langen Bandnamen', hartUm.length === 0);
-    pruefe('und das Blatt bleibt heil', hart.every((b) => b.passt));
+    befund(await werte(MESSUNG), 'mit sehr langem Bandnamen');
 
     // Und der Knopf selbst (#429): Auf der Setliste lud die Ansicht actions.js
     // früher selbst, auf der druckbaren Hilfe niemand. Beide müssen drucken,
@@ -223,6 +255,16 @@ function quelltext() {
   }
   if (doppelt.length) console.log('    zweite Kopie in: ' + doppelt.join(', '));
   pruefe('keine Ansicht lädt actions.js ein zweites Mal', doppelt.length === 0);
+
+  // Welche Schrift auf dem Papier erscheint, hängt am druckenden Rechner —
+  // eine Messung im Browser sagt nur, was DORT installiert ist. Was unser Code
+  // verspricht, steht in der Deklaration, und genau das wird hier geprüft:
+  // schmale Schnitte für das Blatt, und der Titel nimmt sie zurück (#430).
+  const blatt = fs.readFileSync(path.join(views, 'setlist_print.php'), 'utf8');
+  pruefe('das Setlistenblatt verlangt eine schmale Schrift',
+    /Arial Narrow/.test(blatt) && /Liberation Sans Narrow/.test(blatt) && /font-stretch:\s*condensed/.test(blatt));
+  pruefe('und der Liedtitel nimmt sie zurück',
+    /\.songline \.titel \{[^}]*font-family:/.test(blatt) && /\.songline \.titel \{[^}]*font-stretch:\s*normal/.test(blatt));
 }
 
 quelltext();

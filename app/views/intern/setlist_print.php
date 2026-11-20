@@ -45,6 +45,13 @@ $pauseText = $pauseCount === 0 ? ''
 // die 182 mm Textbreite passen bei 32 pt etwa 28 Zeichen, also grob 900/F. Bei
 // 25 pt sind das 36 — „Du hast den Farbfilm vergessen" passt dort längst in eine
 // Zeile, und genau dafür hatte die alte Rechnung eine Zeile verschenkt (#252).
+//
+// Seit #430 steht der Titel nie mehr umgebrochen da, dafuer duerfen Interpret,
+// Notiz, BPM und Laenge daneben zwei Zeilen fuellen. Hier wird deshalb mit
+// ZWEI Zeilen je Lied gerechnet, sobald eines ueberhaupt etwas daneben stehen
+// hat: Welche Spalten angehakt sind, entscheidet der Browser, und diese
+// Rechnung gilt genau dann, wenn kein Browser mitrechnet. Zu klein ist dort
+// ein kleineres Blatt, zu gross waere ein abgeschnittenes.
 $fontFor = function (array $set): int {
   $linien = 0;      // nackte Trennlinien
   $beschriftet = 0; // Trennlinien mit Wort darin
@@ -53,12 +60,16 @@ $fontFor = function (array $set): int {
     $art = (int) $entry['is_break'];
     if ($art === 2) { $beschriftet++; continue; }
     if ($art === 3) { (string) $entry['item_note'] !== '' ? $beschriftet++ : $linien++; continue; }
-    $titel[] = mb_strlen((string) $entry['title']);
+    $daneben = (string) $entry['item_note'] !== '' || (string) ($entry['artist'] ?? '') !== ''
+            || (string) ($entry['tempo'] ?? '') !== '' || (int) ($entry['duration_sec'] ?? 0) > 0
+            || (int) ($entry['release_year'] ?? 0) > 0;
+    $titel[] = $daneben ? -1 : mb_strlen((string) $entry['title']);
   }
   $passt = function (int $f) use ($linien, $beschriftet, $titel): bool {
     $zeichen = max(12, intdiv(900, $f));
     $mm = $linien * 3.0 + $beschriftet * (0.19 * $f + 2.5);
-    foreach ($titel as $len) $mm += 0.42 * $f * (int) ceil($len / $zeichen);
+    // -1 heisst „hat etwas neben sich": zwei Zeilen, ohne zu raten, wie breit.
+    foreach ($titel as $len) $mm += 0.42 * $f * ($len < 0 ? 2 : (int) ceil($len / $zeichen));
     return $mm <= 230.0;
   };
   for ($f = 32; $f > 14; $f--) if ($passt($f)) return $f;
@@ -104,6 +115,26 @@ $fontFor = function (array $set): int {
     .logo .bandname { font-size: 22pt; }
     .songs { margin-top: 8mm; position: relative; z-index: 1; }
     .song { font-weight: 700; line-height: 1.18; }
+    /* Schmale Schrift auf dem ganzen Blatt — nur der Liedtitel nicht (#430).
+       Der Titel ist das, was vom Notenpult aus gelesen wird; alles andere muss
+       nur auffindbar sein. Schmal gesetzt passt es überhaupt erst daneben.
+       Arial Narrow liegt auf Windows und macOS, die Liberation- und
+       Nimbus-Schnitte auf Linux, Roboto Condensed auf Android; font-stretch
+       greift zusätzlich bei Schriften mit eigener schmaler Lage. Findet sich
+       nichts davon, steht am Ende dieselbe Schrift wie bisher — dann ist das
+       Blatt nicht schmaler, aber auch nicht kaputt. */
+    .sheet {
+      font-family: 'Arial Narrow', 'Liberation Sans Narrow', 'Nimbus Sans Narrow',
+                   'Roboto Condensed', sans-serif-condensed, Calibri, Arial, sans-serif;
+      font-stretch: condensed;
+    }
+    .songline .titel { font-family: Calibri, Arial, Helvetica, sans-serif; font-stretch: normal; }
+    /* Titel links, alles Weitere daneben — und das darf zwei Zeilen hoch sein
+       (#430). Der Titel bricht nie um: white-space hält ihn zusammen, und wird
+       es zu eng, sieht print-fit.js den Überlauf und verkleinert. */
+    .songline { display: flex; align-items: baseline; gap: 0 0.45em; }
+    .songline .titel { white-space: nowrap; }
+    .songline .meta { flex: 1 1 auto; min-width: 0; line-height: 1.18; }
     .song .note { font-weight: 400; font-size: 55%; }
     /* Waehlbare Zusatzfelder (#255): Sie stehen immer im HTML und werden ueber
        Klassen am body eingeschaltet — so wirkt ein Haken sofort, ohne die Seite
@@ -252,13 +283,14 @@ $fontFor = function (array $set): int {
                   // allein darunter. Die lange Notiz bleibt draußen — sie ist ein
                   // eigener Block und soll eine eigene Zeile haben. ?>
             <div class="song">
-              <span class="songline"><?= e($entry['title']) ?>
-              <?php if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span><?php endif; ?>
-              <?php if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span><?php endif; ?>
-              <?php if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span><?php endif; ?>
-              <?php if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span><?php endif; ?>
-              <?php if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span><?php endif; ?>
-              <?php if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif; ?></span>
+              <span class="songline"><span class="titel"><?= e($entry['title']) ?></span><span class="meta"><?php
+                if ($zuruf !== ''): ?><span class="note">(<?= e($zuruf) ?>)</span><?php endif;
+                if ($notizKurz !== '' && $notizKurz !== $zuruf): ?><span class="note notiz-kurz">(<?= e($notizKurz) ?>)</span><?php endif;
+                if ($entry['artist']): ?><span class="feld feld-interpret"><?= e($entry['artist']) ?></span><?php endif;
+                if ($entry['release_year']): ?><span class="feld feld-jahr"><?= (int) $entry['release_year'] ?></span><?php endif;
+                if ($entry['tempo']): ?><span class="feld feld-bpm"><?= e($entry['tempo']) ?></span><?php endif;
+                if ($entry['duration_sec']): ?><span class="feld feld-zeit"><?= fmt_duration((int) $entry['duration_sec']) ?></span><?php endif;
+              ?></span></span>
               <?php if ($notizLang !== ''): ?><span class="notiz-lang"><?= e($notizLang) ?></span><?php endif; ?>
             </div>
           <?php endif; ?>
