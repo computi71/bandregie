@@ -54,11 +54,12 @@
     return true;
   }
 
-  function anpassen(blatt) {
+  // Die größte Schrift, bei der DIESES Blatt noch aufgeht.
+  function obergrenze(blatt) {
     var liste = blatt.querySelector('.songs');
-    if (!liste) return;
+    if (!liste) return null;
     var frei = platz(blatt, liste);
-    if (frei <= 0) return;
+    if (frei <= 0) return null;
     // Halbierungssuche über Viertelpunkte: höchstens ~9 Messungen je Blatt.
     var klein = MIN, gross = MAX;
     for (var i = 0; i < 9; i++) {
@@ -69,12 +70,26 @@
       if (liste.scrollHeight <= platz(blatt, liste) && breitePasst(liste)) klein = mitte;
       else gross = mitte;
     }
-    liste.style.fontSize = klein.toFixed(2) + 'pt';
+    return klein;
   }
 
+  // Alle Blätter in EINER Größe (#434): Jedes für sich gerechnet ergab drei
+  // verschiedene Größen in einem Ausdruck, und beim Umblättern sprang die
+  // Schrift. Genommen wird die kleinste der Obergrenzen — die einzige, bei der
+  // jeder Satz noch auf sein Blatt passt.
   function alle() {
     var blaetter = document.querySelectorAll('.sheet');
-    for (var i = 0; i < blaetter.length; i++) anpassen(blaetter[i]);
+    var kleinste = null;
+    for (var i = 0; i < blaetter.length; i++) {
+      var grenze = obergrenze(blaetter[i]);
+      if (grenze !== null && (kleinste === null || grenze < kleinste)) kleinste = grenze;
+    }
+    if (kleinste !== null) {
+      for (var j = 0; j < blaetter.length; j++) {
+        var liste = blaetter[j].querySelector('.songs');
+        if (liste) liste.style.fontSize = kleinste.toFixed(2) + 'pt';
+      }
+    }
     aufBildschirmbreite(blaetter);
   }
 
