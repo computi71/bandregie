@@ -143,7 +143,11 @@ $fontFor = function (array $set): int {
        ein zweites Mal. */
     .songline .meta .feld { font-size: 100%; }
     .song .note { font-weight: 400; font-size: 55%; }
-    .songline .meta .note { font-size: 110%; }
+    /* Die Ansage faellt durch Fettung auf und nicht durch Groesse: Eine groessere
+       Schrift macht ihre Zeile hoeher, und dann sind zwei Zeilen Beiwerk eben
+       NICHT mehr so hoch wie eine Titelzeile. Genau daran ist die erste Fassung
+       von #431 gescheitert — sichtbar nur im Haertefall mit zwei Zeilen. */
+    .songline .meta .note { font-size: 100%; font-weight: 700; }
     /* Waehlbare Zusatzfelder (#255): Sie stehen immer im HTML und werden ueber
        Klassen am body eingeschaltet — so wirkt ein Haken sofort, ohne die Seite
        neu zu laden, und der Druck nimmt genau das mit, was zu sehen ist. */
