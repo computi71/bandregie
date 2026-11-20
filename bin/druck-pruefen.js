@@ -190,11 +190,12 @@ async function hauptlauf() {
     if (mit[0] && mit[0].schmal) {
       console.log('  Schrift Titel:  ' + mit[0].schmal.titel);
       console.log('  Schrift Beiwerk: ' + mit[0].schmal.meta);
-      // Zwei verschiedene Schriften, und die schmale steht neben dem Titel
-      // und nicht darin (#430).
+      // Dass die Ausnahme auf dem TITEL landet und nicht irgendwo, ist eine
+      // Frage ans gerenderte Dokument (#430). Ob die schmale Schrift auf
+      // diesem Rechner überhaupt installiert ist, ist keine Frage an unseren
+      // Code — die beantwortet quelltext() an der Deklaration.
       pruefe('der Titel steht in einer anderen Schrift als das Beiwerk',
         mit[0].schmal.titel !== mit[0].schmal.meta);
-      pruefe('und das Beiwerk ist die schmale', /Narrow|Condensed|condensed/.test(mit[0].schmal.meta));
     }
     befund(mit, 'mit allen Feldern');
 
@@ -254,6 +255,16 @@ function quelltext() {
   }
   if (doppelt.length) console.log('    zweite Kopie in: ' + doppelt.join(', '));
   pruefe('keine Ansicht lädt actions.js ein zweites Mal', doppelt.length === 0);
+
+  // Welche Schrift auf dem Papier erscheint, hängt am druckenden Rechner —
+  // eine Messung im Browser sagt nur, was DORT installiert ist. Was unser Code
+  // verspricht, steht in der Deklaration, und genau das wird hier geprüft:
+  // schmale Schnitte für das Blatt, und der Titel nimmt sie zurück (#430).
+  const blatt = fs.readFileSync(path.join(views, 'setlist_print.php'), 'utf8');
+  pruefe('das Setlistenblatt verlangt eine schmale Schrift',
+    /Arial Narrow/.test(blatt) && /Liberation Sans Narrow/.test(blatt) && /font-stretch:\s*condensed/.test(blatt));
+  pruefe('und der Liedtitel nimmt sie zurück',
+    /\.songline \.titel \{[^}]*font-family:/.test(blatt) && /\.songline \.titel \{[^}]*font-stretch:\s*normal/.test(blatt));
 }
 
 quelltext();
