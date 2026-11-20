@@ -228,6 +228,10 @@ async function hauptlauf() {
 
     const mit = await werte(MESSUNG);
     console.log('  Schriftgrößen: ' + mit.map((b) => b.schrift).join(' / '));
+    // Ein Ausdruck, eine Groesse (#434): Drei Blaetter in drei Groessen lesen
+    // sich wie drei Zettel, und beim Umblaettern springt die Schrift.
+    pruefe('alle Blätter stehen in derselben Schriftgröße',
+      new Set(mit.map((b) => b.schrift)).size <= 1);
     if (mit[0] && mit[0].schmal) {
       console.log('  Schrift Titel:  ' + mit[0].schmal.titel);
       console.log('  Schrift Beiwerk: ' + mit[0].schmal.meta);

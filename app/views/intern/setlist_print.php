@@ -256,6 +256,14 @@ $fontFor = function (array $set): int {
       </label>
     <?php $leisteExtra = ob_get_clean();
     require BASE_DIR . '/app/views/intern/_printbar.php'; ?>
+<?php
+  // EINE Groesse fuer alle Blaetter (#434): Jeder Satz fuer sich gerechnet
+  // ergab drei verschiedene Groessen in einem Ausdruck — 30, 32, 26 pt —, und
+  // beim Umblaettern sprang die Schrift. Die Blaetter gehoeren zusammen und
+  // sollen auch so aussehen. Genommen wird die kleinste, denn sie ist die
+  // einzige, bei der jeder Satz noch auf sein Blatt passt.
+  $fontSize = min(array_map($fontFor, $sets));
+?>
   <?php foreach ($sets as $set): ?>
     <div class="sheet">
       <?= print_watermark_html($printDoc) ?>
@@ -275,7 +283,7 @@ $fontFor = function (array $set): int {
         </div>
         <?= print_logo_html($printDoc) ?>
       </div>
-      <div class="songs" style="font-size: <?= $fontFor($set) ?>pt">
+      <div class="songs" style="font-size: <?= $fontSize ?>pt">
         <?php
           // Zeilen mit derselben Klammernummer zu Gruppen zusammenfassen — die
           // gezeichnete Klammer vom Zettel (#242). Alles ohne Nummer bleibt für
