@@ -47,11 +47,10 @@ $pauseText = $pauseCount === 0 ? ''
 // Zeile, und genau dafür hatte die alte Rechnung eine Zeile verschenkt (#252).
 //
 // Seit #430 steht der Titel nie mehr umgebrochen da, dafuer duerfen Interpret,
-// Notiz, BPM und Laenge daneben zwei Zeilen fuellen. Hier wird deshalb mit
-// ZWEI Zeilen je Lied gerechnet, sobald eines ueberhaupt etwas daneben stehen
-// hat: Welche Spalten angehakt sind, entscheidet der Browser, und diese
-// Rechnung gilt genau dann, wenn kein Browser mitrechnet. Zu klein ist dort
-// ein kleineres Blatt, zu gross waere ein abgeschnittenes.
+// Notiz, BPM und Laenge daneben zwei Zeilen fuellen — die zusammen seit #431
+// so hoch sind wie EINE Titelzeile. Deshalb zaehlt hier wieder eine Zeile je
+// Lied: Ob das Beiwerk danebenpasst oder umbricht, aendert an der Hoehe
+// nichts mehr.
 $fontFor = function (array $set): int {
   $linien = 0;      // nackte Trennlinien
   $beschriftet = 0; // Trennlinien mit Wort darin
@@ -60,16 +59,12 @@ $fontFor = function (array $set): int {
     $art = (int) $entry['is_break'];
     if ($art === 2) { $beschriftet++; continue; }
     if ($art === 3) { (string) $entry['item_note'] !== '' ? $beschriftet++ : $linien++; continue; }
-    $daneben = (string) $entry['item_note'] !== '' || (string) ($entry['artist'] ?? '') !== ''
-            || (string) ($entry['tempo'] ?? '') !== '' || (int) ($entry['duration_sec'] ?? 0) > 0
-            || (int) ($entry['release_year'] ?? 0) > 0;
-    $titel[] = $daneben ? -1 : mb_strlen((string) $entry['title']);
+    $titel[] = mb_strlen((string) $entry['title']);
   }
   $passt = function (int $f) use ($linien, $beschriftet, $titel): bool {
     $zeichen = max(12, intdiv(900, $f));
     $mm = $linien * 3.0 + $beschriftet * (0.19 * $f + 2.5);
-    // -1 heisst „hat etwas neben sich": zwei Zeilen, ohne zu raten, wie breit.
-    foreach ($titel as $len) $mm += 0.42 * $f * ($len < 0 ? 2 : (int) ceil($len / $zeichen));
+    foreach ($titel as $len) $mm += 0.42 * $f * (int) ceil($len / $zeichen);
     return $mm <= 230.0;
   };
   for ($f = 32; $f > 14; $f--) if ($passt($f)) return $f;
@@ -132,10 +127,27 @@ $fontFor = function (array $set): int {
     /* Titel links, alles Weitere daneben — und das darf zwei Zeilen hoch sein
        (#430). Der Titel bricht nie um: white-space hält ihn zusammen, und wird
        es zu eng, sieht print-fit.js den Überlauf und verkleinert. */
-    .songline { display: flex; align-items: baseline; gap: 0 0.45em; }
+    .songline { display: flex; align-items: center; gap: 0 0.45em; }
     .songline .titel { white-space: nowrap; }
-    .songline .meta { flex: 1 1 auto; min-width: 0; line-height: 1.18; }
+    /* Zwei Zeilen Beiwerk sind so hoch wie eine Zeile Titel (#431).
+       Der Kasten steht auf halber Größe und behält die Zeilenhöhe 1,18 —
+       2 × 1,18 × 0,5 = 1,18, also genau eine Titelzeile. Ein Lied ist damit
+       immer gleich hoch, ob der Bandname danebenpasst oder unter die BPM
+       rutscht; vorher wurde die Zeile doppelt so hoch, und das ganze Set
+       bezahlte es mit kleinerer Schrift.
+       Mittig und nicht auf der Grundlinie: Bei zwei Zeilen gäbe die
+       Grundlinie der ersten den Ton an, und die zweite hinge unter dem
+       Titel heraus. */
+    .songline .meta { flex: 1 1 auto; min-width: 0; font-size: 50%; line-height: 1.18; }
+    /* Innerhalb des Kastens wieder relativ zu IHM, sonst halbiert sich alles
+       ein zweites Mal. */
+    .songline .meta .feld { font-size: 100%; }
     .song .note { font-weight: 400; font-size: 55%; }
+    /* Die Ansage faellt durch Fettung auf und nicht durch Groesse: Eine groessere
+       Schrift macht ihre Zeile hoeher, und dann sind zwei Zeilen Beiwerk eben
+       NICHT mehr so hoch wie eine Titelzeile. Genau daran ist die erste Fassung
+       von #431 gescheitert — sichtbar nur im Haertefall mit zwei Zeilen. */
+    .songline .meta .note { font-size: 100%; font-weight: 700; }
     /* Waehlbare Zusatzfelder (#255): Sie stehen immer im HTML und werden ueber
        Klassen am body eingeschaltet — so wirkt ein Haken sofort, ohne die Seite
        neu zu laden, und der Druck nimmt genau das mit, was zu sehen ist. */
