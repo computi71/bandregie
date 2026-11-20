@@ -1376,6 +1376,7 @@ const UI_STRINGS = [
   'app_install' => 'Auf dem Handy installieren',
   'app_install_hint' => 'Auf dem iPhone über das Teilen-Symbol, auf Android über das Browsermenü: „Zum Startbildschirm hinzufügen“. Danach hat Bandregie ein eigenes Symbol und startet ohne Adressleiste.',
   'app_install_offline' => 'Ohne Empfang — auf Bühnen der Normalfall — ist trotzdem alles da: Übersicht, Termine, Setlists mit Druckfassung, Songs mit Liedtexten, Noten und Anhänge, Stagerider und Patchliste. Das ist von Haus aus so, damit niemand erst auf der Bühne merkt, dass er nichts mitgenommen hat. Wer weniger will — Noten brauchen Platz —, hakt es im Profil unter „Offline dabeihaben“ ab. Beim Abmelden wird alles gelöscht, damit auf einem geteilten Handy niemand die Termine des Vorgängers findet.',
+  'app_install_print' => 'Drucken geht aus der App vom Startbildschirm heraus nicht: Auf iPhone und iPad erlaubt iOS das nicht, und keine Einstellung ändert daran etwas. In der Druckansicht steht dort deshalb kein Knopf, der schweigt, sondern die Adresse zum Mitnehmen — in Safari geöffnet, druckt dieselbe Seite über das Teilen-Symbol. Safari führt eine eigene Anmeldung, dort meldest du dich also einmal neu an. Auf Android druckt die App vom Startbildschirm ganz normal.',
   'app_install_store' => 'Eine App aus dem App Store oder von Google Play gibt es nicht. Der Weg über den Browser leistet dasselbe — ohne Jahresgebühr, ohne Prüfverfahren bei jeder Änderung und ohne einen zweiten Programmstand, der gepflegt werden will.',
   'song_lyrics' => 'Liedtext',
   'song_lyrics_ph' => "[Strophe]
@@ -1391,6 +1392,7 @@ Zeile zwei
   'back' => 'Zurück',
   'login_stay' => 'Angemeldet bleiben',
   'login_stay_hint' => 'Auf diesem Gerät 90 Tage angemeldet bleiben. Ohne das meldet die App sich nach kurzer Zeit von selbst ab — und der Zähler am Symbol bekommt nichts mehr mit.',
+  'print_ios_hint' => 'Vom Startbildschirm aus kann das iPhone nicht drucken — das lässt iOS nicht zu, hier so wenig wie anderswo. Öffne diese Adresse in Safari, dort steht Drucken unter dem Teilen-Symbol. In Safari meldest du dich einmal neu an.',
   'sl_print_fields' => 'Mitdrucken:',
   'sl_print_f_time' => 'Spielzeit',
   'sl_print_f_off' => 'ohne',

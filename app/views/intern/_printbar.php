@@ -49,6 +49,12 @@
     font-size: 0.85rem; letter-spacing: 0.03em;
   }
   .printbar .sprachen strong { border: 1px solid transparent; }
+  /* Ein verborgener Knopf muss auch verschwinden: Die Regel oben setzt
+     display auf inline-flex und sticht sonst das hidden-Attribut aus. */
+  .printbar [hidden] { display: none; }
+  /* Der Hinweis fuer die iPhone-App nimmt eine eigene Zeile unter den Knoepfen. */
+  .printbar .ohnedruck { flex: 1 1 100%; margin: 0; font-size: 0.95rem; line-height: 1.45; }
+  .printbar .ohnedruck code { word-break: break-all; font-size: 0.9em; }
   @media print { .printbar { display: none; } }
 </style>
 <div class="printbar">
@@ -56,6 +62,14 @@
   <button class="drucken" data-print>🖨 <?= e(t('sl_print')) ?></button>
   <?php if (!empty($sprachwahl)): ?><?= print_lang_html() ?><?php endif; ?>
   <?php if (!empty($leisteExtra)): ?><span class="extra"><?= $leisteExtra ?></span><?php endif; ?>
+  <?php // Steht nur da, wenn actions.js ein iPhone oder iPad vom Startbildschirm
+        // erkennt (#435) — dort druckt iOS nicht, und dann tritt dieser Hinweis
+        // an die Stelle des Knopfes. ?>
+  <p class="ohnedruck" data-print-ios hidden>
+    <?= e(t('print_ios_hint')) ?>
+    <code id="print-adresse"></code>
+    <button type="button" data-copy="print-adresse" data-copied="<?= e(t('copied')) ?>"><?= e(t('copy')) ?></button>
+  </p>
 </div>
 <?php // Der Knopf bringt seinen Griff selbst mit (#429).
       //

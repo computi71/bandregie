@@ -296,6 +296,48 @@ async function hauptlauf() {
       pruefe('der Knopf druckt auf ' + seite, wieOft === 1);
       if (wieOft > 1) console.log('    ' + wieOft + ' Aufrufe — der Griff ist mehrfach angemeldet');
     }
+
+    // Und der Knopf, der auf dem iPhone nichts ausrichten kann (#435).
+    //
+    // Dass iOS window.print() in einer App vom Startbildschirm verwirft, ist
+    // hier nicht nachzustellen — Chromium druckt. Nachstellen lässt sich, was
+    // unser Code zum Erkennen hat: die beiden Merkmale. Geprüft wird also,
+    // dass die Leiste daraufhin umschaltet — und ohne sie eben nicht.
+    //
+    // Gemessen wird die gerechnete Darstellung, nicht das hidden-Attribut: Die
+    // Leiste setzt display auf inline-flex, und das sticht ein hidden aus,
+    // wenn keine Regel dagegenhält. Der Knopf stünde dann weiter da, und der
+    // Lauf sähe nichts davon.
+    const leiste = `(() => {
+      const sicht = (e) => (e ? getComputedStyle(e).display !== 'none' : null);
+      const a = document.getElementById('print-adresse');
+      return {
+        knopf: sicht(document.querySelector('[data-print]')),
+        hinweis: sicht(document.querySelector('[data-print-ios]')),
+        adresse: a ? a.textContent : '',
+        hier: location.href,
+      };
+    })()`;
+
+    const druckseite = basis + '/intern/setlists/' + setliste + '/print';
+    await an('Page.navigate', { url: druckseite });
+    await schlaf(2000);
+    const amRechner = await werte(leiste);
+    pruefe('am Rechner steht der Druckknopf da', amRechner.knopf === true);
+    pruefe('und der iPhone-Hinweis bleibt weg', amRechner.hinweis === false);
+
+    const { identifier } = await an('Page.addScriptToEvaluateOnNewDocument', {
+      source: "Object.defineProperty(navigator, 'standalone', { value: true });"
+        + "Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });",
+    });
+    await an('Page.navigate', { url: druckseite });
+    await schlaf(2000);
+    const amTelefon = await werte(leiste);
+    await an('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+    pruefe('als App vom Startbildschirm verschwindet der Knopf', amTelefon.knopf === false);
+    pruefe('und der Hinweis tritt an seine Stelle', amTelefon.hinweis === true);
+    pruefe('er trägt die Adresse dieser Seite zum Mitnehmen',
+      amTelefon.hier !== '' && amTelefon.adresse === amTelefon.hier);
   } finally {
     chromium.kill();
     // Chromium räumt sein Profil noch auf, während wir es schon löschen wollen.
@@ -327,6 +369,15 @@ function quelltext() {
   }
   if (doppelt.length) console.log('    zweite Kopie in: ' + doppelt.join(', '));
   pruefe('keine Ansicht lädt actions.js ein zweites Mal', doppelt.length === 0);
+
+  // Der Hinweis für die iPhone-App gehört in die Leiste und nirgendwo sonst
+  // (#435): Er steht damit über allen acht Ausdrucken, nicht nur über dem, an
+  // dem er aufgefallen ist. Und die Regel daneben ist kein Schmuck — ohne sie
+  // bleibt der verborgene Knopf sichtbar, weil die Leiste display setzt.
+  pruefe('die Leiste bringt den Hinweis für die iPhone-App mit',
+    bar.includes('data-print-ios') && bar.includes("t('print_ios_hint')"));
+  pruefe('und verbirgt Verborgenes wirklich',
+    /\.printbar \[hidden\] \{\s*display: none/.test(bar));
 
   // Welche Schrift auf dem Papier erscheint, hängt am druckenden Rechner —
   // eine Messung im Browser sagt nur, was DORT installiert ist. Was unser Code

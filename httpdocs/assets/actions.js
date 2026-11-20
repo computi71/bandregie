@@ -107,6 +107,34 @@ document.addEventListener('DOMContentLoaded', () => {
     button.addEventListener('click', () => window.print());
   });
 
+  // Auf dem iPhone druckt eine App vom Startbildschirm nicht (#435).
+  //
+  // iOS verwirft window.print() dort stillschweigend: kein Dialog, kein
+  // Fehler, kein Ereignis, an dem sich das merken ließe. Der Knopf stand
+  // also da und tat nichts — und wer darauf drückt, sucht den Fehler bei
+  // sich oder beim Drucker. Hinführen lässt sich auch nirgends: Safari ist
+  // von innen nicht erreichbar, und eine Adresse an ihn zu übergeben erlaubt
+  // iOS einer installierten App nicht. Bleibt, es zu sagen und die Adresse
+  // zum Mitnehmen hinzulegen.
+  //
+  // Die beiden Merkmale zusammen heißen „iPhone oder iPad vom
+  // Startbildschirm“: navigator.standalone gibt es nur in Safari — eine
+  // Android-App vom Startbildschirm druckt ganz normal und kennt die
+  // Eigenschaft gar nicht —, und Finger hat von den Safari-Apps nur das
+  // Gerät in der Hand; die Mac-App am Dock hat ein Druckmenü und behält
+  // ihren Knopf.
+  //
+  // Ohne den Hinweis im HTML bleibt der Knopf stehen: Ein Ausdruck ohne
+  // Erklärung wäre schlimmer dran als einer mit einem Knopf, der schweigt.
+  const appVomStartbildschirm = navigator.standalone === true && navigator.maxTouchPoints > 1;
+  const ohneDruck = appVomStartbildschirm ? document.querySelector('[data-print-ios]') : null;
+  if (ohneDruck) {
+    const adresse = document.getElementById('print-adresse');
+    if (adresse) adresse.textContent = location.href;
+    ohneDruck.hidden = false;
+    document.querySelectorAll('[data-print]').forEach(button => { button.hidden = true; });
+  }
+
   // Adresse in die Zwischenablage; klappt das nicht, bleibt sie lesbar stehen
   document.querySelectorAll('[data-copy]').forEach(button => {
     button.addEventListener('click', () => {
