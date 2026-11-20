@@ -93,6 +93,5 @@ $printDoc = 'gema';
     Diese Liste dient als Vorlage/Beleg für die Meldung.
   </p>
 </div>
-<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>

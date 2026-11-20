@@ -130,6 +130,5 @@ $printDoc = 'tax';
   <p class="note"><?= e(t('taxr_gross_hint')) ?></p>
   <p class="note">⚖ <?= e(t('tax_no_advice')) ?></p>
 </div>
-<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>

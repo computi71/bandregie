@@ -275,6 +275,5 @@ $fontFor = function (array $set): int {
       </div>
     </div>
   <?php endforeach; ?>
-<script src="<?= e(asset('/assets/actions.js')) ?>" defer></script>
 </body>
 </html>
