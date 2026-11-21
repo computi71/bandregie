@@ -2118,6 +2118,18 @@ if (setting('col_interpret') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'songs_col_original'");
   set_setting('col_interpret', '1');
 }
+// Der Hinweis fuer die iPhone-App nannte nur das Drucken (#436) — das Blatt
+// laesst sich dort ebenso als PDF sichern, und das ist fuer eine Band oft das
+// Naehere: Was der Tontechniker bekommt, will gar kein Papier werden.
+//
+// Ein Seed legt nur an, was fehlt (ON DUPLICATE KEY UPDATE value = value), und
+// seit 2.55.0 stehen beide Texte ueberall in der Datenbank. Ohne dieses
+// Wegraeumen bliebe also genau dort der alte Wortlaut stehen, wo er schon
+// gelesen wurde. Der neue kommt aus Seed 213.
+if (setting('print_ios_pdf') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN ('print_ios_hint', 'app_install_print')");
+  set_setting('print_ios_pdf', '1');
+}
 // Der Teleprompter-Einstieg (#254) und die waehlbaren Felder im Ausdruck (#255)
 // standen in keinem Hilfetext. Der neue Wortlaut kommt aus Seed 29; hier wird
 // der alte weggeraeumt (#259).
