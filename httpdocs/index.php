@@ -147,6 +147,11 @@ if ($method === 'GET'
   if (od_secret_warn_due()) {
     $hintergrund[] = fn() => od_secret_warn_run();
   }
+  // Abgelaufene Liedaufgaben (#441): einmal am Tag, ohne Sitzung - eine
+  // Abstimmung mit Frist soll auch dann schließen, wenn niemand mehr stimmt.
+  if (setting('tasks_expired_on') !== date('Y-m-d')) {
+    $hintergrund[] = fn() => tasks_expire_run();
+  }
   // push_prune() hält seine eigene Tagesgrenze; hier wird nur nicht umsonst
   // eingeplant, was heute schon gelaufen ist.
   if (setting('push_pruned_on') !== date('Y-m-d')) {
