@@ -314,6 +314,8 @@ async function hauptlauf() {
       return {
         knopf: sicht(document.querySelector('[data-print]')),
         hinweis: sicht(document.querySelector('[data-print-ios]')),
+        teilen: sicht(document.querySelector('[data-print-share]')),
+        kannTeilen: !!navigator.share,
         adresse: a ? a.textContent : '',
         hier: location.href,
       };
@@ -338,6 +340,36 @@ async function hauptlauf() {
     pruefe('und der Hinweis tritt an seine Stelle', amTelefon.hinweis === true);
     pruefe('er trägt die Adresse dieser Seite zum Mitnehmen',
       amTelefon.hier !== '' && amTelefon.adresse === amTelefon.hier);
+
+    // Der Teilen-Knopf erscheint genau dann, wenn der Browser teilen kann
+    // (#437) — nicht danach und nicht davor. Welche Seite das ist, entscheidet
+    // der Browser des Laufs; geprueft wird der Zusammenhang, nicht der Fall.
+    pruefe('der Teilen-Knopf steht da, wenn der Browser teilen kann',
+      amTelefon.teilen === amTelefon.kannTeilen);
+
+    // Und was er uebergibt. Ein Knopf, der das Blatt oeffnet und eine falsche
+    // oder gar keine Adresse hineinlegt, sieht im Betrieb genauso aus wie
+    // einer, der stimmt: Das Blatt geht auf, und erst auf dem anderen Geraet
+    // faellt es auf.
+    const { identifier: mitTeilen } = await an('Page.addScriptToEvaluateOnNewDocument', {
+      source: "Object.defineProperty(navigator, 'standalone', { value: true });"
+        + "Object.defineProperty(navigator, 'maxTouchPoints', { value: 5 });"
+        + 'window.__geteilt = [];'
+        + 'navigator.share = function (d) { window.__geteilt.push(d); return Promise.resolve(); };',
+    });
+    await an('Page.navigate', { url: druckseite });
+    await schlaf(2000);
+    const geteilt = await werte(`(() => {
+      const k = document.querySelector('[data-print-share]');
+      if (!k || getComputedStyle(k).display === 'none') return null;
+      k.click();
+      return { wieOft: window.__geteilt.length, uebergeben: window.__geteilt[0] || null, hier: location.href };
+    })()`);
+    await an('Page.removeScriptToEvaluateOnNewDocument', { identifier: mitTeilen });
+    if (!geteilt) throw new Error('Kein sichtbarer Teilen-Knopf, obwohl navigator.share da ist');
+    pruefe('ein Tipp öffnet das Teilen-Blatt genau einmal', geteilt.wieOft === 1);
+    pruefe('und legt die Adresse dieser Seite hinein',
+      !!geteilt.uebergeben && geteilt.uebergeben.url === geteilt.hier);
   } finally {
     chromium.kill();
     // Chromium räumt sein Profil noch auf, während wir es schon löschen wollen.
@@ -378,6 +410,11 @@ function quelltext() {
     bar.includes('data-print-ios') && bar.includes("t('print_ios_hint')"));
   pruefe('und verbirgt Verborgenes wirklich',
     /\.printbar \[hidden\] \{\s*display: none/.test(bar));
+  // Verborgen beginnt er, nicht sichtbar (#437): Ein Knopf, der erst von
+  // JavaScript weggeraeumt wird, blitzt beim Laden auf — und bleibt stehen,
+  // wo kein JavaScript laeuft.
+  pruefe('der Teilen-Knopf steht in der Leiste und beginnt verborgen',
+    /<button[^>]*data-print-share[^>]*hidden/.test(bar));
 
   // Welche Schrift auf dem Papier erscheint, hängt am druckenden Rechner —
   // eine Messung im Browser sagt nur, was DORT installiert ist. Was unser Code

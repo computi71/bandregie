@@ -133,6 +133,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adresse) adresse.textContent = location.href;
     ohneDruck.hidden = false;
     document.querySelectorAll('[data-print]').forEach(button => { button.hidden = true; });
+
+    // Das Teilen-Blatt von iOS, wo der Browser es anbietet (#437).
+    //
+    // Es nimmt die Adresse entgegen, und von dort geht sie in einem Griff per
+    // AirDrop an den Rechner, an dem der Drucker steht, oder per Mail an einen
+    // selbst. Drucken steht nicht darin: Eine Adresse ist nichts Druckbares,
+    // dafuer braeuchte das Blatt eine Datei — und die gibt es hier nicht zu
+    // geben. Deshalb bleibt der Hinweis auf Safari stehen, und Kopieren
+    // daneben: Das ist der Weg, den jedes Geraet kann.
+    //
+    // Nur mit navigator.share, sonst gar nicht erst sichtbar — dieselbe Regel
+    // wie beim Druckknopf daneben.
+    const teilen = ohneDruck.querySelector('[data-print-share]');
+    if (teilen && navigator.share) {
+      teilen.hidden = false;
+      teilen.addEventListener('click', () => {
+        // Zuschieben ist keine Panne, sondern eine Entscheidung: Das Blatt
+        // meldet den Abbruch als Fehler, und genau den schlucken wir hier.
+        navigator.share({ title: document.title, url: location.href }).catch(() => {});
+      });
+    }
   }
 
   // Adresse in die Zwischenablage; klappt das nicht, bleibt sie lesbar stehen

@@ -2126,6 +2126,12 @@ if (setting('col_interpret') !== '1') {
 // seit 2.55.0 stehen beide Texte ueberall in der Datenbank. Ohne dieses
 // Wegraeumen bliebe also genau dort der alte Wortlaut stehen, wo er schon
 // gelesen wurde. Der neue kommt aus Seed 213.
+// Die Hilfe kennt jetzt auch den Teilen-Knopf (#437). Dasselbe Spiel wie eine
+// Marke darueber: Der Seed kaeme an den bestehenden Eintrag nicht heran.
+if (setting('print_ios_share') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'app_install_print'");
+  set_setting('print_ios_share', '1');
+}
 if (setting('print_ios_pdf') !== '1') {
   q("DELETE FROM translations WHERE tkey IN ('print_ios_hint', 'app_install_print')");
   set_setting('print_ios_pdf', '1');
