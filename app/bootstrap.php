@@ -5540,6 +5540,104 @@ function song_vote_start(int $songId, int $durch): void {
     array_map(static fn(array $u): int => (int) $u['id'], song_vote_voters()), $durch);
 }
 
+// ---------- Übungsaufgabe für Lieder in Vorbereitung (#439) ----------
+//
+// „In Vorbereitung" hieß schon immer „wird geprobt", aber wer das Lied noch
+// lernen muss, stand nirgends — und eine Aufgabe, die jemand von Hand
+// angelegt hatte, blieb offen, wenn das Lied längst gespielt wurde.
+
+/**
+ * Wer ein Lied in Vorbereitung lernen muss: Admins und Mitglieder. Eine
+ * Aushilfe lernt, was am Abend auf der Setliste steht, nicht jedes Lied, das
+ * die Band sich vornimmt.
+ *
+ * @return array<int, array> Zeilen aus users
+ */
+function song_practice_players(): array {
+  return rows("SELECT * FROM users WHERE role IN ('admin', 'member') ORDER BY name");
+}
+
+/** Die Übungsaufgaben eines Liedes; mit $nurOffen nur die, die noch laufen. */
+function song_practice_tasks(int $songId, bool $nurOffen = false): array {
+  return array_map('intval', array_column(rows(
+    "SELECT t.id FROM tasks t JOIN task_links tl ON tl.task_id = t.id
+     WHERE tl.kind = 'song' AND tl.item_id = ? AND t.is_song_practice = 1"
+    . ($nurOffen ? " AND t.status = 'offen'" : ''), [$songId]), 'id'));
+}
+
+/**
+ * Die Band ein Lied lernen lassen: eine Aufgabe, alle Spielenden zuständig,
+ * jeder hakt ab, wenn er es kann. So steht am Lied, wer noch übt.
+ *
+ * Läuft schon eine, bleibt es bei ihr. Eine erledigte zählt nicht: Kommt ein
+ * Lied nach Monaten wieder in Vorbereitung, wird es neu gelernt.
+ */
+function song_practice_start(int $songId, int $durch): void {
+  if (song_practice_tasks($songId, true)) return;
+  $lied = row('SELECT title FROM songs WHERE id = ?', [$songId]);
+  if (!$lied) return;
+  q("INSERT INTO tasks (title, notes, due_date, status, created_by, required_done, is_song_practice)
+     VALUES (?, '', '', 'offen', ?, 0, 1)",
+    [str_replace('%1', (string) $lied['title'], t('song_practice_task')), $durch]);
+  $nr = (int) $GLOBALS['db']->lastInsertId();
+  q("INSERT INTO task_links (task_id, kind, item_id) VALUES (?, 'song', ?)", [$nr, $songId]);
+  $wer = array_map(static fn(array $u): int => (int) $u['id'], song_practice_players());
+  foreach ($wer as $uid) {
+    q('INSERT IGNORE INTO task_assignees (task_id, user_id) VALUES (?,?)', [$nr, $uid]);
+  }
+  item_new('task', $nr, $durch);
+  task_assigned_notify($nr, $wer, $durch);
+}
+
+/**
+ * Das Lied ist aus der Vorbereitung heraus — die Übung ist vorbei.
+ *
+ * Meist heißt das „Aktives Repertoire", und dann ist die Frage beantwortet.
+ * Geht es stattdessen ins Archiv, gilt dasselbe aus dem umgekehrten Grund:
+ * Niemand soll ein Lied lernen, das die Band gerade weggelegt hat. Die
+ * Häkchen bleiben, wie sie sind — man sieht hinterher, wer es konnte.
+ */
+function song_practice_close(int $songId): void {
+  foreach (song_practice_tasks($songId, true) as $nr) {
+    q("UPDATE tasks SET status = 'erledigt' WHERE id = ?", [$nr]);
+    item_forget('task', $nr);
+  }
+}
+
+/**
+ * Was ein neuer Status eines Liedes nach sich zieht (#391, #439).
+ *
+ * Gerufen nach dem Speichern, mit dem Stand davor; beim Anlegen ist er leer.
+ * Nur der Wechsel zählt, nie der Stand allein: Sonst bekäme am Tag des
+ * Updates jedes Lied, das schon in Vorbereitung ist, eine Aufgabe an alle,
+ * und jedes Speichern eines Vorschlags begänne eine neue Abstimmung.
+ */
+function song_status_changed(int $songId, string $vorher, int $durch): void {
+  $jetzt = (string) (row('SELECT status FROM songs WHERE id = ?', [$songId])['status'] ?? '');
+  if ($jetzt === $vorher) return;
+  if ($jetzt === 'vorschlag') song_vote_start($songId, $durch);
+  if ($jetzt === 'in_arbeit') song_practice_start($songId, $durch);
+  if ($vorher === 'in_arbeit') song_practice_close($songId);
+}
+
+/**
+ * Die Aufgaben, die nur des Liedes wegen da sind, mit ihm löschen.
+ *
+ * Eine verwaiste Verknüpfung wird beim Lesen übersprungen und wäre harmlos —
+ * eine OFFENE Aufgabe an allen Mitgliedern ist das nicht: Sie steht in jeder
+ * Übersicht, zählt an der Zahl am Symbol mit, und erledigen lässt sie sich
+ * nicht, weil es das Lied nicht mehr gibt. Von Hand angelegte Aufgaben
+ * bleiben; die hat ein Mensch gewollt.
+ */
+function song_tasks_delete(int $songId): void {
+  foreach ([...song_vote_tasks($songId), ...song_practice_tasks($songId)] as $nr) {
+    q('DELETE FROM task_links WHERE task_id = ?', [$nr]);
+    q('DELETE FROM task_assignees WHERE task_id = ?', [$nr]);
+    q('DELETE FROM tasks WHERE id = ?', [$nr]);
+    item_forget('task', $nr);
+  }
+}
+
 /**
  * Was offen ist, je Bereich — Pfad => Anzahl (#384).
  *

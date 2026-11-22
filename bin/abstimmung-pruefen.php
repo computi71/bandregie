@@ -40,13 +40,10 @@ $vorschlag = static function (string $titel = 'ZZAB Vorschlag'): int {
     song_vote_start($nr, 1);
     return $nr;
 };
+// Dieselbe Funktion wie die Löschroute — eine Abschrift hier prüfte nur sich
+// selbst (#439).
 $weg = static function (int $nr): void {
-    foreach (song_vote_tasks($nr) as $t) {
-        q('DELETE FROM task_links WHERE task_id = ?', [$t]);
-        q('DELETE FROM task_assignees WHERE task_id = ?', [$t]);
-        q('DELETE FROM tasks WHERE id = ?', [$t]);
-        item_forget('task', $t);
-    }
+    song_tasks_delete($nr);
     q('DELETE FROM song_votes WHERE song_id = ?', [$nr]);
     q('DELETE FROM songs WHERE id = ?', [$nr]);
     item_forget('song', $nr);

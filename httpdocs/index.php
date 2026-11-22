@@ -1569,10 +1569,9 @@ if (str_starts_with($path, '/intern')) {
       $songNeu = (int) $db->lastInsertId();
       item_new('song', $songNeu, (int) $me['id']);
       song_chords_set($songNeu, $me['id'], $_POST['chords'] ?? '');
-      // Ein neuer Vorschlag fragt die Band (#391).
-      if (pick($_POST['status'] ?? null, SONG_STATUS, 'vorschlag') === 'vorschlag') {
-        song_vote_start($songNeu, (int) $me['id']);
-      }
+      // Ein neuer Vorschlag fragt die Band (#391), ein Lied in Vorbereitung
+      // will gelernt werden (#439).
+      song_status_changed($songNeu, '', (int) $me['id']);
     }
     redirect('/intern/songs');
   }
@@ -1602,18 +1601,14 @@ if (str_starts_with($path, '/intern')) {
   }
   if (preg_match('~^/intern/songs/(\d+)/(update|delete)$~', $path, $m) && $method === 'POST') {
     if ($m[2] === 'update') {
-      // Der Stand VOR dem Speichern (#391): Eine Abstimmung beginnt, wenn ein
-      // Lied zum Vorschlag wird - nicht jedesmal, wenn ein Vorschlag
-      // gespeichert wird.
+      // Der Stand VOR dem Speichern (#391, #439): Was ein Status auslöst,
+      // geschieht beim Wechsel - nicht jedesmal, wenn das Lied gespeichert wird.
       $songVorher = (string) (row('SELECT status FROM songs WHERE id = ?', [$m[1]])['status'] ?? '');
       item_update('song', (int) $m[1], function () use ($m): void {
         q('UPDATE songs SET title=?, artist=?, composer=?, gema_werknr=?, song_key=?, tempo=?, duration_sec=?, status=?, notes=?, lyrics=?, release_year=? WHERE id=?', [...song_values(), $m[1]]);
       }, (int) $me['id']);
       song_chords_set((int) $m[1], $me['id'], $_POST['chords'] ?? '');
-      if ($songVorher !== 'vorschlag'
-          && pick($_POST['status'] ?? null, SONG_STATUS, 'vorschlag') === 'vorschlag') {
-        song_vote_start((int) $m[1], (int) $me['id']);
-      }
+      song_status_changed((int) $m[1], $songVorher, (int) $me['id']);
     } else {
       // Songs in bereits gespielten Setlists sind Teil der Historie und bleiben erhalten
       $played = row('SELECT 1 FROM setlist_songs ss JOIN events e ON e.setlist_id = ss.setlist_id
@@ -1621,17 +1616,8 @@ if (str_starts_with($path, '/intern')) {
       if ($played) {
         flash(t('fl_song_played'));
       } else {
-        // Die Abstimmung geht mit (#391). Eine verwaiste Verknuepfung wird
-        // beim Lesen uebersprungen und waere harmlos - eine OFFENE Aufgabe an
-        // allen Mitgliedern ist das nicht: Sie steht in jeder Uebersicht, sie
-        // zaehlt an der Zahl am Symbol mit, und erledigen laesst sie sich
-        // nicht, weil es nichts mehr gibt, worueber man abstimmen koennte.
-        foreach (song_vote_tasks((int) $m[1]) as $svTask) {
-          q('DELETE FROM task_links WHERE task_id = ?', [$svTask]);
-          q('DELETE FROM task_assignees WHERE task_id = ?', [$svTask]);
-          q('DELETE FROM tasks WHERE id = ?', [$svTask]);
-          item_forget('task', $svTask);
-        }
+        // Abstimmung und Übung gehen mit (#391, #439).
+        song_tasks_delete((int) $m[1]);
         q('DELETE FROM song_votes WHERE song_id = ?', [$m[1]]);
         q('DELETE FROM songs WHERE id = ?', [$m[1]]);
         item_forget('song', (int) $m[1]);
