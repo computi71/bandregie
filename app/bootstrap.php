@@ -5667,6 +5667,53 @@ function song_tasks_delete(int $songId): void {
 }
 
 /**
+ * Was über seine Frist hinaus ist und sich damit erledigt hat — einmal am Tag
+ * (#441).
+ *
+ * Nur dort, wo das Ablaufen wirklich „vorbei" heißt:
+ *  1. eine Abstimmung, deren Frist um ist — so verspricht es die Hilfe seit
+ *     #391, und bis hierher geschah es nur, wenn danach noch jemand stimmte;
+ *  2. eine Übungsaufgabe nach ihrem Fälligkeitstag;
+ *  3. eine Aufgabe, die nur an Liedern hängt, wenn ihr Tag vorbei ist und
+ *     jedes dieser Lieder im aktiven Repertoire steht. Das sind die von Hand
+ *     angelegten „Toxic üben" aus der Zeit vor der Übungsmarke.
+ *
+ * Alles andere bleibt offen: „Rechnung schreiben" ist nach dem Fälligkeitstag
+ * nicht erledigt, sondern überfällig. Ebenso ein Lied, das noch geprobt wird,
+ * und eine Aufgabe, die auch an einem Termin oder Thema hängt — dort weiß die
+ * Anwendung nicht, ob sie getan ist. Ohne Fälligkeit läuft nichts ab.
+ *
+ * „Vorbei" heißt: der Tag danach. Am Fälligkeitstag selbst ist noch Zeit.
+ */
+function tasks_expire_run(): void {
+  $heute = date('Y-m-d');
+  // Zuerst die Marke: Der Lauf hängt am Seitenaufruf, und der nächste soll
+  // nicht noch einmal anfangen, während dieser arbeitet. Doppelt liefe er
+  // gefahrlos, nur umsonst.
+  set_setting('tasks_expired_on', $heute);
+
+  foreach (rows("SELECT DISTINCT tl.item_id FROM tasks t
+                 JOIN task_links tl ON tl.task_id = t.id AND tl.kind = 'song'
+                 WHERE t.is_song_vote = 1 AND t.status = 'offen'
+                   AND t.due_date <> '' AND t.due_date < ?", [$heute]) as $r) {
+    song_vote_apply((int) $r['item_id']);
+  }
+
+  $abgelaufen = rows("SELECT t.id FROM tasks t
+    WHERE t.status = 'offen' AND t.due_date <> '' AND t.due_date < ?
+      AND (t.is_song_practice = 1 OR (
+        EXISTS (SELECT 1 FROM task_links tl WHERE tl.task_id = t.id AND tl.kind = 'song')
+        AND NOT EXISTS (SELECT 1 FROM task_links tl WHERE tl.task_id = t.id AND tl.kind <> 'song')
+        AND NOT EXISTS (SELECT 1 FROM task_links tl LEFT JOIN songs s ON s.id = tl.item_id
+                        WHERE tl.task_id = t.id AND tl.kind = 'song'
+                          AND (s.id IS NULL OR s.status <> 'aktiv'))))", [$heute]);
+  foreach ($abgelaufen as $r) {
+    q("UPDATE tasks SET status = 'erledigt' WHERE id = ?", [(int) $r['id']]);
+    item_forget('task', (int) $r['id']);
+  }
+}
+
+/**
  * Was offen ist, je Bereich — Pfad => Anzahl (#384).
  *
  * Die eine Quelle für zwei Leser: die Zahl am App-Symbol und die Marken im
