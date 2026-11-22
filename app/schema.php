@@ -137,7 +137,9 @@ $tables = [
     -- Abstimmung ueber einen Liedvorschlag (#391). Eine eigene Spalte und
     -- nicht am Titel erkannt: Ein Titel ist uebersetzt, umbenennbar und von
     -- Hand aenderbar, diese Marke nicht.
-    is_song_vote TINYINT(1) NOT NULL DEFAULT 0
+    is_song_vote TINYINT(1) NOT NULL DEFAULT 0,
+    -- Ein Lied in Vorbereitung lernen (#439), aus demselben Grund markiert.
+    is_song_practice TINYINT(1) NOT NULL DEFAULT 0
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
   // Wer für eine Aufgabe zuständig ist, und ob er sie getan hat (#334). Das
@@ -2052,6 +2054,11 @@ if (!column_exists('events', 'time_proposed')) {
 // Abstimmung ueber Liedvorschlaege (#391).
 if (!column_exists('tasks', 'is_song_vote')) {
   $db->exec("ALTER TABLE tasks ADD COLUMN is_song_vote TINYINT(1) NOT NULL DEFAULT 0");
+}
+
+// Übungsaufgabe für Lieder in Vorbereitung (#439).
+if (!column_exists('tasks', 'is_song_practice')) {
+  $db->exec("ALTER TABLE tasks ADD COLUMN is_song_practice TINYINT(1) NOT NULL DEFAULT 0");
 }
 
 if (setting('migr_topic_reads') === '') {
