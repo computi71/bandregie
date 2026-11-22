@@ -414,7 +414,7 @@ function quelltext() {
   // JavaScript weggeraeumt wird, blitzt beim Laden auf — und bleibt stehen,
   // wo kein JavaScript laeuft.
   pruefe('der Teilen-Knopf steht in der Leiste und beginnt verborgen',
-    /<button[^>]*data-print-share[^>]*hidden/.test(bar));
+    /<button[^>]*data-print-share[^>]*hidden/.test(bar));
 
   // Welche Schrift auf dem Papier erscheint, hängt am druckenden Rechner —
   // eine Messung im Browser sagt nur, was DORT installiert ist. Was unser Code
