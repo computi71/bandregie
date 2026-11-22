@@ -68,6 +68,10 @@
   <p class="ohnedruck" data-print-ios hidden>
     <?= e(t('print_ios_hint')) ?>
     <code id="print-adresse"></code>
+    <?php // Der Teilen-Knopf steht nur da, wo der Browser teilen kann (#437);
+          // actions.js holt ihn hervor. Kopieren bleibt daneben: Es ist der
+          // Weg, der auf jedem Geraet funktioniert. ?>
+    <button type="button" data-print-share hidden><?= e(t('print_ios_share')) ?></button>
     <button type="button" data-copy="print-adresse" data-copied="<?= e(t('copied')) ?>"><?= e(t('copy')) ?></button>
   </p>
 </div>
