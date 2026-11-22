@@ -60,7 +60,7 @@ $pruefe('Spielende: keine Aushilfe dabei', !array_filter($spieler,
 // ------------------------------------------ 2. Eine Übung beginnt
 $l1 = $neu('ZZUE Neu in Vorbereitung', 'in_arbeit');
 $pruefe('neu in Vorbereitung: genau eine Übungsaufgabe', count(song_practice_tasks($l1)) === 1);
-$a1 = song_practice_tasks($l1)[0];
+$a1 = song_practice_tasks($l1)[0] ?? 0; // 0: die Prüfungen sagen FEHLER, statt abzubrechen
 $pruefe('sie ist offen', $stand($a1) === 'offen');
 $pruefe('sie trägt die Marke',
     (int) row('SELECT is_song_practice FROM tasks WHERE id = ?', [$a1])['is_song_practice'] === 1);
@@ -106,7 +106,7 @@ if (count($spieler) > 1) {
 $stelle($l1, 'in_arbeit');
 $pruefe('wieder in Vorbereitung: eine neue, offene Aufgabe',
     count(song_practice_tasks($l1, true)) === 1 && count(song_practice_tasks($l1)) === 2);
-$a1b = song_practice_tasks($l1, true)[0];
+$a1b = song_practice_tasks($l1, true)[0] ?? 0;
 
 // ----------------------- 7. Ins Archiv: auch dann ist sie vorbei
 $stelle($l1, 'archiv');
