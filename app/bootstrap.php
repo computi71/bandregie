@@ -5505,8 +5505,16 @@ function song_vote_apply(int $songId): void {
 
   if (!$vollzaehlig && !$abgelaufen) return;
   q("UPDATE songs SET status = 'abgestimmt' WHERE id = ?", [$songId]);
-  // Die Aufgabe hat ihren Zweck erfüllt; sie offen zu lassen hieße, jemanden
-  // nach etwas zu fragen, das schon beantwortet ist.
+  song_vote_close($songId);
+}
+
+/**
+ * Die Abstimmung ist vorbei — vollzählig, durch die Frist oder weil jemand
+ * von Hand entschieden hat (#440). Die Aufgabe offen zu lassen hieße, Leute
+ * nach etwas zu fragen, das schon beantwortet ist; sie stünde in jeder
+ * Übersicht und an der Zahl am Symbol.
+ */
+function song_vote_close(int $songId): void {
   foreach (song_vote_tasks($songId) as $nr) {
     q("UPDATE tasks SET status = 'erledigt' WHERE id = ?", [$nr]);
     item_forget('task', $nr);
@@ -5624,7 +5632,7 @@ function song_practice_close(int $songId): void {
 }
 
 /**
- * Was ein neuer Status eines Liedes nach sich zieht (#391, #439).
+ * Was ein neuer Status eines Liedes nach sich zieht (#391, #439, #440).
  *
  * Gerufen nach dem Speichern, mit dem Stand davor; beim Anlegen ist er leer.
  * Nur der Wechsel zählt, nie der Stand allein: Sonst bekäme am Tag des
@@ -5635,6 +5643,7 @@ function song_status_changed(int $songId, string $vorher, int $durch): void {
   $jetzt = (string) (row('SELECT status FROM songs WHERE id = ?', [$songId])['status'] ?? '');
   if ($jetzt === $vorher) return;
   if ($jetzt === 'vorschlag') song_vote_start($songId, $durch);
+  if ($vorher === 'vorschlag') song_vote_close($songId);
   if ($jetzt === 'in_arbeit') song_practice_start($songId, $durch);
   if ($vorher === 'in_arbeit') song_practice_close($songId);
 }
