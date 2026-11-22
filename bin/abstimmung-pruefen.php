@@ -194,6 +194,19 @@ $pruefe('keine Abstimmungsaufgabe ohne Lied',
                  SELECT 1 FROM task_links tl JOIN songs s ON s.id = tl.item_id
                  WHERE tl.task_id = t.id AND tl.kind = 'song')")['n'] === 0);
 
+// ------- 10. Von Hand entschieden, bevor alle abgestimmt haben (#440)
+// Die Abstimmung schloss sich nur selbst. Stellte die Leitung das Lied vorher
+// um, blieb die Aufgabe bei allen offen, die noch nicht gestimmt hatten.
+$v8 = $vorschlag('ZZAB Von Hand');
+$a8 = song_vote_tasks($v8)[0] ?? 0;
+$stimmt($v8, song_vote_voters()[0], 'yes');
+q("UPDATE songs SET status = 'in_arbeit' WHERE id = ?", [$v8]);
+song_status_changed($v8, 'vorschlag', 1);
+$pruefe('von Hand in Vorbereitung: Abstimmungsaufgabe erledigt',
+    (string) (row('SELECT status FROM tasks WHERE id = ?', [$a8])['status'] ?? '') === 'erledigt');
+$pruefe('und die Übung beginnt', count(song_practice_tasks($v8, true)) === 1);
+$weg($v8);
+
 // Nichts stehen lassen.
 set_setting('song_vote_scope', $merkUmfang);
 $reste = (int) row('SELECT COUNT(*) n FROM songs WHERE title LIKE ?', ['ZZAB%'])['n'];

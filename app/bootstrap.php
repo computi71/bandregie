@@ -581,21 +581,40 @@ const REMEMBER_DAYS = 90;
 // nachgetragene Migration ohne ihn erst mit dem nächsten Versionssprung. In
 // der Produktion bleibt er aus — anders als ein Blick auf .git, das auf
 // Staging und Produktion gleichermaßen vorhanden ist.
-if ((settings_all()['schema_version'] ?? '') !== BANDREGIE_VERSION
-    || !empty($config['schema_immer_pruefen'])) {
-  // Vertrag mit schema.php sichtbar machen: Ohne diese Zeile funktioniert
-  // empty() auf der undefinierten Variable zwar genauso, aber niemand sieht
-  // am Tor, dass schema.php dieses Signal überhaupt setzen darf.
-  $schemaLueckenhaft = false;
-  require_once __DIR__ . '/schema.php';
-  // Die Marke gilt nur, weil eine Ausnahme in schema.php die ganze Anfrage vor
-  // set_setting() beendet — wer require_once künftig in ein try/catch packt,
-  // um eine freundlichere Fehlerseite zu zeigen, muss das hier mitziehen,
-  // sonst schließt sich das Tor über einem halb durchlaufenen Schema.
-  if (empty($schemaLueckenhaft)) set_setting('schema_version', BANDREGIE_VERSION);
-  // Zwei Migrationen löschen Einstellungen direkt statt über set_setting().
-  // Einmal verwerfen ist billiger als eine Ausnahme an 400 Aufrufstellen.
+//
+// Nur einer zur Zeit (#438): Nach einem Release öffnen oft zwei Leute die App
+// im selben Augenblick. Beide liefen dann durch schema.php, verklemmten sich
+// beim Einspielen der Texte (1213 Deadlock), und der Verlierer schloss das
+// Tor hinter einer Saat, die nie fertig wurde. Das Schloss umfasst den ganzen
+// Lauf, nicht nur die Seeds: Vorher löschen gezielte DELETEs umformulierte
+// Texte, und ein Nachzügler mit altem Stand löschte sonst, was der erste
+// gerade neu geschrieben hat. Der Name trägt die Datenbank, weil sich mehrere
+// Installationen einen MariaDB-Server teilen und GET_LOCK serverweit gilt.
+// Wer das Schloss nicht in zehn Sekunden bekommt, lässt es: Ein anderer ist
+// dran, und ein voller Lauf dauert keine Sekunde.
+$schemaOffen = static fn(): bool => (settings_all()['schema_version'] ?? '') !== BANDREGIE_VERSION
+  || !empty($config['schema_immer_pruefen']);
+if ($schemaOffen()
+    && (int) (row("SELECT GET_LOCK(CONCAT('bandregie_schema_', DATABASE()), 10) AS da")['da'] ?? 0) === 1) {
+  // Wer gewartet hat, findet die Arbeit vielleicht schon getan.
   settings_forget();
+  if ($schemaOffen()) {
+    // Vertrag mit schema.php sichtbar machen: Ohne diese Zeile funktioniert
+    // empty() auf der undefinierten Variable zwar genauso, aber niemand sieht
+    // am Tor, dass schema.php dieses Signal überhaupt setzen darf.
+    $schemaLueckenhaft = false;
+    require_once __DIR__ . '/schema.php';
+    // Die Marke gilt nur, weil eine Ausnahme in schema.php die ganze Anfrage vor
+    // set_setting() beendet — wer require_once künftig in ein try/catch packt,
+    // um eine freundlichere Fehlerseite zu zeigen, muss das hier mitziehen,
+    // sonst schließt sich das Tor über einem halb durchlaufenen Schema. Das
+    // Schloss gibt in dem Fall die Verbindung frei, wenn die Anfrage endet.
+    if (empty($schemaLueckenhaft)) set_setting('schema_version', BANDREGIE_VERSION);
+    // Zwei Migrationen löschen Einstellungen direkt statt über set_setting().
+    // Einmal verwerfen ist billiger als eine Ausnahme an 400 Aufrufstellen.
+    settings_forget();
+  }
+  row("SELECT RELEASE_LOCK(CONCAT('bandregie_schema_', DATABASE()))");
 }
 
 // Angemeldet bleiben: Ohne Sitzung, aber mit gültigem Merkmal wird die Sitzung
@@ -5486,8 +5505,16 @@ function song_vote_apply(int $songId): void {
 
   if (!$vollzaehlig && !$abgelaufen) return;
   q("UPDATE songs SET status = 'abgestimmt' WHERE id = ?", [$songId]);
-  // Die Aufgabe hat ihren Zweck erfüllt; sie offen zu lassen hieße, jemanden
-  // nach etwas zu fragen, das schon beantwortet ist.
+  song_vote_close($songId);
+}
+
+/**
+ * Die Abstimmung ist vorbei — vollzählig, durch die Frist oder weil jemand
+ * von Hand entschieden hat (#440). Die Aufgabe offen zu lassen hieße, Leute
+ * nach etwas zu fragen, das schon beantwortet ist; sie stünde in jeder
+ * Übersicht und an der Zahl am Symbol.
+ */
+function song_vote_close(int $songId): void {
   foreach (song_vote_tasks($songId) as $nr) {
     q("UPDATE tasks SET status = 'erledigt' WHERE id = ?", [$nr]);
     item_forget('task', $nr);
@@ -5605,7 +5632,7 @@ function song_practice_close(int $songId): void {
 }
 
 /**
- * Was ein neuer Status eines Liedes nach sich zieht (#391, #439).
+ * Was ein neuer Status eines Liedes nach sich zieht (#391, #439, #440).
  *
  * Gerufen nach dem Speichern, mit dem Stand davor; beim Anlegen ist er leer.
  * Nur der Wechsel zählt, nie der Stand allein: Sonst bekäme am Tag des
@@ -5616,6 +5643,7 @@ function song_status_changed(int $songId, string $vorher, int $durch): void {
   $jetzt = (string) (row('SELECT status FROM songs WHERE id = ?', [$songId])['status'] ?? '');
   if ($jetzt === $vorher) return;
   if ($jetzt === 'vorschlag') song_vote_start($songId, $durch);
+  if ($vorher === 'vorschlag') song_vote_close($songId);
   if ($jetzt === 'in_arbeit') song_practice_start($songId, $durch);
   if ($vorher === 'in_arbeit') song_practice_close($songId);
 }
