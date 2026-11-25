@@ -110,12 +110,11 @@ touches past dates.
 ### Editing a date in a selection
 
 Saving one date applies every field except `date` and `status` to all dates of
-the selection. The update logic moves from the route into a function
-`event_update()` that takes the event id and a flag to suppress its pushes.
-Answer reset (#402) and time proposal (#413) run per date, but the pushes go
-out once for the selection *(builder-check call)*: one "please answer again"
-naming the dates, one time proposal. Three dates must not mean three pushes
-per save.
+the selection: the route edits the date as today, then `choice_sync()` copies
+the row to the other dates. Answer reset (#402) and time proposal (#413) run
+per date, but only the edited date pushes *(builder-check call)*; the others
+run with their pushes switched off. Three dates must not mean three pushes per
+save.
 
 Changing the date of one sibling changes only that date.
 
