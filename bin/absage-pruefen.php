@@ -28,6 +28,15 @@ $pruefe = static function (string $was, bool $erfuellt) use (&$ok, &$fehler): vo
     $erfuellt ? $ok++ : $fehler++;
 };
 
+// Reste eines abgebrochenen Laufs zuerst weg, sonst scheitert das Anlegen der
+// Konten an der schon vergebenen Adresse.
+foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZAB %'") as $r) {
+    q('DELETE FROM attendance WHERE event_id = ?', [$r['id']]);
+    q('DELETE FROM events WHERE id = ?', [$r['id']]);
+    item_forget('event', (int) $r['id']);
+}
+q("DELETE FROM users WHERE name LIKE 'ZZAB %' AND email LIKE '%@example.invalid'");
+
 $zukunft = date('Y-m-d', strtotime('+60 days'));
 $gestern = date('Y-m-d', strtotime('-1 day'));
 $termine = [];
