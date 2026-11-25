@@ -1364,6 +1364,8 @@ if (str_starts_with($path, '/intern')) {
       if ($status === 'no') {
         $gap = row('SELECT for_user_id FROM substitute_requests WHERE event_id = ? AND user_id = ?', [$id, $me['id']]);
         substitute_auto_request((int) $id, (int) ($gap['for_user_id'] ?? $me['id']), (int) $me['id']);
+        // Und was als sicher galt, steht wieder offen (#442).
+        event_dropout_reset((int) $id, (int) $me['id']);
       }
       back('/intern/termine');
     }

@@ -49,6 +49,12 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
 <summary class="event-head">
   <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
   <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
+  <?php // Wer abgesagt hat, gehört neben den Stand (#442). Steht es erst in der
+        // aufgeklappten Karte, liest man im Kopf „Findet statt“ und glaubt es. ?>
+  <?php $evRaus = $ev['status'] === 'abgesagt' ? [] : (($dropoutsByEvent ?? [])[(int) $ev['id']] ?? []); ?>
+  <?php if ($evRaus): ?>
+    <span class="badge ev-dropout" title="<?= e(t('ev_dropout_title')) ?>">✘ <?= e(implode(', ', $evRaus)) ?></span>
+  <?php endif; ?>
   <?= item_mark_html($unseenEvents ?? [], (int) $ev['id']) ?>
   <span class="event-date"><?= fmt_date($ev['date']) ?><?= $ev['time'] ? ' · ' . e($ev['time']) . ' ' . e(t('events_oclock')) : '' ?></span>
   <strong><?= e($ev['title']) ?></strong>
