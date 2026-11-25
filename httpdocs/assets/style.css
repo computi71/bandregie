@@ -260,6 +260,8 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .badge.ev-reserviert { border-color: #60a5fa; color: #60a5fa; }
 .badge.ev-blockiert { border-color: #a78bfa; color: #a78bfa; }
 .badge.ev-abgesagt { border-color: var(--danger); color: var(--danger); }
+/* Wer aus der Band abgesagt hat, steht im Kopf des Termins (#442). */
+.badge.ev-dropout { border-color: var(--danger); color: var(--danger); }
 
 .warn {
   background: rgba(234, 179, 8, 0.12);

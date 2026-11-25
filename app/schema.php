@@ -2061,6 +2061,23 @@ if (!column_exists('tasks', 'is_song_practice')) {
   $db->exec("ALTER TABLE tasks ADD COLUMN is_song_practice TINYINT(1) NOT NULL DEFAULT 0");
 }
 
+// Absagen, die vor #442 kamen, setzen ihren Termin einmalig nachträglich zurück.
+// Ohne das stünde ein solcher Termin bis zur nächsten Absage weiter als
+// „Findet statt“ da. Ohne Mitteilung: Die Absage ist alt, und wer zuständig
+// ist, sieht den neuen Stand beim nächsten Blick. Die Werte stehen hier
+// eingefroren und nicht als lebende Konstanten: Eine Migration muss in jeder
+// späteren Fassung dasselbe tun.
+if (setting('migr_dropout_reset') === '') {
+  q("UPDATE events e SET e.status = 'angefragt'
+     WHERE e.status = 'bestaetigt' AND e.date >= CURDATE()
+       AND e.type NOT IN ('gig', 'aufbau', 'reise')
+       AND EXISTS (SELECT 1 FROM attendance a JOIN users u ON u.id = a.user_id
+                   WHERE a.event_id = e.id AND a.status = 'no'
+                     AND u.role IN ('admin', 'member') AND COALESCE(u.substitute_for, 0) = 0
+                     AND NOT (u.on_stage = 0 AND e.type IN ('probe', 'aufnahme', 'fotoshooting')))");
+  set_setting('migr_dropout_reset', date('Y-m-d'));
+}
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');

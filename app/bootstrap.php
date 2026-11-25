@@ -122,6 +122,15 @@ const EVENT_TYPES = [
  * an einem Gig — wer dort absagt, kann nichts verschieben.
  */
 const EVENT_TYPES_OWN_DATE = ['probe', 'aufnahme', 'fotoshooting', 'besprechung'];
+/**
+ * Terminarten, die „Findet statt“ behalten, wenn jemand absagt (#442).
+ *
+ * Ein Gig findet statt, auch wenn der Bassist nicht kann. Dann sucht die Band
+ * einen Ersatz, und der Veranstalter rechnet weiter mit ihr. Zurück auf
+ * „Angefragt“ hieße außerdem: Der Gig verschwindet von der öffentlichen Seite.
+ * Auf-/Abbau und Reise hängen an einem Gig.
+ */
+const EVENT_TYPES_DROPOUT_KEEPS = ['gig', 'aufbau', 'reise'];
 
 const EVENT_STATUS = [
   'bestaetigt' => 'Findet statt', 'angefragt' => 'Angefragt', 'reserviert' => 'Reserviert',
@@ -537,7 +546,7 @@ const DIGEST_FREQ = ['aus' => 0, 'taeglich' => 1, '2tage' => 2, 'woche' => 7];
 
 // 'vollzaehlig' ist abschaltbar wie jedes andere (#382): Eine Mitteilung, die
 // sich nicht abstellen laesst, ist der Grund, warum Leute alle abstellen.
-const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'erinnerung',
+const PUSH_TOPICS = ['events', 'comments', 'attendance', 'vollzaehlig', 'wackelt', 'erinnerung',
                      'aufgaben', 'photos', 'post', 'topics'];
 const PUSH_NICHTS = '-';
 
@@ -5120,6 +5129,68 @@ function event_completion_notify(int $eventId): void {
 }
 
 /**
+ * Wer aus der Band bei diesen Terminen abgesagt hat (#442).
+ *
+ * Es zählen nur die, auf deren Antwort die Band wartet: Admins und Mitglieder.
+ * Eine Aushilfe, die nicht kann, reißt keine Lücke in die Band. Wer nicht auf
+ * der Bühne steht, wird bei Proben, Aufnahmen und Fotos nicht gebraucht (#420).
+ *
+ * @return array<int, array<int, string>> Termin-ID => [Benutzer-ID => Name]
+ */
+function event_dropouts(array $eventIds): array {
+  if (!$eventIds) return [];
+  $in = implode(',', array_map('intval', $eventIds));
+  $buehne = implode(',', array_fill(0, count(EVENT_TYPES_STAGE_ONLY), '?'));
+  $out = [];
+  foreach (rows("SELECT a.event_id, u.id, u.name
+                 FROM attendance a
+                 JOIN users u ON u.id = a.user_id
+                 JOIN events e ON e.id = a.event_id
+                 WHERE a.event_id IN ($in) AND a.status = 'no'
+                   AND u.role IN ('admin', 'member') AND COALESCE(u.substitute_for, 0) = 0
+                   AND NOT (u.on_stage = 0 AND e.type IN ($buehne))
+                 ORDER BY u.name", EVENT_TYPES_STAGE_ONLY) as $r) {
+    $out[(int) $r['event_id']][(int) $r['id']] = (string) $r['name'];
+  }
+  return $out;
+}
+
+/**
+ * Nach einer Absage steht „Findet statt“ nicht mehr fest (#442).
+ *
+ * Der Stand geht zurück auf „Angefragt“, und wer sich um den Termin kümmert,
+ * erfährt es. Diese Person entscheidet neu: verschieben, absagen oder wieder
+ * bestätigen. Vorher stand der Termin weiter als sicher da, und die Absage sah
+ * nur, wer die Karte aufklappte.
+ *
+ * Gigs bleiben, wie sie sind (EVENT_TYPES_DROPOUT_KEEPS), ebenso Vergangenes.
+ */
+function event_dropout_reset(int $eventId, int $userId): void {
+  $ev = row('SELECT id, title, date, type, status, responsible_id, created_by
+             FROM events WHERE id = ?', [$eventId]);
+  if (!$ev || $ev['status'] !== 'bestaetigt' || $ev['date'] < date('Y-m-d')
+      || in_array($ev['type'], EVENT_TYPES_DROPOUT_KEEPS, true)) return;
+  $name = event_dropouts([$eventId])[$eventId][$userId] ?? null;
+  if ($name === null) return;
+
+  // item_update, damit die Band den Termin als geändert markiert sieht.
+  item_update('event', $eventId, static function () use ($eventId): void {
+    q("UPDATE events SET status = 'angefragt' WHERE id = ? AND status = 'bestaetigt'", [$eventId]);
+  }, $userId);
+
+  // Wer selbst absagt, braucht keine Mitteilung darüber.
+  $wer = (int) ($ev['responsible_id'] ?: $ev['created_by']);
+  if (!$wer || $wer === $userId) return;
+  $titel = (string) $ev['title'];
+  $url = event_url(['id' => $eventId, 'date' => $ev['date'], 'status' => 'angefragt']);
+  push_to_user($wer, 'wackelt', static fn(string $lang): array => [
+    'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_wobbles')),
+    'body'  => str_replace('%1', $name, push_t($lang, 'push_ev_wobbles_body')),
+    'url'   => $url,
+  ]);
+}
+
+/**
  * Was am App-Symbol steht: eigene offene Aufgaben, fehlende Rückmeldungen und
  * ungelesene Beiträge im Chat (#317).
  *
@@ -6442,6 +6513,8 @@ function event_view_data(array $events, array $me): array {
     'venues' => $venues,
     'venueMap' => array_column($venues, null, 'id'),
     'absentByEvent' => $ohne($absentByEvent),
+    // Wer aus der Band abgesagt hat — für die Marke im Kopf (#442).
+    'dropoutsByEvent' => $ohne(event_dropouts($ids)),
     'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
                          WHERE disposed_on IS NULL ORDER BY category, name'),
     'gearByEvent' => $ohne(event_gear_map($ids)),
