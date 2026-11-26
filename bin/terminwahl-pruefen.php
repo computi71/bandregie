@@ -295,6 +295,45 @@ $pruefe('die Route kennt „waehlen“ und prüft das Schreibrecht',
 $pruefe('Löschen räumt die Auswahl auf',
     (bool) preg_match('~\$evWahlGruppe = choice_group\(\(int\) \$id\);\s*event_delete\(\(int\) \$id\);\s*if \(\$evWahlGruppe\) choice_prune\(\$evWahlGruppe\);~', $quelle));
 
+// ------------------------------------------- 5. Ansicht
+$pruefe('choice_order holt die Daten einer Auswahl zusammen', array_column(choice_order([
+    ['id' => 1, 'choice_of' => 1], ['id' => 2, 'choice_of' => null], ['id' => 3, 'choice_of' => 1],
+    ['id' => 4, 'choice_of' => 4], ['id' => 5, 'choice_of' => null], ['id' => 6, 'choice_of' => 4],
+]), 'id') === [1, 3, 2, 4, 6, 5]);
+
+$v1 = $termin($tag(240));
+$v2 = (int) (choice_add_dates($v1, [$tag(247)], 1)[0] ?? 0);
+$alleJa($v2);
+$antwortet($v1, $mitglied, 'no');
+q('INSERT INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,1)',
+  [$v1, $aushilfe, $mitglied]);
+$blockHtml = static function (array $wer) use ($v1, $v2): string {
+    extract(event_view_data([row('SELECT * FROM events WHERE id = ?', [$v1]),
+                             row('SELECT * FROM events WHERE id = ?', [$v2])], $wer));
+    $user = $wer;
+    $ev = $events[0];
+    $wahl = $choiceByEvent[(int) $ev['choice_of']] ?? null;
+    ob_start();
+    if ($wahl) require BASE_DIR . '/app/views/intern/_event_choice.php';
+    return (string) ob_get_clean();
+};
+$html = $blockHtml($admin);
+$pruefe('der Block nennt beide Daten mit Wahlknopf',
+    str_contains($html, "/intern/termine/$v1/waehlen") && str_contains($html, "/intern/termine/$v2/waehlen"));
+$pruefe('und hebt das Datum hervor, an dem alle können',
+    (bool) preg_match('~class="[^"]*ev-choice-all[^"]*"[^>]*data-ev="' . $v2 . '"~', $html)
+    && !preg_match('~class="[^"]*ev-choice-all[^"]*"[^>]*data-ev="' . $v1 . '"~', $html));
+$pruefe('die Absage steht in der Zeile', str_contains($html, '✘ 1'));
+$html = $blockHtml(row('SELECT * FROM users WHERE id = ?', [$aushilfe]));
+$pruefe('eine Aushilfe sieht keinen Wahlknopf und nur ihr Datum',
+    !str_contains($html, '/waehlen') && !str_contains($html, 'data-ev="' . $v2 . '"'));
+
+q('UPDATE events SET is_public = 1, type = ? WHERE id IN (?,?)', ['gig', $v1, $v2]);
+$oeffentlich = array_map('intval', array_column(rows("SELECT e.id FROM events e WHERE e.type='gig' AND e.is_public=1
+    AND e.status='bestaetigt' AND e.date >= ?", [$heute]), 'id'));
+$pruefe('ein Datum zur Wahl steht nie auf der öffentlichen Seite',
+    !in_array($v1, $oeffentlich, true) && !in_array($v2, $oeffentlich, true));
+
 // ------------------------------------------- Ende
 $aufraeumen();
 $reste = (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZTW%'")['n']
