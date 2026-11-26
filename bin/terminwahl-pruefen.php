@@ -132,7 +132,7 @@ q("UPDATE events SET status = 'reserviert' WHERE id = ?", [$d]);
 $pruefe('bei „Reserviert“ ja', choice_may_add_dates($zeile($d)));
 foreach (['bestaetigt', 'abgesagt', 'blockiert'] as $stand) {
     q('UPDATE events SET status = ? WHERE id = ?', [$stand, $d]);
-    $pruefe("bei „$stand“ nein", !choice_may_add_dates($zeile($d)));
+    $pruefe("bei „{$stand}“ nein", !choice_may_add_dates($zeile($d)));
 }
 q("UPDATE events SET status = 'angefragt', date = ? WHERE id = ?", [date('Y-m-d', strtotime('-2 days')), $d]);
 $pruefe('bei einem vergangenen Termin nein', !choice_may_add_dates($zeile($d)));
