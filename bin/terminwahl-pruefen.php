@@ -42,6 +42,11 @@ $aufraeumen = static function (): void {
         q('DELETE FROM events WHERE id = ?', [$nr]);
         item_forget('event', $nr);
     }
+    foreach (rows("SELECT id FROM users WHERE name LIKE 'ZZTW %' AND email LIKE '%@example.invalid'") as $u) {
+        q('DELETE FROM push_subscriptions WHERE user_id = ?', [$u['id']]);
+        q('DELETE FROM push_queue WHERE user_id = ?', [$u['id']]);
+        q('DELETE FROM push_log WHERE user_id = ?', [$u['id']]);
+    }
     q("DELETE FROM users WHERE name LIKE 'ZZTW %' AND email LIKE '%@example.invalid'");
 };
 $aufraeumen();
@@ -161,6 +166,48 @@ q("UPDATE events SET status = 'bestaetigt' WHERE id = ?", [$einzeln]);
 $html = $karteHtml($einzeln);
 $pruefe('beim bestätigten Einzeltermin: Statusauswahl, keine weiteren Daten',
     str_contains($html, '<select name="status"') && !str_contains($html, 'name="extra_dates[]"'));
+
+// ------------------------------------------- 3. Bearbeiten
+// Ein Konto mit Gerät, damit Mitteilungen überhaupt in der Warteschlange
+// landen; gezählt wird nur, was diesen Testtermin nennt.
+$hoerer = $konto('ZZTW Hoerer');
+q("INSERT INTO push_subscriptions (user_id, endpoint_hash, endpoint, p256dh, auth) VALUES (?,?,?,?,?)",
+  [$hoerer, hash('sha256', 'zztw' . $hoerer), 'https://fcm.googleapis.com/fcm/send/zztw' . $hoerer, 'x', 'x']);
+$post = static fn(): int => (int) row("SELECT COUNT(*) n FROM push_queue WHERE user_id = ? AND payload LIKE '%ZZTW%'",
+                                     [$hoerer])['n'];
+$g = $termin($tag(180));
+$h = (int) (choice_add_dates($g, [$tag(181)], 1)[0] ?? 0);
+$antwortet($h, $mitglied, 'yes');
+$antwortet($h, $hoerer, 'yes');
+if ($geraet) q('INSERT INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$g, $geraet['id']]);
+q("UPDATE events SET title = 'ZZTW Anfrage neu', location = 'ZZTW Ort', notes = 'Neu' WHERE id = ?", [$g]);
+$vorherPost = $post();
+choice_sync($g, 1);
+$pruefe('Titel, Ort und Notiz gehen auf das andere Datum über',
+    ($zeile($h)['title'] ?? '') === 'ZZTW Anfrage neu' && ($zeile($h)['location'] ?? '') === 'ZZTW Ort'
+    && ($zeile($h)['notes'] ?? '') === 'Neu');
+$pruefe('sein Datum bleibt', ($zeile($h)['date'] ?? '') === $tag(181));
+$pruefe('der neue Ort fragt dort neu (Zusagen verworfen)',
+    !row('SELECT 1 FROM attendance WHERE event_id = ?', [$h]));
+$pruefe('ohne eine Mitteilung je Datum', $post() === $vorherPost);
+$pruefe('die Technik zieht mit', !$geraet
+    || row('SELECT 1 FROM event_equipment WHERE event_id = ? AND equipment_id = ?', [$h, $geraet['id']]));
+
+// Eine kleine Zeitverschiebung am ersten Datum: Auch das andere bekommt den
+// Vorschlag, still.
+$antwortet($h, $hoerer, 'yes');
+q("UPDATE events SET time_proposed = '20:30', time_meet_proposed = '', time_end_proposed = '',
+                     time_proposed_by = 1, time_proposed_at = NOW() WHERE id = ?", [$g]);
+$vorherPost = $post();
+choice_sync($g, 1);
+$pruefe('ein offener Zeitvorschlag geht als Vorschlag mit',
+    ($zeile($h)['time_proposed'] ?? '') === '20:30' && ($zeile($h)['time'] ?? '') === '20:00');
+$pruefe('und auch der ohne Mitteilung', $post() === $vorherPost);
+
+$i = (int) (choice_add_dates($g, [$tag(182)], 1)[0] ?? 0);
+q("UPDATE events SET date = ?, title = 'ZZTW alt' WHERE id = ?", [date('Y-m-d', strtotime('-1 day')), $i]);
+choice_sync($g, 1);
+$pruefe('ein verstrichenes Datum bleibt unberührt', ($zeile($i)['title'] ?? '') === 'ZZTW alt');
 
 // ------------------------------------------- Ende
 $aufraeumen();
