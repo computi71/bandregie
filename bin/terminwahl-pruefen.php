@@ -269,7 +269,8 @@ foreach ([$x1, $x2] as $nr) {
 }
 choice_choose($x2, 1);
 $pruefe('dieselbe Aushilfe an beiden Daten: eine Anfrage bleibt',
-    (int) row('SELECT COUNT(*) n FROM substitute_requests WHERE user_id = ?', [$aushilfe])['n'] === 1
+    (int) row('SELECT COUNT(*) n FROM substitute_requests WHERE user_id = ? AND event_id IN (?,?)',
+              [$aushilfe, $x1, $x2])['n'] === 1
     && row('SELECT 1 FROM substitute_requests WHERE event_id = ? AND user_id = ?', [$x2, $aushilfe]));
 
 // Das erste Datum löschen: Die anderen bleiben eine Auswahl.
@@ -290,7 +291,7 @@ $pruefe('ein verstrichenes Datum wird beim Wählen nicht gelöscht', (bool) $zei
 
 $pruefe('die Route kennt „waehlen“ und prüft das Schreibrecht',
     str_contains($quelle, '|waehlen)$~')
-    && (bool) preg_match("~if \(\\$action === 'waehlen'\) \{\s*if \(!perm_allows\(\\$me, 'termine', 'write'\)\)~", $quelle));
+    && (bool) preg_match('~if \(\$action === \'waehlen\'\) \{\s*if \(!perm_allows\(\$me, \'termine\', \'write\'\)\)~', $quelle));
 $pruefe('Löschen räumt die Auswahl auf',
     (bool) preg_match('~\$evWahlGruppe = choice_group\(\(int\) \$id\);\s*event_delete\(\(int\) \$id\);\s*if \(\$evWahlGruppe\) choice_prune\(\$evWahlGruppe\);~', $quelle));
 
