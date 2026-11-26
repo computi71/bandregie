@@ -442,6 +442,7 @@ const UI_STRINGS = [
   'ev_extra_dates' => 'Weitere mögliche Daten', 'ev_extra_dates_add' => '+ Datum',
   'ev_extra_dates_hint' => 'Jedes Datum wird ein eigener Termin zur Wahl. Jeder sagt je Datum zu oder ab, danach wählt ihr eines.',
   'ev_choice' => 'Zur Wahl',
+  'ev_choice_open' => '%1 offen', 'ev_choice_all' => 'Alle können',
   'ev_choice_take' => 'Dieses Datum nehmen',
   'ev_choice_take_confirm' => 'Dieses Datum nehmen? Die anderen Daten werden gelöscht; Kommentare, Vertrag, Mails und Dateien wandern hierher.',
   'ev_comments' => 'Kommentare', 'ev_comment_ph' => 'Kommentar schreiben ...',

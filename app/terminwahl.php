@@ -293,3 +293,49 @@ function choice_choose(int $chosenId, int $by): bool {
   ], $chosenId);
   return true;
 }
+
+/**
+ * Die Daten einer Auswahl in der Liste zusammenholen.
+ *
+ * Die Liste ist nach Datum sortiert; dazwischen stehen andere Termine. Der
+ * Block „Zur Wahl" soll aber an einer Stelle stehen — an der seines frühesten
+ * Datums —, also rücken die anderen Daten direkt dahinter. Alles andere
+ * behält seine Reihenfolge.
+ */
+function choice_order(array $events): array {
+  $gruppen = [];
+  foreach ($events as $ev) {
+    $g = (int) ($ev['choice_of'] ?? 0);
+    if ($g) $gruppen[$g][] = $ev;
+  }
+  $aus = [];
+  $erledigt = [];
+  foreach ($events as $ev) {
+    $g = (int) ($ev['choice_of'] ?? 0);
+    if (!$g) { $aus[] = $ev; continue; }
+    if (isset($erledigt[$g])) continue;
+    $erledigt[$g] = true;
+    array_push($aus, ...$gruppen[$g]);
+  }
+  return $aus;
+}
+
+/**
+ * Die Auswahlen für eine Terminansicht, beschnitten auf das, was dieses Konto
+ * sehen darf.
+ *
+ * Eine Aushilfe sieht nur das Datum, zu dem sie gebeten wurde, und wer nur
+ * „belegt" sieht (#309), sieht von einer fremden Anfrage gar nichts — auch
+ * nicht, dass es noch zwei andere Tage gäbe.
+ *
+ * @param int[] $verdeckt Geschwärzte Termine aus events_redact()
+ */
+function choice_view_map(array $eventIds, array $verdeckt, array $me): array {
+  $karte = choice_map(array_diff($eventIds, $verdeckt));
+  foreach ($karte as $g => $wahl) {
+    $karte[$g]['dates'] = array_values(array_filter($wahl['dates'],
+      static fn(array $d): bool => !in_array($d['id'], $verdeckt, true) && may_see_event($me, $d['id'])));
+    if (!$karte[$g]['dates']) unset($karte[$g]);
+  }
+  return $karte;
+}

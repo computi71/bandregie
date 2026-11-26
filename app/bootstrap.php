@@ -4638,7 +4638,7 @@ function open_votes(array $user): array {
     $nurDiese = ' AND e.id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
     $werte = [...$werte, ...$sichtbar];
   }
-  return rows("SELECT e.id, e.date, e.time, e.type, e.status, e.title, e.location
+  return rows("SELECT e.id, e.date, e.time, e.type, e.status, e.title, e.location, e.choice_of
                FROM events e
                WHERE e.date >= CURDATE()
                  AND e.status NOT IN ('abgesagt', 'blockiert')
@@ -6557,6 +6557,8 @@ function event_view_data(array $events, array $me): array {
     'absentByEvent' => $ohne($absentByEvent),
     // Wer aus der Band abgesagt hat — für die Marke im Kopf (#442).
     'dropoutsByEvent' => $ohne(event_dropouts($ids)),
+    // Termine mit mehreren möglichen Daten (#443), je Auswahl.
+    'choiceByEvent' => choice_view_map(array_map('intval', $ids), $verdeckt, $me),
     'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
                          WHERE disposed_on IS NULL ORDER BY category, name'),
     'gearByEvent' => $ohne(event_gear_map($ids)),
