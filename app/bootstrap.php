@@ -3896,7 +3896,7 @@ function mail_status_by_user(): array {
  *
  * Postfix schreibt je Nachricht mehrere Zeilen mit derselben Queue-ID — kurz
  * als Hex, mit enable_long_queue_ids als gemischte Buchstaben und Ziffern:
- *   cleanup[…]: 21087C13DA: message-id=<bandregie-…@tonrausch.app>
+ *   cleanup[…]: 21087C13DA: message-id=<bandregie-…@example.org>
  *   smtp[…]:    21087C13DA: to=<x@gmail.com>, relay=…, dsn=2.0.0, status=sent (250 …)
  * Die erste verbindet die Queue-ID mit unserer Message-ID, die zweite sagt,
  * was daraus wurde.

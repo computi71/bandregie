@@ -1,7 +1,7 @@
 <?php
 // Jede Seite des Bandbereichs einmal aufrufen und den Statuscode nennen.
 //
-//   sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.beatcuisine.de 1
+//   sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1
 //
 // ALS WEBNUTZER starten, nicht als deploy: Das Skript legt die Sitzungsdatei
 // an, die es danach per curl benutzt. Läuft es unter einem anderen Konto,

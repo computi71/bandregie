@@ -16,7 +16,7 @@
 // Mit einem Hostnamen als drittem Wort werden die beiden Vollbildseiten auch
 // wirklich abgerufen:
 //
-//   ... --schreibt-testdaten staging.beatcuisine.de
+//   ... --schreibt-testdaten staging.example.com
 //
 // Das ist kein Beiwerk. #395 lag genau dort: Die Adresse stand im Paket, die
 // Seite dahinter lieferte den Liedtext statt der Akkorde, und eine Prüfung,

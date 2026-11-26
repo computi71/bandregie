@@ -3,9 +3,10 @@
 //
 // may_see_song() und seine Geschwister bauen bei jedem Aufruf die Liste der
 // sichtbaren Nummern neu aus der Datenbank. In einer Schleife ist das eine
-// Abfrage je Zeile — bei Beat Cuisine neunundfünfzig für neunundfünfzig
-// Lieder, und niemand sieht es: Die Seite ist richtig, nur langsam, und sie
-// wird genau dann langsam, wenn eine Band eine Aushilfe anlegt.
+// Abfrage je Zeile — bei einer echten Installation neunundfünfzig für
+// neunundfünfzig Lieder, und niemand sieht es: Die Seite ist richtig, nur
+// langsam, und sie wird genau dann langsam, wenn eine Band eine Aushilfe
+// anlegt.
 //
 // Deshalb prüft diese Datei zwei Dinge zusammen und nicht nacheinander:
 //
@@ -24,7 +25,7 @@
 // Mit einem Hostnamen als drittem Wort werden auch die Routen gerufen — und
 // erst dort zeigt sich, ob die Prüfung wirklich vor ihnen steht (#414):
 //
-//   ... --schreibt-testdaten staging.beatcuisine.de
+//   ... --schreibt-testdaten staging.example.com
 //
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);
