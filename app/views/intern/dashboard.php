@@ -124,7 +124,11 @@
                 // (#373). event_url() bringt die Filter mit, ohne die die
                 // Karte gar nicht auf der Seite steht. ?>
           <a href="<?= e(event_url($ov)) ?>"><strong><?= e($ov['title']) ?></strong></a>
-          <?php if ($ov['status'] !== 'bestaetigt'): ?>
+          <?php // Ein Datum zur Wahl (#443) sagt das, damit derselbe Titel zweimal
+                // untereinander nicht wie ein Versehen aussieht. ?>
+          <?php if (!empty($ov['choice_of'])): ?>
+            <span class="badge ev-choice"><?= e(t('ev_choice')) ?></span>
+          <?php elseif ($ov['status'] !== 'bestaetigt'): ?>
             <span class="badge ev-<?= e($ov['status']) ?>"><?= e(event_status_label($ov['status'])) ?></span>
           <?php endif; ?>
           <?php // Der Stand der Band an der Zeile (#377), dieselbe Gestalt wie
@@ -145,8 +149,10 @@
                 // Tipp traf einen anderen Termin. Ohne Skript bleibt es das
                 // gewoehnliche Formular. ?>
           <?php // Ob eine Absage hier nach einer Alternative fragen soll, hängt
-                // an der Terminart (#401) — und die weiß nur der Server. ?>
-          <form class="inline attendance" data-vote data-own-date="<?= in_array($ov['type'], EVENT_TYPES_OWN_DATE, true) ? '1' : '0' ?>" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
+                // an der Terminart (#401) — und die weiß nur der Server. Bei
+                // einem Datum zur Wahl nie (#443): Ein Nein zu einem von zwei
+                // Tagen ist keine Absage. ?>
+          <form class="inline attendance" data-vote data-own-date="<?= in_array($ov['type'], EVENT_TYPES_OWN_DATE, true) && empty($ov['choice_of']) ? '1' : '0' ?>" action="/intern/termine/<?= (int) $ov['id'] ?>/zusage" method="post"><?= csrf_field() ?>
             <button name="status" value="yes" class="chip"><?= e(t('att_yes')) ?></button>
             <button name="status" value="maybe" class="chip"><?= e(t('att_maybe')) ?></button>
             <button name="status" value="no" class="chip"><?= e(t('att_no')) ?></button>
@@ -220,7 +226,15 @@
   <?php endif; ?>
   <?php // Zusammengeklappt passt die Übersicht wieder in einen Blick; der
         // nächste Termin steht offen da, weil er der ist, um den es geht. ?>
-  <?php foreach ($events as $evNr => $ev): ?>
+  <?php // Eine Auswahl mehrerer Daten (#443) als ein Block vor ihrem ersten
+        // Datum, wie in der Terminliste. ?>
+  <?php $evWahlGezeigt = []; ?>
+  <?php foreach (choice_order($events) as $evNr => $ev): ?>
+    <?php $evWahlNr = (int) ($ev['choice_of'] ?? 0); ?>
+    <?php if ($evWahlNr && !isset($evWahlGezeigt[$evWahlNr]) && isset($choiceByEvent[$evWahlNr])): ?>
+      <?php $evWahlGezeigt[$evWahlNr] = true; $wahl = $choiceByEvent[$evWahlNr]; ?>
+      <?php require BASE_DIR . '/app/views/intern/_event_choice.php'; ?>
+    <?php endif; ?>
     <?php $evGruppe = 'dashev'; $evOpen = $evNr === 0; ?>
     <?php require BASE_DIR . '/app/views/intern/_event_card.php'; ?>
   <?php endforeach; ?>

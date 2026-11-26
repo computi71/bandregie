@@ -318,6 +318,7 @@ const UI_STRINGS = [
   'help_termine_12' => 'Nicht jeder wird bei jedem Termin gebraucht. Wer im Profil den Haken „Ich stehe auf der Bühne“ entfernt — Technik, Fahrdienst, Management —, ist bei Probe, Aufnahme und Fotoshooting eingeladen, aber nicht nötig: Er bekommt die Mitteilung und kann jederzeit zusagen, nur wartet die Band nicht auf seine Antwort. „Alle haben geantwortet“ gilt dann auch ohne ihn, und eine verschobene Uhrzeit hält er nicht auf. Beim Auftritt und bei der Besprechung zählt seine Antwort wie jede andere — beim Gig fährt die Technik mit, und in der Besprechung ist das Management gerade gefragt. Setzen kann den Haken jeder bei sich selbst, und die Bandleitung unter „Mitglieder“.',
   'help_aufgaben_8' => 'Wer für eine Aufgabe zuständig gemacht wird, bekommt jetzt eine Mitteilung aufs Telefon — vorher stand die Aufgabe nur in der Übersicht, und wer eine Woche nicht hineinsah, erfuhr von einer Fälligkeit erst danach. Ein Tipp darauf führt in die Übersicht, genau auf diese Zeile, mit dem Häkchen daneben. Das gilt für alles, was eine Antwort von dir will: ein neuer Termin, ein verschobener, eine vorgeschlagene Uhrzeit. Mitteilungen, die nur berichten — ein Kommentar, ein neues Bild —, führen weiter zur Sache selbst. Abstellen lässt sich das im Profil unter „Wenn ich für eine Aufgabe zuständig werde“.',
   'help_termine_15' => 'Sagt jemand aus der Band ab, steht der Name gleich im Kopf des Termins neben dem Stand, rot mit einem ✘. Man muss die Karte also nicht aufklappen, um es zu sehen. Ist der Termin bis dahin auf „Findet statt“ gesetzt, geht er zurück auf „Angefragt“, und wer verantwortlich ist (sonst wer ihn eingetragen hat), bekommt eine Mitteilung. Diese Person entscheidet dann: verschieben, absagen oder wieder auf „Findet statt“ setzen. Das gilt nicht für Gigs, Auf-/Abbau und Reisen. Ein Gig findet auch ohne einen von euch statt, das Datum gehört dem Veranstalter, und die Lücke füllt ein Ersatz. Absagen von Aushilfen ändern nichts, und wer nicht auf der Bühne steht, zählt bei Proben, Aufnahmen und Fotoshootings nicht mit.',
+  'help_termine_16' => 'Kommt eine Anfrage mit mehreren möglichen Daten, oder sucht ihr selbst einen Tag, tragt ihr den Termin einmal ein und gebt unter „Weitere mögliche Daten“ die anderen Tage dazu. Jedes Datum wird ein eigener Termin „Zur Wahl“, und jeder sagt je Datum zu oder ab. In der Terminliste stehen die Daten als ein Block mit den Antworten je Tag; ein Datum, an dem alle können, ist hervorgehoben. Wer Termine bearbeiten darf, nimmt mit „Dieses Datum nehmen“ eines: Die anderen Daten werden gelöscht, und Kommentare, Vertrag, Mails und Dateien wandern zum gewählten. Was ihr an einem Datum ändert, etwa Ort oder Zeit, gilt für alle. Fällt ein Datum weg, löscht ihr es einfach; ein Datum, das verstrichen ist, fällt von selbst aus der Wahl.',
   'help_termine_14' => 'An jeder Terminkarte steht, wer ihn eingetragen hat und wann. Das ist ein Vermerk über eine Handlung und keine zweite Auskunft darüber, wer sich kümmert — deshalb steht er auch dann da, wenn dieselbe Person verantwortlich ist. Gerade bei Anfragen von außen ist „seit wann wissen wir davon?“ eine andere Frage als „wer kümmert sich?“. Bei Terminen aus der übernommenen Vergangenheit fehlt der Vermerk: Wer sie damals eingetragen hat, weiß die Anwendung nicht.',
   'help_termine_13' => 'Wer einen Termin einträgt, steht beim Anlegen schon als Verantwortlicher darin — fast immer ist er auch der, der davon weiß: Er hat gebucht, mit dem Veranstalter gesprochen, das Datum ausgesucht. Es ist eine Voreinstellung und keine Regel: Im selben Formular lässt sich jemand anderes wählen oder das Feld leeren, und beides bleibt dann so stehen. Beim späteren Ändern greift sie nicht mehr — wer einen Tippfehler berichtigt, übernimmt damit nicht die Verantwortung.',
   'help_termine_8' => 'Sagst du bei einer Probe, einer Aufnahme, einem Fotoshooting oder einer Besprechung ab, fragt dich ein Fenster gleich nach einer Alternative — denn du weißt am besten, warum es nicht geht, und damit auch, wann es ginge. Ein Tipp auf „Alternative eintragen“ öffnet das Terminformular, Titel und Ort schon ausgefüllt; nur das Datum setzt du selbst. Bei einem Gig fragt es nicht: Dessen Datum macht der Veranstalter. Wer das Fenster wegklickt, bekommt es zu diesem Termin nicht noch einmal.',
@@ -438,6 +439,13 @@ const UI_STRINGS = [
   'ev_public_info_ph' => 'z. B. Einlass 19 Uhr, Support: XY',
   'ev_public_badge' => 'öffentlich', 'ev_absent_warn' => 'Abwesend an dem Tag:',
   'ev_dropout_title' => 'Hat abgesagt',
+  // Ein Termin mit mehreren möglichen Daten (#443).
+  'ev_extra_dates' => 'Weitere mögliche Daten', 'ev_extra_dates_add' => '+ Datum',
+  'ev_extra_dates_hint' => 'Jedes Datum wird ein eigener Termin zur Wahl. Jeder sagt je Datum zu oder ab, danach wählt ihr eines.',
+  'ev_choice' => 'Zur Wahl',
+  'ev_choice_open' => '%1 offen', 'ev_choice_all' => 'Alle können',
+  'ev_choice_take' => 'Dieses Datum nehmen',
+  'ev_choice_take_confirm' => 'Dieses Datum nehmen? Die anderen Daten werden gelöscht; Kommentare, Vertrag, Mails und Dateien wandern hierher.',
   'ev_comments' => 'Kommentare', 'ev_comment_ph' => 'Kommentar schreiben ...',
   'ev_locked' => 'Vergangener Termin — fixiert für die Historie.',
   'ev_delete' => 'Termin löschen', 'ev_none' => 'Noch keine Termine.',
@@ -1076,6 +1084,9 @@ const UI_STRINGS = [
   'set_meta_hint' => 'Vorbereitet, aber noch nicht verbunden. Für den automatischen Abgleich von Terminen und Posts braucht es eine Meta-Developer-App (Graph API) mit euren Seiten-Zugriffstokens. Sobald ihr die App bei Meta angelegt habt, bauen wir die Anbindung hier ein.',
   // Flash-Meldungen
   'fl_title_date_required' => 'Titel und Datum sind Pflicht.',
+  'fl_choice_dates_closed' => 'Weitere Daten gehen nur bei angefragten oder reservierten Terminen.',
+  'fl_choice_taken' => 'Entschieden. Die anderen Daten sind gelöscht.',
+  'fl_choice_not_open' => 'Dieser Termin steht nicht mehr zur Wahl.',
   'fl_locked_event' => 'Vergangene Termine sind fixiert und können nicht mehr geändert oder gelöscht werden.',
   'fl_song_played' => 'Dieser Song wurde schon live gespielt und bleibt für die Historie erhalten — stattdessen auf „Aussortiert" setzen.',
   'fl_setlist_locked' => 'Diese Setlist wurde bereits live gespielt und ist fixiert — zum Ändern bitte kopieren.',
@@ -1428,6 +1439,10 @@ Zeile zwei
   'push_topic_wackelt' => 'Wenn mein bestätigter Termin durch eine Absage wieder offen ist',
   'push_ev_wobbles' => 'Wieder offen: %1',
   'push_ev_wobbles_body' => '%1 hat abgesagt. Der Termin steht jetzt auf „Angefragt“.',
+  'push_ev_choice_new' => 'Zur Wahl: %1',
+  'push_ev_choice_new_body' => '%1 – wann könnt ihr?',
+  'push_ev_choice_done' => 'Entschieden: %1',
+  'push_ev_choice_done_body' => 'am %1',
   // Mitteilung, wenn jemand für eine Aufgabe zuständig gemacht wird (#421).
   // Vorher erfuhr das niemand: Die Aufgabe stand in der Übersicht, aber nur
   // für den, der hinsah.

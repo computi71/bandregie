@@ -54,7 +54,7 @@ declare(strict_types=1);
  * Ein Durchlauf ins Leere kostet nichts, also darf die Liste großzügig sein.
  */
 const HELP_PARAGRAPHS = ['_2', '_3', '_4', '_5', '_6', '_7', '_8', '_9', '_10',
-                         '_11', '_12', '_13', '_14', '_15'];
+                         '_11', '_12', '_13', '_14', '_15', '_16'];
 
 function help_section_name(string $mod): string {
   if ($mod === 'angebote' && !quote_ist_angebot()) return t('quote_calc_title');

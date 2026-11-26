@@ -1124,6 +1124,14 @@ if (str_starts_with($path, '/intern')) {
       }
       save_event_gear($newEventId);
       save_event_songs($newEventId);
+      // Weitere mögliche Daten (#443). Erst nach Technik und Liedern: Die
+      // neuen Daten übernehmen sie vom ersten. Dann EINE Mitteilung für die
+      // ganze Auswahl statt einer je Datum.
+      $evWahl = choice_add_dates($newEventId, (array) ($_POST['extra_dates'] ?? []), (int) $me['id']);
+      if ($evWahl) {
+        choice_push_new($newEventId, [$newEventId, ...$evWahl], (int) $me['id']);
+        redirect('/intern/termine');
+      }
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
       // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
@@ -1145,7 +1153,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/termine');
   }
 
-  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg|waehlen)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     // Einmal fuer alle Handlungen an einem Termin (#414): Darf dieses Konto
     // ihn ueberhaupt sehen?
@@ -1163,11 +1171,16 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_no_permission'));
       redirect('/intern/termine');
     }
-    if (in_array($action, ['update', 'delete'], true) && event_locked((int) $id)) {
+    if (in_array($action, ['update', 'delete', 'waehlen'], true) && event_locked((int) $id)) {
       flash(t('fl_locked_event'));
       redirect('/intern/termine?alle=1');
     }
     if ($action === 'update') {
+      // In einer Auswahl steht der Stand fest (#443), egal was gepostet wurde.
+      $_POST['status'] = choice_forced_status((int) $id, (string) ($_POST['status'] ?? ''));
+      // Der Stand vor dem Speichern: Hinüber zu den anderen Daten geht nur, was
+      // sich jetzt wirklich ändert (#443).
+      $evWahlVorher = choice_snapshot((int) $id);
       $evStandVorher = (string) (row('SELECT status FROM events WHERE id = ?', [$id])['status'] ?? '');
       // Datum, Zeiten und Ort von vorher (#402): Aendert sich eines davon,
       // beantworten die vorhandenen Zusagen eine Frage, die es nicht mehr
@@ -1240,6 +1253,10 @@ if (str_starts_with($path, '/intern')) {
           flash(str_replace('%1', (string) $evVerworfen, t('fl_answers_reset')));
         }
       }
+      // Die anderen Daten derselben Auswahl ziehen mit (#443). Erst hier, nach
+      // Neufragen und Zeitvorschlag: Der Abgleich liest den Stand, den das
+      // bearbeitete Datum am Ende hat.
+      choice_sync((int) $id, (int) $me['id'], $evWahlVorher);
       // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und
       // aus einer Anfrage wird ein Auftritt, für den man sich freihalten muss.
       // Deshalb geht der Stand hinaus, und nur er: Eine Mitteilung bei jedem
@@ -1259,31 +1276,36 @@ if (str_starts_with($path, '/intern')) {
           'url' => $pushUrl,
         ], (int) $id);
       }
+      // Weitere Daten nachtragen (#443) — zuletzt, nach der Standmitteilung:
+      // Die Daten stellen alles auf „Angefragt", und dafür geht die eine
+      // „Zur Wahl"-Mitteilung hinaus, nicht noch eine zweite über den Stand.
+      $evExtra = array_filter((array) ($_POST['extra_dates'] ?? []), static fn($d): bool => trim((string) $d) !== '');
+      if ($evExtra) {
+        if (choice_may_add_dates(row('SELECT status, date FROM events WHERE id = ?', [$id]) ?? [])) {
+          $evWahl = choice_add_dates((int) $id, $evExtra, (int) $me['id']);
+          if ($evWahl) choice_push_new((int) $id, $evWahl, (int) $me['id']);
+        } else {
+          flash(t('fl_choice_dates_closed'));
+        }
+      }
       redirect('/intern/termine');
     }
     if ($action === 'delete') {
-      item_forget('event', (int) $id);
-      q('DELETE FROM events WHERE id = ?', [$id]);
-      foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
-        item_forget('attendance', (int) $zAlt['id']);
-      }
-      q('DELETE FROM attendance WHERE event_id = ?', [$id]);
-      // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
-      // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
-      // gesehen - und der taucht dann bei niemandem als neu auf.
-      foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
-        item_forget('comment', (int) $kAlt['id']);
-      }
-      q('DELETE FROM comments WHERE event_id = ?', [$id]);
-      q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
-      q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
-      // Die Buchungen der Gäste gehen mit dem Termin; die Gäste selbst bleiben
-      // in der Kontaktliste (#294).
-      q('DELETE FROM guest_bookings WHERE event_id = ?', [$id]);
-      // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
-      // den es nicht mehr gibt.
-      q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
+      // Gehört das Datum zu einer Auswahl (#443), steht danach vielleicht nur
+      // noch eines da — und eine Wahl aus einem ist keine.
+      $evWahlGruppe = choice_group((int) $id);
+      event_delete((int) $id);
+      if ($evWahlGruppe) choice_prune($evWahlGruppe);
       redirect('/intern/termine');
+    }
+    // Ein Datum der Auswahl nehmen (#443). Die zentrale Wache verlangt für
+    // jedes POST hier schon Schreibrecht; die Prüfung steht trotzdem da, weil
+    // dieser Knopf die anderen Daten löscht — das darf nicht an einer
+    // Ausnahmeliste weiter oben hängen.
+    if ($action === 'waehlen') {
+      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back('/intern/termine'); }
+      flash(t(choice_choose((int) $id, (int) $me['id']) ? 'fl_choice_taken' : 'fl_choice_not_open'));
+      redirect(event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$id]) ?? ['id' => 0, 'date' => '']));
     }
     // Eine vorgeschlagene Zeit bestaetigen (#413). Selbstbedienung wie die
     // Zusage: Wer Termine nur lesen darf, darf trotzdem sagen, dass ihm die
@@ -1352,7 +1374,9 @@ if (str_starts_with($path, '/intern')) {
       // Unterscheidung sähe man es zweimal.
       if ($status === 'no' && ($_POST['ajax'] ?? '') !== '1') {
         $evArt = (string) (row('SELECT type FROM events WHERE id = ?', [$id])['type'] ?? '');
-        if (in_array($evArt, EVENT_TYPES_OWN_DATE, true)) $_SESSION['absage_tipp'] = (int) $id;
+        // Bei einem Datum zur Wahl erst, wenn alle Daten ein Nein sind (#443).
+        if (in_array($evArt, EVENT_TYPES_OWN_DATE, true)
+            && (!choice_group((int) $id) || choice_all_no((int) $id, (int) $me['id']))) $_SESSION['absage_tipp'] = (int) $id;
       }
       // Sind damit alle durch, bekommt der Eintrager eine Meldung (#382) —
       // eine einzige, mit dem Ergebnis darin. Steht hier hinter dem Schreiben,

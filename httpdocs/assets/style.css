@@ -262,6 +262,16 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .badge.ev-abgesagt { border-color: var(--danger); color: var(--danger); }
 /* Wer aus der Band abgesagt hat, steht im Kopf des Termins (#442). */
 .badge.ev-dropout { border-color: var(--danger); color: var(--danger); }
+/* Ein Datum, das zur Wahl steht (#443). */
+.badge.ev-choice { border-color: var(--maybe); color: var(--maybe); border-style: dashed; }
+.extra-dates { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.extra-dates .label { width: 100%; }
+.choice-block h3 { margin: 0 0 .5rem; }
+.choice-dates { list-style: none; margin: 0; padding: 0; }
+.choice-date { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .35rem .5rem; border-radius: 6px; }
+.choice-date + .choice-date { border-top: 1px solid var(--border); }
+/* Das Datum, an dem alle können, springt ins Auge — entschieden wird trotzdem von Hand. */
+.choice-date.ev-choice-all { background: color-mix(in srgb, var(--ok) 15%, transparent); }
 
 .warn {
   background: rgba(234, 179, 8, 0.12);

@@ -48,7 +48,13 @@ if (!empty($ev['light_source'])) $zeiten[] = t('prod_light') . ': ' . production
 ?>
 <summary class="event-head">
   <span class="badge <?= e($ev['type']) ?>"><?= e(event_type_label($ev['type'])) ?></span>
+  <?php // Ein Datum zur Wahl (#443) trägt das statt „Angefragt": So sieht
+        // man im Kopf, dass es einer von mehreren Tagen ist. ?>
+  <?php if (!empty($ev['choice_of'])): ?>
+    <span class="badge ev-choice"><?= e(t('ev_choice')) ?></span>
+  <?php else: ?>
   <span class="badge ev-<?= e($ev['status']) ?>"><?= e(event_status_label($ev['status'])) ?></span>
+  <?php endif; ?>
   <?php // Wer abgesagt hat, gehört neben den Stand (#442). Steht es erst in der
         // aufgeklappten Karte, liest man im Kopf „Findet statt“ und glaubt es. ?>
   <?php $evRaus = $ev['status'] === 'abgesagt' ? [] : (($dropoutsByEvent ?? [])[(int) $ev['id']] ?? []); ?>

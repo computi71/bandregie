@@ -46,6 +46,8 @@ require_once __DIR__ . '/marks.php';
 require_once __DIR__ . '/tagesmail.php';
 // „Wichtig" (#333) braucht dieselben Bausteine wie die Tagesmail.
 require_once __DIR__ . '/wichtig.php';
+// Ein Termin mit mehreren möglichen Daten (#443): nur Funktionen.
+require_once __DIR__ . '/terminwahl.php';
 // Steuerliche Werte: seit die Nutzungsdauer am einzelnen Gerät steht, fragen
 // auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
 // Steuerseite, die das Modul früher allein geladen hat.
@@ -4636,7 +4638,7 @@ function open_votes(array $user): array {
     $nurDiese = ' AND e.id IN (' . implode(',', array_fill(0, count($sichtbar), '?')) . ')';
     $werte = [...$werte, ...$sichtbar];
   }
-  return rows("SELECT e.id, e.date, e.time, e.type, e.status, e.title, e.location
+  return rows("SELECT e.id, e.date, e.time, e.type, e.status, e.title, e.location, e.choice_of
                FROM events e
                WHERE e.date >= CURDATE()
                  AND e.status NOT IN ('abgesagt', 'blockiert')
@@ -4685,7 +4687,7 @@ function event_answer_fingerprint(int $eventId): string {
  *
  * @return int Wie viele Antworten verworfen wurden
  */
-function event_answers_reset(int $eventId, int $durch): int {
+function event_answers_reset(int $eventId, int $durch, bool $mitteilen = true): int {
   $zeilen = rows('SELECT id FROM attendance WHERE event_id = ?', [$eventId]);
   if (!$zeilen) {
     q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
@@ -4695,6 +4697,9 @@ function event_answers_reset(int $eventId, int $durch): int {
   q('DELETE FROM attendance WHERE event_id = ?', [$eventId]);
   q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
 
+  // Ein anderes Datum derselben Auswahl fragt still neu (#443): Die eine
+  // Mitteilung kommt vom Datum, das gerade bearbeitet wurde.
+  if (!$mitteilen) return count($zeilen);
   // Und sagen, dass neu gefragt wird. Ohne diese Mitteilung merkt es niemand:
   // Die Zusage verschwindet still, und wer nicht zufällig auf die Übersicht
   // sieht, hält sich den Abend weiter frei — oder eben nicht mehr.
@@ -4711,6 +4716,39 @@ function event_answers_reset(int $eventId, int $durch): int {
     'url'   => $url,
   ], $eventId);
   return count($zeilen);
+}
+
+/**
+ * Einen Termin löschen, samt dem, was nur zu ihm gehört.
+ *
+ * Aus der Route herausgezogen (#443): Auch das Wählen eines Datums löscht die
+ * anderen, und zwei Kopien der Löschregel liefen beim nächsten Nachtrag
+ * auseinander. Die Lieder einer Probe (#390) gehen jetzt mit; vorher blieben
+ * sie als Zeilen ohne Termin liegen.
+ */
+function event_delete(int $id): void {
+  item_forget('event', $id);
+  q('DELETE FROM events WHERE id = ?', [$id]);
+  foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
+    item_forget('attendance', (int) $zAlt['id']);
+  }
+  q('DELETE FROM attendance WHERE event_id = ?', [$id]);
+  // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
+  // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
+  // gesehen - und der taucht dann bei niemandem als neu auf.
+  foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
+    item_forget('comment', (int) $kAlt['id']);
+  }
+  q('DELETE FROM comments WHERE event_id = ?', [$id]);
+  q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
+  q('DELETE FROM event_songs WHERE event_id = ?', [$id]);
+  q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
+  // Die Buchungen der Gäste gehen mit dem Termin; die Gäste selbst bleiben
+  // in der Kontaktliste (#294).
+  q('DELETE FROM guest_bookings WHERE event_id = ?', [$id]);
+  // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
+  // den es nicht mehr gibt.
+  q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
 }
 
 // ------------------------------------------------------------------
@@ -4834,13 +4872,16 @@ function event_time_clear(int $eventId): void {
  * zugesagt hatte, hat bestätigt, und wer nicht zugesagt hatte, hatte nichts
  * zu verlieren.
  */
-function event_time_apply(int $eventId): void {
+function event_time_apply(int $eventId, bool $mitteilen = true): void {
   $ev = event_time_proposal($eventId);
   if (!$ev) return;
   q('UPDATE events SET time = ?, time_meet = ?, time_end = ? WHERE id = ?',
     [(string) $ev['time_proposed'], (string) $ev['time_meet_proposed'],
      (string) $ev['time_end_proposed'], $eventId]);
   event_time_clear($eventId);
+  // Still, wenn das ein anderes Datum derselben Auswahl ist (#443): Die eine
+  // Mitteilung kommt vom Datum, das gerade bearbeitet wurde.
+  if (!$mitteilen) return;
 
   $titel = (string) $ev['title'];
   $datum = (string) $ev['date'];
@@ -4872,7 +4913,7 @@ function event_time_apply(int $eventId): void {
  *
  * @return int Wie viele noch bestätigen müssen; 0 heißt "gilt schon"
  */
-function event_time_propose(int $eventId, array $zeiten, int $durch): int {
+function event_time_propose(int $eventId, array $zeiten, int $durch, bool $mitteilen = true): int {
   $ev = row('SELECT id, type, title, date, status, time, time_meet, time_end
              FROM events WHERE id = ?', [$eventId]);
   if (!$ev) return 0;
@@ -4897,7 +4938,7 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
   }
   $offen = count(event_time_waiting($eventId));
   if ($offen === 0) {
-    event_time_apply($eventId);
+    event_time_apply($eventId, $mitteilen);
     return 0;
   }
 
@@ -4905,6 +4946,7 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
   $datum = (string) $ev['date'];
   $alt = event_time_label($ev);
   $neu = event_time_label($zeiten);
+  if (!$mitteilen) return $offen;   // anderes Datum derselben Auswahl (#443)
   // In die Übersicht (#421): Dort steht seit #418 der Knopf „Passt".
   $url = answer_url('zeit', $eventId);
   $empfaenger = array_values(array_filter(event_invited($eventId),
@@ -5088,9 +5130,15 @@ function event_answers_complete(int $eventId): bool {
  * das Ergebnis mit, das man sonst selbst zusammenzählen müsste.
  */
 function event_completion_notify(int $eventId): void {
-  $ev = row('SELECT id, title, date, status, created_by, answers_complete
+  $ev = row('SELECT id, title, date, status, created_by, answers_complete, choice_of
              FROM events WHERE id = ?', [$eventId]);
   if (!$ev) return;
+  // Ein Datum zur Wahl meldet nicht allein (#443): Die Frage war „wann?",
+  // und die ist erst beantwortet, wenn alle Daten durch sind.
+  if ((int) ($ev['choice_of'] ?? 0)) {
+    choice_completion_notify($eventId);
+    return;
+  }
 
   if (!event_answers_complete($eventId)) {
     if ((int) $ev['answers_complete'] === 1) {
@@ -5104,28 +5152,40 @@ function event_completion_notify(int $eventId): void {
   $wer = (int) ($ev['created_by'] ?? 0);
   if (!$wer) return;                                  // Termin ohne Eintrager
 
-  $stand = ['yes' => 0, 'maybe' => 0, 'no' => 0];
-  $abgesagt = [];
-  foreach (rows('SELECT a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id
-                 WHERE a.event_id = ? ORDER BY u.name', [$eventId]) as $z) {
-    if (isset($stand[$z['status']])) $stand[$z['status']]++;
-    if ($z['status'] === 'no') $abgesagt[] = (string) $z['name'];
-  }
+  $stand = event_answer_tally($eventId);
   $titel = (string) $ev['title'];
   $url = event_url($ev);
-  push_to_user($wer, 'vollzaehlig', function (string $lang) use ($titel, $stand, $abgesagt, $url): array {
-    $text = str_replace(['%1', '%2', '%3'],
-      [(string) $stand['yes'], (string) $stand['maybe'], (string) $stand['no']],
-      push_t($lang, 'push_ev_complete_body'));
-    // Wer abgesagt hat, steht mit Namen da: Das ist die Zeile, wegen der man
-    // die Meldung überhaupt aufmacht.
-    if ($abgesagt) $text .= ' — ' . implode(', ', $abgesagt);
-    return [
-      'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
-      'body'  => $text,
-      'url'   => $url,
-    ];
-  });
+  push_to_user($wer, 'vollzaehlig', static fn(string $lang): array => [
+    'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
+    'body'  => event_answer_tally_text($stand, $lang),
+    'url'   => $url,
+  ]);
+}
+
+/**
+ * Wie die Band geantwortet hat: die drei Zahlen und wer abgesagt hat.
+ *
+ * @return array{yes: int, maybe: int, no: int, abgesagt: string[]}
+ */
+function event_answer_tally(int $eventId): array {
+  $stand = ['yes' => 0, 'maybe' => 0, 'no' => 0, 'abgesagt' => []];
+  foreach (rows('SELECT a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id
+                 WHERE a.event_id = ? ORDER BY u.name', [$eventId]) as $z) {
+    if (in_array($z['status'], ['yes', 'maybe', 'no'], true)) $stand[$z['status']]++;
+    if ($z['status'] === 'no') $stand['abgesagt'][] = (string) $z['name'];
+  }
+  return $stand;
+}
+
+/** Der Stand als Satz für eine Mitteilung, in der Sprache des Empfängers. */
+function event_answer_tally_text(array $stand, string $lang): string {
+  $text = str_replace(['%1', '%2', '%3'],
+    [(string) $stand['yes'], (string) $stand['maybe'], (string) $stand['no']],
+    push_t($lang, 'push_ev_complete_body'));
+  // Wer abgesagt hat, steht mit Namen da: Das ist die Zeile, wegen der man
+  // die Meldung überhaupt aufmacht.
+  if ($stand['abgesagt']) $text .= ' — ' . implode(', ', $stand['abgesagt']);
+  return $text;
 }
 
 /**
@@ -6515,6 +6575,8 @@ function event_view_data(array $events, array $me): array {
     'absentByEvent' => $ohne($absentByEvent),
     // Wer aus der Band abgesagt hat — für die Marke im Kopf (#442).
     'dropoutsByEvent' => $ohne(event_dropouts($ids)),
+    // Termine mit mehreren möglichen Daten (#443), je Auswahl.
+    'choiceByEvent' => choice_view_map(array_map('intval', $ids), $verdeckt, $me),
     'equipment' => rows('SELECT id, name, category, parent_id FROM equipment
                          WHERE disposed_on IS NULL ORDER BY category, name'),
     'gearByEvent' => $ohne(event_gear_map($ids)),

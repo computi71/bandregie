@@ -89,6 +89,7 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
     </label>
     <label><?= e(t('name')) ?><input name="title" required placeholder="<?= e(t('ev_name_ph')) ?>" value="<?= e($vorlage['title'] ?? '') ?>"></label>
     <label><?= e(t('date')) ?><input type="date" name="date" required></label>
+    <?php require BASE_DIR . '/app/views/intern/_event_extra_dates.php'; ?>
     <label><?= e(t('status')) ?>
       <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
     </label>
@@ -145,10 +146,18 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
 <?php // Zwischenüberschrift je Monat: Wer den September sucht, soll nicht den
       // August lesen müssen (#233). ?>
 <?php $evMonat = ''; ?>
-<?php foreach ($events as $ev): ?>
-  <?php if (fmt_month($ev['date']) !== $evMonat): ?>
+<?php // Die Daten einer Auswahl stehen beisammen, unter dem Block „Zur Wahl"
+      // an der Stelle ihres frühesten Datums (#443). ?>
+<?php $evWahlGezeigt = []; ?>
+<?php foreach (choice_order($events) as $ev): ?>
+  <?php if (fmt_month($ev['date']) !== $evMonat && !isset($evWahlGezeigt[(int) ($ev['choice_of'] ?? 0)])): ?>
     <?php $evMonat = fmt_month($ev['date']); ?>
     <h2 class="event-month"><?= e($evMonat) ?></h2>
+  <?php endif; ?>
+  <?php $evWahlNr = (int) ($ev['choice_of'] ?? 0); ?>
+  <?php if ($evWahlNr && !isset($evWahlGezeigt[$evWahlNr]) && isset($choiceByEvent[$evWahlNr])): ?>
+    <?php $evWahlGezeigt[$evWahlNr] = true; $wahl = $choiceByEvent[$evWahlNr]; ?>
+    <?php require BASE_DIR . '/app/views/intern/_event_choice.php'; ?>
   <?php endif; ?>
   <?php // Zugeklappt wie in der Übersicht (#419). Offen war die Liste so lang,
         // dass ein Datum zu finden hieß, an allem davor vorbeizuscrollen — und
