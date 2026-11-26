@@ -20,7 +20,7 @@
 // geprüft — wer einträgt, ist voreingestellt verantwortlich (#424), und das
 // entscheidet sich dort und nirgends sonst:
 //
-//   ... --schreibt-testdaten staging.beatcuisine.de
+//   ... --schreibt-testdaten staging.example.com
 //
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);

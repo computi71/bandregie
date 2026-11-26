@@ -19,7 +19,7 @@
 //
 // Mit einem Hostnamen als drittem Wort wird auch die Route wirklich gerufen:
 //
-//   ... --schreibt-testdaten staging.beatcuisine.de
+//   ... --schreibt-testdaten staging.example.com
 //
 // Rückgabewert 0, wenn alles stimmt, sonst 1.
 declare(strict_types=1);

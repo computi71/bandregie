@@ -181,4 +181,4 @@
 - [ ] **Step 1:** Help paragraph `help_termine_16` in de and the seed: entering extra dates, answering per date, the block and highlight, "Dieses Datum nehmen" and what moves, status "Zur Wahl", dates that pass drop out.
 - [ ] **Step 2: Run** `bin/hilfe-pruefen.php`, `bin/texte-pruefen.php`, `bin/schema-pruefen.php`, `bin/routen-pruefen.php`, all other `bin/*-pruefen.php` on staging. Expected: all green.
 - [ ] **Step 3:** Code review of the branch (memory rule: every 10 commits; this branch is a natural point).
-- [ ] **Step 4:** Merge to main, bump `VERSION` to 2.60.0, tag `v2.60.0`, GitHub release; deploy demo → browser check → Beat Cuisine → TonRausch (`plesk ext git --fetch` and `--deploy`); verify schema version and `seed_fehler []` per instance; close #443.
+- [ ] **Step 4:** Merge to main, bump `VERSION` to 2.60.0, tag `v2.60.0`, GitHub release; deploy demo → browser check → first band instance → second band instance (`plesk ext git --fetch` and `--deploy`); verify schema version and `seed_fehler []` per instance; close #443.
