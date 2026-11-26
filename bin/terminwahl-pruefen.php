@@ -41,6 +41,8 @@ $aufraeumen = static function (): void {
             q("DELETE FROM `$tab` WHERE event_id = ?", [$nr]);
         }
         q("DELETE FROM files WHERE entity_type = 'event' AND entity_id = ?", [$nr]);
+        q("DELETE FROM task_links WHERE kind = 'event' AND item_id = ?", [$nr]);
+        q("DELETE FROM important_flags WHERE kind = 'event' AND item_id = ?", [$nr]);
         q('DELETE FROM events WHERE id = ?', [$nr]);
         item_forget('event', $nr);
     }
@@ -182,9 +184,10 @@ $h = (int) (choice_add_dates($g, [$tag(181)], 1)[0] ?? 0);
 $antwortet($h, $mitglied, 'yes');
 $antwortet($h, $hoerer, 'yes');
 if ($geraet) q('INSERT INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$g, $geraet['id']]);
+$vorStand = choice_snapshot($g);
 q("UPDATE events SET title = 'ZZTW Anfrage neu', location = 'ZZTW Ort', notes = 'Neu' WHERE id = ?", [$g]);
 $vorherPost = $post();
-choice_sync($g, 1);
+choice_sync($g, 1, $vorStand);
 $pruefe('Titel, Ort und Notiz gehen auf das andere Datum über',
     ($zeile($h)['title'] ?? '') === 'ZZTW Anfrage neu' && ($zeile($h)['location'] ?? '') === 'ZZTW Ort'
     && ($zeile($h)['notes'] ?? '') === 'Neu');
@@ -198,18 +201,39 @@ $pruefe('die Technik zieht mit', !$geraet
 // Eine kleine Zeitverschiebung am ersten Datum: Auch das andere bekommt den
 // Vorschlag, still.
 $antwortet($h, $hoerer, 'yes');
+$vorStand = choice_snapshot($g);
 q("UPDATE events SET time_proposed = '20:30', time_meet_proposed = '', time_end_proposed = '',
                      time_proposed_by = 1, time_proposed_at = NOW() WHERE id = ?", [$g]);
 $vorherPost = $post();
-choice_sync($g, 1);
+choice_sync($g, 1, $vorStand);
 $pruefe('ein offener Zeitvorschlag geht als Vorschlag mit',
     ($zeile($h)['time_proposed'] ?? '') === '20:30' && ($zeile($h)['time'] ?? '') === '20:00');
 $pruefe('und auch der ohne Mitteilung', $post() === $vorherPost);
 
 $i = (int) (choice_add_dates($g, [$tag(182)], 1)[0] ?? 0);
 q("UPDATE events SET date = ?, title = 'ZZTW alt' WHERE id = ?", [date('Y-m-d', strtotime('-1 day')), $i]);
-choice_sync($g, 1);
+$vorStand = choice_snapshot($g);
+q("UPDATE events SET notes = 'Noch neuer' WHERE id = ?", [$g]);
+choice_sync($g, 1, $vorStand);
 $pruefe('ein verstrichenes Datum bleibt unberührt', ($zeile($i)['title'] ?? '') === 'ZZTW alt');
+
+// Was nicht geändert wurde, wird auch nicht übertragen. Sonst schriebe ein
+// Tippfehler in den Notizen eine Zeit zurück, die am anderen Datum längst
+// gilt — und verwürfe dort still alle Antworten.
+$k1 = $termin($tag(190));
+$k2 = (int) (choice_add_dates($k1, [$tag(191)], 1)[0] ?? 0);
+$antwortet($k1, $mitglied, 'yes');   // am ersten muss bestätigt werden
+$antwortet($k2, $mitglied, 'maybe'); // am zweiten gilt die Zeit sofort
+$vorStand = choice_snapshot($k1);
+event_time_propose($k1, ['time' => '20:30', 'time_meet' => '', 'time_end' => ''], 1);
+choice_sync($k1, 1, $vorStand);
+$pruefe('kleine Verschiebung: am zweiten Datum gilt sie sofort', ($zeile($k2)['time'] ?? '') === '20:30');
+$vorStand = choice_snapshot($k1);
+q("UPDATE events SET notes = 'Tippfehler weg' WHERE id = ?", [$k1]);
+choice_sync($k1, 1, $vorStand);
+$pruefe('danach nur die Notiz geändert: die Zeit dort bleibt',
+    ($zeile($k2)['time'] ?? '') === '20:30' && ($zeile($k2)['notes'] ?? '') === 'Tippfehler weg');
+$pruefe('und die Antworten dort bleiben', (bool) row('SELECT 1 FROM attendance WHERE event_id = ?', [$k2]));
 
 // ------------------------------------------- 4. Wählen
 $aushilfe = $konto('ZZTW Aushilfe', 'ersatz', $mitglied);
@@ -230,6 +254,8 @@ q("INSERT INTO guest_bookings (guest_id, event_id, token, access_until) VALUES (
   [$w1, hash('sha256', 'zztw' . $w1)]);
 q('INSERT INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,1)',
   [$w1, $aushilfe, $mitglied]);
+q("INSERT INTO task_links (task_id, kind, item_id) VALUES (0, 'event', ?)", [$w1]);
+q("INSERT INTO important_flags (kind, item_id, note) VALUES ('event', ?, 'ZZTW')", [$w1]);
 $haengt = static function (int $nr): array {
     $n = static fn(string $sql): int => (int) row($sql, [$nr])['n'];
     return [
@@ -243,6 +269,8 @@ $haengt = static function (int $nr): array {
         'finances' => $n('SELECT COUNT(*) n FROM finances WHERE event_id = ?'),
         'guest_bookings' => $n('SELECT COUNT(*) n FROM guest_bookings WHERE event_id = ?'),
         'substitute_requests' => $n('SELECT COUNT(*) n FROM substitute_requests WHERE event_id = ?'),
+        'task_links' => $n("SELECT COUNT(*) n FROM task_links WHERE kind = 'event' AND item_id = ?"),
+        'important_flags' => $n("SELECT COUNT(*) n FROM important_flags WHERE kind = 'event' AND item_id = ?"),
     ];
 };
 $pruefe('Aushilfe nur am ersten Datum: gezählt nur dort', (static function () use ($w1, $w2, $aushilfe): bool {
@@ -259,6 +287,19 @@ $pruefe('das gewählte ist ein gewöhnlicher angefragter Termin',
     choice_group($w2) === 0 && ($zeile($w2)['status'] ?? '') === 'angefragt');
 $pruefe('die Band erfährt es mit einer Mitteilung', $post() === $vorherPost + 1);
 $pruefe('zweimal wählen ändert nichts', choice_choose($w2, 1) === false && $zeile($w2));
+
+// Zwei Leute wählen zugleich verschiedene Daten: Wer das Schloss nicht
+// bekommt, ändert nichts. Das Schloss hält hier eine zweite Verbindung.
+$l1 = $termin($tag(215));
+$l2 = (int) (choice_add_dates($l1, [$tag(216)], 1)[0] ?? 0);
+$zweite = new PDO("mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4",
+                  $config['db_user'], $config['db_pass']);
+$zweite->query("SELECT GET_LOCK(" . $zweite->quote(choice_lock_name($l1)) . ", 0)");
+$pruefe('während ein anderer wählt: kein zweites Wählen', choice_choose($l2, 1) === false
+    && $zeile($l1) && $zeile($l2) && choice_group($l2) === $l1);
+$zweite->query("SELECT RELEASE_LOCK(" . $zweite->quote(choice_lock_name($l1)) . ")");
+$zweite = null;
+$pruefe('danach geht es', choice_choose($l2, 1) === true && !$zeile($l1));
 
 // Dieselbe Aushilfe an beiden Daten: Am Ende bleibt eine Anfrage.
 $x1 = $termin($tag(210));
