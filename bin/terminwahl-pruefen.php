@@ -35,10 +35,12 @@ $pruefe = static function (string $was, bool $erfuellt) use (&$ok, &$fehler): vo
 $aufraeumen = static function (): void {
     foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZTW %'") as $r) {
         $nr = (int) $r['id'];
-        foreach (['attendance', 'comments', 'event_equipment', 'event_songs', 'substitute_requests',
+        foreach (['attendance', 'comments', 'event_equipment', 'event_songs', 'substitute_requests', 'contracts',
+                  'quotes', 'sales_invoices', 'photos', 'post_messages', 'finances', 'od_folders',
                   'guest_bookings', 'event_time_confirms'] as $tab) {
             q("DELETE FROM `$tab` WHERE event_id = ?", [$nr]);
         }
+        q("DELETE FROM files WHERE entity_type = 'event' AND entity_id = ?", [$nr]);
         q('DELETE FROM events WHERE id = ?', [$nr]);
         item_forget('event', $nr);
     }
@@ -208,6 +210,89 @@ $i = (int) (choice_add_dates($g, [$tag(182)], 1)[0] ?? 0);
 q("UPDATE events SET date = ?, title = 'ZZTW alt' WHERE id = ?", [date('Y-m-d', strtotime('-1 day')), $i]);
 choice_sync($g, 1);
 $pruefe('ein verstrichenes Datum bleibt unberührt', ($zeile($i)['title'] ?? '') === 'ZZTW alt');
+
+// ------------------------------------------- 4. Wählen
+$aushilfe = $konto('ZZTW Aushilfe', 'ersatz', $mitglied);
+$w1 = $termin($tag(200));
+$w2 = (int) (choice_add_dates($w1, [$tag(207)], 1)[0] ?? 0);
+$antwortet($w1, $mitglied, 'yes');
+// Alles, was an einem Datum hängen kann, liegt am ersten.
+q("INSERT INTO comments (event_id, user_id, text) VALUES (?, 1, 'ZZTW Kommentar')", [$w1]);
+q('INSERT INTO contracts (event_id, contract_date) VALUES (?, CURDATE())', [$w1]);
+q('INSERT INTO quotes (event_id, quote_date) VALUES (?, CURDATE())', [$w1]);
+q("INSERT INTO sales_invoices (event_id, invoice_no, invoice_date) VALUES (?, ?, CURDATE())", [$w1, 'ZZTW-' . $w1]);
+q("INSERT INTO photos (event_id, filename) VALUES (?, ?)", [$w1, 'zztw-' . $w1 . '.jpg']);
+q("INSERT INTO files (entity_type, entity_id, filename, original_name, size) VALUES ('event', ?, ?, 'x.pdf', 1)",
+  [$w1, 'zztw-' . $w1 . '.pdf']);
+q("INSERT INTO post_messages (event_id, uid) VALUES (?, ?)", [$w1, 'zztw-' . $w1]);
+q("INSERT INTO finances (event_id, date, amount_cents, description) VALUES (?, CURDATE(), 100, 'ZZTW Gage')", [$w1]);
+q("INSERT INTO guest_bookings (guest_id, event_id, token, access_until) VALUES (0, ?, ?, NOW())",
+  [$w1, hash('sha256', 'zztw' . $w1)]);
+q('INSERT INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,1)',
+  [$w1, $aushilfe, $mitglied]);
+$haengt = static function (int $nr): array {
+    $n = static fn(string $sql): int => (int) row($sql, [$nr])['n'];
+    return [
+        'comments' => $n('SELECT COUNT(*) n FROM comments WHERE event_id = ?'),
+        'contracts' => $n('SELECT COUNT(*) n FROM contracts WHERE event_id = ?'),
+        'quotes' => $n('SELECT COUNT(*) n FROM quotes WHERE event_id = ?'),
+        'sales_invoices' => $n('SELECT COUNT(*) n FROM sales_invoices WHERE event_id = ?'),
+        'photos' => $n('SELECT COUNT(*) n FROM photos WHERE event_id = ?'),
+        'files' => $n("SELECT COUNT(*) n FROM files WHERE entity_type = 'event' AND entity_id = ?"),
+        'post_messages' => $n('SELECT COUNT(*) n FROM post_messages WHERE event_id = ?'),
+        'finances' => $n('SELECT COUNT(*) n FROM finances WHERE event_id = ?'),
+        'guest_bookings' => $n('SELECT COUNT(*) n FROM guest_bookings WHERE event_id = ?'),
+        'substitute_requests' => $n('SELECT COUNT(*) n FROM substitute_requests WHERE event_id = ?'),
+    ];
+};
+$pruefe('Aushilfe nur am ersten Datum: gezählt nur dort', (static function () use ($w1, $w2, $aushilfe): bool {
+    $gefragt = static fn(int $ev): array => array_map('intval', array_column(event_answerers($ev), 'id'));
+    return in_array($aushilfe, $gefragt($w1), true) && !in_array($aushilfe, $gefragt($w2), true);
+})());
+$vorherPost = $post();
+$pruefe('Wählen gelingt', choice_choose($w2, 1) === true);
+$pruefe('alles vom anderen Datum hängt jetzt am gewählten',
+    !array_filter($haengt($w2), static fn(int $n): bool => $n !== 1));
+$pruefe('das andere Datum ist weg, samt Zusagen',
+    !$zeile($w1) && !row('SELECT 1 FROM attendance WHERE event_id = ?', [$w1]));
+$pruefe('das gewählte ist ein gewöhnlicher angefragter Termin',
+    choice_group($w2) === 0 && ($zeile($w2)['status'] ?? '') === 'angefragt');
+$pruefe('die Band erfährt es mit einer Mitteilung', $post() === $vorherPost + 1);
+$pruefe('zweimal wählen ändert nichts', choice_choose($w2, 1) === false && $zeile($w2));
+
+// Dieselbe Aushilfe an beiden Daten: Am Ende bleibt eine Anfrage.
+$x1 = $termin($tag(210));
+$x2 = (int) (choice_add_dates($x1, [$tag(211)], 1)[0] ?? 0);
+foreach ([$x1, $x2] as $nr) {
+    q('INSERT INTO substitute_requests (event_id, user_id, for_user_id, requested_by) VALUES (?,?,?,1)',
+      [$nr, $aushilfe, $mitglied]);
+}
+choice_choose($x2, 1);
+$pruefe('dieselbe Aushilfe an beiden Daten: eine Anfrage bleibt',
+    (int) row('SELECT COUNT(*) n FROM substitute_requests WHERE user_id = ?', [$aushilfe])['n'] === 1
+    && row('SELECT 1 FROM substitute_requests WHERE event_id = ? AND user_id = ?', [$x2, $aushilfe]));
+
+// Das erste Datum löschen: Die anderen bleiben eine Auswahl.
+$y1 = $termin($tag(220));
+[$y2, $y3] = array_map('intval', choice_add_dates($y1, [$tag(221), $tag(222)], 1));
+event_delete($y1);
+choice_prune($y1);
+$pruefe('erstes Datum gelöscht: die anderen bleiben eine Auswahl',
+    !$zeile($y1) && choice_group($y2) === $y1 && choice_group($y3) === $y1);
+$pruefe('und lassen sich wählen', choice_choose($y3, 1) && !$zeile($y2));
+
+// Ein Datum ist verstrichen, bevor jemand wählt: Es bleibt stehen.
+$z1 = $termin($tag(230));
+[$z2, $z3] = array_map('intval', choice_add_dates($z1, [$tag(231), $tag(232)], 1));
+q('UPDATE events SET date = ? WHERE id = ?', [date('Y-m-d', strtotime('-1 day')), $z1]);
+choice_choose($z3, 1);
+$pruefe('ein verstrichenes Datum wird beim Wählen nicht gelöscht', (bool) $zeile($z1) && !$zeile($z2));
+
+$pruefe('die Route kennt „waehlen“ und prüft das Schreibrecht',
+    str_contains($quelle, '|waehlen)$~')
+    && (bool) preg_match("~if \(\\$action === 'waehlen'\) \{\s*if \(!perm_allows\(\\$me, 'termine', 'write'\)\)~", $quelle));
+$pruefe('Löschen räumt die Auswahl auf',
+    (bool) preg_match('~\$evWahlGruppe = choice_group\(\(int\) \$id\);\s*event_delete\(\(int\) \$id\);\s*if \(\$evWahlGruppe\) choice_prune\(\$evWahlGruppe\);~', $quelle));
 
 // ------------------------------------------- Ende
 $aufraeumen();
