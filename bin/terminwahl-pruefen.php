@@ -377,7 +377,7 @@ $pruefe('die eigene Antwort ist hervorgehoben',
 $pruefe('der Stand je Datum steht in einem eigenen Teil',
     substr_count($html, 'class="choice-stand"') === 2);
 $pruefe('zusage.js lässt die Zeile stehen und frischt den Stand auf',
-    (bool) preg_match('~dataset\.stay~', (string) file_get_contents(BASE_DIR . '/httpdocs/assets/zusage.js'))
+    str_contains((string) file_get_contents(BASE_DIR . '/httpdocs/assets/zusage.js'), "'stay' in form.dataset")
     && str_contains((string) file_get_contents(BASE_DIR . '/httpdocs/assets/zusage.js'), '.choice-stand'));
 $html = $blockHtml(row('SELECT * FROM users WHERE id = ?', [$aushilfe]));
 $pruefe('eine Aushilfe sieht keinen Wahlknopf und nur ihr Datum',
