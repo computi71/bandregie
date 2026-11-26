@@ -1,0 +1,127 @@
+<?php
+// Ein Termin mit mehreren möglichen Daten (#443).
+//
+// Jedes Datum ist ein gewöhnlicher Termin, verknüpft über events.choice_of.
+// Was hier geprüft wird, kann auf zwei Arten schiefgehen, und beide sieht man
+// der Liste nicht an: Ein Datum gehört nicht mehr zur Auswahl, obwohl es soll
+// — dann wählt jemand und ein Termin bleibt verwaist stehen. Oder beim Wählen
+// geht etwas verloren, das an einem der anderen Daten hing: der Vertrag, die
+// Mail des Veranstalters, ein Kommentar.
+//
+// SIE SCHREIBT TESTDATEN und läuft deshalb nur auf dem Entwicklungsserver, nie
+// auf einer Bandinstanz. Als Webnutzer starten:
+//
+//   sudo -u www-data php bin/terminwahl-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten
+//
+// Rückgabewert 0, wenn alles stimmt, sonst 1.
+declare(strict_types=1);
+
+$basis = $argv[1] ?? '';
+if ($basis === '' || !in_array('--schreibt-testdaten', $argv, true)) {
+    fwrite(STDERR, "Aufruf: php bin/terminwahl-pruefen.php <Verzeichnis> --schreibt-testdaten\n");
+    exit(2);
+}
+chdir($basis);
+require $basis . '/app/bootstrap.php';
+
+$ok = 0;
+$fehler = 0;
+$pruefe = static function (string $was, bool $erfuellt) use (&$ok, &$fehler): void {
+    printf("%-66s %s%s", $was, $erfuellt ? 'ok' : 'FEHLER', PHP_EOL);
+    $erfuellt ? $ok++ : $fehler++;
+};
+
+/** Termine der Testläufe weg, samt allem, was an ihnen hängt. */
+$aufraeumen = static function (): void {
+    foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZTW %'") as $r) {
+        $nr = (int) $r['id'];
+        foreach (['attendance', 'comments', 'event_equipment', 'event_songs', 'substitute_requests',
+                  'guest_bookings', 'event_time_confirms'] as $tab) {
+            q("DELETE FROM `$tab` WHERE event_id = ?", [$nr]);
+        }
+        q('DELETE FROM events WHERE id = ?', [$nr]);
+        item_forget('event', $nr);
+    }
+    q("DELETE FROM users WHERE name LIKE 'ZZTW %' AND email LIKE '%@example.invalid'");
+};
+$aufraeumen();
+
+$heute = date('Y-m-d');
+$tag = static fn(int $tage): string => date('Y-m-d', strtotime("+$tage days"));
+$konten = [];
+$konto = static function (string $name, string $rolle = 'member', ?int $fuer = null) use (&$konten): int {
+    q('INSERT INTO users (name, email, password_hash, role, substitute_for) VALUES (?,?,?,?,?)',
+      [$name, strtolower(str_replace(' ', '', $name)) . '@example.invalid', '', $rolle, $fuer]);
+    return $konten[] = (int) $GLOBALS['db']->lastInsertId();
+};
+$termin = static function (string $datum, string $stand = 'angefragt', string $art = 'gig'): int {
+    q("INSERT INTO events (type, title, date, status, created_by, time, notes, venue_id)
+       VALUES (?, 'ZZTW Anfrage', ?, ?, 1, '20:00', 'Notiz', NULL)", [$art, $datum, $stand]);
+    return (int) $GLOBALS['db']->lastInsertId();
+};
+$zeile = static fn(int $nr): array => row('SELECT * FROM events WHERE id = ?', [$nr]) ?? [];
+$antwortet = static function (int $ev, int $wer, string $wie): void {
+    q('INSERT INTO attendance (event_id, user_id, status) VALUES (?,?,?)
+       ON DUPLICATE KEY UPDATE status = VALUES(status)', [$ev, $wer, $wie]);
+};
+$alleJa = static function (int $ev) use ($antwortet): void {
+    foreach (event_answerers($ev) as $u) $antwortet($ev, (int) $u['id'], 'yes');
+};
+
+$mitglied = $konto('ZZTW Mitglied');
+
+// ------------------------------------------- 1. Anlegen
+$a = $termin($tag(130), 'bestaetigt');
+$geraet = row('SELECT id FROM equipment ORDER BY id LIMIT 1');
+$lied = row('SELECT id FROM songs ORDER BY id LIMIT 1');
+if ($geraet) q('INSERT INTO event_equipment (event_id, equipment_id) VALUES (?,?)', [$a, $geraet['id']]);
+if ($lied) q('INSERT INTO event_songs (event_id, song_id) VALUES (?,?)', [$a, $lied['id']]);
+
+$neu = choice_add_dates($a, [$tag(130), $tag(137), $tag(137), '2020-01-01', '2027-02-30', 'x'], 1);
+$pruefe('genau ein neues Datum (doppelt, vergangen, kaputt verworfen)', count($neu) === 1);
+$b = (int) ($neu[0] ?? 0);
+$pruefe('das neue Datum ist das gewünschte', ($zeile($b)['date'] ?? '') === $tag(137));
+$pruefe('beide tragen die Auswahl des ersten',
+    (int) $zeile($a)['choice_of'] === $a && (int) ($zeile($b)['choice_of'] ?? 0) === $a);
+$pruefe('beide stehen auf „Angefragt“, auch das vorher bestätigte',
+    $zeile($a)['status'] === 'angefragt' && ($zeile($b)['status'] ?? '') === 'angefragt');
+$pruefe('Titel, Art, Zeit und Notiz sind übernommen',
+    ($zeile($b)['title'] ?? '') === 'ZZTW Anfrage' && ($zeile($b)['type'] ?? '') === 'gig'
+    && ($zeile($b)['time'] ?? '') === '20:00' && ($zeile($b)['notes'] ?? '') === 'Notiz');
+$pruefe('Technik und Lieder sind übernommen',
+    (!$geraet || row('SELECT 1 FROM event_equipment WHERE event_id = ?', [$b]))
+    && (!$lied || row('SELECT 1 FROM event_songs WHERE event_id = ?', [$b])));
+$einzeln = $termin($tag(150));
+$pruefe('choice_group nennt die Auswahl, beim Einzeltermin 0',
+    choice_group($b) === $a && choice_group($einzeln) === 0 && choice_dates($einzeln) === []);
+$pruefe('choice_dates listet beide nach Datum',
+    array_map('intval', array_column(choice_dates($b), 'id')) === [$a, $b]);
+
+$karte = choice_map([$a, $b]);
+$pruefe('choice_map: eine Auswahl mit zwei Daten', count($karte) === 1 && count($karte[$a]['dates'] ?? []) === 2);
+$alleJa($b);
+$karte = choice_map([$a, $b]);
+$daten = array_column($karte[$a]['dates'] ?? [], null, 'id');
+$pruefe('wo alle ja sagen, ist das Datum hervorgehoben',
+    ($daten[$b]['all_yes'] ?? false) === true && ($daten[$a]['all_yes'] ?? true) === false);
+$pruefe('und die Zahlen stimmen', ($daten[$b]['yes'] ?? 0) === count(event_answerers($b))
+    && ($daten[$b]['open'] ?? 1) === 0 && ($daten[$a]['open'] ?? 0) === count(event_answerers($a)));
+
+// Ein drittes Datum dazu, dann verstreicht eines.
+$c = (int) (choice_add_dates($b, [$tag(144)], 1)[0] ?? 0);
+$pruefe('ein weiteres Datum landet in derselben Auswahl', choice_group($c) === $a);
+q('UPDATE events SET date = ? WHERE id = ?', [date('Y-m-d', strtotime('-1 day')), $c]);
+choice_prune($a);
+$pruefe('ein verstrichenes Datum fällt heraus', choice_group($c) === 0 && choice_group($b) === $a);
+q('UPDATE events SET date = ? WHERE id = ?', [date('Y-m-d', strtotime('-1 day')), $b]);
+choice_prune($a);
+$pruefe('bleibt eines übrig, ist es ein gewöhnlicher Termin', choice_group($a) === 0);
+
+// ------------------------------------------- Ende
+$aufraeumen();
+$reste = (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZTW%'")['n']
+       + (int) row("SELECT COUNT(*) n FROM users WHERE name LIKE 'ZZTW%'")['n'];
+$pruefe('keine Testdaten zurückgelassen', $reste === 0);
+
+printf('%s%d ok, %d Fehler%s', PHP_EOL, $ok, $fehler, PHP_EOL);
+exit($fehler ? 1 : 0);
