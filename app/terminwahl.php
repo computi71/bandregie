@@ -194,49 +194,83 @@ function choice_push_new(int $eventId, array $ids, int $by): void {
 }
 
 /**
+ * Der Stand eines Datums vor dem Speichern — damit choice_sync() weiß, was
+ * sich wirklich geändert hat.
+ *
+ * @return array{row: array, gear: int[], songs: int[], proposal: ?array}
+ */
+function choice_snapshot(int $eventId): array {
+  $ids = static fn(string $sql): array => array_map('intval', array_column(rows($sql, [$eventId]), 'x'));
+  $vorschlag = event_time_proposal($eventId);
+  return [
+    'row' => row('SELECT * FROM events WHERE id = ?', [$eventId]) ?? [],
+    'gear' => $ids('SELECT equipment_id x FROM event_equipment WHERE event_id = ? ORDER BY equipment_id'),
+    'songs' => $ids('SELECT song_id x FROM event_songs WHERE event_id = ? ORDER BY song_id'),
+    'proposal' => $vorschlag ? choice_proposed_times($vorschlag) : null,
+  ];
+}
+
+/**
  * Was an einem Datum geändert wurde, gilt für die ganze Auswahl.
  *
  * Titel, Ort, Zeiten, Notizen, Technik und Lieder sind eine Anfrage, nicht
  * drei; wer den Ort am 10.4. korrigiert, meint auch den 17.4. Das Datum
  * selbst und der Stand bleiben je Datum.
  *
- * Fragt ein geänderter Ort oder eine neue Zeit neu (#402), oder wird eine
- * kleine Verschiebung zum Vorschlag (#413), geschieht das an jedem Datum —
- * aber still: Die Mitteilung kommt einmal, vom bearbeiteten Datum. Drei Daten
- * dürfen nicht drei Telefone je Speichern wecken.
+ * Übertragen wird nur, was sich bei diesem Speichern geändert hat, nicht die
+ * ganze Zeile. Die Zeiten der Daten dürfen nämlich auseinanderlaufen: Eine
+ * kleine Verschiebung gilt an einem Datum ohne Zusagen sofort und wartet am
+ * anderen auf Bestätigung. Schriebe jedes Speichern alles hinüber, setzte ein
+ * Tippfehler in den Notizen dort die alte Zeit zurück und verwürfe still
+ * alle Antworten.
+ *
+ * Fragt eine Änderung neu (#402), oder wird eine kleine Verschiebung zum
+ * Vorschlag (#413), geschieht das an jedem Datum — aber still: Die
+ * Mitteilung kommt einmal, vom bearbeiteten Datum. Drei Daten dürfen nicht
+ * drei Telefone je Speichern wecken.
+ *
+ * @param array $vorher choice_snapshot() des bearbeiteten Datums vor dem Speichern
  */
-function choice_sync(int $sourceId, int $by): void {
-  $quelle = row('SELECT * FROM events WHERE id = ?', [$sourceId]);
-  if (!$quelle || !$quelle['choice_of']) return;
-  $set = implode(', ', array_map(static fn(string $s): string => "s.`$s` = q.`$s`",
-                                 array_diff(CHOICE_COPY_COLUMNS, ['status'])));
-  $vorschlag = event_time_proposal($sourceId);
+function choice_sync(int $sourceId, int $by, array $vorher): void {
+  $nachher = choice_snapshot($sourceId);
+  if (!($nachher['row']['choice_of'] ?? null)) return;
+  $spalten = array_values(array_filter(array_diff(CHOICE_COPY_COLUMNS, ['status']),
+    static fn(string $s): bool => (string) ($vorher['row'][$s] ?? '') !== (string) ($nachher['row'][$s] ?? '')));
+  $technik = ($vorher['gear'] ?? []) !== $nachher['gear'];
+  $lieder = ($vorher['songs'] ?? []) !== $nachher['songs'];
+  $vorschlag = $nachher['proposal'] !== null && $nachher['proposal'] !== ($vorher['proposal'] ?? null)
+    ? $nachher['proposal'] : null;
+  if (!$spalten && !$technik && !$lieder && !$vorschlag) return;
+  $set = implode(', ', array_map(static fn(string $s): string => "s.`$s` = q.`$s`", $spalten));
+  $vorschlagVon = (int) ($nachher['row']['time_proposed_by'] ?? $by);
+
   foreach (choice_dates($sourceId) as $d) {
     $nr = (int) $d['id'];
     if ($nr === $sourceId) continue;
     $abdruck = event_answer_fingerprint($nr);
-    item_update('event', $nr, static function () use ($nr, $sourceId, $set): void {
-      q("UPDATE events s JOIN events q ON q.id = ? SET $set WHERE s.id = ?", [$sourceId, $nr]);
-    }, $by);
-    q('DELETE FROM event_equipment WHERE event_id = ?', [$nr]);
-    q('INSERT INTO event_equipment (event_id, equipment_id)
-       SELECT ?, equipment_id FROM event_equipment WHERE event_id = ?', [$nr, $sourceId]);
-    q('DELETE FROM event_songs WHERE event_id = ?', [$nr]);
-    q('INSERT INTO event_songs (event_id, song_id)
-       SELECT ?, song_id FROM event_songs WHERE event_id = ?', [$nr, $sourceId]);
-    // Denselben Vorschlag nicht noch einmal stellen: Das verwürfe die
-    // Bestätigungen, die dort schon eingegangen sind.
-    $ihrer = event_time_proposal($nr);
-    $gleich = $vorschlag && $ihrer && choice_proposed_times($ihrer) === choice_proposed_times($vorschlag);
+    if ($spalten) {
+      item_update('event', $nr, static function () use ($nr, $sourceId, $set): void {
+        q("UPDATE events s JOIN events q ON q.id = ? SET $set WHERE s.id = ?", [$sourceId, $nr]);
+      }, $by);
+    }
+    if ($technik) {
+      q('DELETE FROM event_equipment WHERE event_id = ?', [$nr]);
+      q('INSERT INTO event_equipment (event_id, equipment_id)
+         SELECT ?, equipment_id FROM event_equipment WHERE event_id = ?', [$nr, $sourceId]);
+    }
+    if ($lieder) {
+      q('DELETE FROM event_songs WHERE event_id = ?', [$nr]);
+      q('INSERT INTO event_songs (event_id, song_id)
+         SELECT ?, song_id FROM event_songs WHERE event_id = ?', [$nr, $sourceId]);
+    }
     // Dieselbe Reihenfolge wie die Route am bearbeiteten Datum: Ein anderer
-    // Ort oder eine weite Verschiebung fragt neu, sonst wandert ein offener
+    // Ort oder eine weite Verschiebung fragt neu, sonst wandert ein neuer
     // Vorschlag mit.
     if (event_answer_fingerprint($nr) !== $abdruck) {
       event_time_clear($nr);
       event_answers_reset($nr, $by, false);
-    } elseif ($vorschlag && !$gleich) {
-      event_time_propose($nr, choice_proposed_times($vorschlag),
-        (int) ($vorschlag['time_proposed_by'] ?? $by), false);
+    } elseif ($vorschlag) {
+      event_time_propose($nr, $vorschlag, $vorschlagVon, false);
     }
   }
 }
@@ -249,39 +283,81 @@ function choice_proposed_times(array $vorschlag): array {
 }
 
 /**
+ * Der Name des Schlosses, unter dem eine Auswahl gewählt wird.
+ *
+ * Mit dem Namen der Datenbank, weil sich mehrere Installationen einen
+ * MariaDB-Server teilen und GET_LOCK serverweit gilt — wie beim Schema-Lauf.
+ */
+function choice_lock_name(int $groupId): string {
+  return 'bandregie_wahl_' . (string) row('SELECT DATABASE() AS d')['d'] . '_' . $groupId;
+}
+
+/**
  * Ein Datum wählen: Es bleibt, die anderen gehen.
  *
  * Was an den anderen Daten hing und nicht nur zu diesem Tag gehört, wandert
  * zum gewählten: die Unterhaltung, Vertrag, Angebot, Rechnung, Fotos,
- * Dateien, die Mail des Veranstalters, Buchungen, Gästeliste und die Bitte an
- * eine Aushilfe. Sonst verschwände mit einem Datum, das nur zufällig das erste
- * war, der Vertrag. Zusagen, Technik und Lieder des anderen Tages gehen mit
- * ihm — sie beantworten eine Frage, die es nicht mehr gibt.
+ * Dateien, die Mail des Veranstalters, Buchungen, Gästeliste, die Bitte an
+ * eine Aushilfe, verknüpfte Aufgaben (#335) und die Markierung „wichtig"
+ * (#333). Sonst verschwände mit einem Datum, das nur zufällig das erste war,
+ * der Vertrag. Zusagen, Technik und Lieder des anderen Tages gehen mit ihm —
+ * sie beantworten eine Frage, die es nicht mehr gibt.
+ *
+ * Unter einem Schloss und in einer Transaktion: Drücken zwei Leute zugleich
+ * bei verschiedenen Daten, verschöbe sonst der eine die Kommentare zu B, der
+ * andere sie zurück zu A, und am Ende löschte jeder das Datum des anderen
+ * samt allem, was gerade dorthin gewandert war. Wer das Schloss nicht
+ * bekommt, ändert nichts.
  *
  * Ein Datum, das schon verstrichen ist, fällt vorher aus der Auswahl und
  * bleibt stehen: Gelöscht wird nur, was noch zur Wahl stand.
  *
  * @return bool false, wenn der Termin zu keiner Auswahl (mehr) gehört — etwa
- *              weil jemand anderes gerade schon gewählt hat
+ *              weil jemand anderes gerade gewählt hat oder noch wählt
  */
 function choice_choose(int $chosenId, int $by): bool {
-  $daten = choice_dates($chosenId);
-  if (!$daten) return false;
-  foreach ($daten as $d) {
-    $alt = (int) $d['id'];
-    if ($alt === $chosenId) continue;
-    foreach (['comments', 'contracts', 'quotes', 'sales_invoices', 'photos', 'od_folders',
-              'guest_bookings', 'post_messages', 'finances'] as $tabelle) {
-      q("UPDATE `$tabelle` SET event_id = ? WHERE event_id = ?", [$chosenId, $alt]);
+  $gruppe = choice_group($chosenId);
+  if (!$gruppe) return false;
+  $schloss = choice_lock_name($gruppe);
+  if ((int) (row('SELECT GET_LOCK(?, 5) AS da', [$schloss])['da'] ?? 0) !== 1) return false;
+  $db = $GLOBALS['db'];
+  try {
+    $db->beginTransaction();
+    // Erst im Schloss gelesen: Wer davor gewählt hat, hat diese Auswahl schon
+    // aufgelöst, und dann gibt es hier nichts mehr zu tun.
+    $daten = choice_dates($chosenId);
+    if (!$daten) {
+      $db->rollBack();
+      return false;
     }
-    q("UPDATE files SET entity_id = ? WHERE entity_type = 'event' AND entity_id = ?", [$chosenId, $alt]);
-    // Wer für beide Daten gefragt war, bleibt einmal gefragt.
-    q('UPDATE IGNORE substitute_requests SET event_id = ? WHERE event_id = ?', [$chosenId, $alt]);
-    event_delete($alt);
+    foreach ($daten as $d) {
+      $alt = (int) $d['id'];
+      if ($alt === $chosenId) continue;
+      foreach (['comments', 'contracts', 'quotes', 'sales_invoices', 'photos', 'od_folders',
+                'guest_bookings', 'post_messages', 'finances'] as $tabelle) {
+        q("UPDATE `$tabelle` SET event_id = ? WHERE event_id = ?", [$chosenId, $alt]);
+      }
+      q("UPDATE files SET entity_id = ? WHERE entity_type = 'event' AND entity_id = ?", [$chosenId, $alt]);
+      // Was es am gewählten Datum schon gibt, bleibt dort einmal: dieselbe
+      // Aushilfe, dieselbe Aufgabe, die Markierung. Der Rest des anderen
+      // Datums geht mit ihm.
+      q('UPDATE IGNORE substitute_requests SET event_id = ? WHERE event_id = ?', [$chosenId, $alt]);
+      foreach (['task_links', 'important_flags'] as $tabelle) {
+        q("UPDATE IGNORE `$tabelle` SET item_id = ? WHERE kind = 'event' AND item_id = ?", [$chosenId, $alt]);
+        q("DELETE FROM `$tabelle` WHERE kind = 'event' AND item_id = ?", [$alt]);
+      }
+      event_delete($alt);
+    }
+    item_update('event', $chosenId, static function () use ($chosenId): void {
+      q('UPDATE events SET choice_of = NULL WHERE id = ?', [$chosenId]);
+    }, $by);
+    $db->commit();
+  } catch (Throwable $fehler) {
+    if ($db->inTransaction()) $db->rollBack();
+    throw $fehler;
+  } finally {
+    row('SELECT RELEASE_LOCK(?) AS los', [$schloss]);
   }
-  item_update('event', $chosenId, static function () use ($chosenId): void {
-    q('UPDATE events SET choice_of = NULL WHERE id = ?', [$chosenId]);
-  }, $by);
   $ev = row('SELECT id, title, date, status FROM events WHERE id = ?', [$chosenId]);
   $titel = (string) $ev['title'];
   $datum = (string) $ev['date'];

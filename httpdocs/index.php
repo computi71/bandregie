@@ -1178,6 +1178,9 @@ if (str_starts_with($path, '/intern')) {
     if ($action === 'update') {
       // In einer Auswahl steht der Stand fest (#443), egal was gepostet wurde.
       $_POST['status'] = choice_forced_status((int) $id, (string) ($_POST['status'] ?? ''));
+      // Der Stand vor dem Speichern: Hinüber zu den anderen Daten geht nur, was
+      // sich jetzt wirklich ändert (#443).
+      $evWahlVorher = choice_snapshot((int) $id);
       $evStandVorher = (string) (row('SELECT status FROM events WHERE id = ?', [$id])['status'] ?? '');
       // Datum, Zeiten und Ort von vorher (#402): Aendert sich eines davon,
       // beantworten die vorhandenen Zusagen eine Frage, die es nicht mehr
@@ -1253,7 +1256,7 @@ if (str_starts_with($path, '/intern')) {
       // Die anderen Daten derselben Auswahl ziehen mit (#443). Erst hier, nach
       // Neufragen und Zeitvorschlag: Der Abgleich liest den Stand, den das
       // bearbeitete Datum am Ende hat.
-      choice_sync((int) $id, (int) $me['id']);
+      choice_sync((int) $id, (int) $me['id'], $evWahlVorher);
       // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und
       // aus einer Anfrage wird ein Auftritt, für den man sich freihalten muss.
       // Deshalb geht der Stand hinaus, und nur er: Eine Mitteilung bei jedem
