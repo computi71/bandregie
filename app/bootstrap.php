@@ -4718,6 +4718,39 @@ function event_answers_reset(int $eventId, int $durch, bool $mitteilen = true): 
   return count($zeilen);
 }
 
+/**
+ * Einen Termin löschen, samt dem, was nur zu ihm gehört.
+ *
+ * Aus der Route herausgezogen (#443): Auch das Wählen eines Datums löscht die
+ * anderen, und zwei Kopien der Löschregel liefen beim nächsten Nachtrag
+ * auseinander. Die Lieder einer Probe (#390) gehen jetzt mit; vorher blieben
+ * sie als Zeilen ohne Termin liegen.
+ */
+function event_delete(int $id): void {
+  item_forget('event', $id);
+  q('DELETE FROM events WHERE id = ?', [$id]);
+  foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
+    item_forget('attendance', (int) $zAlt['id']);
+  }
+  q('DELETE FROM attendance WHERE event_id = ?', [$id]);
+  // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
+  // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
+  // gesehen - und der taucht dann bei niemandem als neu auf.
+  foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
+    item_forget('comment', (int) $kAlt['id']);
+  }
+  q('DELETE FROM comments WHERE event_id = ?', [$id]);
+  q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
+  q('DELETE FROM event_songs WHERE event_id = ?', [$id]);
+  q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
+  // Die Buchungen der Gäste gehen mit dem Termin; die Gäste selbst bleiben
+  // in der Kontaktliste (#294).
+  q('DELETE FROM guest_bookings WHERE event_id = ?', [$id]);
+  // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
+  // den es nicht mehr gibt.
+  q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
+}
+
 // ------------------------------------------------------------------
 // Eine kleine Zeitverschiebung ist ein Vorschlag (#413)
 

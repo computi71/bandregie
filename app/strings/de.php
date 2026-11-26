@@ -442,6 +442,8 @@ const UI_STRINGS = [
   'ev_extra_dates' => 'Weitere mögliche Daten', 'ev_extra_dates_add' => '+ Datum',
   'ev_extra_dates_hint' => 'Jedes Datum wird ein eigener Termin zur Wahl. Jeder sagt je Datum zu oder ab, danach wählt ihr eines.',
   'ev_choice' => 'Zur Wahl',
+  'ev_choice_take' => 'Dieses Datum nehmen',
+  'ev_choice_take_confirm' => 'Dieses Datum nehmen? Die anderen Daten werden gelöscht; Kommentare, Vertrag, Mails und Dateien wandern hierher.',
   'ev_comments' => 'Kommentare', 'ev_comment_ph' => 'Kommentar schreiben ...',
   'ev_locked' => 'Vergangener Termin — fixiert für die Historie.',
   'ev_delete' => 'Termin löschen', 'ev_none' => 'Noch keine Termine.',
@@ -1081,6 +1083,8 @@ const UI_STRINGS = [
   // Flash-Meldungen
   'fl_title_date_required' => 'Titel und Datum sind Pflicht.',
   'fl_choice_dates_closed' => 'Weitere Daten gehen nur bei angefragten oder reservierten Terminen.',
+  'fl_choice_taken' => 'Entschieden. Die anderen Daten sind gelöscht.',
+  'fl_choice_not_open' => 'Dieser Termin steht nicht mehr zur Wahl.',
   'fl_locked_event' => 'Vergangene Termine sind fixiert und können nicht mehr geändert oder gelöscht werden.',
   'fl_song_played' => 'Dieser Song wurde schon live gespielt und bleibt für die Historie erhalten — stattdessen auf „Aussortiert" setzen.',
   'fl_setlist_locked' => 'Diese Setlist wurde bereits live gespielt und ist fixiert — zum Ändern bitte kopieren.',
@@ -1435,6 +1439,8 @@ Zeile zwei
   'push_ev_wobbles_body' => '%1 hat abgesagt. Der Termin steht jetzt auf „Angefragt“.',
   'push_ev_choice_new' => 'Zur Wahl: %1',
   'push_ev_choice_new_body' => '%1 – wann könnt ihr?',
+  'push_ev_choice_done' => 'Entschieden: %1',
+  'push_ev_choice_done_body' => 'am %1',
   // Mitteilung, wenn jemand für eine Aufgabe zuständig gemacht wird (#421).
   // Vorher erfuhr das niemand: Die Aufgabe stand in der Übersicht, aber nur
   // für den, der hinsah.

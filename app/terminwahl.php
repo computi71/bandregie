@@ -247,3 +247,49 @@ function choice_proposed_times(array $vorschlag): array {
           'time_meet' => (string) $vorschlag['time_meet_proposed'],
           'time_end' => (string) $vorschlag['time_end_proposed']];
 }
+
+/**
+ * Ein Datum wählen: Es bleibt, die anderen gehen.
+ *
+ * Was an den anderen Daten hing und nicht nur zu diesem Tag gehört, wandert
+ * zum gewählten: die Unterhaltung, Vertrag, Angebot, Rechnung, Fotos,
+ * Dateien, die Mail des Veranstalters, Buchungen, Gästeliste und die Bitte an
+ * eine Aushilfe. Sonst verschwände mit einem Datum, das nur zufällig das erste
+ * war, der Vertrag. Zusagen, Technik und Lieder des anderen Tages gehen mit
+ * ihm — sie beantworten eine Frage, die es nicht mehr gibt.
+ *
+ * Ein Datum, das schon verstrichen ist, fällt vorher aus der Auswahl und
+ * bleibt stehen: Gelöscht wird nur, was noch zur Wahl stand.
+ *
+ * @return bool false, wenn der Termin zu keiner Auswahl (mehr) gehört — etwa
+ *              weil jemand anderes gerade schon gewählt hat
+ */
+function choice_choose(int $chosenId, int $by): bool {
+  $daten = choice_dates($chosenId);
+  if (!$daten) return false;
+  foreach ($daten as $d) {
+    $alt = (int) $d['id'];
+    if ($alt === $chosenId) continue;
+    foreach (['comments', 'contracts', 'quotes', 'sales_invoices', 'photos', 'od_folders',
+              'guest_bookings', 'post_messages', 'finances'] as $tabelle) {
+      q("UPDATE `$tabelle` SET event_id = ? WHERE event_id = ?", [$chosenId, $alt]);
+    }
+    q("UPDATE files SET entity_id = ? WHERE entity_type = 'event' AND entity_id = ?", [$chosenId, $alt]);
+    // Wer für beide Daten gefragt war, bleibt einmal gefragt.
+    q('UPDATE IGNORE substitute_requests SET event_id = ? WHERE event_id = ?', [$chosenId, $alt]);
+    event_delete($alt);
+  }
+  item_update('event', $chosenId, static function () use ($chosenId): void {
+    q('UPDATE events SET choice_of = NULL WHERE id = ?', [$chosenId]);
+  }, $by);
+  $ev = row('SELECT id, title, date, status FROM events WHERE id = ?', [$chosenId]);
+  $titel = (string) $ev['title'];
+  $datum = (string) $ev['date'];
+  $url = event_url($ev);
+  push_notify('events', $by, static fn(string $lang): array => [
+    'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_choice_done')),
+    'body'  => str_replace('%1', fmt_date_lang($datum, $lang), push_t($lang, 'push_ev_choice_done_body')),
+    'url'   => $url,
+  ], $chosenId);
+  return true;
+}

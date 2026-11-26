@@ -1153,7 +1153,7 @@ if (str_starts_with($path, '/intern')) {
     redirect('/intern/termine');
   }
 
-  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg)$~', $path, $m) && $method === 'POST') {
+  if (preg_match('~^/intern/termine/(\d+)/(update|delete|zusage|kommentar|zeit-ok|zeit-weg|waehlen)$~', $path, $m) && $method === 'POST') {
     [$_, $id, $action] = $m;
     // Einmal fuer alle Handlungen an einem Termin (#414): Darf dieses Konto
     // ihn ueberhaupt sehen?
@@ -1171,7 +1171,7 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_no_permission'));
       redirect('/intern/termine');
     }
-    if (in_array($action, ['update', 'delete'], true) && event_locked((int) $id)) {
+    if (in_array($action, ['update', 'delete', 'waehlen'], true) && event_locked((int) $id)) {
       flash(t('fl_locked_event'));
       redirect('/intern/termine?alle=1');
     }
@@ -1288,28 +1288,21 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine');
     }
     if ($action === 'delete') {
-      item_forget('event', (int) $id);
-      q('DELETE FROM events WHERE id = ?', [$id]);
-      foreach (rows('SELECT id FROM attendance WHERE event_id = ?', [$id]) as $zAlt) {
-        item_forget('attendance', (int) $zAlt['id']);
-      }
-      q('DELETE FROM attendance WHERE event_id = ?', [$id]);
-      // Erst die Marken, dann die Kommentare: Eine Marke auf eine vergebene
-      // Nummer gilt beim nächsten Kommentar mit derselben Nummer als längst
-      // gesehen - und der taucht dann bei niemandem als neu auf.
-      foreach (rows('SELECT id FROM comments WHERE event_id = ?', [$id]) as $kAlt) {
-        item_forget('comment', (int) $kAlt['id']);
-      }
-      q('DELETE FROM comments WHERE event_id = ?', [$id]);
-      q('DELETE FROM event_equipment WHERE event_id = ?', [$id]);
-      q('DELETE FROM substitute_requests WHERE event_id = ?', [$id]);
-      // Die Buchungen der Gäste gehen mit dem Termin; die Gäste selbst bleiben
-      // in der Kontaktliste (#294).
-      q('DELETE FROM guest_bookings WHERE event_id = ?', [$id]);
-      // Fotos bleiben, ihre Zuordnung nicht: sonst zeigte sie auf einen Termin,
-      // den es nicht mehr gibt.
-      q('UPDATE photos SET event_id = NULL WHERE event_id = ?', [$id]);
+      // Gehört das Datum zu einer Auswahl (#443), steht danach vielleicht nur
+      // noch eines da — und eine Wahl aus einem ist keine.
+      $evWahlGruppe = choice_group((int) $id);
+      event_delete((int) $id);
+      if ($evWahlGruppe) choice_prune($evWahlGruppe);
       redirect('/intern/termine');
+    }
+    // Ein Datum der Auswahl nehmen (#443). Die zentrale Wache verlangt für
+    // jedes POST hier schon Schreibrecht; die Prüfung steht trotzdem da, weil
+    // dieser Knopf die anderen Daten löscht — das darf nicht an einer
+    // Ausnahmeliste weiter oben hängen.
+    if ($action === 'waehlen') {
+      if (!perm_allows($me, 'termine', 'write')) { flash(t('fl_no_permission')); back('/intern/termine'); }
+      flash(t(choice_choose((int) $id, (int) $me['id']) ? 'fl_choice_taken' : 'fl_choice_not_open'));
+      redirect(event_url(row('SELECT id, date, status FROM events WHERE id = ?', [$id]) ?? ['id' => 0, 'date' => '']));
     }
     // Eine vorgeschlagene Zeit bestaetigen (#413). Selbstbedienung wie die
     // Zusage: Wer Termine nur lesen darf, darf trotzdem sagen, dass ihm die
