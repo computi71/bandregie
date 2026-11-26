@@ -117,6 +117,51 @@ q('UPDATE events SET date = ? WHERE id = ?', [date('Y-m-d', strtotime('-1 day'))
 choice_prune($a);
 $pruefe('bleibt eines übrig, ist es ein gewöhnlicher Termin', choice_group($a) === 0);
 
+// ------------------------------------------- 2. Formular und Route
+$quelle = (string) file_get_contents($basis . '/httpdocs/index.php');
+$pruefe('Anlegen hängt die weiteren Daten an',
+    (bool) preg_match('~choice_add_dates\(\$newEventId, \(array\) \(\$_POST\[\'extra_dates\'\]~', $quelle));
+$pruefe('Ändern hängt sie nur nach der Statusprüfung an',
+    (bool) preg_match('~if \(choice_may_add_dates\([^;]*\{[^}]*choice_add_dates\(\(int\) \$id~s', $quelle));
+$pruefe('beim Ändern erzwingt die Route den Stand der Auswahl',
+    str_contains($quelle, "\$_POST['status'] = choice_forced_status((int) \$id"));
+
+$d = $termin($tag(160));
+$pruefe('Daten nachtragen: bei „Angefragt“ ja', choice_may_add_dates($zeile($d)));
+q("UPDATE events SET status = 'reserviert' WHERE id = ?", [$d]);
+$pruefe('bei „Reserviert“ ja', choice_may_add_dates($zeile($d)));
+foreach (['bestaetigt', 'abgesagt', 'blockiert'] as $stand) {
+    q('UPDATE events SET status = ? WHERE id = ?', [$stand, $d]);
+    $pruefe("bei „$stand“ nein", !choice_may_add_dates($zeile($d)));
+}
+q("UPDATE events SET status = 'angefragt', date = ? WHERE id = ?", [date('Y-m-d', strtotime('-2 days')), $d]);
+$pruefe('bei einem vergangenen Termin nein', !choice_may_add_dates($zeile($d)));
+
+$e = $termin($tag(170));
+$f = (int) (choice_add_dates($e, [$tag(171)], 1)[0] ?? 0);
+$pruefe('in der Auswahl bleibt der Stand „Angefragt“', choice_forced_status($f, 'bestaetigt') === 'angefragt');
+$pruefe('außerhalb gilt, was gewählt wurde', choice_forced_status($einzeln, 'bestaetigt') === 'bestaetigt');
+
+$admin = row("SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+$karteHtml = static function (int $nr) use ($admin): string {
+    extract(event_view_data([row('SELECT * FROM events WHERE id = ?', [$nr])], $admin));
+    $ev = $events[0];
+    $user = $me = $admin;
+    $evGruppe = 'pruef';
+    $evOpen = true;
+    ob_start();
+    require BASE_DIR . '/app/views/intern/_event_card.php';
+    return (string) ob_get_clean();
+};
+$html = $karteHtml($f);
+$pruefe('die Karte zeigt „Zur Wahl“ statt der Statusauswahl',
+    str_contains($html, 'ev-choice') && !str_contains($html, '<select name="status"'));
+$pruefe('und bietet weitere Daten an', str_contains($html, 'name="extra_dates[]"'));
+q("UPDATE events SET status = 'bestaetigt' WHERE id = ?", [$einzeln]);
+$html = $karteHtml($einzeln);
+$pruefe('beim bestätigten Einzeltermin: Statusauswahl, keine weiteren Daten',
+    str_contains($html, '<select name="status"') && !str_contains($html, 'name="extra_dates[]"'));
+
 // ------------------------------------------- Ende
 $aufraeumen();
 $reste = (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZTW%'")['n']
