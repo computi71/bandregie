@@ -2078,6 +2078,14 @@ if (setting('migr_dropout_reset') === '') {
   set_setting('migr_dropout_reset', date('Y-m-d'));
 }
 
+// Mehrere mögliche Daten für einen Termin (#443). Jedes Datum ist ein eigener
+// Termin; diese Spalte hält sie als eine Auswahl zusammen. Nicht
+// alternative_for: Das heißt „Ersatz nach einer Absage" und weckt eine
+// Erinnerung, die bei einer Auswahl nichts zu suchen hat.
+if (!column_exists('events', 'choice_of')) {
+  $db->exec('ALTER TABLE events ADD COLUMN choice_of INT NULL, ADD INDEX idx_choice_of (choice_of)');
+}
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');

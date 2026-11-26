@@ -46,6 +46,8 @@ require_once __DIR__ . '/marks.php';
 require_once __DIR__ . '/tagesmail.php';
 // „Wichtig" (#333) braucht dieselben Bausteine wie die Tagesmail.
 require_once __DIR__ . '/wichtig.php';
+// Ein Termin mit mehreren möglichen Daten (#443): nur Funktionen.
+require_once __DIR__ . '/terminwahl.php';
 // Steuerliche Werte: seit die Nutzungsdauer am einzelnen Gerät steht, fragen
 // auch das Geräteformular und die Einstellungen danach — nicht mehr nur die
 // Steuerseite, die das Modul früher allein geladen hat.
