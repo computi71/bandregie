@@ -1250,6 +1250,10 @@ if (str_starts_with($path, '/intern')) {
           flash(str_replace('%1', (string) $evVerworfen, t('fl_answers_reset')));
         }
       }
+      // Die anderen Daten derselben Auswahl ziehen mit (#443). Erst hier, nach
+      // Neufragen und Zeitvorschlag: Der Abgleich liest den Stand, den das
+      // bearbeitete Datum am Ende hat.
+      choice_sync((int) $id, (int) $me['id']);
       // Eine Absage ruiniert jemandem den Samstag, wenn er sie übersieht — und
       // aus einer Anfrage wird ein Auftritt, für den man sich freihalten muss.
       // Deshalb geht der Stand hinaus, und nur er: Eine Mitteilung bei jedem

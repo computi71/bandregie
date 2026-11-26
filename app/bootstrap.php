@@ -4687,7 +4687,7 @@ function event_answer_fingerprint(int $eventId): string {
  *
  * @return int Wie viele Antworten verworfen wurden
  */
-function event_answers_reset(int $eventId, int $durch): int {
+function event_answers_reset(int $eventId, int $durch, bool $mitteilen = true): int {
   $zeilen = rows('SELECT id FROM attendance WHERE event_id = ?', [$eventId]);
   if (!$zeilen) {
     q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
@@ -4697,6 +4697,9 @@ function event_answers_reset(int $eventId, int $durch): int {
   q('DELETE FROM attendance WHERE event_id = ?', [$eventId]);
   q('UPDATE events SET answers_complete = 0 WHERE id = ?', [$eventId]);
 
+  // Ein anderes Datum derselben Auswahl fragt still neu (#443): Die eine
+  // Mitteilung kommt vom Datum, das gerade bearbeitet wurde.
+  if (!$mitteilen) return count($zeilen);
   // Und sagen, dass neu gefragt wird. Ohne diese Mitteilung merkt es niemand:
   // Die Zusage verschwindet still, und wer nicht zufällig auf die Übersicht
   // sieht, hält sich den Abend weiter frei — oder eben nicht mehr.
@@ -4836,13 +4839,16 @@ function event_time_clear(int $eventId): void {
  * zugesagt hatte, hat bestätigt, und wer nicht zugesagt hatte, hatte nichts
  * zu verlieren.
  */
-function event_time_apply(int $eventId): void {
+function event_time_apply(int $eventId, bool $mitteilen = true): void {
   $ev = event_time_proposal($eventId);
   if (!$ev) return;
   q('UPDATE events SET time = ?, time_meet = ?, time_end = ? WHERE id = ?',
     [(string) $ev['time_proposed'], (string) $ev['time_meet_proposed'],
      (string) $ev['time_end_proposed'], $eventId]);
   event_time_clear($eventId);
+  // Still, wenn das ein anderes Datum derselben Auswahl ist (#443): Die eine
+  // Mitteilung kommt vom Datum, das gerade bearbeitet wurde.
+  if (!$mitteilen) return;
 
   $titel = (string) $ev['title'];
   $datum = (string) $ev['date'];
@@ -4874,7 +4880,7 @@ function event_time_apply(int $eventId): void {
  *
  * @return int Wie viele noch bestätigen müssen; 0 heißt "gilt schon"
  */
-function event_time_propose(int $eventId, array $zeiten, int $durch): int {
+function event_time_propose(int $eventId, array $zeiten, int $durch, bool $mitteilen = true): int {
   $ev = row('SELECT id, type, title, date, status, time, time_meet, time_end
              FROM events WHERE id = ?', [$eventId]);
   if (!$ev) return 0;
@@ -4899,7 +4905,7 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
   }
   $offen = count(event_time_waiting($eventId));
   if ($offen === 0) {
-    event_time_apply($eventId);
+    event_time_apply($eventId, $mitteilen);
     return 0;
   }
 
@@ -4907,6 +4913,7 @@ function event_time_propose(int $eventId, array $zeiten, int $durch): int {
   $datum = (string) $ev['date'];
   $alt = event_time_label($ev);
   $neu = event_time_label($zeiten);
+  if (!$mitteilen) return $offen;   // anderes Datum derselben Auswahl (#443)
   // In die Übersicht (#421): Dort steht seit #418 der Knopf „Passt".
   $url = answer_url('zeit', $eventId);
   $empfaenger = array_values(array_filter(event_invited($eventId),

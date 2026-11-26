@@ -192,3 +192,58 @@ function choice_push_new(int $eventId, array $ids, int $by): void {
     'url'   => $url,
   ], $eventId);
 }
+
+/**
+ * Was an einem Datum geändert wurde, gilt für die ganze Auswahl.
+ *
+ * Titel, Ort, Zeiten, Notizen, Technik und Lieder sind eine Anfrage, nicht
+ * drei; wer den Ort am 10.4. korrigiert, meint auch den 17.4. Das Datum
+ * selbst und der Stand bleiben je Datum.
+ *
+ * Fragt ein geänderter Ort oder eine neue Zeit neu (#402), oder wird eine
+ * kleine Verschiebung zum Vorschlag (#413), geschieht das an jedem Datum —
+ * aber still: Die Mitteilung kommt einmal, vom bearbeiteten Datum. Drei Daten
+ * dürfen nicht drei Telefone je Speichern wecken.
+ */
+function choice_sync(int $sourceId, int $by): void {
+  $quelle = row('SELECT * FROM events WHERE id = ?', [$sourceId]);
+  if (!$quelle || !$quelle['choice_of']) return;
+  $set = implode(', ', array_map(static fn(string $s): string => "s.`$s` = q.`$s`",
+                                 array_diff(CHOICE_COPY_COLUMNS, ['status'])));
+  $vorschlag = event_time_proposal($sourceId);
+  foreach (choice_dates($sourceId) as $d) {
+    $nr = (int) $d['id'];
+    if ($nr === $sourceId) continue;
+    $abdruck = event_answer_fingerprint($nr);
+    item_update('event', $nr, static function () use ($nr, $sourceId, $set): void {
+      q("UPDATE events s JOIN events q ON q.id = ? SET $set WHERE s.id = ?", [$sourceId, $nr]);
+    }, $by);
+    q('DELETE FROM event_equipment WHERE event_id = ?', [$nr]);
+    q('INSERT INTO event_equipment (event_id, equipment_id)
+       SELECT ?, equipment_id FROM event_equipment WHERE event_id = ?', [$nr, $sourceId]);
+    q('DELETE FROM event_songs WHERE event_id = ?', [$nr]);
+    q('INSERT INTO event_songs (event_id, song_id)
+       SELECT ?, song_id FROM event_songs WHERE event_id = ?', [$nr, $sourceId]);
+    // Denselben Vorschlag nicht noch einmal stellen: Das verwürfe die
+    // Bestätigungen, die dort schon eingegangen sind.
+    $ihrer = event_time_proposal($nr);
+    $gleich = $vorschlag && $ihrer && choice_proposed_times($ihrer) === choice_proposed_times($vorschlag);
+    // Dieselbe Reihenfolge wie die Route am bearbeiteten Datum: Ein anderer
+    // Ort oder eine weite Verschiebung fragt neu, sonst wandert ein offener
+    // Vorschlag mit.
+    if (event_answer_fingerprint($nr) !== $abdruck) {
+      event_time_clear($nr);
+      event_answers_reset($nr, $by, false);
+    } elseif ($vorschlag && !$gleich) {
+      event_time_propose($nr, choice_proposed_times($vorschlag),
+        (int) ($vorschlag['time_proposed_by'] ?? $by), false);
+    }
+  }
+}
+
+/** Die vorgeschlagenen Zeiten eines Termins in der Form, die event_time_propose() nimmt. */
+function choice_proposed_times(array $vorschlag): array {
+  return ['time' => (string) $vorschlag['time_proposed'],
+          'time_meet' => (string) $vorschlag['time_meet_proposed'],
+          'time_end' => (string) $vorschlag['time_end_proposed']];
+}
