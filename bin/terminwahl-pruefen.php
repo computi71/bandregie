@@ -365,6 +365,20 @@ $pruefe('und hebt das Datum hervor, an dem alle können',
     (bool) preg_match('~class="[^"]*ev-choice-all[^"]*"[^>]*data-ev="' . $v2 . '"~', $html)
     && !preg_match('~class="[^"]*ev-choice-all[^"]*"[^>]*data-ev="' . $v1 . '"~', $html));
 $pruefe('die Absage steht in der Zeile', str_contains($html, '✘ 1'));
+// Antworten im Block selbst (#444): je Datum die drei Knöpfe, die eigene
+// Antwort hervorgehoben, im Hintergrund abgeschickt, ohne die Zeile zu schließen.
+$html = $blockHtml(row('SELECT * FROM users WHERE id = ?', [$mitglied]));
+$pruefe('je Datum ein Antwortformular im Block',
+    substr_count($html, 'data-vote data-stay') === 2
+    && str_contains($html, "/intern/termine/$v1/zusage") && str_contains($html, "/intern/termine/$v2/zusage"));
+$pruefe('die eigene Antwort ist hervorgehoben',
+    (bool) preg_match('~/intern/termine/' . $v1 . '/zusage"[^>]*>.*?value="no" class="chip chip-no"~s', $html)
+    && (bool) preg_match('~/intern/termine/' . $v2 . '/zusage"[^>]*>.*?value="yes" class="chip chip-yes"~s', $html));
+$pruefe('der Stand je Datum steht in einem eigenen Teil',
+    substr_count($html, 'class="choice-stand"') === 2);
+$pruefe('zusage.js lässt die Zeile stehen und frischt den Stand auf',
+    str_contains((string) file_get_contents(BASE_DIR . '/httpdocs/assets/zusage.js'), "'stay' in form.dataset")
+    && str_contains((string) file_get_contents(BASE_DIR . '/httpdocs/assets/zusage.js'), '.choice-stand'));
 $html = $blockHtml(row('SELECT * FROM users WHERE id = ?', [$aushilfe]));
 $pruefe('eine Aushilfe sieht keinen Wahlknopf und nur ihr Datum',
     !str_contains($html, '/waehlen') && !str_contains($html, 'data-ev="' . $v2 . '"'));

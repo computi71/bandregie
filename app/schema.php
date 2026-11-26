@@ -2297,6 +2297,11 @@ if (setting('tax_help_limits') !== '1') {
      ('help_tax_what','help_tax_counts','help_tax_over','help_tax_next_year')");
   set_setting('tax_help_limits', '1');
 }
+// Im Block „Zur Wahl" sagt man jetzt gleich zu (#444); die Hilfe sagt es mit.
+if (setting('choice_answer_help') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_termine_16'");
+  set_setting('choice_answer_help', '1');
+}
 // Ein Fehlschlag aus einem verlorenen Wettlauf (#416). Zwei Anfragen spielen
 // nach einer neuen Fassung gleichzeitig alle Seeds ein; eine stolpert ueber
 // die andere und schreibt ihren Dateinamen - unter Umstaenden NACH dem

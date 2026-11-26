@@ -411,7 +411,15 @@ function choice_view_map(array $eventIds, array $verdeckt, array $me): array {
   foreach ($karte as $g => $wahl) {
     $karte[$g]['dates'] = array_values(array_filter($wahl['dates'],
       static fn(array $d): bool => !in_array($d['id'], $verdeckt, true) && may_see_event($me, $d['id'])));
-    if (!$karte[$g]['dates']) unset($karte[$g]);
+    if (!$karte[$g]['dates']) { unset($karte[$g]); continue; }
+    // Die eigene Antwort je Datum (#444): Im Block sagt man gleich zu, und der
+    // gedrückte Knopf muss zeigen, was man schon geantwortet hat. Nicht aus
+    // den Daten der Karten — ein Datum der Auswahl kann außerhalb der
+    // angezeigten Termine liegen.
+    $ids = array_column($karte[$g]['dates'], 'id');
+    $meine = array_column(rows('SELECT event_id, status FROM attendance WHERE user_id = ? AND event_id IN ('
+      . implode(',', array_fill(0, count($ids), '?')) . ')', [(int) $me['id'], ...$ids]), 'status', 'event_id');
+    foreach ($karte[$g]['dates'] as $i => $d) $karte[$g]['dates'][$i]['mine'] = (string) ($meine[$d['id']] ?? '');
   }
   return $karte;
 }

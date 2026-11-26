@@ -77,6 +77,35 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(fertig, KLAPPEN + 50);
   };
 
+  /**
+   * Im Block „Zur Wahl" bleibt die Zeile stehen (#444): Dort ist eine Antwort
+   * nicht erledigte Arbeit, sondern ein Stand, den man sehen und ändern will.
+   * Der gedrückte Knopf bleibt farbig, alle drei nehmen wieder Tipps an.
+   *
+   * Die Zahlen je Datum kommen aus der Seite, die der Server nach der Antwort
+   * ohnehin schickt — nachgerechnet hier wüsste das Skript nicht, ob jetzt
+   * alle können. Getauscht wird nur der Teil mit dem Stand; die Formulare
+   * daneben bleiben, sonst ginge die Rückfrage vor dem Wählen verloren.
+   */
+  const bleibe = (form, status, html) => {
+    form.querySelectorAll('button.chip').forEach(knopf => {
+      knopf.disabled = false;
+      knopf.classList.remove('chip-stumm', 'chip-yes', 'chip-maybe', 'chip-no');
+      if (knopf.value === status) knopf.classList.add('chip-' + status);
+    });
+    const block = form.closest('.choice-block');
+    if (!block) return;
+    const neu = new DOMParser().parseFromString(html, 'text/html');
+    block.querySelectorAll('.choice-date[data-ev]').forEach(zeile => {
+      const frisch = neu.querySelector('.choice-date[data-ev="' + zeile.dataset.ev + '"]');
+      const stand = zeile.querySelector('.choice-stand');
+      const neuerStand = frisch && frisch.querySelector('.choice-stand');
+      if (!stand || !neuerStand) return;
+      stand.replaceWith(document.importNode(neuerStand, true));
+      zeile.classList.toggle('ev-choice-all', frisch.classList.contains('ev-choice-all'));
+    });
+  };
+
   document.querySelectorAll('form[data-vote]').forEach(form => {
     form.addEventListener('submit', event => {
       const knopf = event.submitter;
@@ -96,6 +125,15 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(antwort => {
           if (!antwort.ok) throw new Error('Status ' + antwort.status);
           gleicheTermine(form, knopf.value);
+          // Angekommen ist die Antwort hier schon. Was beim Auffrischen des
+          // Stands schiefgeht, darf nicht in den Ersatzweg unten fallen — der
+          // schickte sie ein zweites Mal ab und lüde die Seite neu.
+          if ('stay' in form.dataset) {
+            antwort.text()
+              .then(html => bleibe(form, knopf.value, html))
+              .catch(() => bleibe(form, knopf.value, ''));
+            return;
+          }
           const zeile = form.closest('li');
           setTimeout(() => (zeile ? schliesse(zeile) : null), ZEIGEN);
           // Abgesagt: nach einer Alternative fragen (#401). Erst nachdem die
