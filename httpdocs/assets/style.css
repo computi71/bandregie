@@ -270,6 +270,8 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .choice-dates { list-style: none; margin: 0; padding: 0; }
 .choice-date { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .35rem .5rem; border-radius: 6px; }
 .choice-date + .choice-date { border-top: 1px solid var(--border); }
+/* Der Stand je Datum ist ein eigener Teil, den zusage.js nach einer Antwort tauscht (#444). */
+.choice-stand { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
 /* Das Datum, an dem alle können, springt ins Auge — entschieden wird trotzdem von Hand. */
 .choice-date.ev-choice-all { background: color-mix(in srgb, var(--ok) 15%, transparent); }
 
