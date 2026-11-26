@@ -5130,9 +5130,15 @@ function event_answers_complete(int $eventId): bool {
  * das Ergebnis mit, das man sonst selbst zusammenzählen müsste.
  */
 function event_completion_notify(int $eventId): void {
-  $ev = row('SELECT id, title, date, status, created_by, answers_complete
+  $ev = row('SELECT id, title, date, status, created_by, answers_complete, choice_of
              FROM events WHERE id = ?', [$eventId]);
   if (!$ev) return;
+  // Ein Datum zur Wahl meldet nicht allein (#443): Die Frage war „wann?",
+  // und die ist erst beantwortet, wenn alle Daten durch sind.
+  if ((int) ($ev['choice_of'] ?? 0)) {
+    choice_completion_notify($eventId);
+    return;
+  }
 
   if (!event_answers_complete($eventId)) {
     if ((int) $ev['answers_complete'] === 1) {
@@ -5146,28 +5152,40 @@ function event_completion_notify(int $eventId): void {
   $wer = (int) ($ev['created_by'] ?? 0);
   if (!$wer) return;                                  // Termin ohne Eintrager
 
-  $stand = ['yes' => 0, 'maybe' => 0, 'no' => 0];
-  $abgesagt = [];
-  foreach (rows('SELECT a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id
-                 WHERE a.event_id = ? ORDER BY u.name', [$eventId]) as $z) {
-    if (isset($stand[$z['status']])) $stand[$z['status']]++;
-    if ($z['status'] === 'no') $abgesagt[] = (string) $z['name'];
-  }
+  $stand = event_answer_tally($eventId);
   $titel = (string) $ev['title'];
   $url = event_url($ev);
-  push_to_user($wer, 'vollzaehlig', function (string $lang) use ($titel, $stand, $abgesagt, $url): array {
-    $text = str_replace(['%1', '%2', '%3'],
-      [(string) $stand['yes'], (string) $stand['maybe'], (string) $stand['no']],
-      push_t($lang, 'push_ev_complete_body'));
-    // Wer abgesagt hat, steht mit Namen da: Das ist die Zeile, wegen der man
-    // die Meldung überhaupt aufmacht.
-    if ($abgesagt) $text .= ' — ' . implode(', ', $abgesagt);
-    return [
-      'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
-      'body'  => $text,
-      'url'   => $url,
-    ];
-  });
+  push_to_user($wer, 'vollzaehlig', static fn(string $lang): array => [
+    'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
+    'body'  => event_answer_tally_text($stand, $lang),
+    'url'   => $url,
+  ]);
+}
+
+/**
+ * Wie die Band geantwortet hat: die drei Zahlen und wer abgesagt hat.
+ *
+ * @return array{yes: int, maybe: int, no: int, abgesagt: string[]}
+ */
+function event_answer_tally(int $eventId): array {
+  $stand = ['yes' => 0, 'maybe' => 0, 'no' => 0, 'abgesagt' => []];
+  foreach (rows('SELECT a.status, u.name FROM attendance a JOIN users u ON u.id = a.user_id
+                 WHERE a.event_id = ? ORDER BY u.name', [$eventId]) as $z) {
+    if (in_array($z['status'], ['yes', 'maybe', 'no'], true)) $stand[$z['status']]++;
+    if ($z['status'] === 'no') $stand['abgesagt'][] = (string) $z['name'];
+  }
+  return $stand;
+}
+
+/** Der Stand als Satz für eine Mitteilung, in der Sprache des Empfängers. */
+function event_answer_tally_text(array $stand, string $lang): string {
+  $text = str_replace(['%1', '%2', '%3'],
+    [(string) $stand['yes'], (string) $stand['maybe'], (string) $stand['no']],
+    push_t($lang, 'push_ev_complete_body'));
+  // Wer abgesagt hat, steht mit Namen da: Das ist die Zeile, wegen der man
+  // die Meldung überhaupt aufmacht.
+  if ($stand['abgesagt']) $text .= ' — ' . implode(', ', $stand['abgesagt']);
+  return $text;
 }
 
 /**

@@ -586,6 +586,9 @@ const PUSH_REMIND_EVERY_MINUTES = 60;
  */
 function push_reminders_run(): int {
   $arten = implode(',', array_fill(0, count(EVENT_TYPES_OWN_DATE), '?'));
+  // Bei einer Auswahl mehrerer Daten (#443) ist ein Nein zu einem Tag keine
+  // Absage. Erinnert wird erst, wenn jemand zu allen Daten nein gesagt hat —
+  // und dann einmal, am frühesten.
   $offen = rows("SELECT a.user_id, e.id AS event_id, e.title, e.date, e.status
                  FROM attendance a
                  JOIN events e ON e.id = a.event_id
@@ -594,7 +597,14 @@ function push_reminders_run(): int {
                    AND e.status NOT IN ('abgesagt', 'blockiert')
                    AND e.type IN ($arten)
                    AND COALESCE(a.updated_at, a.created_at) < DATE_SUB(NOW(), INTERVAL ? HOUR)
-                   AND NOT EXISTS (SELECT 1 FROM events x WHERE x.alternative_for = e.id)",
+                   AND NOT EXISTS (SELECT 1 FROM events x WHERE x.alternative_for = e.id)
+                   AND (e.choice_of IS NULL OR (
+                     NOT EXISTS (SELECT 1 FROM events s WHERE s.choice_of = e.choice_of AND s.id <> e.id
+                                   AND s.date >= CURDATE()
+                                   AND NOT EXISTS (SELECT 1 FROM attendance x WHERE x.event_id = s.id
+                                                     AND x.user_id = a.user_id AND x.status = 'no'))
+                     AND NOT EXISTS (SELECT 1 FROM events s WHERE s.choice_of = e.choice_of AND s.date >= CURDATE()
+                                       AND (s.date < e.date OR (s.date = e.date AND s.id < e.id)))))",
                 [...EVENT_TYPES_OWN_DATE, PUSH_REMIND_AFTER_HOURS]);
   $wie_viele = 0;
   foreach ($offen as $z) {

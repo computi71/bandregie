@@ -339,3 +339,56 @@ function choice_view_map(array $eventIds, array $verdeckt, array $me): array {
   }
   return $karte;
 }
+
+/**
+ * „Alle haben geantwortet" für eine Auswahl: einmal, wenn alle Daten durch
+ * sind, mit einer Zeile je Datum (#382, #443).
+ *
+ * Je Datum gemeldet, käme dieselbe Anfrage zwei-, dreimal aufs Telefon, und
+ * die erste Meldung wäre die unwichtigste — sie sagt nichts über die anderen
+ * Tage. Die Marke answers_complete steht an allen Daten; gemeldet ist, wenn
+ * sie überall steht. Wird ein Datum wieder unvollständig, fällt sie überall,
+ * und die nächste Vollzähligkeit ist eine echte Neuigkeit.
+ */
+function choice_completion_notify(int $eventId): void {
+  $daten = choice_dates($eventId);
+  if (!$daten) return;
+  $ids = array_map(static fn(array $d): int => (int) $d['id'], $daten);
+  $in = implode(',', $ids);
+  foreach ($ids as $nr) {
+    if (!event_answers_complete($nr)) {
+      q("UPDATE events SET answers_complete = 0 WHERE id IN ($in)");
+      return;
+    }
+  }
+  $gemeldet = (int) row("SELECT COUNT(*) n FROM events WHERE id IN ($in) AND answers_complete = 1")['n'];
+  if ($gemeldet === count($ids)) return;
+  q("UPDATE events SET answers_complete = 1 WHERE id IN ($in)");
+
+  $erstes = row('SELECT id, title, date, status, created_by FROM events WHERE id = ?', [$ids[0]]);
+  $wer = (int) ($erstes['created_by'] ?? 0);
+  if (!$wer) return;
+  $stand = [];
+  foreach ($daten as $d) $stand[(string) $d['date']] = event_answer_tally((int) $d['id']);
+  $titel = (string) $erstes['title'];
+  $url = event_url($erstes);
+  push_to_user($wer, 'vollzaehlig', static function (string $lang) use ($titel, $stand, $url): array {
+    $zeilen = [];
+    foreach ($stand as $datum => $s) $zeilen[] = fmt_date_lang($datum, $lang) . ': ' . event_answer_tally_text($s, $lang);
+    return [
+      'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_complete')),
+      'body'  => implode(' · ', $zeilen),
+      'url'   => $url,
+    ];
+  });
+}
+
+/** Hat diese Person zu jedem Datum der Auswahl nein gesagt? */
+function choice_all_no(int $eventId, int $userId): bool {
+  $daten = choice_dates($eventId);
+  if (!$daten) return false;
+  $in = implode(',', array_map(static fn(array $d): int => (int) $d['id'], $daten));
+  $nein = (int) row("SELECT COUNT(*) n FROM attendance WHERE user_id = ? AND status = 'no' AND event_id IN ($in)",
+                    [$userId])['n'];
+  return $nein === count($daten);
+}

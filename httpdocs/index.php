@@ -1371,7 +1371,9 @@ if (str_starts_with($path, '/intern')) {
       // Unterscheidung sähe man es zweimal.
       if ($status === 'no' && ($_POST['ajax'] ?? '') !== '1') {
         $evArt = (string) (row('SELECT type FROM events WHERE id = ?', [$id])['type'] ?? '');
-        if (in_array($evArt, EVENT_TYPES_OWN_DATE, true)) $_SESSION['absage_tipp'] = (int) $id;
+        // Bei einem Datum zur Wahl erst, wenn alle Daten ein Nein sind (#443).
+        if (in_array($evArt, EVENT_TYPES_OWN_DATE, true)
+            && (!choice_group((int) $id) || choice_all_no((int) $id, (int) $me['id']))) $_SESSION['absage_tipp'] = (int) $id;
       }
       // Sind damit alle durch, bekommt der Eintrager eine Meldung (#382) —
       // eine einzige, mit dem Ergebnis darin. Steht hier hinter dem Schreiben,
