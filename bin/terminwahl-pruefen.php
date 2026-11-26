@@ -334,6 +334,51 @@ $oeffentlich = array_map('intval', array_column(rows("SELECT e.id FROM events e 
 $pruefe('ein Datum zur Wahl steht nie auf der öffentlichen Seite',
     !in_array($v1, $oeffentlich, true) && !in_array($v2, $oeffentlich, true));
 
+// ------------------------------------------- 6. Mitteilungen
+// „Alle haben geantwortet" geht an den Eintrager — hier das Konto mit Gerät.
+$fertig = static fn(): int => (int) row("SELECT COUNT(*) n FROM push_queue WHERE user_id = ? AND topic = 'vollzaehlig'
+                                          AND payload LIKE '%ZZTW%'", [$hoerer])['n'];
+$p1 = $termin($tag(250), 'angefragt', 'probe');
+$p2 = (int) (choice_add_dates($p1, [$tag(251)], 1)[0] ?? 0);
+q('UPDATE events SET created_by = ? WHERE id IN (?,?)', [$hoerer, $p1, $p2]);
+$vorher = $fertig();
+$alleJa($p1);
+event_completion_notify($p1);
+$pruefe('ein Datum vollzählig: noch keine Meldung', $fertig() === $vorher);
+$alleJa($p2);
+$antwortet($p2, $mitglied, 'no');
+event_completion_notify($p2);
+$pruefe('alle Daten vollzählig: genau eine Meldung', $fertig() === $vorher + 1);
+$inhalt = (string) (row("SELECT payload FROM push_queue WHERE user_id = ? AND topic = 'vollzaehlig'
+                         AND payload LIKE '%ZZTW%' ORDER BY id DESC LIMIT 1", [$hoerer])['payload'] ?? '');
+$pruefe('mit einer Zeile je Datum und dem Namen der Absage',
+    str_contains($inhalt, fmt_date_lang($tag(250), 'de')) && str_contains($inhalt, fmt_date_lang($tag(251), 'de'))
+    && str_contains($inhalt, 'ZZTW Mitglied'));
+event_completion_notify($p1);
+$pruefe('und keine zweite beim nächsten Antworten', $fertig() === $vorher + 1);
+
+// Ein Nein zu einem von zwei Tagen ist keine Absage.
+$erinnert = static fn(int $ev): bool => (bool) row("SELECT 1 FROM push_queue WHERE user_id = ? AND collapse_key = ?",
+                                                    [$hoerer, 'erinnerung:' . $ev . ':' . $hoerer]);
+$r1 = $termin($tag(260), 'angefragt', 'probe');
+$r2 = (int) (choice_add_dates($r1, [$tag(261)], 1)[0] ?? 0);
+$antwortet($r1, $hoerer, 'no');
+$antwortet($r2, $hoerer, 'yes');
+q('UPDATE attendance SET created_at = NOW() - INTERVAL 100 HOUR, updated_at = NOW() - INTERVAL 100 HOUR
+   WHERE event_id IN (?,?)', [$r1, $r2]);
+$pruefe('choice_all_no: ein Nein von zweien ist es nicht', !choice_all_no($r1, $hoerer));
+push_reminders_run();
+$pruefe('keine Erinnerung nach einem Nein von zweien', !$erinnert($r1) && !$erinnert($r2));
+$antwortet($r2, $hoerer, 'no');
+q('UPDATE attendance SET created_at = NOW() - INTERVAL 100 HOUR, updated_at = NOW() - INTERVAL 100 HOUR
+   WHERE event_id IN (?,?)', [$r1, $r2]);
+$pruefe('choice_all_no: Nein zu allen ist es', choice_all_no($r1, $hoerer) && choice_all_no($r2, $hoerer));
+push_reminders_run();
+$pruefe('Nein zu allen: eine Erinnerung, am frühesten Datum', $erinnert($r1) && !$erinnert($r2));
+$pruefe('der Hinweis nach der Absage achtet auf die Auswahl', (bool) preg_match(
+    '~if \(in_array\(\$evArt, EVENT_TYPES_OWN_DATE, true\)\s*&& \(!choice_group\(\(int\) \$id\) \|\| choice_all_no\(\(int\) \$id, \(int\) \$me\[\'id\'\]\)\)\)~',
+    $quelle));
+
 // ------------------------------------------- Ende
 $aufraeumen();
 $reste = (int) row("SELECT COUNT(*) n FROM events WHERE title LIKE 'ZZTW%'")['n']
