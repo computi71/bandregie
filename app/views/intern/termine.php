@@ -89,6 +89,7 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
     </label>
     <label><?= e(t('name')) ?><input name="title" required placeholder="<?= e(t('ev_name_ph')) ?>" value="<?= e($vorlage['title'] ?? '') ?>"></label>
     <label><?= e(t('date')) ?><input type="date" name="date" required></label>
+    <?php require BASE_DIR . '/app/views/intern/_event_extra_dates.php'; ?>
     <label><?= e(t('status')) ?>
       <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>"><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
     </label>

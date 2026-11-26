@@ -1124,6 +1124,14 @@ if (str_starts_with($path, '/intern')) {
       }
       save_event_gear($newEventId);
       save_event_songs($newEventId);
+      // Weitere mögliche Daten (#443). Erst nach Technik und Liedern: Die
+      // neuen Daten übernehmen sie vom ersten. Dann EINE Mitteilung für die
+      // ganze Auswahl statt einer je Datum.
+      $evWahl = choice_add_dates($newEventId, (array) ($_POST['extra_dates'] ?? []), (int) $me['id']);
+      if ($evWahl) {
+        choice_push_new($newEventId, [$newEventId, ...$evWahl], (int) $me['id']);
+        redirect('/intern/termine');
+      }
       // Mitteilung an alle, die neue Termine abonniert haben — aber nur an die,
       // die den Termin auch sehen dürfen (#24, #149).
       $pushTitle = (string) $_POST['title'];
@@ -1168,6 +1176,8 @@ if (str_starts_with($path, '/intern')) {
       redirect('/intern/termine?alle=1');
     }
     if ($action === 'update') {
+      // In einer Auswahl steht der Stand fest (#443), egal was gepostet wurde.
+      $_POST['status'] = choice_forced_status((int) $id, (string) ($_POST['status'] ?? ''));
       $evStandVorher = (string) (row('SELECT status FROM events WHERE id = ?', [$id])['status'] ?? '');
       // Datum, Zeiten und Ort von vorher (#402): Aendert sich eines davon,
       // beantworten die vorhandenen Zusagen eine Frage, die es nicht mehr
@@ -1258,6 +1268,18 @@ if (str_starts_with($path, '/intern')) {
           'body' => $pushTitel . ' · ' . fmt_date_lang($pushDatum, $lang),
           'url' => $pushUrl,
         ], (int) $id);
+      }
+      // Weitere Daten nachtragen (#443) — zuletzt, nach der Standmitteilung:
+      // Die Daten stellen alles auf „Angefragt", und dafür geht die eine
+      // „Zur Wahl"-Mitteilung hinaus, nicht noch eine zweite über den Stand.
+      $evExtra = array_filter((array) ($_POST['extra_dates'] ?? []), static fn($d): bool => trim((string) $d) !== '');
+      if ($evExtra) {
+        if (choice_may_add_dates(row('SELECT status, date FROM events WHERE id = ?', [$id]) ?? [])) {
+          $evWahl = choice_add_dates((int) $id, $evExtra, (int) $me['id']);
+          if ($evWahl) choice_push_new((int) $id, $evWahl, (int) $me['id']);
+        } else {
+          flash(t('fl_choice_dates_closed'));
+        }
       }
       redirect('/intern/termine');
     }

@@ -262,6 +262,10 @@ a.badge.link { cursor: pointer; display: inline-flex; align-items: center; gap: 
 .badge.ev-abgesagt { border-color: var(--danger); color: var(--danger); }
 /* Wer aus der Band abgesagt hat, steht im Kopf des Termins (#442). */
 .badge.ev-dropout { border-color: var(--danger); color: var(--danger); }
+/* Ein Datum, das zur Wahl steht (#443). */
+.badge.ev-choice { border-color: var(--maybe); color: var(--maybe); border-style: dashed; }
+.extra-dates { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.extra-dates .label { width: 100%; }
 
 .warn {
   background: rgba(234, 179, 8, 0.12);

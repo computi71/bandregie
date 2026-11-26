@@ -273,9 +273,19 @@
         </label>
         <label><?= e(t('name')) ?><input name="title" value="<?= e($ev['title']) ?>" required></label>
         <label><?= e(t('date')) ?><input type="date" name="date" value="<?= e($ev['date']) ?>" required></label>
-        <label><?= e(t('status')) ?>
-          <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['status'] === $val ? 'selected' : '' ?>><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
-        </label>
+        <?php // In einer Auswahl steht der Stand fest (#443): Ein Datum fällt
+              // weg, indem man es löscht; eines steht fest, indem man es wählt. ?>
+        <?php if (!empty($ev['choice_of'])): ?>
+          <label><?= e(t('status')) ?>
+            <span class="badge ev-choice"><?= e(t('ev_choice')) ?></span>
+            <input type="hidden" name="status" value="angefragt">
+          </label>
+        <?php else: ?>
+          <label><?= e(t('status')) ?>
+            <select name="status"><?php foreach (EVENT_STATUS as $val => $lbl): ?><option value="<?= $val ?>" <?= $ev['status'] === $val ? 'selected' : '' ?>><?= e(event_status_label($val)) ?></option><?php endforeach; ?></select>
+          </label>
+        <?php endif; ?>
+        <?php if (choice_may_add_dates($ev)) require BASE_DIR . '/app/views/intern/_event_extra_dates.php'; ?>
         <label data-eventfield="times"><?= e(t('ev_meet')) ?><input type="time" name="time_meet" value="<?= e($ev['time_meet']) ?>"></label>
         <label data-eventfield="times"><?= e(t('ev_start')) ?><input type="time" name="time" value="<?= e($ev['time']) ?>"></label>
         <label data-eventfield="times"><?= e(t('ev_end')) ?><input type="time" name="time_end" value="<?= e($ev['time_end']) ?>"></label>

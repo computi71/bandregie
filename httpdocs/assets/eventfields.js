@@ -48,3 +48,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// „+ Datum" bei den weiteren möglichen Daten (#443). Ohne Skript bleibt der
+// Knopf verborgen, und das eine Feld genügt: Jedes Speichern hängt ein Datum
+// an.
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-extra-dates]').forEach(box => {
+    const add = box.querySelector('[data-extra-dates-add]');
+    if (!add) return;
+    add.hidden = false;
+    add.addEventListener('click', () => {
+      const felder = box.querySelectorAll('input[name="extra_dates[]"]');
+      const neu = felder[felder.length - 1].cloneNode();
+      neu.value = '';
+      add.before(neu);
+      neu.focus();
+    });
+  });
+});

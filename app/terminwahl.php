@@ -142,3 +142,53 @@ function choice_map(array $eventIds): array {
   }
   return $karte;
 }
+
+/**
+ * Darf man an diesen Termin weitere Daten hängen?
+ *
+ * Nur solange er selbst eine offene Frage ist. Ein bestätigter Termin steht
+ * vielleicht schon öffentlich auf der Seite, hat einen Vertrag oder ist
+ * abgesagt; ihn mit einem Feld wieder zur Wahl zu stellen, nähme einen Gig
+ * still von der Seite.
+ */
+function choice_may_add_dates(array $ev): bool {
+  return in_array((string) ($ev['status'] ?? ''), ['angefragt', 'reserviert'], true)
+    && (string) ($ev['date'] ?? '') >= date('Y-m-d');
+}
+
+/**
+ * Der Stand, der beim Speichern gilt.
+ *
+ * Innerhalb einer Auswahl immer „Angefragt": Die beiden Dinge, die man dort
+ * mit dem Stand täte, haben ihren eigenen Weg — ein Datum fällt weg, dann
+ * löscht man es; eines steht fest, dann wählt man es. Ein drittes Datum auf
+ * „Findet statt" neben zwei offenen wäre eine Entscheidung, die keiner
+ * getroffen hat.
+ */
+function choice_forced_status(int $eventId, string $posted): string {
+  return choice_group($eventId) ? 'angefragt' : $posted;
+}
+
+/**
+ * Eine Mitteilung für neue Daten zur Wahl, statt einer je Datum.
+ *
+ * Drei Daten sind eine Frage an die Band, nicht drei. Die Daten stehen in der
+ * Sprache des Empfängers (#349) im Text; der Verweis führt in die Übersicht,
+ * wo man je Datum mit einem Tipp antwortet (#421).
+ *
+ * @param int[] $ids Die Daten, die neu zur Wahl stehen
+ */
+function choice_push_new(int $eventId, array $ids, int $by): void {
+  $ev = row('SELECT title FROM events WHERE id = ?', [$eventId]);
+  if (!$ev || !$ids) return;
+  $in = implode(',', array_map('intval', $ids));
+  $daten = array_column(rows("SELECT date FROM events WHERE id IN ($in) ORDER BY date"), 'date');
+  $titel = (string) $ev['title'];
+  $url = answer_url('ev', $eventId);
+  push_notify('events', $by, static fn(string $lang): array => [
+    'title' => str_replace('%1', $titel, push_t($lang, 'push_ev_choice_new')),
+    'body'  => str_replace('%1', implode(' / ', array_map(
+      static fn(string $d): string => fmt_date_lang($d, $lang), $daten)), push_t($lang, 'push_ev_choice_new_body')),
+    'url'   => $url,
+  ], $eventId);
+}
