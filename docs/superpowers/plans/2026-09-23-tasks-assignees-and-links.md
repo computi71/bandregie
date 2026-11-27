@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **No test framework exists.** Verification is `bin/*-pruefen.php` scripts run on staging over SSH. This plan's red/green cycle is: add the check, push, run it on staging and watch it fail, implement, push, run it and watch it pass.
-- **Staging changes only by `git pull`.** Never `scp` or edit files there. Staging: `ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host>`, path `/var/www/bandroadie-oss`.
+- **Staging changes only by `git pull`.** Never `scp` or edit files there. Staging: `ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host>`, path `/var/www/bandroadie-oss`.
 - **Check scripts run as the web user:** `sudo -u www-data php bin/…`. Run as anybody else, the session file php-fpm needs is unreadable and every page answers 302.
 - **Work on the branch `tasks-assignees`.** It exists and carries the spec. Merge to `main` only after staging is green; `VERSION` is bumped at the merge, not on the branch.
 - **Commit messages in English**, saying why rather than what. No `Co-Authored-By` lines.
@@ -170,7 +170,7 @@ git push origin tasks-assignees
 Then:
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten'
 ```
 
 Expected: a fatal error — `Table 'task_assignees' doesn't exist` or `Call to undefined function task_status_apply()`. That failure is the point: it proves the check reaches the code.
@@ -302,7 +302,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/bootstrap.php && php -l app/schema.php && curl -sk --resolve staging.example.com:443:127.0.0.1 -o /dev/null -w "%{http_code}\n" https://staging.example.com/ && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/bootstrap.php && php -l app/schema.php && curl -sk --resolve staging.example.com:443:127.0.0.1 -o /dev/null -w "%{http_code}\n" https://staging.example.com/ && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten'
 ```
 
 Expected: `13 ok, 0 Fehler`. The `curl` is there to trigger the migration before the check runs.
@@ -411,7 +411,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l httpdocs/index.php && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l httpdocs/index.php && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
 ```
 
 Expected: `16 ok, 0 Fehler` and `24 Seiten, 0 Fehler`.
@@ -630,7 +630,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l httpdocs/index.php && php -l app/views/intern/aufgaben.php && php -l app/strings/de.php && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2 && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l httpdocs/index.php && php -l app/views/intern/aufgaben.php && php -l app/strings/de.php && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2 && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2'
 ```
 
 Expected: `24 Seiten, 0 Fehler` and `16 ok, 0 Fehler`.
@@ -757,7 +757,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/bootstrap.php && php -l httpdocs/index.php && php -l app/views/intern/dashboard.php && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/bootstrap.php && php -l httpdocs/index.php && php -l app/views/intern/dashboard.php && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
 ```
 
 Expected: `21 ok, 0 Fehler` and `24 Seiten, 0 Fehler`.
@@ -899,7 +899,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/marks.php && php -l httpdocs/index.php && sudo -u www-data php bin/marken-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -3 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && php -l app/marks.php && php -l httpdocs/index.php && sudo -u www-data php bin/marken-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -3 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
 ```
 
 Expected: no failures, and the mark-clearing still works — unfold an event card in the browser and confirm the mark goes away, because this task rewired exactly that path.
@@ -1250,7 +1250,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && for f in app/schema.php app/bootstrap.php httpdocs/index.php app/views/intern/aufgaben.php app/strings/de.php bin/aufgaben-pruefen.php; do php -l $f | grep -v "^No syntax"; done; curl -sk --resolve staging.example.com:443:127.0.0.1 -o /dev/null -w "%{http_code}\n" https://staging.example.com/ && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && for f in app/schema.php app/bootstrap.php httpdocs/index.php app/views/intern/aufgaben.php app/strings/de.php bin/aufgaben-pruefen.php; do php -l $f | grep -v "^No syntax"; done; curl -sk --resolve staging.example.com:443:127.0.0.1 -o /dev/null -w "%{http_code}\n" https://staging.example.com/ && sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
 ```
 
 Expected: `25 ok, 0 Fehler` and `24 Seiten, 0 Fehler`.
@@ -1373,7 +1373,7 @@ git push origin tasks-assignees
 ```
 
 ```bash
-ssh -i /c/Users/computi.lotr/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && for f in app/bootstrap.php httpdocs/index.php app/views/intern/_event_card.php app/views/intern/song.php app/strings/de.php; do php -l $f | grep -v "^No syntax"; done; sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
+ssh -i ~/.ssh/bandroadie_deploy deploy@<staging-host> 'cd /var/www/bandroadie-oss && git pull --quiet --ff-only && for f in app/bootstrap.php httpdocs/index.php app/views/intern/_event_card.php app/views/intern/song.php app/strings/de.php; do php -l $f | grep -v "^No syntax"; done; sudo -u www-data php bin/aufgaben-pruefen.php /var/www/bandroadie-oss --schreibt-testdaten | tail -2 && sudo -u www-data php bin/routen-pruefen.php /var/www/bandroadie-oss staging.example.com 1 | tail -2'
 ```
 
 Expected: `27 ok, 0 Fehler` and `24 Seiten, 0 Fehler`.
