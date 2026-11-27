@@ -184,6 +184,102 @@ $pruefe('Antworten löschen leert die Liste',
 $pruefe('Antworten löschen lässt die Buchung stehen',
     (bool) row('SELECT 1 FROM guest_bookings WHERE guest_id = ?', [$gastMit]));
 
+// ------------------------------------------------ 4. Setliste
+q("INSERT INTO setlists (name) VALUES ('ZZGA Setliste')");
+$setliste = (int) $GLOBALS['db']->lastInsertId();
+q('UPDATE events SET setlist_id = ? WHERE id = ?', [$setliste, $termin]);
+// Zweiter Termin mit derselben Setliste: Ein Gast, der an beiden gebucht ist,
+// darf trotzdem nur einmal im Filter stehen.
+q("INSERT INTO events (title, date, type, status, setlist_id) VALUES ('ZZGA Gig 2', ?, 'gig', 'bestaetigt', ?)",
+  [date('Y-m-d', strtotime('+40 days')), $setliste]);
+$termin2 = (int) $GLOBALS['db']->lastInsertId();
+// Der vergangene Termin bekommt eine EIGENE Setliste: Hinge er an derselben,
+// wäre die Setliste „bereits live gespielt" und damit fixiert — dann gäbe es
+// unten gar keine Auswahl mehr, und die Prüfung des Filters prüfte nichts.
+q("INSERT INTO setlists (name) VALUES ('ZZGA Setliste alt')");
+$setlisteAlt = (int) $GLOBALS['db']->lastInsertId();
+q("INSERT INTO events (title, date, type, status, setlist_id) VALUES ('ZZGA Gig alt', ?, 'gig', 'bestaetigt', ?)",
+  [date('Y-m-d', strtotime('-40 days')), $setlisteAlt]);
+$terminAlt = (int) $GLOBALS['db']->lastInsertId();
+
+$sl = $buche('ZZGA Setlistengast', ['show_songs' => 1]);
+$gastSl = (int) $sl['guest_id'];
+q('INSERT INTO guest_bookings (guest_id, event_id, token, access_until, status, show_songs) VALUES (?,?,?,?,?,1)',
+  [$gastSl, $termin2, bin2hex(random_bytes(32)), guest_access_until(date('Y-m-d', strtotime('+40 days'))), 'zugesagt']);
+guest_song_set($gastSl, $liedA, 'yes');
+guest_song_set($gastSl, $liedB, 'no');
+
+$pruefe('Gast der Setliste steht im Filter', array_key_exists($gastSl, setlist_guests($setliste)));
+$pruefe('Zweimal gebucht heißt einmal im Filter', count(setlist_guests($setliste)) === 1);
+$pruefe('Er bringt seine Antworten mit',
+    (setlist_guests($setliste)[$gastSl]['answers'][$liedA] ?? '') === 'yes');
+
+$stumm = $buche('ZZGA Stumm', ['show_songs' => 1]);
+$pruefe('Ohne Antwort nicht im Filter', !array_key_exists((int) $stumm['guest_id'], setlist_guests($setliste)));
+
+$storno2 = $buche('ZZGA Storno2', ['show_songs' => 1, 'status' => 'storniert']);
+guest_song_set((int) $storno2['guest_id'], $liedA, 'yes');
+$pruefe('Stornierte Buchung nicht im Filter',
+    !array_key_exists((int) $storno2['guest_id'], setlist_guests($setliste)));
+
+// Nur am vergangenen Termin gebucht: Eine Setliste, die vor zwei Jahren
+// gespielt wurde, soll nicht jeden Filter mit alten Gästen füllen.
+q("INSERT INTO guests (name, email) VALUES ('ZZGA Gestern', '')");
+$gastAlt = (int) $GLOBALS['db']->lastInsertId();
+q('INSERT INTO guest_bookings (guest_id, event_id, token, access_until, status, show_songs) VALUES (?,?,?,?,?,1)',
+  [$gastAlt, $terminAlt, bin2hex(random_bytes(32)), guest_access_until(date('Y-m-d', strtotime('-40 days'))), 'zugesagt']);
+guest_song_set($gastAlt, $liedA, 'yes');
+$pruefe('Vergangener Termin nicht im Filter', setlist_guests($setlisteAlt) === []);
+
+// Die gebaute Seite, nicht nur die Funktion: Filter und Zeichen entscheiden
+// sich in der Ansicht, und ein Recht, das nur dort geprüft wird, prüft keine
+// Funktion mit.
+$mitglied = static function (array $rechte) use ($host): callable {
+    q("INSERT INTO users (name, email, role, password_hash) VALUES ('ZZGA Konto', ?, 'member', '')",
+      ['zzga-' . bin2hex(random_bytes(4)) . '@example.invalid']);
+    $nr = (int) $GLOBALS['db']->lastInsertId();
+    foreach ($rechte as $modul => $darf) {
+        q('INSERT INTO permissions (user_id, module, can_read, can_write) VALUES (?,?,?,?)',
+          [$nr, $modul, (int) $darf[0], (int) $darf[1]]);
+    }
+    // Die Sitzungsdatei selbst schreiben statt session_start() ein zweites Mal
+    // zu rufen: Nach der ersten Ausgabe geht das nicht mehr, und dann liefe
+    // das zweite Konto still unter der Kennung des ersten — die Prüfung
+    // „ohne Gästerecht" sähe die Seite mit Gästerecht und meldete grün.
+    $sid = bin2hex(random_bytes(16));
+    $ablage = (string) (ini_get('session.save_path') ?: sys_get_temp_dir());
+    file_put_contents(rtrim($ablage, '/') . '/sess_' . $sid, 'uid|i:' . $nr . ';');
+    return static fn(string $pfad): string => (string) shell_exec(sprintf(
+        'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s%s',
+        escapeshellarg($host), escapeshellarg($sid), $host, $pfad));
+};
+
+$alleRechte = ['setlists' => [1, 1], 'songs' => [1, 1], 'gaeste' => [1, 1], 'termine' => [1, 1]];
+$sieht = $mitglied($alleRechte);
+$slSeite = $sieht('/intern/setlists/' . $setliste);
+$pruefe('Setliste nennt den Filter', str_contains($slSeite, 'ZZGA Setlistengast'));
+$slGefiltert = $sieht('/intern/setlists/' . $setliste . '?gast=' . $gastSl);
+$pruefe('Gefilterte Auswahl zeigt das Kann-Lied', str_contains($slGefiltert, 'ZZGA Lied A'));
+$pruefe('Gefilterte Auswahl zeigt das Nein-Lied nicht', !str_contains($slGefiltert, 'ZZGA Lied B'));
+
+// Zeichen am schon eingetragenen Lied: Die Setliste steht, der Gast kam danach.
+q('INSERT INTO setlist_songs (setlist_id, song_id, position) VALUES (?,?,1)', [$setliste, $liedB]);
+$slMitLied = $sieht('/intern/setlists/' . $setliste);
+$pruefe('Zeichen am Lied, das er nicht kann', str_contains($slMitLied, '✘ ZZGA Setlistengast'));
+$pruefe('Ausdruck trägt kein Zeichen',
+    !str_contains($sieht('/intern/setlists/' . $setliste . '/print'), 'ZZGA Setlistengast'));
+
+$ohneGaeste = $mitglied(['setlists' => [1, 1], 'songs' => [1, 1], 'gaeste' => [0, 0], 'termine' => [1, 1]]);
+$slOhne = $ohneGaeste('/intern/setlists/' . $setliste);
+$pruefe('Ohne Gästerecht kein Filter und kein Zeichen', !str_contains($slOhne, 'ZZGA Setlistengast'));
+$pruefe('Ohne Gästerecht steht die Setliste trotzdem', str_contains($slOhne, 'ZZGA Lied B'));
+
+q("DELETE FROM permissions WHERE user_id IN (SELECT id FROM users WHERE name = 'ZZGA Konto')");
+q("DELETE FROM users WHERE name = 'ZZGA Konto'");
+q('DELETE FROM setlist_songs WHERE setlist_id = ?', [$setliste]);
+q('DELETE FROM setlists WHERE id IN (?, ?)', [$setliste, $setlisteAlt]);
+q('DELETE FROM events WHERE id IN (?, ?)', [$termin2, $terminAlt]);
+
 // Dieselbe Funktion wie die Löschroute — eine Abschrift hier prüfte nur sich
 // selbst (#439).
 foreach ([$liedA, $liedB, $liedV] as $l) song_delete($l);

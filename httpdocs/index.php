@@ -1716,6 +1716,11 @@ if (str_starts_with($path, '/intern')) {
                           LEFT JOIN venues v ON v.id = e.venue_id
                           WHERE e.setlist_id = ? ORDER BY e.date', [$m[1]]),
       'available' => rows("SELECT * FROM songs WHERE status IN ('aktiv', 'in_arbeit') $notIn ORDER BY title"),
+      // Was die gebuchten Gäste spielen können (#451). Nur für Konten, die
+      // Gäste überhaupt sehen dürfen: Der Filter nennt Namen, und die stehen
+      // sonst überall hinter diesem Recht.
+      'slGuests' => perm_allows($me, 'gaeste') ? setlist_guests((int) $m[1]) : [],
+      'slGuestPick' => (int) ($_GET['gast'] ?? 0),
       'totalSec' => array_sum(array_map(fn($x) => (int) $x['duration_sec'], $entries)),
     ]);
   }

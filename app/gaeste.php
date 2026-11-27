@@ -64,6 +64,35 @@ function guest_songs_map(array $guestIds): array {
 }
 
 /**
+ * Die Gäste, die beim Bauen dieser Setliste zählen (#451).
+ *
+ * Zählen heißt: Die Buchung ist weder abgesagt noch storniert, sie hängt an
+ * einem Termin ab heute, und der Gast hat überhaupt etwas angekreuzt. Dass
+ * sein Link abgelaufen ist, zählt nicht dagegen — gefragt ist, wer gebucht
+ * ist, nicht wer die Seite noch öffnen kann.
+ *
+ * Ohne die Datumsgrenze stünde in jeder Setliste, die vor zwei Jahren einmal
+ * gespielt wurde, der Tontechniker von damals. Jeder Gast einmal, auch wenn er
+ * an zwei Terminen mit derselben Setliste gebucht ist.
+ *
+ * @return array<int, array{name: string, answers: array<int, string>}>
+ */
+function setlist_guests(int $setlistId): array {
+  $gaeste = rows("SELECT DISTINCT g.id, g.name FROM guest_bookings b
+                    JOIN events e ON e.id = b.event_id
+                    JOIN guests g ON g.id = b.guest_id
+                   WHERE e.setlist_id = ? AND e.date >= CURDATE()
+                     AND b.status NOT IN ('abgesagt', 'storniert')
+                   ORDER BY g.name", [$setlistId]);
+  $out = [];
+  foreach ($gaeste as $g) {
+    $antworten = guest_song_answers((int) $g['id']);
+    if ($antworten) $out[(int) $g['id']] = ['name' => (string) $g['name'], 'answers' => $antworten];
+  }
+  return $out;
+}
+
+/**
  * Die Liedtitel je Gast und Stand, für die Gästeliste (#450).
  *
  * Titel und nicht nur Zahlen: „4 ✘" sagt der Band nichts, „kenne ich nicht:

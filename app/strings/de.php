@@ -472,6 +472,10 @@ const UI_STRINGS = [
   'sl_total' => 'Gesamtlänge',
   'sl_locked_note' => 'Diese Setlist wurde bereits live gespielt und ist als Historie fixiert. Zum Weiterarbeiten einfach kopieren.',
   'sl_empty' => 'Noch leer — füge unten Songs hinzu.', 'sl_pick' => 'Song auswählen ...',
+  // Nach dem Können eines gebuchten Gasts aussieben (#451)
+  'sl_guest_filter' => 'Auswahl nach Gast', 'sl_guest_all' => 'alle Lieder',
+  'sl_guest_nothing' => 'Zu dieser Auswahl hat der Gast nichts, was er spielen kann.',
+  'apply' => 'Anwenden',
   'sl_all_used' => 'Alle nutzbaren Songs sind schon drin.',
   'sl_drag_hint' => 'Zum Umsortieren am ⠿ ziehen — mit Maus wie mit dem Finger. Die Pfeile tun es auch.',
   'sl_saved' => 'Reihenfolge gespeichert',

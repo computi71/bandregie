@@ -69,6 +69,17 @@
         <?php else: ?>
           <strong><?= e($entry['title']) ?></strong>
           <span class="muted"><?= e($entry['artist'] ?: t('own_song')) ?><?= $entry['song_key'] ? ' · ' . e($entry['song_key']) : '' ?><?= $entry['tempo'] ? ' · ' . e($entry['tempo']) : '' ?> · <?= fmt_duration($entry['duration_sec']) ?></span>
+          <?php // Steht die Setliste schon und wird der Gast erst danach
+                // gebucht, hilft der Filter oben niemandem mehr: Dann muss das
+                // Lied selbst sagen, dass einer es nicht kann (#451). Nur hier
+                // in der Bearbeitung — der Ausdruck bleibt eine Setliste, und
+                // seine eigene Fassung sagt nichts über ihn. ?>
+          <?php foreach ($slGuests as $slG): ?>
+            <?php $slStand = $slG['answers'][(int) $entry['id']] ?? ''; ?>
+            <?php if ($slStand === 'maybe' || $slStand === 'no'): ?>
+              <span class="badge <?= $slStand === 'no' ? 'ev-abgesagt' : '' ?>" title="<?= e(t('gast_can_' . $slStand)) ?>"><?= $slStand === 'no' ? '✘' : '?' ?> <?= e($slG['name']) ?></span>
+            <?php endif; ?>
+          <?php endforeach; ?>
           <?php // Von hier auf die Bühne, mit der Setlist im Rücken: buehne.js
                 // springt dann ohne Vollbild zu verlassen zum nächsten Song.
                 //
@@ -119,14 +130,42 @@
   <?php if (!$entries): ?><p class="muted"><?= e(t('sl_empty')) ?></p><?php endif; ?>
   <?php if (!$locked): ?>
     <div class="row-buttons">
-      <?php if ($available): ?>
+      <?php // Nach dem Können eines gebuchten Gasts aussieben (#451). Als
+            // Formular mit GET und ohne Skript: Die Seite muss auch ohne
+            // JavaScript zu bedienen sein (#429), und eine Auswahl, die die
+            // Adresse mitträgt, überlebt das Neuladen nach jedem Hinzufügen. ?>
+      <?php if ($slGuests): ?>
+        <form method="get" class="inline">
+          <label><?= e(t('sl_guest_filter')) ?>
+            <select name="gast" onchange="this.form.submit()">
+              <option value="0"><?= e(t('sl_guest_all')) ?></option>
+              <?php foreach ($slGuests as $slGid => $slG): ?>
+                <option value="<?= (int) $slGid ?>" <?= $slGuestPick === (int) $slGid ? 'selected' : '' ?>><?= e($slG['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+          <noscript><button class="btn btn-tiny"><?= e(t('apply')) ?></button></noscript>
+        </form>
+      <?php endif; ?>
+      <?php
+        // Gefiltert wird erst hier und nicht in der Abfrage: Das Können eines
+        // Gasts steht an ihm und nicht am Lied, und die Auswahl darunter soll
+        // dieselbe Liste sein wie ohne Filter — nur kürzer.
+        $slWahl = $slGuests[$slGuestPick] ?? null;
+        $slListe = $slWahl
+          ? array_values(array_filter($available, static fn($s) => in_array($slWahl['answers'][(int) $s['id']] ?? '', ['yes', 'maybe'], true)))
+          : $available;
+      ?>
+      <?php if ($slListe): ?>
         <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/add" class="comment-form grow"><?= csrf_field() ?>
           <select name="song_id" required>
             <option value=""><?= e(t('sl_pick')) ?></option>
-            <?php foreach ($available as $song): ?><option value="<?= $song['id'] ?>"><?= e($song['title']) ?> (<?= fmt_duration($song['duration_sec']) ?>)</option><?php endforeach; ?>
+            <?php foreach ($slListe as $song): ?><option value="<?= $song['id'] ?>"><?= e($song['title']) ?> (<?= fmt_duration($song['duration_sec']) ?>)<?= $slWahl && ($slWahl['answers'][(int) $song['id']] ?? '') === 'maybe' ? ' · ' . e(t('gast_can_maybe')) : '' ?></option><?php endforeach; ?>
           </select>
           <button class="btn btn-primary"><?= e(t('add')) ?></button>
         </form>
+      <?php elseif ($slWahl): ?>
+        <p class="muted small"><?= e(t('sl_guest_nothing')) ?></p>
       <?php elseif ($entries): ?>
         <p class="muted small"><?= e(t('sl_all_used')) ?></p>
       <?php endif; ?>
