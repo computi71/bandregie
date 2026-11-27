@@ -62,6 +62,32 @@
       <p class="muted small"><?= e(t('guest_no_bookings')) ?></p>
     <?php endif; ?>
 
+    <?php // Was er über die Lieder gesagt hat (#450). Hier und nicht nur in
+          // der Setliste: Solange keine Setliste steht, ist das die einzige
+          // Stelle, an der die Band seine Antworten nachlesen kann. ?>
+    <?php $gAntworten = $guestSongs[(int) $g['id']] ?? null; ?>
+    <?php if ($gAntworten): ?>
+      <details class="subsection">
+        <summary>🎵 <?= e(t('gast_songs_can')) ?>
+          <span class="muted small"><?= (int) $gAntworten['yes'] ?> ✔ · <?= (int) $gAntworten['maybe'] ?> ? · <?= (int) $gAntworten['no'] ?> ✘</span></summary>
+        <?php foreach (['yes', 'maybe', 'no'] as $gWahl): ?>
+          <?php $gTitel = $guestSongTitles[(int) $g['id']][$gWahl] ?? []; ?>
+          <?php if ($gTitel): ?>
+            <p class="small"><strong><?= e(t('gast_can_' . $gWahl)) ?>:</strong> <?= e(implode(' · ', $gTitel)) ?></p>
+          <?php endif; ?>
+        <?php endforeach; ?>
+        <?php if (perm_allows($user, 'gaeste', 'write') && !is_demo()): ?>
+          <?php // Seine Einsätze sind die Geschichte der Band und bleiben; was
+                // er über das Repertoire gesagt hat, sind seine Daten — „auf
+                // Wunsch löschen wir sie" braucht einen Weg. ?>
+          <form method="post" action="/intern/gaeste/<?= (int) $g['id'] ?>/antworten-loeschen" class="inline"
+                data-confirm="<?= e(t('guest_songs_clear_confirm')) ?>"><?= csrf_field() ?>
+            <button class="btn btn-tiny btn-danger"><?= e(t('guest_songs_clear')) ?></button>
+          </form>
+        <?php endif; ?>
+      </details>
+    <?php endif; ?>
+
     <?php if (perm_allows($user, 'gaeste', 'write')): ?>
       <details class="subsection">
         <summary>✏️ <?= e(t('edit')) ?></summary>

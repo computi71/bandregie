@@ -3,7 +3,8 @@
 // dem Abend die Sterne — und für die, die buchen dürfen, das Formular. Nur
 // bei Gigs: zur Probe lädt man keinen Tontechniker ein.
 //
-// Vorher setzen: $ev, $user, $guestsByEvent, $guestList, $guestRatings.
+// Vorher setzen: $ev, $user, $guestsByEvent, $guestList, $guestRatings,
+// $guestSongs (Zahlen je Gast, siehe guest_songs_map).
 ?>
 <?php $gaeste = $guestsByEvent[$ev['id']] ?? []; $darfBuchen = perm_allows($user, 'gaeste', 'write') && $ev['date'] >= date('Y-m-d') && !is_demo(); ?>
 <?php if (perm_allows($user, 'gaeste') && ($gaeste || ($darfBuchen && $ev['type'] === 'gig'))): ?>
@@ -17,6 +18,13 @@
           <span class="muted"><?= $g['invited_at'] ? e(t('guest_invited')) . ' ' . e(date('d.m. H:i', strtotime($g['invited_at']))) : e(t('guest_not_invited')) ?></span>
         <?php elseif ($g['answered_at']): ?>
           <span class="muted"><?= e(t('guest_answered')) ?> <?= e(date('d.m. H:i', strtotime($g['answered_at']))) ?></span>
+        <?php endif; ?>
+        <?php // Was er über die Lieder gesagt hat (#450). Alle drei Zahlen und
+              // nicht nur die Zusagen: Die Band will sehen, dass er geantwortet
+              // hat, nicht nur, wozu er ja gesagt hat. ?>
+        <?php $gLieder = $guestSongs[(int) $g['guest_id']] ?? null; ?>
+        <?php if ($gLieder): ?>
+          <span class="muted small" title="<?= e(t('gast_songs_can')) ?>">🎵 <?= (int) $gLieder['yes'] ?> ✔ · <?= (int) $gLieder['maybe'] ?> ? · <?= (int) $gLieder['no'] ?> ✘</span>
         <?php endif; ?>
         <?php // Nach dem Abend die Sterne (#294): je Mitglied eine Stimme, der Schnitt
               // daneben. Nur für zugesagte Einsätze vergangener Termine. ?>
@@ -40,13 +48,19 @@
                 // oder sie nicht ankam — er ist sein Schlüssel, also nur für die,
                 // die auch buchen dürfen. ?>
           <a class="badge link" href="/gast/<?= e($g['token']) ?>" target="_blank" rel="noopener">🔗 Link</a>
-          <?php if ($g['guest_email'] !== '' && $g['status'] === 'angefragt'): ?>
+          <?php // Auch nach der Zusage erreichbar bleiben (#450): Die
+                // Liederliste wird meist erst angehakt, wenn er längst
+                // zugesagt hat — vorher stand hier nichts mehr, und die Band
+                // musste ihn wieder von Hand anschreiben. Der Text richtet
+                // sich danach, was noch offen ist. ?>
+          <?php $gFrage = guest_ask_for($g); ?>
+          <?php if ($gFrage !== '' && $g['guest_email'] !== ''): ?>
             <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/erneut"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost">✉ <?= e(t('guest_invite_resend')) ?></button></form>
           <?php endif; ?>
           <?php // Ohne Mail — oder zusätzlich: die Einladung vom eigenen Handy aus,
                 // WhatsApp oder SMS mit fertigem Text. Öffnet nur die App; gesendet
                 // wird dort (#299). ?>
-          <?php if ($g['status'] === 'angefragt'): ?>
+          <?php if ($gFrage !== ''): ?>
             <?php foreach (guest_share_links($g) as $weg => $url): ?>
               <a class="badge link" href="<?= e($url) ?>" target="_blank" rel="noopener"><?= $weg === 'whatsapp' ? '💬' : '📱' ?> <?= e(t('guest_send_' . $weg)) ?></a>
             <?php endforeach; ?>

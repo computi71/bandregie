@@ -3259,9 +3259,14 @@ if (str_starts_with($path, '/intern')) {
     $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
     foreach ($gaesteAlle as $gb) $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
     $gaesteOffen = items_unseen($me, 'guest');
+    $gaesteNr = array_map(static fn($g) => (int) $g['id'], rows('SELECT id FROM guests'));
     view('intern/gaeste', [
       'title' => t('guest_title'),
       'guests' => rows('SELECT * FROM guests ORDER BY name'),
+      // Was sie über die Lieder gesagt haben (#450): Zahlen für die
+      // Überschrift, Titel für das Aufgeklappte.
+      'guestSongs' => guest_songs_map($gaesteNr),
+      'guestSongTitles' => guest_songs_titles($gaesteNr),
       'unseenGuests' => $gaesteOffen,
       'seenOnList' => ['guest' => array_keys($gaesteOffen)],
       'bookingsByGuest' => $gaesteBuchungen,
@@ -3384,6 +3389,14 @@ if (str_starts_with($path, '/intern')) {
     }
     back('/intern/termine?alle=1');
   }
+  // Seine Antworten über das Repertoire vergessen (#450) — getrennt vom
+  // Löschen des Gasts, das an seinen Einsätzen hängt.
+  if (preg_match('~^/intern/gaeste/(\d+)/antworten-loeschen$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/gaeste');
+    guest_songs_clear((int) $m[1]);
+    flash(t('fl_guest_songs_cleared'));
+    back('/intern/gaeste');
+  }
   // Nachträglich ändern, was der Link zeigt (#449). Eine stornierte oder
   // abgesagte Buchung bleibt außen vor: Dort gibt es nichts mehr zu zeigen.
   if (preg_match('~^/intern/gaeste/buchung/(\d+)/sicht$~', $path, $m) && $method === 'POST') {
@@ -3408,6 +3421,10 @@ if (str_starts_with($path, '/intern')) {
       // Storniert heißt: der Schlüssel ist sofort weg. Die Zeile bleibt als Geschichte.
       q("UPDATE guest_bookings SET status = 'storniert' WHERE id = ?", [$m[1]]);
       flash(t('fl_guest_cancelled'));
+    } elseif (guest_ask_for($gBuchung) === '') {
+      // Nichts offen, nichts zu schicken — die Karte zeigt den Knopf dann auch
+      // nicht; die Route darf sich darauf nicht verlassen (#450).
+      flash(t('fl_guest_nothing_to_ask'));
     } elseif ((string) $gBuchung['guest_email'] !== '') {
       flash(guest_invite_mail($gBuchung) ? t('fl_guest_resent') : t('fl_guest_booked_mailfail'));
     } else {

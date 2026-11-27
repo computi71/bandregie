@@ -1161,6 +1161,11 @@ const UI_STRINGS = [
   'guest_show_rider' => 'Stagerider', 'guest_show_setlist' => 'Setliste und Liedtexte',
   'guest_show_songs' => 'Liederliste zum Ankreuzen',
   'fl_guest_shows_saved' => 'Gespeichert — sein Link zeigt ab sofort das Angehakte.',
+  'guest_songs_clear' => 'Antworten löschen',
+  'guest_songs_clear_confirm' => 'Alle Liedantworten dieses Gastes löschen? Seine Einsätze bleiben.',
+  'fl_guest_songs_cleared' => 'Die Liedantworten des Gastes sind gelöscht.',
+  'fl_guest_nothing_to_ask' => 'Da ist gerade nichts offen — er hat geantwortet, und die Liederliste ist nicht freigegeben.',
+  'guest_share_songs_msg' => 'Hallo %1$s, hier kannst du für %2$s ankreuzen, welche Lieder du spielen kannst: %5$s/lieder',
   // Die Seite, die der Gast sieht
   'gast_hello' => 'Hallo', 'gast_asks' => 'fragt dich an', 'gast_your_part' => 'Deine Aufgabe',
   'gast_yes' => 'Ich bin dabei', 'gast_no' => 'Ich kann nicht',

@@ -6445,7 +6445,11 @@ function event_view_data(array $events, array $me): array {
   // Gebuchte Gäste je Termin und ihre Bewertungen (#294).
   $guestsByEvent = guest_bookings_map($ids);
   $guestBookingIds = [];
-  foreach ($guestsByEvent as $liste) foreach ($liste as $b) $guestBookingIds[] = (int) $b['id'];
+  $guestIds = [];
+  foreach ($guestsByEvent as $liste) foreach ($liste as $b) {
+    $guestBookingIds[] = (int) $b['id'];
+    $guestIds[] = (int) $b['guest_id'];
+  }
   // Die Nebendaten eines verdeckten Termins sind genauso vertraulich wie er
   // selbst: ein Kommentar, eine Zusage, ein Dateiname verraten dasselbe.
   $ohne = static fn(array $karte): array => $verdeckt ? array_diff_key($karte, array_flip($verdeckt)) : $karte;
@@ -6496,6 +6500,9 @@ function event_view_data(array $events, array $me): array {
     'guestsByEvent' => $ohne($guestsByEvent),
     'guestList' => perm_allows($me, 'gaeste') ? rows('SELECT id, name, function_name, email FROM guests ORDER BY name') : [],
     'guestRatings' => guest_ratings_map($guestBookingIds, (int) $me['id']),
+    // Was die Gäste über die Lieder gesagt haben (#450) — eine Abfrage für
+    // die ganze Seite, nicht eine je Buchung.
+    'guestSongs' => guest_songs_map(array_values(array_unique($guestIds))),
     // Der Vertragsstand je Termin (#303): Nur wer Verträge sehen darf,
     // bekommt die Abfrage überhaupt — sonst fragt die Terminliste Zeilen
     // ab, die der Lesende nie zu Gesicht bekommt.

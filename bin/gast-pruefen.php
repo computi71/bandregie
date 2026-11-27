@@ -175,6 +175,15 @@ q('INSERT INTO guest_bookings (guest_id, event_id, token, access_until, status, 
   [$gastMit, $termin, bin2hex(random_bytes(32)), guest_access_until(date('Y-m-d', strtotime('+30 days'))), 'zugesagt']);
 $pruefe('Antwort überlebt die Buchung', (guest_song_answers($gastMit)[$liedA] ?? '') === 'yes');
 
+// ------------------------------------------------ 3. Was die Band sieht
+$pruefe('Zahlen je Gast in einer Abfrage', (guest_songs_map([$gastMit])[$gastMit]['yes'] ?? 0) === 1);
+$pruefe('Gast ohne Antwort steht nicht in der Liste',
+    !array_key_exists((int) $zu['guest_id'], guest_songs_map([$gastMit, (int) $zu['guest_id']])));
+$pruefe('Antworten löschen leert die Liste',
+    guest_songs_clear($gastMit) === 2 && guest_song_answers($gastMit) === []);
+$pruefe('Antworten löschen lässt die Buchung stehen',
+    (bool) row('SELECT 1 FROM guest_bookings WHERE guest_id = ?', [$gastMit]));
+
 // Dieselbe Funktion wie die Löschroute — eine Abschrift hier prüfte nur sich
 // selbst (#439).
 foreach ([$liedA, $liedB, $liedV] as $l) song_delete($l);
