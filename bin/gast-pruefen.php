@@ -177,6 +177,18 @@ foreach (['Storniert' => $storniert, 'Abgesagt' => $abgesagt, 'Offen' => $offen,
 $schicke('/gast/' . $mit['token'] . '/lieder', '/gast/' . $mit['token'] . '/lied/' . $liedB, ['status' => 'maybe']);
 $pruefe('Route schreibt die Antwort', (guest_song_answers($gastMit)[$liedB] ?? '') === 'maybe');
 
+// Die gewählte Antwort steckte allein in der Füllung des Knopfes (#454). Wer
+// sich die Seite vorlesen lässt, hörte drei gleich klingende Knöpfe und nicht,
+// was schon dasteht — auf einer Seite, deren ganzer Zweck das Nachsehen und
+// Ändern ist.
+$formB = '';
+if (preg_match('~<form[^>]*/lied/' . $liedB . '".*?</form>~s', $hole('/gast/' . $mit['token'] . '/lieder'), $t)) $formB = $t[0];
+$pruefe('Gewählte Antwort wird angesagt',
+    (bool) preg_match('~value="maybe"[^>]*aria-pressed="true"~', $formB));
+$pruefe('Die beiden anderen Antworten gelten als nicht gewählt',
+    substr_count($formB, 'aria-pressed="false"') === 2);
+$pruefe('Die drei Knöpfe hängen hörbar am Lied', str_contains($formB, 'aria-label="ZZGA Lied B"'));
+
 q('UPDATE guest_bookings SET show_songs = 0 WHERE id = ?', [$mit['id']]);
 $schicke('/gast/' . $mit['token'], '/gast/' . $mit['token'] . '/lied/' . $liedB, ['status' => 'no']);
 $pruefe('Ohne Haken schreibt die Route nicht', (guest_song_answers($gastMit)[$liedB] ?? '') === 'maybe');

@@ -47,9 +47,15 @@ $gezaehlt = guest_song_counts((int) $b['guest_id']);
         <?php if ((string) $s['artist'] !== ''): ?><span class="muted small"> · <?= e($s['artist']) ?></span><?php endif; ?>
         <?php if ((string) $s['song_key'] !== ''): ?><span class="muted small"> · <?= e($s['song_key']) ?></span><?php endif; ?>
       </span>
-      <form method="post" action="<?= e($zurueck) ?>/lied/<?= (int) $s['id'] ?>"><?= csrf_field() ?>
+      <?php // Die Farbe des Knopfes sagt dem Auge, was gewählt ist; aria-pressed
+            // sagt es der Vorlesestimme. Ohne das hört der Gast drei gleiche
+            // Knöpfe und erfährt nie, was er schon beantwortet hat (#454). Die
+            // Gruppe trägt den Liedtitel, damit die drei nicht in der Luft
+            // hängen — role="group" statt des Formular-Bereichs, sonst meldet
+            // der Screenreader bei hundert Liedern hundert Bereiche. ?>
+      <form method="post" action="<?= e($zurueck) ?>/lied/<?= (int) $s['id'] ?>" role="group" aria-label="<?= e($s['title']) ?>"><?= csrf_field() ?>
         <?php foreach (['yes', 'maybe', 'no'] as $wahl): ?>
-          <button name="status" value="<?= $wahl ?>" class="chip<?= $mein === $wahl ? ' chip-' . $wahl : '' ?>"><?= e(t('gast_can_' . $wahl)) ?></button>
+          <button name="status" value="<?= $wahl ?>" aria-pressed="<?= $mein === $wahl ? 'true' : 'false' ?>" class="chip<?= $mein === $wahl ? ' chip-' . $wahl : '' ?>"><?= e(t('gast_can_' . $wahl)) ?></button>
         <?php endforeach; ?>
       </form>
     </div>
