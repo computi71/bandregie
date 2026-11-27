@@ -2336,8 +2336,12 @@ if (setting('choice_answer_help') !== '1') {
 // angehakt (#449) — der Hilfetext darf nicht weiter „Ablauf, Rider und
 // Setliste" versprechen. Der Ursprungs-Seed ist geändert; die bereits
 // eingespielte Fassung muss dafür weichen.
+// Dasselbe für den Dank nach der Zusage und den zweiten Hilfeabsatz: Beide
+// zählten auf, was der Gast nun sieht — „Ablauf, Rider und Setliste" und
+// „nur, was zu seinem Termin gehört". Mit der Liederliste kann er das ganze
+// Repertoire sehen, also darf keiner von beiden so stehen bleiben.
 if (setting('guest_shows_help') !== '1') {
-  q("DELETE FROM translations WHERE tkey = 'help_gaeste'");
+  q("DELETE FROM translations WHERE tkey IN ('help_gaeste', 'help_gaeste_2', 'gast_thanks_yes')");
   set_setting('guest_shows_help', '1');
 }
 // Ein Fehlschlag aus einem verlorenen Wettlauf (#416). Zwei Anfragen spielen

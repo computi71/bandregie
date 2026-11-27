@@ -65,11 +65,16 @@
     <?php // Was er über die Lieder gesagt hat (#450). Hier und nicht nur in
           // der Setliste: Solange keine Setliste steht, ist das die einzige
           // Stelle, an der die Band seine Antworten nachlesen kann. ?>
+    <?php // Aufgeklappt wird, sobald überhaupt Zeilen da sind — nicht erst,
+          // wenn sie zu aktiven Liedern gehören. Sonst fiele der Löschknopf
+          // weg, sobald die Band alle beantworteten Lieder archiviert hat. ?>
     <?php $gAntworten = $guestSongs[(int) $g['id']] ?? null; ?>
-    <?php if ($gAntworten): ?>
+    <?php if ($guestSongsAny[(int) $g['id']] ?? 0): ?>
       <details class="subsection">
         <summary>🎵 <?= e(t('gast_songs_can')) ?>
-          <span class="muted small"><?= (int) $gAntworten['yes'] ?> ✔ · <?= (int) $gAntworten['maybe'] ?> ? · <?= (int) $gAntworten['no'] ?> ✘</span></summary>
+          <?php if ($gAntworten): ?>
+            <span class="muted small"><?= (int) $gAntworten['yes'] ?> ✔ · <?= (int) $gAntworten['maybe'] ?> ? · <?= (int) $gAntworten['no'] ?> ✘</span>
+          <?php endif; ?></summary>
         <?php foreach (['yes', 'maybe', 'no'] as $gWahl): ?>
           <?php $gTitel = $guestSongTitles[(int) $g['id']][$gWahl] ?? []; ?>
           <?php if ($gTitel): ?>

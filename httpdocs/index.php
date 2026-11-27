@@ -1951,7 +1951,10 @@ if (str_starts_with($path, '/intern')) {
     // Diese Handlungen ändern die Setliste, ohne eine ihrer eigenen Spalten
     // anzufassen — markiert wird deshalb ohne Vergleich (#321).
     $slMarke();
-    redirect("/intern/setlists/$id");
+    // Den Gästefilter mitnehmen (#451): Ohne ihn stünde die Auswahl nach
+    // jedem hinzugefügten Lied wieder auf „alle Lieder".
+    $slGastZurueck = (int) ($_POST['gast'] ?? 0);
+    redirect("/intern/setlists/$id" . ($slGastZurueck ? '?gast=' . $slGastZurueck : ''));
   }
 
   // ---------- Aufgaben ----------
@@ -3272,6 +3275,7 @@ if (str_starts_with($path, '/intern')) {
       // Überschrift, Titel für das Aufgeklappte.
       'guestSongs' => guest_songs_map($gaesteNr),
       'guestSongTitles' => guest_songs_titles($gaesteNr),
+      'guestSongsAny' => guest_songs_any($gaesteNr),
       'unseenGuests' => $gaesteOffen,
       'seenOnList' => ['guest' => array_keys($gaesteOffen)],
       'bookingsByGuest' => $gaesteBuchungen,
@@ -3308,6 +3312,10 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_guest_has_bookings'));
       } else {
         item_forget('guest', (int) $m[1]);
+        // Seine Liedantworten gehen mit (#450): Sie hängen am Gast und an
+        // keiner Buchung, blieben hier also als Waisen liegen — und die
+        // Datenschutzerklärung verspricht, dass wir sie löschen.
+        guest_songs_clear((int) $m[1]);
         q('DELETE FROM guests WHERE id = ?', [$m[1]]);
         flash(t('fl_guest_deleted'));
       }
@@ -3344,8 +3352,8 @@ if (str_starts_with($path, '/intern')) {
     // ihre Liedantworten hinter der ersten verschwunden. Zusammengelegt wird
     // nichts von selbst; die Band bekommt den Gefundenen vorgewählt und
     // entscheidet. Zwei Leute dürfen gleich heißen.
-    if ($gId <= 0 && $gNeu !== '') {
-      $gGleich = row('SELECT id FROM guests WHERE LOWER(name) = LOWER(?)', [$gNeu]);
+    if ($gId <= 0 && $gNeu !== '' && ($_POST['name_force'] ?? '') !== '1') {
+      $gGleich = row('SELECT id FROM guests WHERE LOWER(TRIM(name)) = LOWER(?)', [$gNeu]);
       if ($gGleich) {
         flash(str_replace('%1', $gNeu, t('fl_guest_name_exists')));
         back('/intern/termine');

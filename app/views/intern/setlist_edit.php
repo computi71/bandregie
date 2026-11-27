@@ -135,16 +135,20 @@
             // JavaScript zu bedienen sein (#429), und eine Auswahl, die die
             // Adresse mitträgt, überlebt das Neuladen nach jedem Hinzufügen. ?>
       <?php if ($slGuests): ?>
+        <?php // Der Knopf steht immer da, nicht nur in <noscript>: Die Seite
+              // schickt script-src 'self' ohne 'unsafe-inline', also führt der
+              // Browser ein onchange= im Dokument gar nicht aus. Mit Skript
+              // sähe der Filter fertig aus und täte nichts. ?>
         <form method="get" class="inline">
           <label><?= e(t('sl_guest_filter')) ?>
-            <select name="gast" onchange="this.form.submit()">
+            <select name="gast">
               <option value="0"><?= e(t('sl_guest_all')) ?></option>
               <?php foreach ($slGuests as $slGid => $slG): ?>
                 <option value="<?= (int) $slGid ?>" <?= $slGuestPick === (int) $slGid ? 'selected' : '' ?>><?= e($slG['name']) ?></option>
               <?php endforeach; ?>
             </select>
           </label>
-          <noscript><button class="btn btn-tiny"><?= e(t('apply')) ?></button></noscript>
+          <button class="btn btn-tiny"><?= e(t('apply')) ?></button>
         </form>
       <?php endif; ?>
       <?php
@@ -158,6 +162,10 @@
       ?>
       <?php if ($slListe): ?>
         <form method="post" action="/intern/setlists/<?= $setlist['id'] ?>/add" class="comment-form grow"><?= csrf_field() ?>
+          <?php // Die Auswahl muss das Hinzufügen überleben: Sonst steht die
+                // Liste nach jedem Lied wieder auf „alle Lieder", und beim
+                // zweiten Lied sucht man den Gast neu. ?>
+          <?php if ($slGuestPick): ?><input type="hidden" name="gast" value="<?= (int) $slGuestPick ?>"><?php endif; ?>
           <select name="song_id" required>
             <option value=""><?= e(t('sl_pick')) ?></option>
             <?php foreach ($slListe as $song): ?><option value="<?= $song['id'] ?>"><?= e($song['title']) ?> (<?= fmt_duration($song['duration_sec']) ?>)<?= $slWahl && ($slWahl['answers'][(int) $song['id']] ?? '') === 'maybe' ? ' · ' . e(t('gast_can_maybe')) : '' ?></option><?php endforeach; ?>

@@ -41,7 +41,7 @@ $hole = static function (string $pfad) use ($host): string {
 // Ein Formular wirklich abschicken: Seite holen, Token herauslesen, mit
 // derselben Sitzung senden. Ohne das prüfte ein POST nur den CSRF-Riegel und
 // liefe grün, auch wenn die Route dahinter alles durchließe.
-$schicke = static function (string $formularPfad, string $zielPfad, array $felder, string $sid = '') use ($host): void {
+$schicke = static function (string $formularPfad, string $zielPfad, array $felder, string $sid = '') use ($host): string {
     $topf = tempnam(sys_get_temp_dir(), 'zzga');
     // Mit Sitzungskennung für die Seiten des Bandbereichs: Ohne sie landete
     // der Aufruf auf der Anmeldung, und eine Prüfung „es entsteht kein zweiter
@@ -55,8 +55,11 @@ $schicke = static function (string $formularPfad, string $zielPfad, array $felde
     $daten = ['_token' => $t[1] ?? ''] + $felder;
     $args = '';
     foreach ($daten as $k => $v) $args .= ' --data-urlencode ' . escapeshellarg("$k=$v");
-    shell_exec(sprintf('%s -o /dev/null%s https://%s%s', $basis, $args, $host, $zielPfad));
+    // Die Antwortseite kommt zurück: Manches steht nur dort — der Dank nach
+    // der Zusage etwa erscheint kein zweites Mal.
+    $antwort = (string) shell_exec(sprintf('%s%s https://%s%s', $basis, $args, $host, $zielPfad));
     @unlink($topf);
+    return $antwort;
 };
 
 // ---- Testdaten. Reste eines abgebrochenen Laufs zuerst weg, sonst stolpert
@@ -286,6 +289,19 @@ $pruefe('Zeichen am Lied, das er nicht kann', str_contains($slMitLied, '✘ ZZGA
 $pruefe('Ausdruck trägt kein Zeichen',
     !str_contains($sieht('/intern/setlists/' . $setliste . '/print'), 'ZZGA Setlistengast'));
 
+// Der Filter muss sich im Browser bedienen lassen. Die Seite schickt
+// script-src 'self' ohne 'unsafe-inline', also führt der Browser kein
+// onchange= im Dokument aus — ein Filter, dessen einziger Auslöser so ein
+// Attribut ist, sieht fertig aus und tut nichts (gefunden in der Durchsicht).
+$pruefe('Filter hat einen Knopf', preg_match('~name="gast".*?</form>~s', $slSeite, $f) === 1
+    && str_contains($f[0], '<button'));
+$pruefe('Filter braucht kein Skript im Dokument', !preg_match('~\son(change|click|submit)=~', $slSeite));
+// Nach dem Hinzufügen eines Lieds muss die Auswahl stehen bleiben, sonst
+// fängt man bei jedem Lied von vorn an.
+$pruefe('Gefilterte Auswahl trägt den Gast mit',
+    preg_match('~action="/intern/setlists/\d+/add".*?</form>~s', $slGefiltert, $a) === 1
+    && str_contains($a[0], 'name="gast"'));
+
 $ohneGaeste = $mitglied(['setlists' => [1, 1], 'songs' => [1, 1], 'gaeste' => [0, 0], 'termine' => [1, 1]]);
 $slOhne = $ohneGaeste('/intern/setlists/' . $setliste);
 $pruefe('Ohne Gästerecht kein Filter und kein Zeichen', !str_contains($slOhne, 'ZZGA Setlistengast'));
@@ -296,6 +312,35 @@ q("DELETE FROM users WHERE name = 'ZZGA Konto'");
 q('DELETE FROM setlist_songs WHERE setlist_id = ?', [$setliste]);
 q('DELETE FROM setlists WHERE id IN (?, ?)', [$setliste, $setlisteAlt]);
 q('DELETE FROM events WHERE id IN (?, ?)', [$termin2, $terminAlt]);
+
+// ------------------------------------------------ 4b. Was beim Löschen bleibt
+// Der Gast wird gelöscht, seine Antworten blieben als Waisen liegen — und die
+// Datenschutzerklärung verspricht im selben Commit, dass sie mitgehen.
+q("INSERT INTO guests (name, email) VALUES ('ZZGA Zu Loeschen', '')");
+$gastWeg = (int) $GLOBALS['db']->lastInsertId();
+guest_song_set($gastWeg, $liedA, 'yes');
+$sieht2 = $mitglied($alleRechte);
+$schicke('/intern/gaeste', '/intern/gaeste/' . $gastWeg . '/delete', [], $sidLetzte);
+$pruefe('Gelöschter Gast nimmt seine Antworten mit',
+    !row('SELECT 1 FROM guest_songs WHERE guest_id = ?', [$gastWeg]));
+
+// „Antworten löschen" muss da sein, solange Zeilen da sind — auch wenn die
+// beantworteten Lieder inzwischen alle im Archiv liegen.
+$archiv = $buche('ZZGA Archivgast', ['show_songs' => 1]);
+guest_song_set((int) $archiv['guest_id'], $liedA, 'yes');
+q("UPDATE songs SET status = 'archiv' WHERE id = ?", [$liedA]);
+$pruefe('Löschknopf bleibt bei archivierten Liedern',
+    str_contains($sieht2('/intern/gaeste'), '/intern/gaeste/' . (int) $archiv['guest_id'] . '/antworten-loeschen'));
+q("UPDATE songs SET status = 'aktiv' WHERE id = ?", [$liedA]);
+
+// Was der Gast nach der Zusage liest, muss zu den Haken passen.
+// Die Antwortseite selbst, nicht der spätere Aufruf: Der Dank steht nur
+// direkt nach dem Zusagen, und genau dort zählte er auf, was es gar nicht
+// mehr geben muss.
+$ohneAlles = $buche('ZZGA Ohne Alles', ['show_rider' => 0, 'show_setlist' => 0, 'status' => 'angefragt']);
+$dank = $schicke('/gast/' . $ohneAlles['token'], '/gast/' . $ohneAlles['token'] . '/antwort', ['antwort' => 'ja']);
+$pruefe('Dank verspricht keinen Rider ohne Haken', !str_contains($dank, 'Rider'));
+$pruefe('Dank verspricht keine Setliste ohne Haken', !str_contains($dank, 'Setliste'));
 
 // ------------------------------------------------ 5. Doppelte Gäste
 $pruefe('Drei Zeichen finden den Gast', (guests_by_name('ZZG')[0]['id'] ?? 0) > 0);
@@ -329,6 +374,18 @@ $schicke('/intern/termine', '/intern/gaeste/buchen',
     $sidBucht);
 $pruefe('Ein neuer Name legt sehr wohl an',
     (bool) row("SELECT 1 FROM guests WHERE name = 'ZZGA Ganz Neu'"));
+
+// Zwei Leute dürfen gleich heißen: Wer bestätigt, dass es jemand anderes ist,
+// bekommt die zweite Zeile — sonst wäre die Prüfung eine Mauer und die Band
+// müsste den Namen falsch schreiben.
+$schicke('/intern/termine', '/intern/gaeste/buchen',
+    ['event_id' => (string) $termin, 'new_name' => 'ZZGA Setlistengast',
+     'new_email' => 'zzga3@example.invalid', 'name_force' => '1'],
+    $sidBucht);
+$pruefe('Bestätigt legt den Namensvetter doch an',
+    (int) row("SELECT COUNT(*) AS n FROM guests WHERE name = 'ZZGA Setlistengast'")['n'] === $vorher + 1);
+$pruefe('Buchungsformular steht auch auf der Übersicht',
+    str_contains($bucht('/intern'), 'gastsuche.js'));
 
 q("DELETE FROM permissions WHERE user_id IN (SELECT id FROM users WHERE name = 'ZZGA Konto')");
 q("DELETE FROM users WHERE name = 'ZZGA Konto'");

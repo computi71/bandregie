@@ -138,6 +138,27 @@ function guest_songs_titles(array $guestIds): array {
 }
 
 /**
+ * Wer überhaupt Zeilen hat — ungefiltert (#450).
+ *
+ * Getrennt von guest_songs_map(), das nur zählt, was der Gast gerade sieht:
+ * Hat die Band alle beantworteten Lieder archiviert, zählt die Karte null,
+ * die Zeilen liegen aber noch da. Hinge „Antworten löschen" an den Zahlen,
+ * verschwände der Knopf genau dann, wenn es noch etwas zu löschen gibt.
+ *
+ * @return array<int, int> Gast => Zeilen
+ */
+function guest_songs_any(array $guestIds): array {
+  if (!$guestIds) return [];
+  $ph = implode(',', array_fill(0, count($guestIds), '?'));
+  $out = [];
+  foreach (rows("SELECT guest_id, COUNT(*) AS n FROM guest_songs
+                 WHERE guest_id IN ($ph) GROUP BY guest_id", $guestIds) as $r) {
+    $out[(int) $r['guest_id']] = (int) $r['n'];
+  }
+  return $out;
+}
+
+/**
  * Alles vergessen, was ein Gast angekreuzt hat (#450).
  *
  * Eigener Knopf neben dem Löschen des Gasts: Seine Einsätze sind die

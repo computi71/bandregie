@@ -240,4 +240,10 @@
   <?php endforeach; ?>
   <a class="btn" href="/intern/termine"><?= e(t('dash_all_events')) ?></a>
 <?php endif; ?>
+<?php // Gebucht wird auch von hier aus (#452): Die Terminkarten der Übersicht
+      // tragen dasselbe Buchungsformular wie die Terminliste, also muss auch
+      // hier beim Tippen nachgesehen werden, ob es den Gast schon gibt. ?>
+<?php if (perm_allows($user, 'gaeste', 'write')): ?>
+  <script src="<?= e(asset('/assets/gastsuche.js')) ?>" defer></script>
+<?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

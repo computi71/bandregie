@@ -100,6 +100,11 @@
           <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
           <label><?= e(t('mem_mobile')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_mobile" maxlength="60"></label>
           <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
+          <?php // Zwei Leute dürfen gleich heißen (#452). Der Riegel beim
+                // Abschicken hält nur, bis jemand hier bestätigt, dass es
+                // wirklich eine andere Person ist — sonst müsste die Band den
+                // Namen falsch schreiben, um ihn buchen zu können. ?>
+          <label class="checkbox span2"><input type="checkbox" name="name_force" value="1"> <?= e(t('guest_name_force')) ?></label>
           <?php // Was sein Link zeigt (#449). Rider und Setliste sind an, weil
                 // das der Grund der Einladung ist; die Liederliste nicht —
                 // sie öffnet das ganze Repertoire, und das entscheidet die
