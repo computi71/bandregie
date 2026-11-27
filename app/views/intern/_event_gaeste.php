@@ -51,6 +51,18 @@
               <a class="badge link" href="<?= e($url) ?>" target="_blank" rel="noopener"><?= $weg === 'whatsapp' ? '💬' : '📱' ?> <?= e(t('guest_send_' . $weg)) ?></a>
             <?php endforeach; ?>
           <?php endif; ?>
+          <?php // Nachträglich ändern, was der Link zeigt (#449): Der Link
+                // bleibt derselbe, also muss die Band ihre Meinung ändern
+                // dürfen, ohne neu zu buchen. ?>
+          <details class="inline">
+            <summary class="btn btn-tiny btn-ghost">👁 <?= e(t('guest_shows')) ?></summary>
+            <form method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/sicht" class="inline"><?= csrf_field() ?>
+              <?php foreach (GUEST_PARTS as $teil => $spalte): ?>
+                <label class="checkbox"><input type="checkbox" name="<?= e($spalte) ?>" value="1" <?= guest_may_see($g, $teil) ? 'checked' : '' ?>> <?= e(t('guest_show_' . $teil)) ?></label>
+              <?php endforeach; ?>
+              <button class="btn btn-tiny"><?= e(t('save')) ?></button>
+            </form>
+          </details>
           <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/stornieren" data-confirm="<?= e(t('guest_cancel_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger" title="<?= e(t('guest_cancel')) ?>">✕</button></form>
         <?php endif; ?>
       </div>
@@ -71,6 +83,16 @@
           <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
           <label><?= e(t('mem_mobile')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_mobile" maxlength="60"></label>
           <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
+          <?php // Was sein Link zeigt (#449). Rider und Setliste sind an, weil
+                // das der Grund der Einladung ist; die Liederliste nicht —
+                // sie öffnet das ganze Repertoire, und das entscheidet die
+                // Band bewusst und nicht aus Versehen. ?>
+          <div class="span2">
+            <p class="muted small"><?= e(t('guest_shows_hint')) ?></p>
+            <?php foreach (GUEST_PARTS as $teil => $spalte): ?>
+              <label class="checkbox"><input type="checkbox" name="<?= e($spalte) ?>" value="1" <?= $teil === 'songs' ? '' : 'checked' ?>> <?= e(t('guest_show_' . $teil)) ?></label>
+            <?php endforeach; ?>
+          </div>
           <div class="span2 row-buttons"><button class="btn btn-small">✉ <?= e(t('guest_invite_send')) ?></button></div>
         </form>
       </details>

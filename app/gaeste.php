@@ -20,6 +20,23 @@ function guest_status_label(string $status): string {
 }
 
 /**
+ * Was der Link dieser Buchung öffnet (#449).
+ *
+ * Drei Dinge entscheidet die Band je Buchung: Rider, Setliste samt Texten und
+ * die Liederliste zum Ankreuzen. Alles andere — Datum, Ort, Treffzeit, seine
+ * Aufgabe — steht immer da; das ist die Einladung selbst.
+ *
+ * Ein Name, den es nicht gibt, ist zu. Standardmäßig „nein" heißt hier: Wer
+ * sich vertippt, zeigt zu wenig und nicht versehentlich zu viel.
+ */
+const GUEST_PARTS = ['rider' => 'show_rider', 'setlist' => 'show_setlist', 'songs' => 'show_songs'];
+
+function guest_may_see(array $b, string $teil): bool {
+  $spalte = GUEST_PARTS[$teil] ?? '';
+  return $spalte !== '' && (int) ($b[$spalte] ?? 0) === 1;
+}
+
+/**
  * Ort und Navi-Ziel eines Gast-Termins: der hinterlegte Veranstaltungsort mit
  * Anschrift, sonst der Freitext. Einmal hier, weil Einladungsmail und
  * Gastseite dasselbe sagen müssen.

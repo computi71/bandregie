@@ -1,6 +1,6 @@
 // Wie viele Anfragen assets/seen.js losschickt (#400).
 //
-// Am 25.10.2026 waren 232 von 250 Schreibzugriffen auf der Beat-Cuisine-Instanz
+// Am 25.10.2026 waren 232 von 250 Schreibzugriffen auf einer echten Bandinstanz
 // dieser eine Weg, in Schwaellen von bis zu 26 Anfragen in derselben Sekunde —
 // eine je aufgeklappter Karte, in einen Pool mit fuenf Arbeitern. Dieselbe
 // Form wie #374, nur mit billigen statt langsamen Anfragen.

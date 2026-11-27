@@ -55,11 +55,19 @@ $navi = $navi ?? '';
       </section>
     <?php endif; ?>
 
-    <?php // Nach der Zusage: alles für den Abend, nur lesend, nur dieser Termin (#294). ?>
-    <?php if ($b['status'] === 'zugesagt' && $antwort !== 'nein'): ?>
+    <?php // Nach der Zusage: alles für den Abend, nur lesend, nur dieser Termin
+          // (#294) — und davon das, was die Band für diese Buchung angehakt
+          // hat (#449). Ist nichts angehakt, fällt der ganze Kasten weg: Eine
+          // Überschrift „Für den Abend" über einer leeren Fläche sähe nach
+          // einem Fehler aus. ?>
+    <?php $gastZeigt = guest_may_see($b, 'rider') || guest_may_see($b, 'setlist'); ?>
+    <?php if ($b['status'] === 'zugesagt' && $antwort !== 'nein' && $gastZeigt): ?>
       <section class="card">
         <h2><?= e(t('gast_for_evening')) ?></h2>
-        <p><a class="btn" href="/gast/<?= e($b['token']) ?>/rider">📋 <?= e(t('gast_rider')) ?></a></p>
+        <?php if (guest_may_see($b, 'rider')): ?>
+          <p><a class="btn" href="/gast/<?= e($b['token']) ?>/rider">📋 <?= e(t('gast_rider')) ?></a></p>
+        <?php endif; ?>
+        <?php if (guest_may_see($b, 'setlist')): ?>
         <?php if ($entries): ?>
           <p><a class="btn" href="/gast/<?= e($b['token']) ?>/setliste">🎤 <?= e(t('gast_setlist')) ?></a></p>
           <h3><?= e(t('gast_songs')) ?></h3>
@@ -71,6 +79,7 @@ $navi = $navi ?? '';
           </ol>
         <?php else: ?>
           <p class="muted small"><?= e(t('gast_no_setlist')) ?></p>
+        <?php endif; ?>
         <?php endif; ?>
       </section>
     <?php endif; ?>

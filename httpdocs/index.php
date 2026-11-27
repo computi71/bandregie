@@ -409,12 +409,20 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
   }
   $gastZurueck = '/gast/' . $gastBuchung['token'];
   $gastEntries = $gastBuchung['status'] === 'zugesagt' && $gastBuchung['setlist_id']
+      && guest_may_see($gastBuchung, 'setlist')
     ? setlist_entries((int) $gastBuchung['setlist_id']) : [];
   $gastSeite = ['title' => setting('band_name'), 'b' => $gastBuchung, 'entries' => $gastEntries] + guest_event_place($gastBuchung);
   // Rider, Setliste und Lieder gibt es erst nach der Zusage — und nur, was zu
   // diesem Termin gehört: die Lieder allein aus seiner Setliste.
   $gastTeil = (string) ($m[2] ?? '');
   if ($gastTeil !== '' && $gastTeil !== 'antwort' && $gastBuchung['status'] !== 'zugesagt') {
+    redirect($gastZurueck);
+  }
+  // Was die Band für diese Buchung abgewählt hat, ist auch über die geratene
+  // Adresse zu (#449): Ein Knopf, der nicht gezeichnet wird, ist keine Sperre.
+  $gastTeilRecht = ['rider' => 'rider', 'setliste' => 'setlist'];
+  if ($gastTeil !== '' && $gastTeil !== 'antwort'
+      && !guest_may_see($gastBuchung, $gastTeilRecht[$gastTeil] ?? 'setlist')) {
     redirect($gastZurueck);
   }
   if ($gastTeil === 'rider') {
@@ -3333,8 +3341,13 @@ if (str_starts_with($path, '/intern')) {
       back('/intern/termine');
     }
     $gFunktion = mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120) ?: (string) $gast['function_name'];
-    q('INSERT INTO guest_bookings (guest_id, event_id, function_name, token, access_until, created_by) VALUES (?,?,?,?,?,?)',
-      [$gId, $gEvent['id'], $gFunktion, bin2hex(random_bytes(32)), guest_access_until($gEvent['date']), $me['id']]);
+    // Was sein Link zeigt, entscheidet die Band schon beim Buchen (#449).
+    $gSicht = [];
+    foreach (GUEST_PARTS as $gSpalte) $gSicht[] = isset($_POST[$gSpalte]) ? 1 : 0;
+    q('INSERT INTO guest_bookings (guest_id, event_id, function_name, token, access_until, created_by,
+                                   show_rider, show_setlist, show_songs) VALUES (?,?,?,?,?,?,?,?,?)',
+      array_merge([$gId, $gEvent['id'], $gFunktion, bin2hex(random_bytes(32)),
+                   guest_access_until($gEvent['date']), $me['id']], $gSicht));
     $gBuchung = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.location, e.venue_id
                      FROM guest_bookings b JOIN guests g ON g.id = b.guest_id JOIN events e ON e.id = b.event_id
                      WHERE b.id = ?', [(int) $db->lastInsertId()]);
@@ -3361,6 +3374,20 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_guest_rated'));
     }
     back('/intern/termine?alle=1');
+  }
+  // Nachträglich ändern, was der Link zeigt (#449). Eine stornierte oder
+  // abgesagte Buchung bleibt außen vor: Dort gibt es nichts mehr zu zeigen.
+  if (preg_match('~^/intern/gaeste/buchung/(\d+)/sicht$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/termine');
+    $gSichtBuchung = row("SELECT id FROM guest_bookings WHERE id = ? AND status NOT IN ('abgesagt', 'storniert')", [$m[1]]);
+    if ($gSichtBuchung) {
+      $gSichtWerte = [];
+      foreach (GUEST_PARTS as $gSpalte) $gSichtWerte[] = isset($_POST[$gSpalte]) ? 1 : 0;
+      q('UPDATE guest_bookings SET show_rider = ?, show_setlist = ?, show_songs = ? WHERE id = ?',
+        array_merge($gSichtWerte, [(int) $m[1]]));
+      flash(t('fl_guest_shows_saved'));
+    }
+    back('/intern/termine');
   }
   if (preg_match('~^/intern/gaeste/buchung/(\d+)/(stornieren|erneut)$~', $path, $m) && $method === 'POST') {
     deny_in_demo('/intern/termine');

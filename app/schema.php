@@ -2086,6 +2086,19 @@ if (!column_exists('events', 'choice_of')) {
   $db->exec('ALTER TABLE events ADD COLUMN choice_of INT NULL, ADD INDEX idx_choice_of (choice_of)');
 }
 
+// Was der Link eines Gasts zeigt, entscheidet die Band je Buchung (#449).
+//
+// Die Vorgaben stehen hier als Zahlen und nicht als Verweis auf eine Konstante:
+// Sie beschreiben, was eine Buchung VOR dieser Fassung zeigte — Rider und
+// Setliste, keine Liederliste. Zöge eine spätere Änderung der Vorgabe hier mit
+// durch, bekämen Buchungen von gestern rückwirkend einen anderen Inhalt.
+if (!column_exists('guest_bookings', 'show_rider')) {
+  $db->exec('ALTER TABLE guest_bookings
+             ADD COLUMN show_rider TINYINT(1) NOT NULL DEFAULT 1,
+             ADD COLUMN show_setlist TINYINT(1) NOT NULL DEFAULT 1,
+             ADD COLUMN show_songs TINYINT(1) NOT NULL DEFAULT 0');
+}
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');

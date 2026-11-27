@@ -1155,6 +1155,12 @@ const UI_STRINGS = [
   'fl_guest_already' => 'Dieser Gast ist für den Termin schon gebucht.',
   'fl_guest_cancelled' => 'Buchung storniert, der Link ist ungültig.',
   'fl_guest_resent' => 'Einladung erneut verschickt.',
+  // Was sein Link zeigt (#449)
+  'guest_shows' => 'Was er sieht',
+  'guest_shows_hint' => 'Was sein Link zeigt. Termin, Ort und Treffzeit sieht er immer — dafür lädst du ihn ja ein.',
+  'guest_show_rider' => 'Stagerider', 'guest_show_setlist' => 'Setliste und Liedtexte',
+  'guest_show_songs' => 'Liederliste zum Ankreuzen',
+  'fl_guest_shows_saved' => 'Gespeichert — sein Link zeigt ab sofort das Angehakte.',
   // Die Seite, die der Gast sieht
   'gast_hello' => 'Hallo', 'gast_asks' => 'fragt dich an', 'gast_your_part' => 'Deine Aufgabe',
   'gast_yes' => 'Ich bin dabei', 'gast_no' => 'Ich kann nicht',
