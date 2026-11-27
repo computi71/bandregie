@@ -1168,6 +1168,12 @@ const UI_STRINGS = [
   'gast_for_evening' => 'Für den Abend', 'gast_rider' => 'Stagerider mit Kanalliste und Bühnenplan', 'gast_setlist' => 'Setliste zum Ausdrucken',
   'gast_songs' => 'Die Lieder', 'gast_no_setlist' => 'Eine Setliste steht noch nicht fest.', 'gast_back' => 'Zurück zum Termin',
   'gast_no_lyrics' => 'Zu diesem Lied ist kein Text hinterlegt.',
+  // Was er spielen kann (#450)
+  'gast_songs_can' => 'Was ich spielen kann',
+  'gast_songs_can_hint' => 'Geh in Ruhe durch — die Band baut danach die Setliste. Du kannst jede Antwort später ändern.',
+  'gast_songs_progress' => '%1 von %2 beantwortet',
+  'gast_songs_none' => 'Es stehen noch keine Lieder in der Liste.',
+  'gast_can_yes' => 'Kann ich', 'gast_can_maybe' => 'Mit Vorbereitung', 'gast_can_no' => 'Kenne ich nicht',
   'guest_contact_hint' => 'E-Mail-Adresse oder Telefonnummer — eines von beiden muss sein, sonst erreicht die Einladung niemanden.',
   'fl_guest_contact_required' => 'Eine E-Mail-Adresse oder eine Telefonnummer muss sein — sonst erreicht die Einladung niemanden.',
   'guest_send_whatsapp' => 'per WhatsApp', 'guest_send_sms' => 'per SMS',

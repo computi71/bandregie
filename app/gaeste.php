@@ -37,6 +37,69 @@ function guest_may_see(array $b, string $teil): bool {
 }
 
 /**
+ * Die Lieder, die ein Gast zu sehen bekommt (#450).
+ *
+ * Dieselbe Auswahl, die auch die Setliste anbietet: was gespielt wird und was
+ * geprobt wird. Ein Vorschlag, über den die Band noch abstimmt, ist keine
+ * Frage an einen Gast.
+ */
+function guest_songs_list(): array {
+  return rows("SELECT id, title, artist, song_key, tempo, duration_sec FROM songs
+                WHERE status IN ('aktiv', 'in_arbeit') ORDER BY title");
+}
+
+/** Was er bisher angekreuzt hat: Liednummer => 'yes' | 'maybe' | 'no'. */
+function guest_song_answers(int $guestId): array {
+  $out = [];
+  foreach (rows('SELECT song_id, status FROM guest_songs WHERE guest_id = ?', [$guestId]) as $r) {
+    $out[(int) $r['song_id']] = (string) $r['status'];
+  }
+  return $out;
+}
+
+/**
+ * Eine Antwort festhalten.
+ *
+ * Geprüft wird beides, der Stand und das Lied: Die Liste kommt zwar aus
+ * guest_songs_list(), aber die Nummer steht in der Adresse, und dort kann
+ * jeder etwas anderes hineinschreiben.
+ *
+ * @return bool false, wenn der Stand erfunden oder das Lied nicht zur Wahl
+ *              steht — dann ist nichts geschrieben worden
+ */
+function guest_song_set(int $guestId, int $songId, string $status): bool {
+  if (!in_array($status, ['yes', 'maybe', 'no'], true)) return false;
+  if (!row("SELECT 1 FROM songs WHERE id = ? AND status IN ('aktiv', 'in_arbeit')", [$songId])) return false;
+  q('INSERT INTO guest_songs (guest_id, song_id, status, updated_at) VALUES (?,?,?,NOW(3))
+     ON DUPLICATE KEY UPDATE status = VALUES(status), updated_at = VALUES(updated_at)',
+    [$guestId, $songId, $status]);
+  return true;
+}
+
+/**
+ * Sein Stand in Zahlen.
+ *
+ * Gezählt wird nur, was er gerade vor sich hat: Eine Antwort zu einem Lied,
+ * das die Band inzwischen archiviert hat, bleibt stehen — sie gilt wieder,
+ * wenn das Lied zurückkommt —, zählt aber nirgends mit. Sonst stünde auf
+ * seiner Seite „50 von 48" und er suchte zwei Lieder, die es nicht mehr gibt.
+ *
+ * @return array{yes:int, maybe:int, no:int, answered:int, total:int}
+ */
+function guest_song_counts(int $guestId): array {
+  $z = row("SELECT
+              SUM(gs.status = 'yes') AS ja, SUM(gs.status = 'maybe') AS vielleicht,
+              SUM(gs.status = 'no') AS nein, COUNT(*) AS beantwortet
+            FROM guest_songs gs JOIN songs s ON s.id = gs.song_id
+            WHERE gs.guest_id = ? AND s.status IN ('aktiv', 'in_arbeit')", [$guestId]);
+  return [
+    'yes' => (int) ($z['ja'] ?? 0), 'maybe' => (int) ($z['vielleicht'] ?? 0),
+    'no' => (int) ($z['nein'] ?? 0), 'answered' => (int) ($z['beantwortet'] ?? 0),
+    'total' => (int) (row("SELECT COUNT(*) AS n FROM songs WHERE status IN ('aktiv', 'in_arbeit')")['n'] ?? 0),
+  ];
+}
+
+/**
  * Ort und Navi-Ziel eines Gast-Termins: der hinterlegte Veranstaltungsort mit
  * Anschrift, sonst der Freitext. Einmal hier, weil Einladungsmail und
  * Gastseite dasselbe sagen müssen.

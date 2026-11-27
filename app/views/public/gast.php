@@ -60,7 +60,7 @@ $navi = $navi ?? '';
           // hat (#449). Ist nichts angehakt, fällt der ganze Kasten weg: Eine
           // Überschrift „Für den Abend" über einer leeren Fläche sähe nach
           // einem Fehler aus. ?>
-    <?php $gastZeigt = guest_may_see($b, 'rider') || guest_may_see($b, 'setlist'); ?>
+    <?php $gastZeigt = guest_may_see($b, 'rider') || guest_may_see($b, 'setlist') || guest_may_see($b, 'songs'); ?>
     <?php if ($b['status'] === 'zugesagt' && $antwort !== 'nein' && $gastZeigt): ?>
       <section class="card">
         <h2><?= e(t('gast_for_evening')) ?></h2>
@@ -80,6 +80,14 @@ $navi = $navi ?? '';
         <?php else: ?>
           <p class="muted small"><?= e(t('gast_no_setlist')) ?></p>
         <?php endif; ?>
+        <?php endif; ?>
+        <?php // Was er spielen kann (#450). Der Fortschritt steht gleich am
+              // Knopf: Eine Liste mit achtundvierzig Liedern sieht sonst aus
+              // wie etwas, das man an einem Abend nicht schafft. ?>
+        <?php if (guest_may_see($b, 'songs')): ?>
+          <?php $gastLieder = guest_song_counts((int) $b['guest_id']); ?>
+          <p><a class="btn" href="/gast/<?= e($b['token']) ?>/lieder">🎸 <?= e(t('gast_songs_can')) ?></a>
+            <span class="muted small"><?= e(str_replace(['%1', '%2'], [(string) $gastLieder['answered'], (string) $gastLieder['total']], t('gast_songs_progress'))) ?></span></p>
         <?php endif; ?>
       </section>
     <?php endif; ?>

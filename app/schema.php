@@ -2099,6 +2099,23 @@ if (!column_exists('guest_bookings', 'show_rider')) {
              ADD COLUMN show_songs TINYINT(1) NOT NULL DEFAULT 0');
 }
 
+// Was ein Gast spielen kann (#450).
+//
+// Gebaut wie song_votes, und zwar absichtlich: Der Gast drückt dieselben drei
+// Knöpfe wie die Band bei einem Liedvorschlag, also soll auch dahinter
+// dasselbe stehen. Der Schlüssel ist der Gast und nicht die Buchung — sein
+// Link stirbt am Tag nach dem Termin, seine Antwort soll das überleben.
+// Keine Zeile heißt „nicht beantwortet"; eine ausgedachte Enthaltung wäre eine
+// Aussage, die niemand getroffen hat.
+$db->exec("CREATE TABLE IF NOT EXISTS guest_songs (
+  guest_id INT NOT NULL,
+  song_id INT NOT NULL,
+  status VARCHAR(10) NOT NULL,
+  updated_at DATETIME(3) NULL,
+  PRIMARY KEY (guest_id, song_id),
+  INDEX idx_song (song_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');

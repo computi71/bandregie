@@ -401,7 +401,7 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
 // Der Link aus der Einladung: erst die Antwort, dann — bei Zusage — der Zugang
 // für diesen einen Termin. Kein Konto, keine Sitzung; das Token ist der
 // Schlüssel und wird wie ein Passwort behandelt (64 Hex-Zeichen, nur exakt).
-if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$~', $path, $m)) {
+if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|lieder|song/(\d+)|lied/(\d+)))?$~', $path, $m)) {
   $gastBuchung = guest_booking_by_token($m[1]);
   if (!$gastBuchung) {
     http_response_code(404);
@@ -420,7 +420,8 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
   }
   // Was die Band für diese Buchung abgewählt hat, ist auch über die geratene
   // Adresse zu (#449): Ein Knopf, der nicht gezeichnet wird, ist keine Sperre.
-  $gastTeilRecht = ['rider' => 'rider', 'setliste' => 'setlist'];
+  $gastTeilRecht = ['rider' => 'rider', 'setliste' => 'setlist', 'lieder' => 'songs'];
+  if (str_starts_with($gastTeil, 'lied/')) $gastTeilRecht[$gastTeil] = 'songs';
   if ($gastTeil !== '' && $gastTeil !== 'antwort'
       && !guest_may_see($gastBuchung, $gastTeilRecht[$gastTeil] ?? 'setlist')) {
     redirect($gastZurueck);
@@ -436,6 +437,18 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
     $gastSetlist = $gastBuchung['setlist_id'] ? row('SELECT * FROM setlists WHERE id = ?', [$gastBuchung['setlist_id']]) : null;
     if (!$gastSetlist) redirect($gastZurueck);
     view('intern/setlist_print', ['title' => $gastSetlist['name'], 'setlist' => $gastSetlist, 'entries' => $gastEntries, 'zurueckUrl' => $gastZurueck]);
+  }
+  // Was er spielen kann (#450). Die Liste gehört ihm und nicht der Buchung:
+  // Sein Link stirbt am Tag nach dem Termin, seine Antworten bleiben.
+  if ($gastTeil === 'lieder') {
+    view('public/gast_lieder', [
+      'title' => t('gast_songs_can'), 'b' => $gastBuchung, 'zurueck' => $gastZurueck,
+      'songs' => guest_songs_list(), 'answers' => guest_song_answers((int) $gastBuchung['guest_id']),
+    ]);
+  }
+  if (str_starts_with($gastTeil, 'lied/') && $method === 'POST') {
+    guest_song_set((int) $gastBuchung['guest_id'], (int) $m[4], (string) ($_POST['status'] ?? ''));
+    redirect($gastZurueck . '/lieder');
   }
   if (str_starts_with($gastTeil, 'song/')) {
     $gastSongId = (int) $m[3];
@@ -1655,13 +1668,9 @@ if (str_starts_with($path, '/intern')) {
       if ($played) {
         flash(t('fl_song_played'));
       } else {
-        // Abstimmung und Übung gehen mit (#391, #439).
-        song_tasks_delete((int) $m[1]);
-        q('DELETE FROM song_votes WHERE song_id = ?', [$m[1]]);
-        q('DELETE FROM songs WHERE id = ?', [$m[1]]);
-        item_forget('song', (int) $m[1]);
-        q('DELETE FROM setlist_songs WHERE song_id = ?', [$m[1]]);
-        q('DELETE FROM song_chords WHERE song_id = ?', [$m[1]]);
+        // Abstimmung, Übung, Akkorde und die Antworten der Gäste gehen mit
+        // (#391, #439, #450) — was daran hängt, steht in song_delete().
+        song_delete((int) $m[1]);
       }
     }
     redirect('/intern/songs');

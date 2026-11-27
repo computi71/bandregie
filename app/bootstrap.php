@@ -5679,6 +5679,27 @@ function song_tasks_delete(int $songId): void {
 }
 
 /**
+ * Ein Lied samt allem, was nur zu ihm gehört.
+ *
+ * Als Funktion und nicht als Folge von Zeilen in der Löschroute: Seit die
+ * Gäste ankreuzen, was sie spielen können (#450), hängt eine weitere Tabelle
+ * daran, und eine zweite Liste zum Nachpflegen wird irgendwann vergessen. Das
+ * Prüfskript ruft dieselbe Funktion — eine Abschrift dort prüfte nur sich
+ * selbst (#439).
+ *
+ * Ob ein Lied überhaupt gelöscht werden darf, entscheidet weiter die Route:
+ * Was in einer gespielten Setliste steht, ist Geschichte und bleibt.
+ */
+function song_delete(int $songId): void {
+  song_tasks_delete($songId);
+  foreach (['song_votes', 'setlist_songs', 'song_chords', 'guest_songs'] as $tabelle) {
+    q("DELETE FROM `$tabelle` WHERE song_id = ?", [$songId]);
+  }
+  q('DELETE FROM songs WHERE id = ?', [$songId]);
+  item_forget('song', $songId);
+}
+
+/**
  * Was über seine Frist hinaus ist und sich damit erledigt hat — einmal am Tag
  * (#441).
  *
