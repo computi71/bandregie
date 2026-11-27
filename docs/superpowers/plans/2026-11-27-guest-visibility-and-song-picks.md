@@ -352,4 +352,4 @@ git commit -m "Explain the guest ticks, the song list and the setlist filter (#4
 Not part of a task, because it is deployment and not code:
 
 - The live privacy texts are per-instance settings, not code. After the merge the §14 passage is updated on each instance and in each language it has, matching the new template.
-- Deploy order: branch → staging (`git pull`) → test → `main` with `VERSION` 2.62.0, tag and GitHub release → demo → test → Beat Cuisine → TonRausch. The second check after deploying may still see the previous version — repeat it once.
+- Deploy order: branch → staging (`git pull`) → test → `main` with `VERSION` 2.62.0, tag and GitHub release → demo → test → first band instance → second band instance. The second check after deploying may still see the previous version — repeat it once.

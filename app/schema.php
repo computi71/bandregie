@@ -637,7 +637,7 @@ $tables = [
   /*
    * Was verschickt wurde (#405).
    *
-   * Die Frage „bekommt Sebastian eigentlich Mitteilungen?“ kostete einen
+   * Die Frage „bekommt Ben eigentlich Mitteilungen?“ kostete einen
    * Vormittag: Endpunkt-Hostnamen, Zustellmarken, Zugriffsprotokolle und die
    * Überlegung, welcher Rundlauf welche Zeile geschrieben haben kann. Seit
    * #383 geht ohnehin jede Mitteilung durch eine Tabelle — eine Zeile beim
@@ -1552,7 +1552,7 @@ foreach ($defaults as $k => $v) {
 // Früher gab es nur ein Namensfeld. Der bisherige Inhalt wandert einmalig in den
 // Vornamen, damit niemand seinen Namen neu eintippen muss.
 if (setting('names_split') !== '1') {
-  // Am letzten Leerzeichen trennen: "Lisa Berg" -> Lisa + Berg, "Sebastian" -> Sebastian
+  // Am letzten Leerzeichen trennen: "Lisa Berg" -> Lisa + Berg, "Benny" -> Benny
   foreach (rows("SELECT id, name FROM users WHERE first_name = '' AND name != ''") as $u) {
     $pos = mb_strrpos(trim($u['name']), ' ');
     $first = $pos === false ? trim($u['name']) : mb_substr(trim($u['name']), 0, $pos);
