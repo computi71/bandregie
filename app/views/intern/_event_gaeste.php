@@ -3,7 +3,8 @@
 // dem Abend die Sterne — und für die, die buchen dürfen, das Formular. Nur
 // bei Gigs: zur Probe lädt man keinen Tontechniker ein.
 //
-// Vorher setzen: $ev, $user, $guestsByEvent, $guestList, $guestRatings.
+// Vorher setzen: $ev, $user, $guestsByEvent, $guestList, $guestRatings,
+// $guestSongs (Zahlen je Gast, siehe guest_songs_map).
 ?>
 <?php $gaeste = $guestsByEvent[$ev['id']] ?? []; $darfBuchen = perm_allows($user, 'gaeste', 'write') && $ev['date'] >= date('Y-m-d') && !is_demo(); ?>
 <?php if (perm_allows($user, 'gaeste') && ($gaeste || ($darfBuchen && $ev['type'] === 'gig'))): ?>
@@ -17,6 +18,13 @@
           <span class="muted"><?= $g['invited_at'] ? e(t('guest_invited')) . ' ' . e(date('d.m. H:i', strtotime($g['invited_at']))) : e(t('guest_not_invited')) ?></span>
         <?php elseif ($g['answered_at']): ?>
           <span class="muted"><?= e(t('guest_answered')) ?> <?= e(date('d.m. H:i', strtotime($g['answered_at']))) ?></span>
+        <?php endif; ?>
+        <?php // Was er über die Lieder gesagt hat (#450). Alle drei Zahlen und
+              // nicht nur die Zusagen: Die Band will sehen, dass er geantwortet
+              // hat, nicht nur, wozu er ja gesagt hat. ?>
+        <?php $gLieder = $guestSongs[(int) $g['guest_id']] ?? null; ?>
+        <?php if ($gLieder): ?>
+          <span class="muted small" title="<?= e(t('gast_songs_can')) ?>">🎵 <?= (int) $gLieder['yes'] ?> ✔ · <?= (int) $gLieder['maybe'] ?> ? · <?= (int) $gLieder['no'] ?> ✘</span>
         <?php endif; ?>
         <?php // Nach dem Abend die Sterne (#294): je Mitglied eine Stimme, der Schnitt
               // daneben. Nur für zugesagte Einsätze vergangener Termine. ?>
@@ -40,17 +48,35 @@
                 // oder sie nicht ankam — er ist sein Schlüssel, also nur für die,
                 // die auch buchen dürfen. ?>
           <a class="badge link" href="/gast/<?= e($g['token']) ?>" target="_blank" rel="noopener">🔗 Link</a>
-          <?php if ($g['guest_email'] !== '' && $g['status'] === 'angefragt'): ?>
+          <?php // Auch nach der Zusage erreichbar bleiben (#450): Die
+                // Liederliste wird meist erst angehakt, wenn er längst
+                // zugesagt hat — vorher stand hier nichts mehr, und die Band
+                // musste ihn wieder von Hand anschreiben. Der Text richtet
+                // sich danach, was noch offen ist. ?>
+          <?php $gFrage = guest_ask_for($g); ?>
+          <?php if ($gFrage !== '' && $g['guest_email'] !== ''): ?>
             <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/erneut"><?= csrf_field() ?><button class="btn btn-tiny btn-ghost">✉ <?= e(t('guest_invite_resend')) ?></button></form>
           <?php endif; ?>
           <?php // Ohne Mail — oder zusätzlich: die Einladung vom eigenen Handy aus,
                 // WhatsApp oder SMS mit fertigem Text. Öffnet nur die App; gesendet
                 // wird dort (#299). ?>
-          <?php if ($g['status'] === 'angefragt'): ?>
+          <?php if ($gFrage !== ''): ?>
             <?php foreach (guest_share_links($g) as $weg => $url): ?>
               <a class="badge link" href="<?= e($url) ?>" target="_blank" rel="noopener"><?= $weg === 'whatsapp' ? '💬' : '📱' ?> <?= e(t('guest_send_' . $weg)) ?></a>
             <?php endforeach; ?>
           <?php endif; ?>
+          <?php // Nachträglich ändern, was der Link zeigt (#449): Der Link
+                // bleibt derselbe, also muss die Band ihre Meinung ändern
+                // dürfen, ohne neu zu buchen. ?>
+          <details class="inline">
+            <summary class="btn btn-tiny btn-ghost">👁 <?= e(t('guest_shows')) ?></summary>
+            <form method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/sicht" class="inline"><?= csrf_field() ?>
+              <?php foreach (GUEST_PARTS as $teil => $spalte): ?>
+                <label class="checkbox"><input type="checkbox" name="<?= e($spalte) ?>" value="1" <?= guest_may_see($g, $teil) ? 'checked' : '' ?>> <?= e(t('guest_show_' . $teil)) ?></label>
+              <?php endforeach; ?>
+              <button class="btn btn-tiny"><?= e(t('save')) ?></button>
+            </form>
+          </details>
           <form class="inline" method="post" action="/intern/gaeste/buchung/<?= (int) $g['id'] ?>/stornieren" data-confirm="<?= e(t('guest_cancel_confirm')) ?>"><?= csrf_field() ?><button class="btn btn-tiny btn-danger" title="<?= e(t('guest_cancel')) ?>">✕</button></form>
         <?php endif; ?>
       </div>
@@ -66,11 +92,29 @@
             </select>
           </label>
           <label><?= e(t('guest_function')) ?><input name="function_name" placeholder="<?= e(t('guest_book_function_ph')) ?>"></label>
-          <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name"></label>
+          <?php // data-vorsatz trägt den Text für den Treffer-Hinweis, den
+                // gastsuche.js daneben baut (#452): Übersetzungen gehören in
+                // die Seite und nicht ins Skript. ?>
+          <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name" data-vorsatz="<?= e(t('guest_exists_hint')) ?>"></label>
           <label><?= e(t('email')) ?> (<?= e(t('guest_book_new')) ?>)<input type="email" name="new_email"></label>
           <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
           <label><?= e(t('mem_mobile')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_mobile" maxlength="60"></label>
           <p class="muted small span2"><?= e(t('guest_contact_hint')) ?></p>
+          <?php // Zwei Leute dürfen gleich heißen (#452). Der Riegel beim
+                // Abschicken hält nur, bis jemand hier bestätigt, dass es
+                // wirklich eine andere Person ist — sonst müsste die Band den
+                // Namen falsch schreiben, um ihn buchen zu können. ?>
+          <label class="checkbox span2"><input type="checkbox" name="name_force" value="1"> <?= e(t('guest_name_force')) ?></label>
+          <?php // Was sein Link zeigt (#449). Rider und Setliste sind an, weil
+                // das der Grund der Einladung ist; die Liederliste nicht —
+                // sie öffnet das ganze Repertoire, und das entscheidet die
+                // Band bewusst und nicht aus Versehen. ?>
+          <div class="span2">
+            <p class="muted small"><?= e(t('guest_shows_hint')) ?></p>
+            <?php foreach (GUEST_PARTS as $teil => $spalte): ?>
+              <label class="checkbox"><input type="checkbox" name="<?= e($spalte) ?>" value="1" <?= $teil === 'songs' ? '' : 'checked' ?>> <?= e(t('guest_show_' . $teil)) ?></label>
+            <?php endforeach; ?>
+          </div>
           <div class="span2 row-buttons"><button class="btn btn-small">✉ <?= e(t('guest_invite_send')) ?></button></div>
         </form>
       </details>

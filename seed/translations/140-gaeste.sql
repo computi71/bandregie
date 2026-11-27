@@ -1,7 +1,7 @@
 -- Gäste: externe Techniker und Musiker zu einem Termin buchen (#294)
 INSERT INTO translations (lang, tkey, value) VALUES
 ('en','inav_gaeste','Guests'),('en','guest_title','Guests'),
-('en','help_gaeste','People who join for one evening without being members — sound engineer, horn section, stand-in. They live in a contact list and are booked to an event. The invitation is a link: the guest accepts or declines through it, and after accepting the same link is their access to schedule, rider and setlist — this event only, read-only, until noon the day after. Declining kills the link at once. The "Guests" right decides who may book.'),
+('en','help_gaeste','People who join for one evening without being members — sound engineer, horn section, stand-in. They live in a contact list and are booked to an event. The invitation is a link: the guest accepts or declines through it, and after accepting the same link is their access to what you release to him — this event only, read-only, until noon the day after. Declining kills the link at once. The "Guests" right decides who may book.'),
 ('en','guest_intro','People outside the band who play or mix anyway. No account, no login — a booking to an event and a personal link.'),
 ('en','guest_new','Add guest'),('en','guest_function','Function'),('en','guest_function_ph','sound, lights, trumpet, vocals …'),
 ('en','guest_bookings','bookings'),('en','guest_none','No guests yet.'),('en','guest_no_bookings','no booking yet'),
@@ -29,7 +29,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('en','gast_until','Access until'),('en','gast_change','You have confirmed. If it does not work out after all:'),('en','gast_declined','You have declined.'),
 
 ('nl','inav_gaeste','Gasten'),('nl','guest_title','Gasten'),
-('nl','help_gaeste','Mensen die voor één avond meedoen zonder lid te zijn — geluidstechnicus, blazerssectie, invaller. Ze staan in een contactlijst en worden voor een datum geboekt. De uitnodiging is een link: de gast zegt daarmee toe of af, en na de toezegging is dezelfde link zijn toegang tot verloop, rider en setlist — alleen deze datum, alleen lezen, tot de middag erna. Afzeggen maakt de link meteen ongeldig. Het recht „Gasten" bepaalt wie mag boeken.'),
+('nl','help_gaeste','Mensen die voor één avond meedoen zonder lid te zijn — geluidstechnicus, blazerssectie, invaller. Ze staan in een contactlijst en worden voor een datum geboekt. De uitnodiging is een link: de gast zegt daarmee toe of af, en na de toezegging is dezelfde link zijn toegang tot wat jullie voor hem vrijgeven — alleen deze datum, alleen lezen, tot de middag erna. Afzeggen maakt de link meteen ongeldig. Het recht „Gasten" bepaalt wie mag boeken.'),
 ('nl','guest_intro','Mensen buiten de band die toch meespelen of mixen. Geen account, geen login — een boeking voor een datum en een persoonlijke link.'),
 ('nl','guest_new','Gast toevoegen'),('nl','guest_function','Functie'),('nl','guest_function_ph','geluid, licht, trompet, zang …'),
 ('nl','guest_bookings','optredens'),('nl','guest_none','Nog geen gasten.'),('nl','guest_no_bookings','nog geen optreden'),
@@ -57,7 +57,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','gast_until','Toegang tot'),('nl','gast_change','Je hebt toegezegd. Als het toch niet lukt:'),('nl','gast_declined','Je hebt afgezegd.'),
 
 ('fr','inav_gaeste','Invités'),('fr','guest_title','Invités'),
-('fr','help_gaeste','Des personnes qui viennent pour un soir sans être membres — ingénieur du son, section de cuivres, remplaçant. Elles figurent dans une liste de contacts et sont réservées pour une date. L''invitation est un lien : l''invité accepte ou décline par ce lien, et après avoir accepté, le même lien est son accès au déroulé, au rider et à la setlist — cette date seulement, en lecture, jusqu''à midi le lendemain. Décliner annule le lien aussitôt. Le droit « Invités » décide qui peut réserver.'),
+('fr','help_gaeste','Des personnes qui viennent pour un soir sans être membres — ingénieur du son, section de cuivres, remplaçant. Elles figurent dans une liste de contacts et sont réservées pour une date. L''invitation est un lien : l''invité accepte ou décline par ce lien, et après avoir accepté, le même lien est son accès à ce que vous lui ouvrez — cette date seulement, en lecture, jusqu''à midi le lendemain. Décliner annule le lien aussitôt. Le droit « Invités » décide qui peut réserver.'),
 ('fr','guest_intro','Des personnes extérieures au groupe qui jouent ou mixent quand même. Pas de compte, pas de connexion — une réservation pour une date et un lien personnel.'),
 ('fr','guest_new','Ajouter un invité'),('fr','guest_function','Fonction'),('fr','guest_function_ph','son, lumière, trompette, chant …'),
 ('fr','guest_bookings','prestations'),('fr','guest_none','Pas encore d''invités.'),('fr','guest_no_bookings','pas encore de prestation'),
@@ -85,7 +85,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('fr','gast_until','Accès jusqu''au'),('fr','gast_change','Tu as confirmé. Si finalement ce n''est pas possible :'),('fr','gast_declined','Tu as décliné.'),
 
 ('es','inav_gaeste','Invitados'),('es','guest_title','Invitados'),
-('es','help_gaeste','Personas que se suman una noche sin ser miembros: técnico de sonido, sección de vientos, sustituto. Están en una lista de contactos y se reservan para una fecha. La invitación es un enlace: el invitado confirma o rechaza con él, y tras confirmar el mismo enlace es su acceso al horario, el rider y la lista de canciones — solo esa fecha, solo lectura, hasta el mediodía siguiente. Rechazar anula el enlace al instante. El permiso «Invitados» decide quién puede reservar.'),
+('es','help_gaeste','Personas que se suman una noche sin ser miembros: técnico de sonido, sección de vientos, sustituto. Están en una lista de contactos y se reservan para una fecha. La invitación es un enlace: el invitado confirma o rechaza con él, y tras confirmar el mismo enlace es su acceso a lo que le abráis — solo esa fecha, solo lectura, hasta el mediodía siguiente. Rechazar anula el enlace al instante. El permiso «Invitados» decide quién puede reservar.'),
 ('es','guest_intro','Personas ajenas a la banda que aun así tocan o mezclan. Sin cuenta ni inicio de sesión: una reserva para una fecha y un enlace personal.'),
 ('es','guest_new','Añadir invitado'),('es','guest_function','Función'),('es','guest_function_ph','sonido, luces, trompeta, voz …'),
 ('es','guest_bookings','actuaciones'),('es','guest_none','Aún no hay invitados.'),('es','guest_no_bookings','aún sin actuación'),
@@ -113,7 +113,7 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('es','gast_until','Acceso hasta'),('es','gast_change','Has confirmado. Si al final no puedes:'),('es','gast_declined','Has rechazado.'),
 
 ('it','inav_gaeste','Ospiti'),('it','guest_title','Ospiti'),
-('it','help_gaeste','Persone che si aggiungono per una sera senza essere membri: fonico, sezione fiati, sostituto. Stanno in una rubrica e vengono prenotate per una data. L''invito è un link: l''ospite conferma o rifiuta tramite il link, e dopo la conferma lo stesso link è il suo accesso a scaletta oraria, rider e setlist — solo quella data, in sola lettura, fino a mezzogiorno del giorno dopo. Rifiutare annulla subito il link. Il diritto «Ospiti» decide chi può prenotare.'),
+('it','help_gaeste','Persone che si aggiungono per una sera senza essere membri: fonico, sezione fiati, sostituto. Stanno in una rubrica e vengono prenotate per una data. L''invito è un link: l''ospite conferma o rifiuta tramite il link, e dopo la conferma lo stesso link è il suo accesso a ciò che gli aprite — solo quella data, in sola lettura, fino a mezzogiorno del giorno dopo. Rifiutare annulla subito il link. Il diritto «Ospiti» decide chi può prenotare.'),
 ('it','guest_intro','Persone esterne alla band che suonano o mixano comunque. Nessun account, nessun login: una prenotazione per una data e un link personale.'),
 ('it','guest_new','Aggiungi ospite'),('it','guest_function','Funzione'),('it','guest_function_ph','suono, luci, tromba, voce …'),
 ('it','guest_bookings','ingaggi'),('it','guest_none','Ancora nessun ospite.'),('it','guest_no_bookings','ancora nessun ingaggio'),

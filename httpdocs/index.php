@@ -401,7 +401,7 @@ if (preg_match('~^/uploads/([\w.\-]+)$~', $path, $m)) {
 // Der Link aus der Einladung: erst die Antwort, dann — bei Zusage — der Zugang
 // für diesen einen Termin. Kein Konto, keine Sitzung; das Token ist der
 // Schlüssel und wird wie ein Passwort behandelt (64 Hex-Zeichen, nur exakt).
-if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$~', $path, $m)) {
+if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|lieder|song/(\d+)|lied/(\d+)))?$~', $path, $m)) {
   $gastBuchung = guest_booking_by_token($m[1]);
   if (!$gastBuchung) {
     http_response_code(404);
@@ -409,12 +409,21 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
   }
   $gastZurueck = '/gast/' . $gastBuchung['token'];
   $gastEntries = $gastBuchung['status'] === 'zugesagt' && $gastBuchung['setlist_id']
+      && guest_may_see($gastBuchung, 'setlist')
     ? setlist_entries((int) $gastBuchung['setlist_id']) : [];
   $gastSeite = ['title' => setting('band_name'), 'b' => $gastBuchung, 'entries' => $gastEntries] + guest_event_place($gastBuchung);
   // Rider, Setliste und Lieder gibt es erst nach der Zusage — und nur, was zu
   // diesem Termin gehört: die Lieder allein aus seiner Setliste.
   $gastTeil = (string) ($m[2] ?? '');
   if ($gastTeil !== '' && $gastTeil !== 'antwort' && $gastBuchung['status'] !== 'zugesagt') {
+    redirect($gastZurueck);
+  }
+  // Was die Band für diese Buchung abgewählt hat, ist auch über die geratene
+  // Adresse zu (#449): Ein Knopf, der nicht gezeichnet wird, ist keine Sperre.
+  $gastTeilRecht = ['rider' => 'rider', 'setliste' => 'setlist', 'lieder' => 'songs'];
+  if (str_starts_with($gastTeil, 'lied/')) $gastTeilRecht[$gastTeil] = 'songs';
+  if ($gastTeil !== '' && $gastTeil !== 'antwort'
+      && !guest_may_see($gastBuchung, $gastTeilRecht[$gastTeil] ?? 'setlist')) {
     redirect($gastZurueck);
   }
   if ($gastTeil === 'rider') {
@@ -428,6 +437,18 @@ if (preg_match('~^/gast/([a-f0-9]{64})(?:/(antwort|rider|setliste|song/(\d+)))?$
     $gastSetlist = $gastBuchung['setlist_id'] ? row('SELECT * FROM setlists WHERE id = ?', [$gastBuchung['setlist_id']]) : null;
     if (!$gastSetlist) redirect($gastZurueck);
     view('intern/setlist_print', ['title' => $gastSetlist['name'], 'setlist' => $gastSetlist, 'entries' => $gastEntries, 'zurueckUrl' => $gastZurueck]);
+  }
+  // Was er spielen kann (#450). Die Liste gehört ihm und nicht der Buchung:
+  // Sein Link stirbt am Tag nach dem Termin, seine Antworten bleiben.
+  if ($gastTeil === 'lieder') {
+    view('public/gast_lieder', [
+      'title' => t('gast_songs_can'), 'b' => $gastBuchung, 'zurueck' => $gastZurueck,
+      'songs' => guest_songs_list(), 'answers' => guest_song_answers((int) $gastBuchung['guest_id']),
+    ]);
+  }
+  if (str_starts_with($gastTeil, 'lied/') && $method === 'POST') {
+    guest_song_set((int) $gastBuchung['guest_id'], (int) $m[4], (string) ($_POST['status'] ?? ''));
+    redirect($gastZurueck . '/lieder');
   }
   if (str_starts_with($gastTeil, 'song/')) {
     $gastSongId = (int) $m[3];
@@ -1647,13 +1668,9 @@ if (str_starts_with($path, '/intern')) {
       if ($played) {
         flash(t('fl_song_played'));
       } else {
-        // Abstimmung und Übung gehen mit (#391, #439).
-        song_tasks_delete((int) $m[1]);
-        q('DELETE FROM song_votes WHERE song_id = ?', [$m[1]]);
-        q('DELETE FROM songs WHERE id = ?', [$m[1]]);
-        item_forget('song', (int) $m[1]);
-        q('DELETE FROM setlist_songs WHERE song_id = ?', [$m[1]]);
-        q('DELETE FROM song_chords WHERE song_id = ?', [$m[1]]);
+        // Abstimmung, Übung, Akkorde und die Antworten der Gäste gehen mit
+        // (#391, #439, #450) — was daran hängt, steht in song_delete().
+        song_delete((int) $m[1]);
       }
     }
     redirect('/intern/songs');
@@ -1699,6 +1716,11 @@ if (str_starts_with($path, '/intern')) {
                           LEFT JOIN venues v ON v.id = e.venue_id
                           WHERE e.setlist_id = ? ORDER BY e.date', [$m[1]]),
       'available' => rows("SELECT * FROM songs WHERE status IN ('aktiv', 'in_arbeit') $notIn ORDER BY title"),
+      // Was die gebuchten Gäste spielen können (#451). Nur für Konten, die
+      // Gäste überhaupt sehen dürfen: Der Filter nennt Namen, und die stehen
+      // sonst überall hinter diesem Recht.
+      'slGuests' => perm_allows($me, 'gaeste') ? setlist_guests((int) $m[1]) : [],
+      'slGuestPick' => (int) ($_GET['gast'] ?? 0),
       'totalSec' => array_sum(array_map(fn($x) => (int) $x['duration_sec'], $entries)),
     ]);
   }
@@ -1929,7 +1951,10 @@ if (str_starts_with($path, '/intern')) {
     // Diese Handlungen ändern die Setliste, ohne eine ihrer eigenen Spalten
     // anzufassen — markiert wird deshalb ohne Vergleich (#321).
     $slMarke();
-    redirect("/intern/setlists/$id");
+    // Den Gästefilter mitnehmen (#451): Ohne ihn stünde die Auswahl nach
+    // jedem hinzugefügten Lied wieder auf „alle Lieder".
+    $slGastZurueck = (int) ($_POST['gast'] ?? 0);
+    redirect("/intern/setlists/$id" . ($slGastZurueck ? '?gast=' . $slGastZurueck : ''));
   }
 
   // ---------- Aufgaben ----------
@@ -3242,9 +3267,15 @@ if (str_starts_with($path, '/intern')) {
     $gaesteAlle = rows('SELECT b.*, e.title, e.date FROM guest_bookings b JOIN events e ON e.id = b.event_id ORDER BY e.date DESC');
     foreach ($gaesteAlle as $gb) $gaesteBuchungen[(int) $gb['guest_id']][] = $gb;
     $gaesteOffen = items_unseen($me, 'guest');
+    $gaesteNr = array_map(static fn($g) => (int) $g['id'], rows('SELECT id FROM guests'));
     view('intern/gaeste', [
       'title' => t('guest_title'),
       'guests' => rows('SELECT * FROM guests ORDER BY name'),
+      // Was sie über die Lieder gesagt haben (#450): Zahlen für die
+      // Überschrift, Titel für das Aufgeklappte.
+      'guestSongs' => guest_songs_map($gaesteNr),
+      'guestSongTitles' => guest_songs_titles($gaesteNr),
+      'guestSongsAny' => guest_songs_any($gaesteNr),
       'unseenGuests' => $gaesteOffen,
       'seenOnList' => ['guest' => array_keys($gaesteOffen)],
       'bookingsByGuest' => $gaesteBuchungen,
@@ -3281,6 +3312,10 @@ if (str_starts_with($path, '/intern')) {
         flash(t('fl_guest_has_bookings'));
       } else {
         item_forget('guest', (int) $m[1]);
+        // Seine Liedantworten gehen mit (#450): Sie hängen am Gast und an
+        // keiner Buchung, blieben hier also als Waisen liegen — und die
+        // Datenschutzerklärung verspricht, dass wir sie löschen.
+        guest_songs_clear((int) $m[1]);
         q('DELETE FROM guests WHERE id = ?', [$m[1]]);
         flash(t('fl_guest_deleted'));
       }
@@ -3312,6 +3347,18 @@ if (str_starts_with($path, '/intern')) {
     if (!$gEvent) redirect('/intern/termine');
     $gId = (int) ($_POST['guest_id'] ?? 0);
     $gNeu = trim((string) ($_POST['new_name'] ?? ''));
+    // Erst nachsehen, dann anlegen (#452): Ein getippter Name, den es schon
+    // gibt, ist fast immer dieselbe Person — und mit einer zweiten Zeile wären
+    // ihre Liedantworten hinter der ersten verschwunden. Zusammengelegt wird
+    // nichts von selbst; die Band bekommt den Gefundenen vorgewählt und
+    // entscheidet. Zwei Leute dürfen gleich heißen.
+    if ($gId <= 0 && $gNeu !== '' && ($_POST['name_force'] ?? '') !== '1') {
+      $gGleich = row('SELECT id FROM guests WHERE LOWER(TRIM(name)) = LOWER(?)', [$gNeu]);
+      if ($gGleich) {
+        flash(str_replace('%1', $gNeu, t('fl_guest_name_exists')));
+        back('/intern/termine');
+      }
+    }
     if ($gId <= 0 && $gNeu !== '') {
       $gNeuMail = strtolower(trim((string) ($_POST['new_email'] ?? '')));
       $gNeuTel = mb_substr(trim((string) ($_POST['new_phone'] ?? '')), 0, 60);
@@ -3333,8 +3380,13 @@ if (str_starts_with($path, '/intern')) {
       back('/intern/termine');
     }
     $gFunktion = mb_substr(trim((string) ($_POST['function_name'] ?? '')), 0, 120) ?: (string) $gast['function_name'];
-    q('INSERT INTO guest_bookings (guest_id, event_id, function_name, token, access_until, created_by) VALUES (?,?,?,?,?,?)',
-      [$gId, $gEvent['id'], $gFunktion, bin2hex(random_bytes(32)), guest_access_until($gEvent['date']), $me['id']]);
+    // Was sein Link zeigt, entscheidet die Band schon beim Buchen (#449).
+    $gSicht = [];
+    foreach (GUEST_PARTS as $gSpalte) $gSicht[] = isset($_POST[$gSpalte]) ? 1 : 0;
+    q('INSERT INTO guest_bookings (guest_id, event_id, function_name, token, access_until, created_by,
+                                   show_rider, show_setlist, show_songs) VALUES (?,?,?,?,?,?,?,?,?)',
+      array_merge([$gId, $gEvent['id'], $gFunktion, bin2hex(random_bytes(32)),
+                   guest_access_until($gEvent['date']), $me['id']], $gSicht));
     $gBuchung = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.location, e.venue_id
                      FROM guest_bookings b JOIN guests g ON g.id = b.guest_id JOIN events e ON e.id = b.event_id
                      WHERE b.id = ?', [(int) $db->lastInsertId()]);
@@ -3362,6 +3414,37 @@ if (str_starts_with($path, '/intern')) {
     }
     back('/intern/termine?alle=1');
   }
+  // Nachsehen, ob es den Namen schon gibt (#452). Nur Name und Aufgabe:
+  // Kontaktdaten gehen über eine Suchzeile niemanden an.
+  if ($path === '/intern/gaeste/suche' && $method === 'GET') {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array_map(static fn($g) => [
+      'id' => (int) $g['id'], 'name' => (string) $g['name'], 'function_name' => (string) $g['function_name'],
+    ], guests_by_name((string) ($_GET['q'] ?? ''))), JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+  // Seine Antworten über das Repertoire vergessen (#450) — getrennt vom
+  // Löschen des Gasts, das an seinen Einsätzen hängt.
+  if (preg_match('~^/intern/gaeste/(\d+)/antworten-loeschen$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/gaeste');
+    guest_songs_clear((int) $m[1]);
+    flash(t('fl_guest_songs_cleared'));
+    back('/intern/gaeste');
+  }
+  // Nachträglich ändern, was der Link zeigt (#449). Eine stornierte oder
+  // abgesagte Buchung bleibt außen vor: Dort gibt es nichts mehr zu zeigen.
+  if (preg_match('~^/intern/gaeste/buchung/(\d+)/sicht$~', $path, $m) && $method === 'POST') {
+    deny_in_demo('/intern/termine');
+    $gSichtBuchung = row("SELECT id FROM guest_bookings WHERE id = ? AND status NOT IN ('abgesagt', 'storniert')", [$m[1]]);
+    if ($gSichtBuchung) {
+      $gSichtWerte = [];
+      foreach (GUEST_PARTS as $gSpalte) $gSichtWerte[] = isset($_POST[$gSpalte]) ? 1 : 0;
+      q('UPDATE guest_bookings SET show_rider = ?, show_setlist = ?, show_songs = ? WHERE id = ?',
+        array_merge($gSichtWerte, [(int) $m[1]]));
+      flash(t('fl_guest_shows_saved'));
+    }
+    back('/intern/termine');
+  }
   if (preg_match('~^/intern/gaeste/buchung/(\d+)/(stornieren|erneut)$~', $path, $m) && $method === 'POST') {
     deny_in_demo('/intern/termine');
     $gBuchung = row('SELECT b.*, g.name AS guest_name, g.email AS guest_email, e.title, e.date, e.time, e.location, e.venue_id
@@ -3372,6 +3455,10 @@ if (str_starts_with($path, '/intern')) {
       // Storniert heißt: der Schlüssel ist sofort weg. Die Zeile bleibt als Geschichte.
       q("UPDATE guest_bookings SET status = 'storniert' WHERE id = ?", [$m[1]]);
       flash(t('fl_guest_cancelled'));
+    } elseif (guest_ask_for($gBuchung) === '') {
+      // Nichts offen, nichts zu schicken — die Karte zeigt den Knopf dann auch
+      // nicht; die Route darf sich darauf nicht verlassen (#450).
+      flash(t('fl_guest_nothing_to_ask'));
     } elseif ((string) $gBuchung['guest_email'] !== '') {
       flash(guest_invite_mail($gBuchung) ? t('fl_guest_resent') : t('fl_guest_booked_mailfail'));
     } else {

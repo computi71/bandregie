@@ -177,4 +177,9 @@ $evLink = function (array $anders) use ($showPast, $showCancelled, $evArt): stri
 <?php endforeach; ?>
 <?php if (!$events): ?><p class="muted center"><?= e(t('ev_none')) ?></p><?php endif; ?>
 <script src="<?= e(asset('/assets/eventfields.js')) ?>" defer></script>
+<?php // Beim Buchen eines Gasts nachsehen, ob es ihn schon gibt (#452). Nur
+      // dort geladen, wo wirklich gebucht wird. ?>
+<?php if (perm_allows($user, 'gaeste', 'write')): ?>
+  <script src="<?= e(asset('/assets/gastsuche.js')) ?>" defer></script>
+<?php endif; ?>
 <?php require BASE_DIR . '/app/views/_footer.php'; ?>

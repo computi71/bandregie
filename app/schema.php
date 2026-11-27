@@ -2086,6 +2086,36 @@ if (!column_exists('events', 'choice_of')) {
   $db->exec('ALTER TABLE events ADD COLUMN choice_of INT NULL, ADD INDEX idx_choice_of (choice_of)');
 }
 
+// Was der Link eines Gasts zeigt, entscheidet die Band je Buchung (#449).
+//
+// Die Vorgaben stehen hier als Zahlen und nicht als Verweis auf eine Konstante:
+// Sie beschreiben, was eine Buchung VOR dieser Fassung zeigte — Rider und
+// Setliste, keine Liederliste. Zöge eine spätere Änderung der Vorgabe hier mit
+// durch, bekämen Buchungen von gestern rückwirkend einen anderen Inhalt.
+if (!column_exists('guest_bookings', 'show_rider')) {
+  $db->exec('ALTER TABLE guest_bookings
+             ADD COLUMN show_rider TINYINT(1) NOT NULL DEFAULT 1,
+             ADD COLUMN show_setlist TINYINT(1) NOT NULL DEFAULT 1,
+             ADD COLUMN show_songs TINYINT(1) NOT NULL DEFAULT 0');
+}
+
+// Was ein Gast spielen kann (#450).
+//
+// Gebaut wie song_votes, und zwar absichtlich: Der Gast drückt dieselben drei
+// Knöpfe wie die Band bei einem Liedvorschlag, also soll auch dahinter
+// dasselbe stehen. Der Schlüssel ist der Gast und nicht die Buchung — sein
+// Link stirbt am Tag nach dem Termin, seine Antwort soll das überleben.
+// Keine Zeile heißt „nicht beantwortet"; eine ausgedachte Enthaltung wäre eine
+// Aussage, die niemand getroffen hat.
+$db->exec("CREATE TABLE IF NOT EXISTS guest_songs (
+  guest_id INT NOT NULL,
+  song_id INT NOT NULL,
+  status VARCHAR(10) NOT NULL,
+  updated_at DATETIME(3) NULL,
+  PRIMARY KEY (guest_id, song_id),
+  INDEX idx_song (song_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 if (setting('migr_topic_reads') === '') {
   q('INSERT IGNORE INTO topic_reads (user_id, topic_id, seen_at)
      SELECT u.id, t.id, NOW(3) FROM users u CROSS JOIN topics t');
@@ -2301,6 +2331,18 @@ if (setting('tax_help_limits') !== '1') {
 if (setting('choice_answer_help') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_termine_16'");
   set_setting('choice_answer_help', '1');
+}
+// Was ein Gast sieht, steht nicht mehr fest, sondern wird je Buchung
+// angehakt (#449) — der Hilfetext darf nicht weiter „Ablauf, Rider und
+// Setliste" versprechen. Der Ursprungs-Seed ist geändert; die bereits
+// eingespielte Fassung muss dafür weichen.
+// Dasselbe für den Dank nach der Zusage und den zweiten Hilfeabsatz: Beide
+// zählten auf, was der Gast nun sieht — „Ablauf, Rider und Setliste" und
+// „nur, was zu seinem Termin gehört". Mit der Liederliste kann er das ganze
+// Repertoire sehen, also darf keiner von beiden so stehen bleiben.
+if (setting('guest_shows_help') !== '1') {
+  q("DELETE FROM translations WHERE tkey IN ('help_gaeste', 'help_gaeste_2', 'gast_thanks_yes')");
+  set_setting('guest_shows_help', '1');
 }
 // Ein Fehlschlag aus einem verlorenen Wettlauf (#416). Zwei Anfragen spielen
 // nach einer neuen Fassung gleichzeitig alle Seeds ein; eine stolpert ueber
