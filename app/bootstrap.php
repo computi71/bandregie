@@ -2801,8 +2801,8 @@ function navi_dest(string ...$parts): string {
 }
 function venue_dest(array $v): string {
   if (!empty($v['lat']) && !empty($v['lng'])) return $v['lat'] . ',' . $v['lng'];
-  // PLZ und Ort gehören zusammen in ein Feld: „34549 Edertal" ist eine Angabe,
-  // und getrennt durch Komma sucht die Karten-App zwei.
+  // PLZ und Ort gehören zusammen in ein Feld: „12345 Musterort" ist eine
+  // Angabe, und getrennt durch Komma sucht die Karten-App zwei.
   $ort = trim(trim((string) ($v['postcode'] ?? '')) . ' ' . trim((string) ($v['city'] ?? '')));
   return navi_dest($v['name'] ?? '', $v['address'] ?? '', $ort);
 }
@@ -2869,9 +2869,9 @@ const EVENT_PLACE_COLS = 'v.name AS venue_name, v.address AS venue_address, v.po
  *
  * Zurück kommt [Rest, PLZ, Ort]. Getrennt wird an Zeilenumbrüchen und Kommas —
  * mit beidem trennt man „Straße" von „PLZ Ort". Herausgeholt wird aber nur ein
- * Stück, das für sich genommen zweifelsfrei eine PLZ-Angabe ist: „34549",
- * „34549 Edertal", „D-34549 Edertal". Alles andere bleibt unangetastet — lieber
- * ungeteilt als falsch geteilt.
+ * Stück, das für sich genommen zweifelsfrei eine PLZ-Angabe ist: „12345",
+ * „12345 Musterort", „D-12345 Musterort". Alles andere bleibt unangetastet —
+ * lieber ungeteilt als falsch geteilt.
  */
 function address_split_postcode(string $address): array {
   $teile = preg_split('~\R|,~', $address) ?: [];
@@ -2958,8 +2958,9 @@ const GEO_RETRIES = 2;
  *
  * Nominatim ist ein Adressverzeichnis, keine Namenssuche: Der Freitext muss in
  * JEDEM Wort treffen, ein einziges unbekanntes lässt das ganze Ergebnis leer
- * ausgehen. Gemessen: „Treysa" findet den Ort, „Rockschuppen Treysa" findet
- * nichts — und Saalnamen stehen selten in OpenStreetMap.
+ * ausgehen. Gemessen: Der Stadtname allein findet den Ort, derselbe Stadtname
+ * mit dem Saalnamen davor findet nichts — und Saalnamen stehen selten in
+ * OpenStreetMap.
  *
  * Bleibt die Suche leer, fällt deshalb das erste Wort weg und es wird erneut
  * gefragt: vorn steht der Name, hinten der Ort. Ein Treffer auf Ortsebene ist
@@ -2988,8 +2989,9 @@ function geocode_search(string $q): array {
  * Nominatim kennt neben dem Freitext eine feldweise Suche (street, postalcode,
  * city). Die ist hier die richtige: Der Saalname muss dann gar nicht mitgesucht
  * werden, und die PLZ wird als PLZ verstanden statt als Wort, das irgendwo
- * treffen muss. Gemessen an „Zündstoff, Am Weiher 1, 34549 Edertal": als
- * Freitext kein Treffer, feldweise ohne den Namen genau einer.
+ * treffen muss. Gemessen an einem echten Ort mit Saalname, Straße samt
+ * Hausnummer, PLZ und Stadt: als Freitext kein Treffer, feldweise ohne den
+ * Saalnamen genau einer.
  *
  * Der Rückzug lässt weg, was am ehesten falsch ist — erst die Hausnummer samt
  * Straße, dann die PLZ. Ein Treffer auf Ortsebene ist zum Hinfahren genug.
@@ -3340,8 +3342,8 @@ function photo_tags_all(): array {
  * Seit #196 stand jeder Termin als eigene Überschrift untereinander. Bei 517
  * Bildern eines Auftritts ist das ein Streifen aus 115 Kacheln — richtig
  * gruppiert und trotzdem unbrauchbar. Die Form, in der Menschen denken, liegt
- * längst bei OneDrive und kommt über den Herkunftspfad mit: „Bilder/2026/AKF/
- * Sven Löffler". Also zeigt die Galerie diese Form.
+ * längst bei OneDrive und kommt über den Herkunftspfad mit:
+ * „Bilder/2026/Sommerfest/Jana Weiß". Also zeigt die Galerie diese Form.
  *
  * Die dritte Ebene entsteht nur, wenn ein Termin wirklich mehrere
  * Herkunftsordner hat. Ein Auftritt mit einem Fotografen bekommt keine
@@ -3414,11 +3416,12 @@ function photo_tree(array $fotos): array {
 /**
  * Die Herkunftsordner der Galerie, auf jeder Ebene, mit Zahl und Datum (#208).
  *
- * Aus „Bilder/2026/AKF/Sven Löffler/094A1704.jpg" werden vier wählbare Ordner:
- * Bilder, …/2026, …/AKF und …/AKF/Sven Löffler — wer den Termin zuordnet, will
- * mal den ganzen Auftritt und mal nur einen Fotografen fassen. Auch die oberste
- * Ebene steht dabei: Bei „AKF/Sven/…" IST sie der Auftritt, und eine Regel, die
- * das erraten wollte, hat sich schon einmal geirrt.
+ * Aus „Bilder/2026/Sommerfest/Jana Weiß/094A1704.jpg" werden vier wählbare
+ * Ordner: Bilder, …/2026, …/Sommerfest und …/Sommerfest/Jana Weiß — wer den
+ * Termin zuordnet, will mal den ganzen Auftritt und mal nur einen Fotografen
+ * fassen. Auch die oberste Ebene steht dabei: Bei „Sommerfest/Jana/…" IST sie
+ * der Auftritt, und eine Regel, die das erraten wollte, hat sich schon einmal
+ * geirrt.
  *
  * Das Datum je Ordner ist der häufigste Aufnahmetag darunter — er trägt den
  * Terminvorschlag, wie die Nähe-Ordnung in #207. Rein rechnend, damit prüfbar.
@@ -5116,7 +5119,7 @@ function event_answers_complete(int $eventId): bool {
  * Eine Meldung an den, der den Termin eingetragen hat, sobald alle geantwortet
  * haben (#382).
  *
- * EINE Meldung, egal wie es ausgeht. „Alle sechs dabei" und „fünf dabei, Andi
+ * EINE Meldung, egal wie es ausgeht. „Alle sechs dabei" und „fünf dabei, einer
  * nicht" sind beide eine Auskunft; nur bei lauter Zusagen zu melden hieße,
  * ausgerechnet den Termin zu verschweigen, der platzt.
  *

@@ -162,7 +162,7 @@
 - Produces: `choice_all_no(int $eventId, int $userId): bool`
 
 - [ ] **Step 1: Write the failing checks** (section "6. Mitteilungen")
-  - Two dates, everyone answers 10.4. → no completion push; everyone answers 17.4. too → exactly one push to the creator, body with one line per date ("10.4.: ✔6 · 17.4.: ✔4 ✘2 (Andi, Micha)").
+  - Two dates, everyone answers 10.4. → no completion push; everyone answers 17.4. too → exactly one push to the creator, body with one line per date ("10.4.: ✔6 · 17.4.: ✔4 ✘2 (Ben, Lisa)").
   - A "no" on 10.4. only → `push_reminders_run()` queues nothing for it; "no" on both → one reminder, for the earliest date.
   - `choice_all_no` false after one "no", true after both.
 - [ ] **Step 2: Run.** Expected: fails.

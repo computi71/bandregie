@@ -106,7 +106,7 @@ function totp_verify(string $secretBase32, string $eingabe): bool {
 
 /**
  * Die Adresse, die in den QR-Code kommt. Der Name der Band steht davor, damit
- * in der App nicht sechs Einträge „micha@…" ohne Zusammenhang stehen.
+ * in der App nicht sechs Einträge „ben@…" ohne Zusammenhang stehen.
  *
  * Der Doppelpunkt bleibt buchstäblich stehen und wird nicht mitkodiert: Beide
  * Schreibweisen sind erlaubt, aber jedes kodierte Zeichen macht die Adresse

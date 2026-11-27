@@ -23,7 +23,7 @@ static cache.
 | Subset | latin (covers the German umlauts and ß) |
 | Licence | SIL Open Font License 1.1 — see `OFL.txt` |
 
-Both weights are shipped on purpose. The cue (“Andi in D”) is set bold, and a
+Both weights are shipped on purpose. The cue (“Ben in D”) is set bold, and a
 synthesised bold on an extra-condensed face smears.
 
 The files are redistributed unmodified. The OFL reserves the font name

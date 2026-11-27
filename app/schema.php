@@ -891,8 +891,8 @@ if (!column_exists('venues', 'postcode')) {
     $stadt = (string) $v['city'];
     [$rest, $plz, $ort] = address_split_postcode((string) $v['address']);
     if ($plz !== '' && $stadt === '') $stadt = $ort;
-    // Getippt wurde die PLZ auch schon ins Stadt-Feld — „34549 Edertal" ist ein
-    // vollständiger Ort, nur im falschen Kasten.
+    // Getippt wurde die PLZ auch schon ins Stadt-Feld — „12345 Musterort" ist
+    // ein vollständiger Ort, nur im falschen Kasten.
     if ($plz === '') {
       [$restStadt, $plz, $ort] = address_split_postcode($stadt);
       if ($plz !== '') $stadt = $ort !== '' ? $ort : $restStadt;
@@ -1268,7 +1268,7 @@ if (!column_exists('users', 'photos_seen_at')) {
 // Frage ist dieselbe: Wo lag das im Original? Bestehende Bilder bleiben leer —
 // die Angabe ist verloren und wird nicht erfunden.
 // Die Anweisung der Klammer braucht ihr eigenes Feld: „Drop D" gilt für die
-// Klammer, „Andi in D" für den einen Song — im selben Feld verdrängte eines das
+// Klammer, „Ben in D" für den einen Song — im selben Feld verdrängte eines das
 // andere, und genau das ist beim Übertragen der Vorlage passiert (#242).
 if (!column_exists('setlist_songs', 'bracket_note')) {
   $db->exec("ALTER TABLE setlist_songs ADD COLUMN bracket_note VARCHAR(200) NOT NULL DEFAULT ''");
@@ -1306,8 +1306,8 @@ if (column_exists('photos', 'stack_id')) {
   $db->exec('ALTER TABLE photos DROP COLUMN stack_id, DROP COLUMN stack_cover');
 }
 // Der Weg einer Datei im verknüpften Ordner (#205). Er ist die eigentliche
-// Auskunft: „Bilder/2026/AKF/Sven Löffler" sagt Termin und Fotograf, und das ist
-// mehr, als diese Anwendung je erraten könnte. Das Aufnahmedatum kommt aus
+// Auskunft: „Bilder/2026/Sommerfest/Jana Weiß" sagt Termin und Fotograf, und
+// das ist mehr, als diese Anwendung je erraten könnte. Das Aufnahmedatum kommt aus
 // derselben Antwort von Graph mit — ohne es lässt sich keine Serie bilden (#198).
 if (!column_exists('od_items', 'rel_path')) {
   $db->exec("ALTER TABLE od_items ADD COLUMN rel_path VARCHAR(400) NOT NULL DEFAULT '',

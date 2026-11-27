@@ -30,7 +30,7 @@ async function pkPost(url, daten) {
 /**
  * Ein Name für das Gerät.
  *
- * Den echten Gerätenamen („Michas iPhone") gibt kein Browser heraus, und das
+ * Den echten Gerätenamen („Bens iPhone") gibt kein Browser heraus, und das
  * ist Absicht: Er trägt meist einen Vornamen und wäre ein Wiedererkennungs-
  * merkmal quer über alle Seiten. Was manche Browser hergeben, ist das Modell —
  * Chrome auf Android etwa nennt „Pixel 8". Safari nennt gar nichts, dort bleibt

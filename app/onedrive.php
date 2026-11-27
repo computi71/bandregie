@@ -1117,9 +1117,10 @@ function od_disconnect(): void {
 /**
  * Welcher Termin passt zu diesem Ordnernamen (#21)?
  *
- * Ordner heißen nach dem, was in ihnen liegt: „2026-07-04 AKF Korbach",
- * „04.07 AKF", „Rathausbühne Korbach". Erst wird das Datum gesucht, dann der
- * Name — ein Datum ist ein Beweis, ein Wort eine Vermutung.
+ * Ordner heißen nach dem, was in ihnen liegt: „2026-07-04 Sommerfest
+ * Musterort", „04.07 Sommerfest", „Gemeindehalle Musterort". Erst wird das
+ * Datum gesucht, dann der Name — ein Datum ist ein Beweis, ein Wort eine
+ * Vermutung.
  *
  * Gefunden wird höchstens einer. Bei zwei gleich guten Treffern liefert die
  * Funktion nichts: Ein falscher Vorschlag kostet mehr als keiner, weil ihn

@@ -138,7 +138,7 @@ Changing the date of one sibling changes only that date.
 
 For a selection, the "all answered" push (#382) is sent once, when every date
 of the selection is complete, to the creator, with one line per date:
-"10.4.: ✔6 · 17.4.: ✔4 ✘2 (Andi, Micha)". Per-date completion pushes are
+"10.4.: ✔6 · 17.4.: ✔4 ✘2 (Ben, Lisa)". Per-date completion pushes are
 suppressed for dates in a selection.
 
 ### Choosing

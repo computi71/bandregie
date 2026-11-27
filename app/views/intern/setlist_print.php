@@ -84,8 +84,8 @@ $fontFor = function (array $set): int {
        Millimeter hier ist unten eine Zeile Repertoire. */
     .sheet { height: 296mm; padding: 12mm 14mm 10mm; break-after: page; overflow: hidden; }
     .sheet:last-child { break-after: auto; }
-    /* Der Titel bleibt auf einer Zeile: „Setlist Mittwochs Konzert Zündstoff –
-       19. August 2026" brach neben dem Logo um und stand zweizeilig unter dem
+    /* Der Titel bleibt auf einer Zeile: „Setlist Sommerfest Gemeindehalle –
+       14. Juni 2026" brach neben dem Logo um und stand zweizeilig unter dem
        Bandnamen. Ein Kopf, der über zwei Zeilen läuft, drückt die Songs nach
        unten — und auf einem Blatt, das ohnehin knapp ist, kostet das eine Zeile
        Repertoire. Nur der Titel selbst wird schmaler, wenn der Platz nicht
