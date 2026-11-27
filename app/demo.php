@@ -642,7 +642,24 @@ function demo_install_bereiche(array $members, int $evPast, int $evNext, int $su
     'status' => 'zugesagt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-4 days')),
     'answered_at' => date('Y-m-d H:i:s', strtotime('-3 days')),
     'access_until' => guest_access_until($evNextDate), 'created_by' => $members[1],
+    'show_songs' => 1,
   ]);
+  // Der Gitarrist hat schon angekreuzt, was er spielen kann (#450). Ohne das
+  // zeigte die Demo den Filter beim Setlisten-Bauen und die Zeichen an den
+  // Liedern nie — die Stelle, an der die Funktion überhaupt etwas nützt.
+  //
+  // guest_songs hat wie guest_ratings keinen eigenen Schlüssel, sondern Gast
+  // und Lied. Über demo_insert getrackt bräche das Entfernen der Demo ab:
+  // ein DELETE … WHERE id auf eine Tabelle ohne id. Aufgeräumt wird unten
+  // über den Gast.
+  $demoLieder = rows("SELECT id FROM songs WHERE status IN ('aktiv', 'in_arbeit') ORDER BY title");
+  foreach ($demoLieder as $i => $demoLied) {
+    // Zwei Drittel kann er, dann je eines mit Vorbereitung und gar nicht —
+    // so hat der Filter etwas zu filtern und die Setliste etwas zu zeigen.
+    $wie = $i % 4 === 3 ? 'maybe' : ($i % 7 === 5 ? 'no' : 'yes');
+    q('INSERT IGNORE INTO guest_songs (guest_id, song_id, status, updated_at) VALUES (?,?,?,NOW(3))',
+      [$saite, (int) $demoLied['id'], $wie]);
+  }
   demo_insert('guest_bookings', [
     'guest_id' => $blech, 'event_id' => $evNext, 'function_name' => 'Trumpet, two songs', 'token' => bin2hex(random_bytes(32)),
     'status' => 'angefragt', 'invited_at' => date('Y-m-d H:i:s', strtotime('-1 day')), 'answered_at' => null,
@@ -1169,6 +1186,15 @@ function demo_remove(): void {
   // Schlüssel — sie stehen deshalb in keiner Demo-Liste und müssen hier weg.
   foreach ($byTable['guest_bookings'] ?? [] as $bookingId) {
     q('DELETE FROM guest_ratings WHERE booking_id = ?', [$bookingId]);
+  }
+  // Genauso die Liedantworten (#450): Sie hängen am Gast, nicht an der
+  // Buchung — ohne sie hier bliebe die Liste eines gelöschten Demo-Gasts
+  // stehen und zählte beim nächsten Aufbau mit.
+  foreach ($byTable['guests'] ?? [] as $guestId) {
+    q('DELETE FROM guest_songs WHERE guest_id = ?', [$guestId]);
+  }
+  foreach ($byTable['songs'] ?? [] as $songId) {
+    q('DELETE FROM guest_songs WHERE song_id = ?', [$songId]);
   }
   // Schlagwörter und Personen hängen an der Foto-Zeile und stehen in keiner
   // eigenen Demo-Liste; ohne sie hier bleiben sie als Waisen zurück.

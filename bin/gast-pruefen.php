@@ -69,6 +69,16 @@ $weg = static function () use (&$weg): void {
         item_forget('guest', (int) $g['id']);
     }
     foreach (rows("SELECT id FROM songs WHERE title LIKE 'ZZGA %'") as $s) song_delete((int) $s['id']);
+    // Auch die Setlisten: Bricht ein Lauf vor dem Aufräumen ab, blieben sie
+    // sonst für immer stehen — und die nächste Runde fände eine Setliste, die
+    // schon „gespielt" ist.
+    foreach (rows("SELECT id FROM setlists WHERE name LIKE 'ZZGA %'") as $s) {
+        q('UPDATE events SET setlist_id = NULL WHERE setlist_id = ?', [(int) $s['id']]);
+        q('DELETE FROM setlist_songs WHERE setlist_id = ?', [(int) $s['id']]);
+        q('DELETE FROM setlists WHERE id = ?', [(int) $s['id']]);
+    }
+    q("DELETE FROM permissions WHERE user_id IN (SELECT id FROM users WHERE name = 'ZZGA Konto')");
+    q("DELETE FROM users WHERE name = 'ZZGA Konto'");
     foreach (rows("SELECT id FROM events WHERE title LIKE 'ZZGA %'") as $e) {
         event_delete((int) $e['id']);
     }

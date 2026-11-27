@@ -2332,6 +2332,14 @@ if (setting('choice_answer_help') !== '1') {
   q("DELETE FROM translations WHERE tkey = 'help_termine_16'");
   set_setting('choice_answer_help', '1');
 }
+// Was ein Gast sieht, steht nicht mehr fest, sondern wird je Buchung
+// angehakt (#449) — der Hilfetext darf nicht weiter „Ablauf, Rider und
+// Setliste" versprechen. Der Ursprungs-Seed ist geändert; die bereits
+// eingespielte Fassung muss dafür weichen.
+if (setting('guest_shows_help') !== '1') {
+  q("DELETE FROM translations WHERE tkey = 'help_gaeste'");
+  set_setting('guest_shows_help', '1');
+}
 // Ein Fehlschlag aus einem verlorenen Wettlauf (#416). Zwei Anfragen spielen
 // nach einer neuen Fassung gleichzeitig alle Seeds ein; eine stolpert ueber
 // die andere und schreibt ihren Dateinamen - unter Umstaenden NACH dem
