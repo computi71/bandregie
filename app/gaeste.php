@@ -64,6 +64,30 @@ function guest_songs_map(array $guestIds): array {
 }
 
 /**
+ * Gäste, deren Name diese Zeichenfolge enthält (#452).
+ *
+ * Gegen die zweite Zeile für dieselbe Person: Wer einen Namen tippt, statt ihn
+ * aus der Liste zu wählen, legte bisher einen neuen Gast an. Das war ein
+ * Schönheitsfehler in der Kontaktliste — seit seine Liedantworten am Gast
+ * hängen (#450), fängt er damit bei null an, und was er einmal gesagt hat,
+ * liegt unerreichbar hinter der anderen Zeile.
+ *
+ * Erst ab drei Zeichen: Bei einem oder zwei kämen halbe Listen zurück, und das
+ * ist keine Hilfe, sondern eine Namensliste für jeden, der mitliest.
+ *
+ * `%` und `_` sind in LIKE Platzhalter. Ungeschützt fände „%" jeden Gast —
+ * eine Suche, die auf drei Zeichen besteht, gäbe mit drei Prozentzeichen die
+ * ganze Kartei heraus.
+ */
+function guests_by_name(string $q, int $limit = 5): array {
+  $suche = trim($q);
+  if (mb_strlen($suche) < 3) return [];
+  $muster = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $suche) . '%';
+  return rows('SELECT id, name, function_name FROM guests WHERE name LIKE ? ORDER BY name LIMIT ' . max(1, $limit),
+              [$muster]);
+}
+
+/**
  * Die Gäste, die beim Bauen dieser Setliste zählen (#451).
  *
  * Zählen heißt: Die Buchung ist weder abgesagt noch storniert, sie hängt an

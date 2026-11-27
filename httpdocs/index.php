@@ -3339,6 +3339,18 @@ if (str_starts_with($path, '/intern')) {
     if (!$gEvent) redirect('/intern/termine');
     $gId = (int) ($_POST['guest_id'] ?? 0);
     $gNeu = trim((string) ($_POST['new_name'] ?? ''));
+    // Erst nachsehen, dann anlegen (#452): Ein getippter Name, den es schon
+    // gibt, ist fast immer dieselbe Person — und mit einer zweiten Zeile wären
+    // ihre Liedantworten hinter der ersten verschwunden. Zusammengelegt wird
+    // nichts von selbst; die Band bekommt den Gefundenen vorgewählt und
+    // entscheidet. Zwei Leute dürfen gleich heißen.
+    if ($gId <= 0 && $gNeu !== '') {
+      $gGleich = row('SELECT id FROM guests WHERE LOWER(name) = LOWER(?)', [$gNeu]);
+      if ($gGleich) {
+        flash(str_replace('%1', $gNeu, t('fl_guest_name_exists')));
+        back('/intern/termine');
+      }
+    }
     if ($gId <= 0 && $gNeu !== '') {
       $gNeuMail = strtolower(trim((string) ($_POST['new_email'] ?? '')));
       $gNeuTel = mb_substr(trim((string) ($_POST['new_phone'] ?? '')), 0, 60);
@@ -3393,6 +3405,15 @@ if (str_starts_with($path, '/intern')) {
       flash(t('fl_guest_rated'));
     }
     back('/intern/termine?alle=1');
+  }
+  // Nachsehen, ob es den Namen schon gibt (#452). Nur Name und Aufgabe:
+  // Kontaktdaten gehen über eine Suchzeile niemanden an.
+  if ($path === '/intern/gaeste/suche' && $method === 'GET') {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(array_map(static fn($g) => [
+      'id' => (int) $g['id'], 'name' => (string) $g['name'], 'function_name' => (string) $g['function_name'],
+    ], guests_by_name((string) ($_GET['q'] ?? ''))), JSON_UNESCAPED_UNICODE);
+    exit;
   }
   // Seine Antworten über das Repertoire vergessen (#450) — getrennt vom
   // Löschen des Gasts, das an seinen Einsätzen hängt.

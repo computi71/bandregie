@@ -1165,6 +1165,8 @@ const UI_STRINGS = [
   'guest_show_rider' => 'Stagerider', 'guest_show_setlist' => 'Setliste und Liedtexte',
   'guest_show_songs' => 'Liederliste zum Ankreuzen',
   'fl_guest_shows_saved' => 'Gespeichert — sein Link zeigt ab sofort das Angehakte.',
+  'guest_exists_hint' => 'Gibt es schon:',
+  'fl_guest_name_exists' => '„%1" steht schon in der Gästeliste. Wähle ihn oben aus — dann bleiben seine Liedantworten bei ihm. Ist es wirklich jemand anderes, schreib den Namen etwas anders.',
   'guest_songs_clear' => 'Antworten löschen',
   'guest_songs_clear_confirm' => 'Alle Liedantworten dieses Gastes löschen? Seine Einsätze bleiben.',
   'fl_guest_songs_cleared' => 'Die Liedantworten des Gastes sind gelöscht.',

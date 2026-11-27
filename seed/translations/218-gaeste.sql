@@ -112,5 +112,15 @@ INSERT INTO translations (lang, tkey, value) VALUES
 ('nl','apply','Toepassen'),
 ('fr','apply','Appliquer'),
 ('es','apply','Aplicar'),
-('it','apply','Applica')
+('it','apply','Applica'),
+('en','guest_exists_hint','Already on the list:'),
+('nl','guest_exists_hint','Staat al in de lijst:'),
+('fr','guest_exists_hint','Déjà dans la liste :'),
+('es','guest_exists_hint','Ya está en la lista:'),
+('it','guest_exists_hint','È già nell''elenco:'),
+('en','fl_guest_name_exists','"%1" is already in the guest list. Pick him up there — then his song answers stay with him. If this really is someone else, write the name slightly differently.'),
+('nl','fl_guest_name_exists','"%1" staat al in de gastenlijst. Kies hem hierboven — dan blijven zijn liedantwoorden bij hem. Is het echt iemand anders, schrijf de naam dan iets anders.'),
+('fr','fl_guest_name_exists','« %1 » figure déjà dans la liste des invités. Choisis-le ci-dessus — ses réponses sur les morceaux resteront avec lui. S''il s''agit vraiment de quelqu''un d''autre, écris le nom un peu différemment.'),
+('es','fl_guest_name_exists','«%1» ya está en la lista de invitados. Selecciónalo arriba: así sus respuestas sobre las canciones se quedan con él. Si de verdad es otra persona, escribe el nombre de otra manera.'),
+('it','fl_guest_name_exists','«%1» è già nell''elenco degli ospiti. Selezionalo sopra: così le sue risposte sui brani restano con lui. Se è davvero un''altra persona, scrivi il nome in modo un po'' diverso.')
 ON DUPLICATE KEY UPDATE value = value;

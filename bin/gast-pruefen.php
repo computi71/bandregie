@@ -41,10 +41,15 @@ $hole = static function (string $pfad) use ($host): string {
 // Ein Formular wirklich abschicken: Seite holen, Token herauslesen, mit
 // derselben Sitzung senden. Ohne das prüfte ein POST nur den CSRF-Riegel und
 // liefe grün, auch wenn die Route dahinter alles durchließe.
-$schicke = static function (string $formularPfad, string $zielPfad, array $felder) use ($host): void {
+$schicke = static function (string $formularPfad, string $zielPfad, array $felder, string $sid = '') use ($host): void {
     $topf = tempnam(sys_get_temp_dir(), 'zzga');
-    $basis = sprintf('curl -sk --resolve %s:443:127.0.0.1 -c %s -b %s',
-        escapeshellarg($host), escapeshellarg($topf), escapeshellarg($topf));
+    // Mit Sitzungskennung für die Seiten des Bandbereichs: Ohne sie landete
+    // der Aufruf auf der Anmeldung, und eine Prüfung „es entsteht kein zweiter
+    // Gast" wäre grün, weil überhaupt nichts passiert ist.
+    if ($sid !== '') file_put_contents($topf, '');
+    $basis = sprintf('curl -sk --resolve %s:443:127.0.0.1 -c %s -b %s%s',
+        escapeshellarg($host), escapeshellarg($topf), escapeshellarg($topf),
+        $sid !== '' ? ' -b ' . escapeshellarg('PHPSESSID=' . $sid) : '');
     $seite = (string) shell_exec(sprintf('%s https://%s%s', $basis, $host, $formularPfad));
     preg_match('~name="_token" value="([a-f0-9]+)"~', $seite, $t);
     $daten = ['_token' => $t[1] ?? ''] + $felder;
@@ -234,7 +239,8 @@ $pruefe('Vergangener Termin nicht im Filter', setlist_guests($setlisteAlt) === [
 // Die gebaute Seite, nicht nur die Funktion: Filter und Zeichen entscheiden
 // sich in der Ansicht, und ein Recht, das nur dort geprüft wird, prüft keine
 // Funktion mit.
-$mitglied = static function (array $rechte) use ($host): callable {
+$sidLetzte = '';
+$mitglied = static function (array $rechte) use ($host, &$sidLetzte): callable {
     q("INSERT INTO users (name, email, role, password_hash) VALUES ('ZZGA Konto', ?, 'member', '')",
       ['zzga-' . bin2hex(random_bytes(4)) . '@example.invalid']);
     $nr = (int) $GLOBALS['db']->lastInsertId();
@@ -249,6 +255,7 @@ $mitglied = static function (array $rechte) use ($host): callable {
     $sid = bin2hex(random_bytes(16));
     $ablage = (string) (ini_get('session.save_path') ?: sys_get_temp_dir());
     file_put_contents(rtrim($ablage, '/') . '/sess_' . $sid, 'uid|i:' . $nr . ';');
+    $sidLetzte = $sid;
     return static fn(string $pfad): string => (string) shell_exec(sprintf(
         'curl -sk --resolve %s:443:127.0.0.1 -b PHPSESSID=%s https://%s%s',
         escapeshellarg($host), escapeshellarg($sid), $host, $pfad));
@@ -279,6 +286,42 @@ q("DELETE FROM users WHERE name = 'ZZGA Konto'");
 q('DELETE FROM setlist_songs WHERE setlist_id = ?', [$setliste]);
 q('DELETE FROM setlists WHERE id IN (?, ?)', [$setliste, $setlisteAlt]);
 q('DELETE FROM events WHERE id IN (?, ?)', [$termin2, $terminAlt]);
+
+// ------------------------------------------------ 5. Doppelte Gäste
+$pruefe('Drei Zeichen finden den Gast', (guests_by_name('ZZG')[0]['id'] ?? 0) > 0);
+$pruefe('Mitten im Namen wird gefunden', (guests_by_name('etlisten')[0]['name'] ?? '') === 'ZZGA Setlistengast');
+$pruefe('Groß und klein ist gleich', guests_by_name('zzga s') !== []);
+$pruefe('Zwei Zeichen finden nichts', guests_by_name('ZZ') === []);
+$pruefe('Leerzeichen zählen nicht als Zeichen', guests_by_name(' Z ') === []);
+$pruefe('Prozentzeichen ist kein Platzhalter', guests_by_name('%%%') === []);
+$pruefe('Unterstrich ist kein Platzhalter', guests_by_name('ZZG_') === []);
+$pruefe('Höchstens fünf', count(guests_by_name('ZZGA', 5)) <= 5);
+
+// Über die echte Route: Ein getippter Name, den es schon gibt, legt keinen
+// zweiten Gast an.
+$bucht = $mitglied($alleRechte);
+$sidBucht = $sidLetzte;
+$pruefe('Suchroute antwortet dem Berechtigten', str_contains($bucht('/intern/gaeste/suche?q=ZZGA'), 'ZZGA'));
+$pruefe('Suchroute schweigt unter drei Zeichen', !str_contains($bucht('/intern/gaeste/suche?q=ZZ'), 'ZZGA'));
+$ohneRecht = $mitglied(['setlists' => [1, 1], 'gaeste' => [0, 0], 'termine' => [1, 1]]);
+$pruefe('Suchroute schweigt ohne Gästerecht', !str_contains($ohneRecht('/intern/gaeste/suche?q=ZZGA'), 'ZZGA'));
+
+$vorher = (int) row("SELECT COUNT(*) AS n FROM guests WHERE name = 'ZZGA Setlistengast'")['n'];
+$schicke('/intern/termine', '/intern/gaeste/buchen',
+    ['event_id' => (string) $termin, 'new_name' => 'ZZGA Setlistengast', 'new_email' => 'zzga@example.invalid'],
+    $sidBucht);
+$pruefe('Getippter Name legt keinen zweiten Gast an',
+    (int) row("SELECT COUNT(*) AS n FROM guests WHERE name = 'ZZGA Setlistengast'")['n'] === $vorher);
+// Der Riegel darf nicht den gewöhnlichen Weg zumachen: Wer wirklich neu ist,
+// wird weiter durch Tippen gebucht.
+$schicke('/intern/termine', '/intern/gaeste/buchen',
+    ['event_id' => (string) $termin, 'new_name' => 'ZZGA Ganz Neu', 'new_email' => 'zzga2@example.invalid'],
+    $sidBucht);
+$pruefe('Ein neuer Name legt sehr wohl an',
+    (bool) row("SELECT 1 FROM guests WHERE name = 'ZZGA Ganz Neu'"));
+
+q("DELETE FROM permissions WHERE user_id IN (SELECT id FROM users WHERE name = 'ZZGA Konto')");
+q("DELETE FROM users WHERE name = 'ZZGA Konto'");
 
 // Dieselbe Funktion wie die Löschroute — eine Abschrift hier prüfte nur sich
 // selbst (#439).

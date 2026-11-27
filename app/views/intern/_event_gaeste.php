@@ -92,7 +92,10 @@
             </select>
           </label>
           <label><?= e(t('guest_function')) ?><input name="function_name" placeholder="<?= e(t('guest_book_function_ph')) ?>"></label>
-          <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name"></label>
+          <?php // data-vorsatz trägt den Text für den Treffer-Hinweis, den
+                // gastsuche.js daneben baut (#452): Übersetzungen gehören in
+                // die Seite und nicht ins Skript. ?>
+          <label><?= e(t('name')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_name" data-vorsatz="<?= e(t('guest_exists_hint')) ?>"></label>
           <label><?= e(t('email')) ?> (<?= e(t('guest_book_new')) ?>)<input type="email" name="new_email"></label>
           <label><?= e(t('phone')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_phone" maxlength="60"></label>
           <label><?= e(t('mem_mobile')) ?> (<?= e(t('guest_book_new')) ?>)<input name="new_mobile" maxlength="60"></label>
